@@ -267,6 +267,14 @@ body[data-theme="dark"] .coi-code {
     letter-spacing: 0.02em;
 }
 
+.contab-tab {
+    display: none;
+}
+
+.contab-tab.active {
+    display: block;
+}
+
 .coi-badge-ok {
     background: rgba(34, 197, 94, 0.18);
     color: #15803d;

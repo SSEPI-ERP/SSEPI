@@ -351,6 +351,9 @@ const FacturacionModule = (function() {
                     <td><span class="status-badge status-emitida">Emitida</span></td>
                     <td>$${(f.total || 0).toFixed(2)}</td>
                     <td>
+                        <button class="btn btn-sm btn-success" title="Enviar a COI (cola)" onclick="event.stopPropagation(); facturacionModule._enviarFacturaACoi('${f.id}')">
+                            <i class="fas fa-file-invoice"></i>
+                        </button>
                         <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); facturacionModule._verPDF('${f.id}')">
                             <i class="fas fa-file-pdf"></i> Ver
                         </button>
@@ -685,6 +688,25 @@ const FacturacionModule = (function() {
         }
     }
 
+    async function _enviarFacturaACoi(facturaId) {
+        const f = (facturas || []).find(x => x.id === facturaId);
+        if (!f) { alert('Factura no encontrada.'); return; }
+        try {
+            const payload = { ...f };
+            const r = await enqueueCoiJob({
+                erp_source: 'factura',
+                erp_id: String(f.id || f.uuid_cfdi || f.folio_factura),
+                folio: f.folio_factura || null,
+                idempotency_key: `factura:${f.id || f.uuid_cfdi || f.folio_factura}`,
+                payload_json: payload
+            });
+            if (!r.ok) throw (r.error || new Error('No se pudo encolar'));
+            alert('✅ Enviada a COI (cola).');
+        } catch (e) {
+            alert('Error: ' + (e?.message || e));
+        }
+    }
+
     function _verPDF(id) {
         alert('Funcionalidad: Visualizar PDF de factura (pendiente implementación)');
     }
@@ -784,7 +806,8 @@ const FacturacionModule = (function() {
         init,
         _abrirDetalle,
         _generarFactura,
-        _verPDF
+        _verPDF,
+        _enviarFacturaACoi
     };
 })();
 

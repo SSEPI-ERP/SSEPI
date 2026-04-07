@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SSEPI · Contabilidad (COI)</title>
+    <title>SSEPI · Contabilidad</title>
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/modules/contabilidad.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
     <script src="/js/core/theme-clock.js"></script>
     <script src="/js/core/user-menu.js"></script>
     <script src="/js/core/nav-by-role.js"></script>
-    <script type="module" src="/js/modules/contabilidad-coi.js"></script>
+    <script type="module" src="/js/modules/contabilidad-v2.js"></script>
 </head>
 <body class="page-contabilidad nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -23,10 +23,10 @@
         <div class="header-left">
             <button class="toggle-btn" id="toggleMenuBtn" title="Colapsar/Expandir Menú"><i class="fas fa-bars"></i></button>
             <div class="brand-container">
-                <div class="brand-icon"><i class="fas fa-book"></i></div>
+                <div class="brand-icon"><i class="fas fa-coins"></i></div>
                 <div>
-                    <div class="brand-text">SSEPI COI</div>
-                    <div class="brand-sub">Contabilidad en escritorio + motor local</div>
+                    <div class="brand-text">CONTABILIDAD</div>
+                    <div class="brand-sub">Ventas · Compras · Cobranza · Nómina</div>
                 </div>
             </div>
             <a href="/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
@@ -74,127 +74,136 @@
 
     <main>
         <div class="welcome-header">
-            <h1>SSEPI COI · Modo híbrido</h1>
-            <p><strong>En línea (Vercel):</strong> operación del ERP e historial de lo que el puente registró en la nube. <strong>En tu PC:</strong> COI + base contable + motor que crea las pólizas.</p>
+            <h1>Contabilidad</h1>
+            <p>Vista consolidada para <strong>Ventas/Facturas</strong>, <strong>Compras/Facturas</strong>, <strong>Cobranza</strong> y <strong>Nómina</strong>. Cualquier captura “a detalle” se hace en su módulo (Ventas / Compras / Facturación / Inventario).</p>
         </div>
-
-        <section class="coi-panel coi-flow-strip" aria-label="Flujo híbrido">
-            <div class="coi-flow-step"><span class="coi-flow-num">1</span> Trabajas en Ventas / Compras en el navegador</div>
-            <div class="coi-flow-arrow"><i class="fas fa-arrow-right"></i></div>
-            <div class="coi-flow-step"><span class="coi-flow-num">2</span> Con el bridge encendido, se generan pólizas en COI (local)</div>
-            <div class="coi-flow-arrow"><i class="fas fa-arrow-right"></i></div>
-            <div class="coi-flow-step"><span class="coi-flow-num">3</span> El bridge puede escribir el historial en Supabase para verlo aquí</div>
-        </section>
 
         <section class="coi-panel">
             <div class="coi-card">
-                <h2><i class="fas fa-inbox"></i> Entradas del sistema</h2>
-                <p class="coi-muted">Resumen rápido de lo pendiente. Si algo dice <strong>“por facturar/timbrar”</strong>, el botón te manda directo al módulo web de facturación. Lo demás se contabiliza en automático cuando el COI/bridge está conectado.</p>
+                <div class="coi-actions" style="margin-bottom:0.75rem;">
+                    <button type="button" class="btn-ssepi" id="tabVentasBtn"><i class="fas fa-file-invoice-dollar"></i> Ventas (Facturas)</button>
+                    <button type="button" class="btn-ssepi" id="tabComprasBtn"><i class="fas fa-shopping-cart"></i> Compras (Facturas)</button>
+                    <button type="button" class="btn-ssepi" id="tabCobranzaBtn"><i class="fas fa-hand-holding-dollar"></i> Cobranza</button>
+                    <button type="button" class="btn-ssepi" id="tabNominaBtn"><i class="fas fa-users"></i> Nómina</button>
+                </div>
 
-                <div class="coi-inbox-grid" id="coiInboxGrid">
-                    <div class="coi-inbox-kpi">
-                        <div class="coi-inbox-kpi-title">Por facturar/timbrar</div>
-                        <div class="coi-inbox-kpi-value" id="coiInboxKpiFacturar">—</div>
-                        <div class="coi-inbox-kpi-sub" id="coiInboxKpiFacturarSub">Órdenes taller/motores en “Reparado”</div>
+                <div id="tabVentas" class="contab-tab active">
+                    <h2><i class="fas fa-file-invoice-dollar"></i> Historial de Ventas (Facturas)</h2>
+                    <p class="coi-muted">Listado general de facturas emitidas. Para generar/timbrar ve a <strong>Facturación</strong>. Para cobros ve a <strong>Cobranza</strong>.</p>
+                    <div class="coi-actions">
+                        <a class="btn-ssepi" href="/pages/ssepi_facturacion.html"><i class="fas fa-file-invoice"></i> Abrir Facturación</a>
+                        <button type="button" class="btn-ssepi" id="refreshVentasBtn"><i class="fas fa-sync-alt"></i> Actualizar</button>
                     </div>
-                    <div class="coi-inbox-kpi">
-                        <div class="coi-inbox-kpi-title">Pólizas pendientes</div>
-                        <div class="coi-inbox-kpi-value" id="coiInboxKpiPolizasPend">—</div>
-                        <div class="coi-inbox-kpi-sub" id="coiInboxKpiPolizasPendSub">En cola `coi_sync_queue`</div>
-                    </div>
-                    <div class="coi-inbox-kpi">
-                        <div class="coi-inbox-kpi-title">Errores contables</div>
-                        <div class="coi-inbox-kpi-value" id="coiInboxKpiErrores">—</div>
-                        <div class="coi-inbox-kpi-sub" id="coiInboxKpiErroresSub">Trabajos en “error”</div>
+                    <div class="coi-table-wrap">
+                        <table class="coi-log-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Folio</th>
+                                    <th>Cliente</th>
+                                    <th>Total</th>
+                                    <th>Estatus</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ventasFacturasBody"></tbody>
+                        </table>
                     </div>
                 </div>
 
+                <div id="tabCompras" class="contab-tab">
+                    <h2><i class="fas fa-shopping-cart"></i> Historial de Compras (Facturas)</h2>
+                    <p class="coi-muted">Compras registradas y documentos. Para capturar compras ve al módulo de <strong>Compras</strong>. Para egresos/pagos usa el botón “Pagar”.</p>
+                    <div class="coi-actions">
+                        <a class="btn-ssepi" href="/pages/ssepi_compras.html"><i class="fas fa-shopping-cart"></i> Abrir Compras</a>
+                        <button type="button" class="btn-ssepi" id="refreshComprasBtn"><i class="fas fa-sync-alt"></i> Actualizar</button>
+                    </div>
+                    <div class="coi-table-wrap">
+                        <table class="coi-log-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Folio</th>
+                                    <th>Proveedor</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="comprasFacturasBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="tabCobranza" class="contab-tab">
+                    <h2><i class="fas fa-hand-holding-dollar"></i> Cobranza</h2>
+                    <p class="coi-muted">Registrar cobros (ingresos). Esto agrega un movimiento en <code>movimientos_banco</code> y marca la venta como pagada si existe el campo.</p>
+                    <div class="coi-actions">
+                        <button type="button" class="btn-ssepi" id="refreshCobranzaBtn"><i class="fas fa-sync-alt"></i> Actualizar</button>
+                    </div>
+                    <div class="coi-table-wrap">
+                        <table class="coi-log-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Concepto</th>
+                                    <th>Método</th>
+                                    <th>Monto</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cobranzaBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="tabNomina" class="contab-tab">
+                    <h2><i class="fas fa-users"></i> Nómina</h2>
+                    <p class="coi-muted">Historial general de pagos de nómina. Para capturar nuevos pagos (si aplica) se usa el flujo de nómina existente.</p>
+                    <div class="coi-actions">
+                        <button type="button" class="btn-ssepi" id="refreshNominaBtn"><i class="fas fa-sync-alt"></i> Actualizar</button>
+                    </div>
+                    <div class="coi-table-wrap">
+                        <table class="coi-log-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha pago</th>
+                                    <th>Empleado</th>
+                                    <th>Período</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nominaBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="coi-card">
+                <h2><i class="fas fa-boxes"></i> Inventario (resumen)</h2>
+                <p class="coi-muted">Solo lectura. Para cualquier modificación, abre el módulo de Inventario.</p>
+                <div class="coi-inbox-grid">
+                    <div class="coi-inbox-kpi">
+                        <div class="coi-inbox-kpi-title">Productos</div>
+                        <div class="coi-inbox-kpi-value" id="invKpiProductos">—</div>
+                        <div class="coi-inbox-kpi-sub">Total de ítems</div>
+                    </div>
+                    <div class="coi-inbox-kpi">
+                        <div class="coi-inbox-kpi-title">Unidades</div>
+                        <div class="coi-inbox-kpi-value" id="invKpiUnidades">—</div>
+                        <div class="coi-inbox-kpi-sub">Stock total</div>
+                    </div>
+                    <div class="coi-inbox-kpi">
+                        <div class="coi-inbox-kpi-title">Costo inventario</div>
+                        <div class="coi-inbox-kpi-value" id="invKpiCosto">—</div>
+                        <div class="coi-inbox-kpi-sub">Suma \(costo × stock\)</div>
+                    </div>
+                </div>
                 <div class="coi-actions" style="margin-top:1rem;">
-                    <button type="button" class="btn-ssepi" id="coiInboxGoFacturacionBtn"><i class="fas fa-file-invoice"></i> Ir a Facturación</button>
-                    <button type="button" class="btn-ssepi" id="coiInboxRefreshBtn"><i class="fas fa-sync-alt"></i> Actualizar entradas</button>
+                    <a class="btn-ssepi" href="/pages/ssepi_productos.html"><i class="fas fa-boxes"></i> Abrir Inventario</a>
+                    <button type="button" class="btn-ssepi" id="refreshInventarioBtn"><i class="fas fa-sync-alt"></i> Actualizar</button>
                 </div>
-
-                <div id="coiInboxHint" class="coi-hint-banner" style="display:none;"></div>
-                <div class="coi-table-wrap" style="margin-top:0.75rem;">
-                    <table class="coi-log-table" id="coiInboxTable" aria-label="Entradas">
-                        <thead>
-                            <tr>
-                                <th>Tipo</th>
-                                <th>Folio</th>
-                                <th>Estado</th>
-                                <th>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody id="coiInboxBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="coi-card coi-card-highlight">
-                <h2><i class="fas fa-cloud"></i> Historial en el ERP (Supabase)</h2>
-                <p class="coi-muted">Tabla <code>coi_sync_log</code>. Una vez ejecutes la migración SQL y configures <code>.env</code> en <code>mi-coi</code> con <code>SUPABASE_URL</code> y <code>SUPABASE_SERVICE_ROLE_KEY</code>, cada sincronización del bridge aparecerá en esta tabla (sin exponer la service key en Vercel).</p>
-                <p id="coiSyncLogHint" class="coi-hint-banner" style="display:none;"></p>
-                <div class="coi-table-wrap">
-                    <table class="coi-log-table" id="coiSyncLogTable">
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Origen</th>
-                                <th>Folio</th>
-                                <th>ID ERP</th>
-                                <th>Estado</th>
-                                <th>Póliza</th>
-                                <th>No.</th>
-                                <th>Monto</th>
-                            </tr>
-                        </thead>
-                        <tbody id="coiSyncLogBody"></tbody>
-                    </table>
-                </div>
-                <div class="coi-actions" style="margin-top:1rem;">
-                    <button type="button" class="btn-ssepi" id="coiRefreshLogBtn"><i class="fas fa-sync-alt"></i> Actualizar historial</button>
-                </div>
-            </div>
-
-            <div class="coi-card">
-                <h2><i class="fas fa-desktop"></i> Aplicación contable</h2>
-                <p class="coi-muted">Carpeta del proyecto: <code>mi-coi</code> (junto al ERP). Desde esa carpeta ejecuta la interfaz gráfica:</p>
-                <pre class="coi-code" id="coiMainCmdBlock">cd mi-coi
-python main.py</pre>
-                <button type="button" class="btn-ssepi" id="coiCopyMainCmdBtn"><i class="fas fa-copy"></i> Copiar arranque COI</button>
-            </div>
-
-            <div class="coi-card">
-                <h2><i class="fas fa-plug"></i> Motor de conexión (Ventas / Compras)</h2>
-                <p class="coi-muted">Servicio HTTP solo en <strong>127.0.0.1:8765</strong>. Debe estar en marcha mientras uses el ERP si quieres generar pólizas automáticamente.</p>
-                <pre class="coi-code">cd mi-coi
-python -m bridge.bridge_server</pre>
-                <div class="coi-actions">
-                    <button type="button" class="btn-ssepi" id="coiCopyBridgeCmdBtn"><i class="fas fa-copy"></i> Copiar comandos</button>
-                    <button type="button" class="btn-ssepi" id="coiTestMotorBtn"><i class="fas fa-heartbeat"></i> Probar conexión con motor</button>
-                </div>
-                <div class="coi-status-line">
-                    <span id="coiMotorDot" class="coi-status-dot coi-status-pending" aria-hidden="true"></span>
-                    <span id="coiMotorStatus">Comprobando…</span>
-                </div>
-            </div>
-
-            <div class="coi-card">
-                <h2><i class="fas fa-sliders-h"></i> Opciones del navegador</h2>
-                <p class="coi-muted">URL del bridge (mismo PC). Clave opcional si configuraste <code>SSEPI_COI_BRIDGE_KEY</code> o <code>bridge_api_key</code> en <code>config_instituto.json</code>.</p>
-                <div class="coi-form-row">
-                    <label for="coiBridgeUrlInput">URL base</label>
-                    <input type="url" id="coiBridgeUrlInput" class="coi-input" placeholder="http://127.0.0.1:8765" autocomplete="off">
-                </div>
-                <div class="coi-form-row">
-                    <label for="coiBridgeKeyInput">Clave (opcional)</label>
-                    <input type="password" id="coiBridgeKeyInput" class="coi-input" placeholder="X-SSEPI-COI-KEY" autocomplete="off">
-                </div>
-            </div>
-
-            <div class="coi-card coi-card-accent">
-                <h2><i class="fas fa-info-circle"></i> Mapeo de cuentas</h2>
-                <p class="coi-muted">Edita <code>mi-coi/bridge/ssepi_erp_mapping.json</code> con los números de cuenta reales de tu catálogo COI. Sin cuentas válidas el motor rechazará la póliza.</p>
             </div>
         </section>
     </main>
@@ -217,13 +226,13 @@ python -m bridge.bridge_server</pre>
                     document.getElementById('userName').innerText = profile?.nombre?.split(' ')[0] || 'Admin';
                     document.getElementById('userAvatar').innerText = (profile?.nombre?.[0] || 'A').toUpperCase();
                     const t0 = Date.now();
-                    while (!window.contabilidadCoiModule && Date.now() - t0 < 3000) {
+                    while (!window.contabilidadV2Module && Date.now() - t0 < 3000) {
                         await new Promise(r => setTimeout(r, 50));
                     }
-                    if (window.contabilidadCoiModule) {
-                        await window.contabilidadCoiModule.init();
+                    if (window.contabilidadV2Module) {
+                        await window.contabilidadV2Module.init();
                     } else {
-                        console.error('contabilidadCoiModule no cargó');
+                        console.error('contabilidadV2Module no cargó');
                     }
                 }
             })();
