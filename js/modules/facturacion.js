@@ -64,6 +64,7 @@ const FacturacionModule = (function() {
             document.getElementById('themeBtn').innerHTML = '<i class="fas fa-moon"></i>';
         }
         _setFiltroMesActual();
+        _applyUrlQueryFilters();
     }
 
     function _setFiltroMesActual() {
@@ -74,6 +75,42 @@ const FacturacionModule = (function() {
         const filtroFin = document.getElementById('filtroFechaFin');
         if (filtroInicio) filtroInicio.valueAsDate = filtroFechaInicio;
         if (filtroFin) filtroFin.valueAsDate = filtroFechaFin;
+    }
+
+    function _parseYmdLocal(s) {
+        if (!s || typeof s !== 'string') return null;
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return null;
+        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    }
+
+    /** Desde Contabilidad: ?desde=&hasta=&estado=pendiente|emitida|todos */
+    function _applyUrlQueryFilters() {
+        const p = new URLSearchParams(window.location.search);
+        const desde = p.get('desde');
+        const hasta = p.get('hasta');
+        const estado = p.get('estado');
+        if (desde) {
+            const d = _parseYmdLocal(desde);
+            if (d) {
+                filtroFechaInicio = d;
+                const el = document.getElementById('filtroFechaInicio');
+                if (el) el.valueAsDate = d;
+            }
+        }
+        if (hasta) {
+            const d = _parseYmdLocal(hasta);
+            if (d) {
+                filtroFechaFin = d;
+                const el = document.getElementById('filtroFechaFin');
+                if (el) el.valueAsDate = d;
+            }
+        }
+        if (estado && ['todos', 'pendiente', 'emitida'].includes(estado)) {
+            filtroEstado = estado;
+            const sel = document.getElementById('filtroEstado');
+            if (sel) sel.value = estado;
+        }
     }
 
     function _startClock() {

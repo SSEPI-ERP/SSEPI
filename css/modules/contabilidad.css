@@ -1,8 +1,177 @@
 /* Módulo Contabilidad — panel SSEPI COI (escritorio + motor local) */
 .page-contabilidad main {
-    max-width: 960px;
+    max-width: 1100px;
     margin: 0 auto;
     padding: 0 1.25rem 3rem;
+}
+
+.contab-hero-sub {
+    margin: 0.35rem 0 0;
+    font-size: 1rem;
+    color: var(--text-secondary, #64748b);
+    font-weight: 500;
+}
+
+.contab-lede-card {
+    border-radius: 16px;
+    background: linear-gradient(165deg, rgba(13, 148, 136, 0.06) 0%, var(--bg-panel, #fff) 42%);
+    border-color: rgba(13, 148, 136, 0.2);
+}
+
+.contab-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.contab-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0;
+}
+
+.contab-field label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary, #64748b);
+}
+
+.contab-field--grow {
+    flex: 1 1 200px;
+}
+
+.contab-input-date {
+    max-width: 11rem;
+}
+
+.contab-apply-btn {
+    align-self: flex-end;
+    margin-top: 1.15rem;
+}
+
+.contab-mod-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.35rem;
+}
+
+.contab-mod-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--bg-panel, #fff);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+}
+
+.contab-mod-card:hover {
+    border-color: rgba(13, 148, 136, 0.45);
+    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.12);
+    transform: translateY(-1px);
+}
+
+.contab-mod-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13, 148, 136, 0.12);
+    color: var(--c-contabilidad, #0d9488);
+    flex-shrink: 0;
+}
+
+.contab-mod-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.contab-mod-title {
+    font-weight: 800;
+    font-size: 0.92rem;
+    color: var(--text-primary, #1e293b);
+}
+
+.contab-mod-sub {
+    font-size: 0.78rem;
+    color: var(--text-muted, #94a3b8);
+    line-height: 1.25;
+}
+
+.contab-mod-go {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted, #94a3b8);
+    opacity: 0.85;
+}
+
+.contab-mod-card:hover .contab-mod-go {
+    color: var(--c-contabilidad, #0d9488);
+    opacity: 1;
+}
+
+.contab-pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.contab-pill.btn-ssepi {
+    border-radius: 999px;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    background: transparent;
+    border: 1px solid var(--border, #cbd5e1);
+    color: var(--text-secondary, #64748b);
+}
+
+.contab-pill.btn-ssepi:hover {
+    border-color: rgba(13, 148, 136, 0.4);
+    color: var(--c-contabilidad, #0d9488);
+}
+
+.contab-pill.btn-ssepi.active {
+    background: var(--c-contabilidad, #0d9488);
+    border-color: var(--c-contabilidad, #0d9488);
+    color: #fff;
+}
+
+.btn-ssepi.btn-ssepi--sm {
+    padding: 0.28rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1;
+    border-radius: 8px;
+}
+
+body[data-theme="dark"] .contab-lede-card {
+    background: linear-gradient(165deg, rgba(13, 148, 136, 0.12) 0%, var(--bg-panel, #1e293b) 45%);
+    border-color: rgba(13, 148, 136, 0.28);
+}
+
+body[data-theme="dark"] .contab-mod-card {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+body[data-theme="dark"] .contab-mod-card:hover {
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
 }
 
 .coi-panel {
