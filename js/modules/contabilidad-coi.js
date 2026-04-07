@@ -9,6 +9,7 @@ const coiLogService = createDataService('coi_sync_log');
 const coiQueueService = createDataService('coi_sync_queue');
 const tallerService = createDataService('ordenes_taller');
 const motoresService = createDataService('ordenes_motores');
+const facturasService = createDataService('facturas');
 
 let logChannel = null;
 let inboxChannel = null;
@@ -136,9 +137,10 @@ async function loadInbox() {
     if (kpiErr) kpiErr.textContent = '—';
 
     try {
-        const [tallerRep, motoresRep, queuePend, queueErr] = await Promise.all([
+        const [tallerRep, motoresRep, facturasUlt, queuePend, queueErr] = await Promise.all([
             tallerService.select({ estado: 'Reparado' }, { select: 'id, folio, estado', orderBy: 'fecha_reparacion', ascending: false, limit: 25 }).catch(() => []),
             motoresService.select({ estado: 'Reparado' }, { select: 'id, folio, estado', orderBy: 'fecha_reparacion', ascending: false, limit: 25 }).catch(() => []),
+            facturasService.select({}, { select: 'id, folio_factura, uuid_cfdi, estatus, total, fecha_emision, cliente', orderBy: 'fecha_emision', ascending: false, limit: 25 }).catch(() => []),
             coiQueueService.select({ status: 'pending' }, { select: 'id, erp_source, erp_id, folio, status, created_at', orderBy: 'created_at', ascending: false, limit: 50 }).catch(() => []),
             coiQueueService.select({ status: 'error' }, { select: 'id, erp_source, erp_id, folio, status, last_error, created_at', orderBy: 'created_at', ascending: false, limit: 25 }).catch(() => []),
         ]);
@@ -163,6 +165,14 @@ async function loadInbox() {
             folio: o.folio || (o.id ? String(o.id).slice(-6) : '—'),
             estado: 'Por facturar/timbrar',
             actionHtml: _actionBtnHtml('Abrir facturación', '/pages/ssepi_facturacion.html'),
+        }));
+
+        // Facturas timbradas (ya registradas): se envían a COI por cola (factura) cuando exista bridge
+        (facturasUlt || []).filter(f => (f.estatus || '').toLowerCase() === 'activa').slice(0, 10).forEach(f => rows.push({
+            tipo: 'Factura',
+            folio: f.folio_factura || (f.id ? String(f.id).slice(-6) : '—'),
+            estado: 'Timbrada (lista para COI)',
+            actionHtml: _badgeHtml('Automático', 'ok'),
         }));
         (queueErr || []).slice(0, 10).forEach(q => rows.push({
             tipo: `COI (${(q.erp_source || '').toUpperCase()})`,
