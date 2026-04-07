@@ -658,14 +658,15 @@ class AspelCOI:
                     return
                 except tk.TclError:
                     pass
+        # Prioridad: sepi_logo.png (lo solicitado), luego ssepi_logo.png, luego logo.png
         for name in (
-            "assets/logo.png",
-            "assets/ssepi_logo.png",
             "assets/sepi_logo.png",
+            "assets/ssepi_logo.png",
+            "assets/logo.png",
             "assets/sepilogo.png",
-            "logo.png",
-            "ssepi_logo.png",
             "sepi_logo.png",
+            "ssepi_logo.png",
+            "logo.png",
             "sepilogo.png",
         ):
             p = os.path.join(base, *name.split("/"))
