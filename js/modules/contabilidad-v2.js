@@ -138,7 +138,12 @@ async function _renderNomina() {
             </tr>
         `).join('');
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="5" class="coi-log-empty">Error: ${_escape(e?.message || e)}</td></tr>`;
+        const msg = String(e?.message || e);
+        if (msg.includes('pagos_nomina') && (msg.includes('schema cache') || msg.includes('does not exist'))) {
+            tbody.innerHTML = `<tr><td colspan="5" class="coi-log-empty">Nómina: la tabla <code>pagos_nomina</code> no existe en tu Supabase. En el panel → SQL Editor ejecuta <code>scripts/migrations/pagos-nomina.sql</code> del repositorio y recarga la página.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = `<tr><td colspan="5" class="coi-log-empty">Error: ${_escape(msg)}</td></tr>`;
     }
 }
 
