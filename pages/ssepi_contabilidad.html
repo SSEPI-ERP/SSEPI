@@ -73,25 +73,90 @@
     </nav>
 
     <main>
-        <div class="welcome-header">
+        <div class="welcome-header contab-hero">
             <h1>Contabilidad</h1>
-            <p>Vista consolidada para <strong>Ventas/Facturas</strong>, <strong>Compras/Facturas</strong>, <strong>Cobranza</strong> y <strong>Nómina</strong>. Cualquier captura “a detalle” se hace en su módulo (Ventas / Compras / Facturación / Inventario).</p>
+            <p class="contab-hero-sub">Resumen y movimientos del periodo.</p>
         </div>
 
         <section class="coi-panel">
-            <div class="coi-card">
-                <div class="coi-actions" style="margin-bottom:0.75rem;">
-                    <button type="button" class="btn-ssepi" id="tabVentasBtn"><i class="fas fa-file-invoice-dollar"></i> Ventas (Facturas)</button>
-                    <button type="button" class="btn-ssepi" id="tabComprasBtn"><i class="fas fa-shopping-cart"></i> Compras (Facturas)</button>
-                    <button type="button" class="btn-ssepi" id="tabCobranzaBtn"><i class="fas fa-hand-holding-dollar"></i> Cobranza</button>
-                    <button type="button" class="btn-ssepi" id="tabNominaBtn"><i class="fas fa-users"></i> Nómina</button>
-            </div>
+            <div class="coi-card contab-lede-card">
+                <div class="contab-toolbar">
+                    <div class="contab-field">
+                        <label for="contabDesde">Desde</label>
+                        <input type="date" id="contabDesde" class="coi-input contab-input-date">
+                    </div>
+                    <div class="contab-field">
+                        <label for="contabHasta">Hasta</label>
+                        <input type="date" id="contabHasta" class="coi-input contab-input-date">
+                    </div>
+                    <div class="contab-field contab-field--grow">
+                        <label for="contabCategoria">Área</label>
+                        <select id="contabCategoria" class="coi-input">
+                            <option value="todos">Todas</option>
+                            <option value="Taller Electrónica">Taller Electrónica</option>
+                            <option value="Taller Motores">Taller Motores</option>
+                            <option value="Automatización">Automatización</option>
+                            <option value="Proyectos">Proyectos</option>
+                            <option value="Administración">Administración</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn-ssepi contab-apply-btn" id="contabAplicarFiltrosBtn"><i class="fas fa-filter"></i> Aplicar</button>
+                </div>
+
+                <div class="contab-mod-grid">
+                    <a id="contabLinkFacturacion" class="contab-mod-card" href="/pages/ssepi_facturacion.html">
+                        <span class="contab-mod-icon"><i class="fas fa-file-invoice"></i></span>
+                        <span class="contab-mod-body">
+                            <span class="contab-mod-title">Facturación</span>
+                            <span class="contab-mod-sub">Facturas emitidas</span>
+                        </span>
+                        <i class="fas fa-external-link-alt contab-mod-go"></i>
+                    </a>
+                    <a id="contabLinkVentas" class="contab-mod-card" href="/pages/ssepi_ventas.html">
+                        <span class="contab-mod-icon"><i class="fas fa-file-invoice-dollar"></i></span>
+                        <span class="contab-mod-body">
+                            <span class="contab-mod-title">Ventas</span>
+                            <span class="contab-mod-sub">Cotizaciones y pedidos</span>
+                        </span>
+                        <i class="fas fa-external-link-alt contab-mod-go"></i>
+                    </a>
+                    <a id="contabLinkCompras" class="contab-mod-card" href="/pages/ssepi_compras.html">
+                        <span class="contab-mod-icon"><i class="fas fa-shopping-cart"></i></span>
+                        <span class="contab-mod-body">
+                            <span class="contab-mod-title">Compras</span>
+                            <span class="contab-mod-sub">Órdenes y proveedores</span>
+                        </span>
+                        <i class="fas fa-external-link-alt contab-mod-go"></i>
+                    </a>
+                    <a id="contabLinkCobranza" class="contab-mod-card" href="/pages/ssepi_ventas.html">
+                        <span class="contab-mod-icon"><i class="fas fa-hand-holding-dollar"></i></span>
+                        <span class="contab-mod-body">
+                            <span class="contab-mod-title">Cobranza</span>
+                            <span class="contab-mod-sub">Pendientes de cobro</span>
+                        </span>
+                        <i class="fas fa-external-link-alt contab-mod-go"></i>
+                    </a>
+                    <a id="contabLinkNomina" class="contab-mod-card" href="/pages/ssepi_contabilidad.html">
+                        <span class="contab-mod-icon"><i class="fas fa-users"></i></span>
+                        <span class="contab-mod-body">
+                            <span class="contab-mod-title">Nómina</span>
+                            <span class="contab-mod-sub">Pagos (esta vista)</span>
+                        </span>
+                        <i class="fas fa-chevron-right contab-mod-go"></i>
+                    </a>
+                </div>
+
+                <div class="contab-pill-row">
+                    <button type="button" class="contab-pill btn-ssepi active" id="tabVentasBtn"><i class="fas fa-table"></i> Facturas</button>
+                    <button type="button" class="contab-pill btn-ssepi" id="tabComprasBtn"><i class="fas fa-shopping-cart"></i> Compras</button>
+                    <button type="button" class="contab-pill btn-ssepi" id="tabCobranzaBtn"><i class="fas fa-building-columns"></i> Ingresos banco</button>
+                    <button type="button" class="contab-pill btn-ssepi" id="tabNominaBtn"><i class="fas fa-users"></i> Nómina</button>
+                </div>
 
                 <div id="tabVentas" class="contab-tab active">
-                    <h2><i class="fas fa-file-invoice-dollar"></i> Historial de Ventas (Facturas)</h2>
-                    <p class="coi-muted">Listado general de facturas emitidas. Para generar/timbrar ve a <strong>Facturación</strong>. Para cobros ve a <strong>Cobranza</strong>.</p>
+                    <h2><i class="fas fa-file-invoice-dollar"></i> Facturas emitidas</h2>
                     <div class="coi-actions">
-                        <a class="btn-ssepi" href="/pages/ssepi_facturacion.html"><i class="fas fa-file-invoice"></i> Abrir Facturación</a>
+                        <a class="btn-ssepi" id="contabDupFacturacion" href="/pages/ssepi_facturacion.html"><i class="fas fa-external-link-alt"></i> Facturación</a>
                         <button type="button" class="btn-ssepi" id="refreshVentasBtn"><i class="fas fa-sync-alt"></i> Actualizar</button>
                     </div>
                     <div class="coi-table-wrap">
@@ -112,10 +177,9 @@
                 </div>
 
                 <div id="tabCompras" class="contab-tab">
-                    <h2><i class="fas fa-shopping-cart"></i> Historial de Compras (Facturas)</h2>
-                    <p class="coi-muted">Compras registradas y documentos. Para capturar compras ve al módulo de <strong>Compras</strong>. Para egresos/pagos usa el botón “Pagar”.</p>
+                    <h2><i class="fas fa-shopping-cart"></i> Compras</h2>
                     <div class="coi-actions">
-                        <a class="btn-ssepi" href="/pages/ssepi_compras.html"><i class="fas fa-shopping-cart"></i> Abrir Compras</a>
+                        <a class="btn-ssepi" id="contabDupCompras" href="/pages/ssepi_compras.html"><i class="fas fa-external-link-alt"></i> Compras</a>
                         <button type="button" class="btn-ssepi" id="refreshComprasBtn"><i class="fas fa-sync-alt"></i> Actualizar</button>
                     </div>
                     <div class="coi-table-wrap">
@@ -136,9 +200,9 @@
                 </div>
 
                 <div id="tabCobranza" class="contab-tab">
-                    <h2><i class="fas fa-hand-holding-dollar"></i> Cobranza</h2>
-                    <p class="coi-muted">Registrar cobros (ingresos). Esto agrega un movimiento en <code>movimientos_banco</code> y marca la venta como pagada si existe el campo.</p>
+                    <h2><i class="fas fa-building-columns"></i> Ingresos (banco)</h2>
                     <div class="coi-actions">
+                        <a class="btn-ssepi" id="contabDupCobranza" href="/pages/ssepi_ventas.html"><i class="fas fa-external-link-alt"></i> Ventas</a>
                         <button type="button" class="btn-ssepi" id="refreshCobranzaBtn"><i class="fas fa-sync-alt"></i> Actualizar</button>
                     </div>
                     <div class="coi-table-wrap">
@@ -159,7 +223,6 @@
 
                 <div id="tabNomina" class="contab-tab">
                     <h2><i class="fas fa-users"></i> Nómina</h2>
-                    <p class="coi-muted">Historial general de pagos de nómina. Para capturar nuevos pagos (si aplica) se usa el flujo de nómina existente.</p>
                     <div class="coi-actions">
                         <button type="button" class="btn-ssepi" id="refreshNominaBtn"><i class="fas fa-sync-alt"></i> Actualizar</button>
                     </div>
@@ -180,9 +243,8 @@
                 </div>
             </div>
 
-            <div class="coi-card">
+            <div class="coi-card contab-inv-card">
                 <h2><i class="fas fa-boxes"></i> Inventario (resumen)</h2>
-                <p class="coi-muted">Solo lectura. Para cualquier modificación, abre el módulo de Inventario.</p>
                 <div class="coi-inbox-grid">
                     <div class="coi-inbox-kpi">
                         <div class="coi-inbox-kpi-title">Productos</div>
@@ -197,11 +259,11 @@
                     <div class="coi-inbox-kpi">
                         <div class="coi-inbox-kpi-title">Costo inventario</div>
                         <div class="coi-inbox-kpi-value" id="invKpiCosto">—</div>
-                        <div class="coi-inbox-kpi-sub">Suma \(costo × stock\)</div>
+                        <div class="coi-inbox-kpi-sub">Suma costo × stock</div>
                     </div>
                 </div>
                 <div class="coi-actions" style="margin-top:1rem;">
-                    <a class="btn-ssepi" href="/pages/ssepi_productos.html"><i class="fas fa-boxes"></i> Abrir Inventario</a>
+                    <a class="btn-ssepi" id="contabLinkInventario" href="/pages/ssepi_productos.html"><i class="fas fa-boxes"></i> Inventario</a>
                     <button type="button" class="btn-ssepi" id="refreshInventarioBtn"><i class="fas fa-sync-alt"></i> Actualizar</button>
                 </div>
             </div>

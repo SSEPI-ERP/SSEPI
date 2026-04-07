@@ -73,6 +73,7 @@ const ComprasModule = (function() {
             console.warn('[Compras] _initUI:', e);
         }
         _setFiltroMesActual();
+        _applyUrlQueryFilters();
     }
 
     function _setFiltroMesActual() {
@@ -83,6 +84,44 @@ const ComprasModule = (function() {
         const filtroFin = document.getElementById('filtroFechaFin');
         if (filtroInicio) filtroInicio.valueAsDate = filtroFechaInicio;
         if (filtroFin) filtroFin.valueAsDate = filtroFechaFin;
+    }
+
+    function _parseYmdLocal(s) {
+        if (!s || typeof s !== 'string') return null;
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return null;
+        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    }
+
+    /** Desde Contabilidad: ?desde=&hasta=&departamento= */
+    function _applyUrlQueryFilters() {
+        const p = new URLSearchParams(window.location.search);
+        const desde = p.get('desde');
+        const hasta = p.get('hasta');
+        const dep = p.get('departamento');
+        if (desde) {
+            const d = _parseYmdLocal(desde);
+            if (d) {
+                filtroFechaInicio = d;
+                const el = document.getElementById('filtroFechaInicio');
+                if (el) el.valueAsDate = d;
+            }
+        }
+        if (hasta) {
+            const d = _parseYmdLocal(hasta);
+            if (d) {
+                filtroFechaFin = d;
+                const el = document.getElementById('filtroFechaFin');
+                if (el) el.valueAsDate = d;
+            }
+        }
+        if (dep) {
+            const sel = document.getElementById('filtroDepartamento');
+            if (sel && [...sel.options].some(o => o.value === dep)) {
+                filtroDepartamento = dep;
+                sel.value = dep;
+            }
+        }
     }
 
     function _startClock() {
