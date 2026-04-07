@@ -1,0 +1,289 @@
+/* Módulo Contabilidad — panel SSEPI COI (escritorio + motor local) */
+.page-contabilidad main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 1.25rem 3rem;
+}
+
+.coi-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.coi-card {
+    background: var(--bg-panel, #fff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 12px;
+    padding: 1.35rem 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.coi-card h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary, #1e293b);
+}
+
+.coi-card h2 i {
+    margin-right: 0.35rem;
+    color: var(--c-contabilidad, #0d9488);
+}
+
+.coi-muted {
+    color: var(--text-secondary, #64748b);
+    font-size: 0.92rem;
+    line-height: 1.5;
+    margin: 0 0 1rem;
+}
+
+.coi-code {
+    background: var(--bg-muted, #f1f5f9);
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 0.85rem;
+    overflow-x: auto;
+    margin: 0 0 1rem;
+    border: 1px solid var(--border, #e2e8f0);
+}
+
+.coi-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.coi-status-line {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary, #64748b);
+}
+
+.coi-status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.coi-status-pending { background: #94a3b8; }
+.coi-status-on { background: #22c55e; box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25); }
+.coi-status-off { background: #ef4444; }
+
+.coi-form-row {
+    margin-bottom: 1rem;
+}
+
+.coi-form-row label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    color: var(--text-secondary, #64748b);
+}
+
+.coi-input {
+    width: 100%;
+    max-width: 420px;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: var(--bg-input, #fff);
+    color: var(--text-primary, #1e293b);
+}
+
+.coi-card-accent {
+    border-color: rgba(13, 148, 136, 0.35);
+    background: rgba(13, 148, 136, 0.04);
+}
+
+body[data-theme="dark"] .coi-card {
+    box-shadow: none;
+}
+
+body[data-theme="dark"] .coi-code {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.coi-inbox-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+.coi-inbox-kpi {
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px;
+    padding: 0.85rem 0.95rem;
+    background: var(--bg-muted, #f8fafc);
+}
+
+.coi-inbox-kpi-title {
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-secondary, #64748b);
+}
+
+.coi-inbox-kpi-value {
+    font-size: 1.35rem;
+    font-weight: 900;
+    margin-top: 0.25rem;
+    color: var(--text-primary, #1e293b);
+}
+
+.coi-inbox-kpi-sub {
+    font-size: 0.82rem;
+    margin-top: 0.2rem;
+    color: var(--text-muted, #94a3b8);
+}
+
+@media (max-width: 900px) {
+    .coi-inbox-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Flujo híbrido */
+.coi-flow-strip {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--bg-panel, #fff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 12px;
+    margin-bottom: 0.25rem;
+}
+
+.coi-flow-step {
+    font-size: 0.88rem;
+    color: var(--text-secondary, #64748b);
+    max-width: 220px;
+    text-align: center;
+    line-height: 1.35;
+}
+
+.coi-flow-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: var(--c-contabilidad, #0d9488);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 800;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+}
+
+.coi-flow-arrow {
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.9rem;
+}
+
+.coi-card-highlight {
+    border-color: rgba(13, 148, 136, 0.45);
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.06) 0%, var(--bg-panel, #fff) 40%);
+}
+
+.coi-hint-banner {
+    font-size: 0.85rem;
+    color: var(--text-secondary, #64748b);
+    background: rgba(234, 179, 8, 0.12);
+    border: 1px solid rgba(234, 179, 8, 0.35);
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}
+
+.coi-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 8px;
+}
+
+.coi-log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.coi-log-table th,
+.coi-log-table td {
+    padding: 0.55rem 0.65rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.coi-log-table th {
+    font-weight: 700;
+    color: var(--text-secondary, #64748b);
+    background: var(--bg-muted, #f8fafc);
+    white-space: nowrap;
+}
+
+.coi-log-table tbody tr:hover {
+    background: rgba(13, 148, 136, 0.04);
+}
+
+.coi-log-loading,
+.coi-log-empty {
+    text-align: center;
+    color: var(--text-muted, #94a3b8);
+    padding: 1.5rem 1rem !important;
+}
+
+.coi-code-inline {
+    font-size: 0.75rem;
+    background: var(--bg-muted, #f1f5f9);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+}
+
+.coi-src {
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: var(--c-contabilidad, #0d9488);
+}
+
+.coi-badge {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.coi-badge-ok {
+    background: rgba(34, 197, 94, 0.18);
+    color: #15803d;
+}
+
+.coi-badge-skip {
+    background: rgba(148, 163, 184, 0.25);
+    color: #475569;
+}
+
+.coi-badge-err {
+    background: rgba(239, 68, 68, 0.18);
+    color: #b91c1c;
+}
+
+@media (max-width: 768px) {
+    .coi-flow-arrow {
+        display: none;
+    }
+}

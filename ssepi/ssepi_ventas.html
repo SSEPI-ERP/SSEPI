@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSEPI · Ventas y Cotizaciones</title>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        /* ==========================================================================
+           DISEÑO COMPLETO - VENTAS IRONCLAD
+           ========================================================================== */
+        :root {
+            --bg-body: #fff8f0;
+            --bg-panel: #ffffff;
+            --bg-input: #ffffff;
+            --bg-header: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            --border: #ffcc80;
+            --border-hover: #ffb74d;
+            --shadow-card: 0 4px 12px rgba(255, 109, 0, 0.08);
+            --shadow-float: 0 15px 30px rgba(255, 109, 0, 0.25);
+            --shadow-header: 0 4px 20px rgba(255, 109, 0, 0.1);
+            --text-main: #2e2e2e;
+            --text-muted: #6d6d6d;
+            --text-header: #bf360c;
+            --c-ventas: #ff6d00;
+            --c-ventas-light: #ffe0b2;
+            --c-ventas-dark: #e65100;
+            --c-taller: #2e7d32;
+            --c-motores: #5d4037;
+            --c-proyectos: #fbc02d;
+            --c-compras: #7b1fa2;
+            --c-stock: #0277bd;
+            --c-servicios: #00897b;
+            --c-contact: #1565c0;
+            --c-analisis: #c62828;
+            --c-contabilidad: #388e3c;
+            --c-web: #37474f;
+            --st-pagado: #2e7d32;
+            --st-pendiente: #ff6d00;
+            --st-cotizacion: #757575;
+            --alert-warning-bg: #fff3e0;
+            --alert-warning-border: #ffb74d;
+            --alert-warning-text: #e65100;
+            --alert-danger-bg: #ffebee;
+            --alert-danger-border: #ef5350;
+            --alert-danger-text: #c62828;
+            --profit-good: #2e7d32;
+            --profit-warning: #ff6d00;
+            --profit-bad: #c62828;
+            --sidebar-w: 260px;
+            --header-h: 70px;
+            --border-radius: 8px;
+            --glass-bg: rgba(255,255,255,0.25);
+            --glass-border: rgba(255,255,255,0.18);
+            --glass-shadow: 0 8px 32px 0 rgba(31,38,135,0.37);
+            --step-active: #ff6d00;
+            --step-completed: #4caf50;
+            --step-inactive: #bdbdbd;
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #1a120b;
+            --bg-panel: #2c241e;
+            --bg-input: #1a120b;
+            --bg-header: linear-gradient(135deg, #1a120b 0%, #e65100 100%);
+            --border: #4a3a2e;
+            --border-hover: #ff6d00;
+            --shadow-card: 0 8px 32px rgba(255,109,0,0.3);
+            --text-main: #f5e6d3;
+            --text-muted: #bcaaa4;
+            --text-header: #ffe0b2;
+            --c-ventas: #ff9100;
+            --c-ventas-light: #e65100;
+            --c-ventas-dark: #bf360c;
+            --alert-warning-bg: #4a3a2e;
+            --alert-warning-border: #ff6d00;
+            --alert-warning-text: #ffb74d;
+            --alert-danger-bg: #4a2e2e;
+            --alert-danger-border: #ef5350;
+            --alert-danger-text: #ffaa99;
+            --glass-bg: rgba(0,0,0,0.25);
+            --step-active: #ff9100;
+            --step-completed: #66bb6a;
+            --step-inactive: #6d6d6d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: grid;
+            grid-template-columns: var(--sidebar-w) 1fr;
+            grid-template-rows: var(--header-h) 1fr;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        body.sidebar-closed { grid-template-columns: 70px 1fr; }
+        body.sidebar-closed .sidebar .nav-item span:not(.icon-box) { opacity: 0; width: 0; }
+
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: var(--bg-body); }
+        ::-webkit-scrollbar-thumb { background: var(--c-ventas); border-radius: 5px; border: 2px solid var(--bg-body); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--c-ventas-dark); }
+
+        /* ===== HEADER ===== */
+        header {
+            grid-column: 1 / -1;
+            background: var(--bg-header);
+            border-bottom: 2px solid var(--c-ventas);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            z-index: 100;
+            box-shadow: var(--shadow-header);
+            backdrop-filter: blur(10px);
+        }
+        .header-left { display: flex; align-items: center; gap: 20px; }
+        .toggle-btn {
+            background: transparent; border: none; font-size: 24px;
+            cursor: pointer; color: var(--text-header); padding: 8px;
+            border-radius: 6px; transition: 0.2s;
+        }
+        .toggle-btn:hover { background: rgba(255,109,0,0.1); transform: scale(1.1); }
+        .brand-container { display: flex; align-items: center; gap: 15px; }
+        .brand-icon {
+            font-size: 28px; color: var(--c-ventas); background: rgba(255,109,0,0.1);
+            width: 45px; height: 45px; border-radius: 10px; display: flex;
+            align-items: center; justify-content: center; border: 2px solid var(--c-ventas);
+        }
+        .brand-text { font-weight: 900; font-size: 22px; color: var(--text-header); letter-spacing: -0.5px; }
+        .brand-sub { font-weight: 700; font-size: 11px; color: var(--c-ventas); text-transform: uppercase; letter-spacing: 1.5px; margin-top: 2px; }
+        .home-link {
+            text-decoration: none; color: var(--text-header); font-size: 13px; font-weight: 700;
+            background: rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 20px;
+            display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.5);
+            transition: 0.2s;
+        }
+        .home-link:hover {
+            background: var(--bg-panel); color: var(--c-ventas); transform: translateY(-2px);
+            border-color: var(--c-ventas);
+        }
+        .header-right { display: flex; align-items: center; gap: 20px; }
+        .live-clock {
+            font-family: 'Consolas', monospace; font-weight: 700; font-size: 14px;
+            color: var(--text-header); background: rgba(255,255,255,0.3); padding: 6px 12px;
+            border-radius: 6px; border: 1px solid rgba(255,255,255,0.4);
+        }
+        .theme-btn {
+            background: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.35);
+            width: 42px; height: 42px; border-radius: 50%; cursor: pointer; font-size: 20px;
+            display: flex; align-items: center; justify-content: center; transition: 0.3s;
+            color: var(--text-header);
+        }
+        .theme-btn:hover {
+            transform: rotate(45deg) scale(1.1); background: var(--bg-panel);
+            color: var(--c-ventas); border-color: var(--c-ventas);
+        }
+        .user-pill {
+            display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.25);
+            padding: 5px 15px 5px 5px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.35);
+            cursor: pointer; color: var(--text-header);
+        }
+        .user-pill:hover { background: var(--bg-panel); color: var(--text-main); }
+        .avatar-circle { width: 32px; height: 32px; background: linear-gradient(135deg, var(--c-ventas), var(--c-ventas-dark)); color: white; border-radius: 50%; display: grid; place-items: center; font-weight: bold; }
+
+        /* ===== NUEVO: BADGE DE NOTIFICACIONES ===== */
+        .notification-badge {
+            position: relative;
+            display: inline-flex;
+        }
+        .badge-count {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--c-danger, #f44336);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            padding: 30px 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 90;
+            box-shadow: 4px 0 15px rgba(255,109,0,0.05);
+            transition: all 0.3s ease;
+            overflow-y: auto;
+        }
+        .menu-label {
+            font-size: 11px; font-weight: 900; color: var(--text-muted);
+            margin: 20px 0 10px 15px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7;
+        }
+        .nav-item {
+            display: flex; align-items: center; gap: 15px; padding: 14px 20px;
+            color: var(--text-main); text-decoration: none; border-radius: var(--border-radius);
+            transition: 0.3s; font-weight: 700; font-size: 14px; border: 1px solid transparent;
+            position: relative;
+        }
+        .nav-item:hover {
+            background: var(--c-ventas-light); color: var(--text-main);
+            border-color: var(--c-ventas); transform: translateX(5px);
+        }
+        .nav-item.active {
+            background: linear-gradient(135deg, var(--c-ventas) 0%, var(--c-ventas-dark) 100%);
+            color: white; box-shadow: 0 4px 15px rgba(255,109,0,0.3); border-color: var(--c-ventas);
+        }
+        .nav-item.active::after {
+            content: ''; position: absolute; right: -8px; top: 50%; transform: translateY(-50%);
+            width: 16px; height: 16px; background: var(--c-ventas); border-radius: 50%;
+            box-shadow: 0 0 10px var(--c-ventas);
+        }
+        .icon-box { font-size: 18px; width: 24px; text-align: center; transition: transform 0.3s; }
+        .nav-item:hover .icon-box { transform: scale(1.2); }
+
+        /* ===== MAIN ===== */
+        main {
+            padding: 30px 40px;
+            overflow-y: auto;
+            position: relative;
+            height: calc(100vh - var(--header-h));
+        }
+
+        /* ===== FILTROS SUPERIORES (ARRIBA DEL TODO) ===== */
+        .filtros-superiores {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px 25px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow-card);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .filtro-grupo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-body);
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .filtro-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .filtro-btn.active {
+            background: var(--c-ventas);
+            color: white;
+        }
+
+        .periodo-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-body);
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .periodo-option {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+        .periodo-option.active {
+            background: var(--c-ventas);
+            color: white;
+        }
+
+        .date-picker-container {
+            display: flex;
+            gap: 10px;
+        }
+        .date-picker {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-panel);
+            color: var(--text-main);
+            font-size: 13px;
+        }
+
+        .search-box {
+            flex: 1;
+            position: relative;
+            min-width: 250px;
+        }
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px 10px 36px;
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            background: var(--bg-panel);
+            color: var(--text-main);
+            font-size: 13px;
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--c-ventas);
+        }
+
+        .vistas-tabs {
+            display: flex;
+            gap: 8px;
+            background: var(--bg-body);
+            padding: 4px;
+            border-radius: 8px;
+        }
+        .vistas-tab {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .vistas-tab.active {
+            background: var(--c-ventas);
+            color: white;
+        }
+
+        /* ===== KPIs ===== */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        .kpi-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: var(--shadow-card);
+            border-top: 5px solid var(--c-ventas);
+            transition: 0.3s;
+        }
+        .kpi-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-float); }
+        .kpi-icon { font-size: 28px; color: var(--c-ventas); margin-bottom: 15px; }
+        .kpi-title { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+        .kpi-value { font-size: 28px; font-weight: 800; color: var(--text-main); margin: 5px 0; }
+        .kpi-subtitle { font-size: 12px; color: var(--text-muted); }
+
+        /* ===== PANELES ===== */
+        .panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: var(--glass-shadow);
+        }
+        .panel h2 {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* ===== TARJETAS DE SOLICITUDES ===== */
+        .solicitudes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+        .solicitud-card {
+            background: var(--bg-panel);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--shadow-card);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: 0.2s;
+        }
+        .solicitud-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--c-ventas);
+            box-shadow: var(--shadow-float);
+        }
+        .solicitud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .solicitud-folio {
+            font-weight: 900;
+            color: var(--c-ventas);
+            font-size: 14px;
+        }
+        .solicitud-cliente {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .solicitud-total {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+        .solicitud-items {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .solicitud-acciones {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        /* ===== BOTONES ===== */
+        .btn {
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-weight: 800;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            min-width: 120px;
+            justify-content: center;
+        }
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 12px;
+            min-width: 80px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--c-ventas), var(--c-ventas-dark));
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255,109,0,0.3);
+        }
+        .btn-secondary {
+            background: white;
+            border: 2px solid var(--border);
+            color: var(--text-muted);
+        }
+        .btn-secondary:hover {
+            border-color: var(--c-ventas);
+            color: var(--c-ventas);
+        }
+        .btn-success {
+            background: #2e7d32;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #1b5e20;
+        }
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+        .btn-warning:hover {
+            background: #f57c00;
+        }
+        .btn-danger {
+            background: #d32f2f;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #b71c1c;
+        }
+
+        /* ===== TABLA DE VENTAS ===== */
+        .table-container {
+            background: var(--bg-panel);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: var(--shadow-card);
+            border: 1px solid var(--border);
+            margin-top: 20px;
+        }
+        .sales-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .sales-table th {
+            padding: 16px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+            background: rgba(255,109,0,0.03);
+        }
+        .sales-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+        .sales-table tbody tr.parent-row { cursor: pointer; transition: background 0.2s; }
+        .sales-table tbody tr.parent-row:hover { background: rgba(255,109,0,0.05); }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .status-pagado { background: rgba(46,125,50,0.15); color: #2e7d32; }
+        .status-pendiente { background: rgba(255,109,0,0.15); color: #e65100; }
+        .status-cotizacion { background: rgba(117,117,117,0.15); color: #424242; }
+
+        /* ===== VISTAS ===== */
+        .view-container { display: none; margin-top: 20px; }
+        .view-container.active { display: block; }
+
+        .kanban-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .kanban-col {
+            background: var(--bg-body);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+        .kanban-header {
+            font-weight: 800;
+            font-size: 14px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--c-ventas);
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .kanban-count {
+            background: var(--c-ventas);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        .kanban-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: var(--shadow-card);
+            cursor: pointer;
+            transition: 0.2s;
+            border-left: 5px solid var(--c-ventas);
+        }
+        .kanban-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-float); }
+        .kanban-folio { font-weight: 900; font-size: 13px; }
+        .kanban-cliente { font-size: 12px; color: var(--text-muted); margin: 5px 0; }
+        .kanban-total { font-weight: 800; color: var(--c-ventas); }
+
+        .chart-container {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            height: 400px;
+            margin-top: 20px;
+        }
+
+        /* ===== MODALES ===== */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(5px);
+        }
+        .modal-backdrop.active { display: flex; }
+
+        .modal {
+            background: var(--bg-panel);
+            border-radius: 24px;
+            width: 100%;
+            max-width: 1300px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            border: 2px solid var(--c-ventas);
+            animation: slideUp 0.3s;
+            overflow: hidden;
+        }
+        .modal-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, var(--c-ventas) 0%, var(--c-ventas-dark) 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            font-size: 20px;
+            font-weight: 900;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .modal-close:hover { background: rgba(255,255,255,0.3); transform: rotate(90deg); }
+        .modal-body {
+            padding: 30px;
+            overflow-y: auto;
+        }
+        .modal-footer {
+            padding: 20px 30px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            background: rgba(255,109,0,0.02);
+        }
+
+        /* ===== CALCULADORA DE COSTOS (EXCEL) ===== */
+        .calculadora-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        .calculadora-titulo {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--c-ventas);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255,109,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-logistica {
+            background: #111;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            text-align: center;
+        }
+
+        .componentes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .componentes-table th {
+            background: rgba(255,109,0,0.1);
+            padding: 10px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+        }
+        .componentes-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .costos-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .costo-item {
+            background: var(--bg-body);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .costo-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+        }
+        .costo-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .costo-value input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-panel);
+            color: var(--text-main);
+            font-size: 14px;
+        }
+
+        .total-box {
+            background: #263238;
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: right;
+            margin-top: 20px;
+        }
+        .total-box .label {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        .total-box .value {
+            font-size: 36px;
+            font-weight: 900;
+            color: #00e676;
+        }
+
+        /* ===== EDITOR DE COTIZACIÓN ===== */
+        .editor-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .editor-item {
+            background: var(--bg-body);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .editor-item label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+        }
+        .editor-item input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-panel);
+            color: var(--text-main);
+        }
+        .editor-item input[readonly] {
+            background: rgba(255,109,0,0.05);
+            font-weight: 700;
+        }
+
+        /* ===== HISTORIAL ===== */
+        .sidebar-right {
+            background: var(--bg-panel);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+        .history-header {
+            padding: 25px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 900;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+        .feed-list {
+            padding: 25px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .feed-item {
+            position: relative;
+            padding-left: 25px;
+            margin-bottom: 25px;
+            border-left: 2px solid var(--border);
+        }
+        .feed-dot {
+            position: absolute;
+            left: -6px;
+            top: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 2px solid var(--c-ventas);
+            background: var(--c-ventas);
+        }
+        .feed-meta {
+            font-size: 10px;
+            font-weight: 800;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        .feed-body {
+            font-size: 13px;
+            color: var(--text-main);
+        }
+
+        @media (max-width: 1200px) {
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .kanban-container { grid-template-columns: 1fr; }
+            .sidebar-right { display: none; }
+        }
+        @media (max-width: 768px) {
+            body { grid-template-columns: 1fr; }
+            .sidebar { position: fixed; top: var(--header-h); left: -100%; width: 280px; height: calc(100vh - var(--header-h)); transition: left 0.3s; }
+            .sidebar.active { left: 0; }
+            .kpi-grid { grid-template-columns: 1fr; }
+            .filtros-superiores { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <div class="brand-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                <div>
+                    <div class="brand-text">VENTAS Y COTIZACIONES</div>
+                    <div class="brand-sub">ERP · Cotizaciones · Facturación</div>
+                </div>
+            </div>
+            <a href="index.html" class="home-link"><i class="fas fa-house"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <!-- ===== BADGE DE NOTIFICACIONES AGREGADO ===== -->
+            <div class="notification-badge">
+                <i class="fas fa-bell" style="font-size: 18px; color: var(--text-muted);"></i>
+                <span class="badge-count" id="notificacionesBadge" style="display: none;">0</span>
+            </div>
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <div class="user-pill">
+                <div class="avatar-circle">A</div>
+                <span>Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar" id="sidebar">
+        <div class="menu-label">OPERACIONES</div>
+        <a href="ssepi_v3.html" class="nav-item"><span class="icon-box"><i class="fas fa-microchip"></i></span> Taller Electrónica</a>
+        <a href="ssepi_motores.html" class="nav-item"><span class="icon-box"><i class="fas fa-industry"></i></span> Taller Motores</a>
+        <a href="ssepi_proyectos.html" class="nav-item"><span class="icon-box"><i class="fas fa-drafting-compass"></i></span> Proyectos</a>
+        <a href="ssepi_ventas.html" class="nav-item active"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="ssepi_compras.html" class="nav-item"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <div class="menu-label">ADMINISTRACIÓN</div>
+        <a href="ssepi_facturacion.html" class="nav-item"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="ssepi_contactos.html" class="nav-item"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="ssepi_analisis.html" class="nav-item"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
+        <a href="ssepi_contabilidad.html" class="nav-item"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <div class="menu-label">EXTERNOS</div>
+        <a href="ssepi_website.html" class="nav-item" target="_blank"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+    </nav>
+
+    <!-- MAIN -->
+    <main>
+        <!-- FILTROS SUPERIORES (ARRIBA DEL TODO) -->
+        <div class="filtros-superiores">
+            <div class="filtro-grupo">
+                <button class="filtro-btn active" data-filter="all">📋 Todas</button>
+                <button class="filtro-btn" data-filter="pendiente">⏳ Pendientes</button>
+                <button class="filtro-btn" data-filter="pagado">✅ Pagadas</button>
+                <button class="filtro-btn" data-filter="cotizacion">📄 Cotizaciones</button>
+            </div>
+
+            <div class="periodo-selector">
+                <button class="periodo-option active" data-period="day">Día</button>
+                <button class="periodo-option" data-period="month">Mes</button>
+                <button class="periodo-option" data-period="year">Año</button>
+            </div>
+
+            <div class="date-picker-container">
+                <input type="date" class="date-picker" id="datePicker">
+                <select class="date-picker" id="monthPicker" style="display:none;">
+                    <option value="0">Enero</option>
+                    <option value="1">Febrero</option>
+                    <option value="2">Marzo</option>
+                    <option value="3">Abril</option>
+                    <option value="4">Mayo</option>
+                    <option value="5">Junio</option>
+                    <option value="6">Julio</option>
+                    <option value="7">Agosto</option>
+                    <option value="8">Septiembre</option>
+                    <option value="9">Octubre</option>
+                    <option value="10">Noviembre</option>
+                    <option value="11">Diciembre</option>
+                </select>
+                <input type="number" class="date-picker" id="yearPicker" placeholder="Año" min="2020" max="2030" style="display:none;">
+            </div>
+
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Buscar por cliente, folio...">
+            </div>
+
+            <div class="vistas-tabs">
+                <button class="vistas-tab active" data-view="table"><i class="fas fa-table"></i> Tabla</button>
+                <button class="vistas-tab" data-view="kanban"><i class="fas fa-columns"></i> Kanban</button>
+                <button class="vistas-tab" data-view="chart"><i class="fas fa-chart-bar"></i> Gráfica</button>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-money-bill-wave"></i></div>
+                <div class="kpi-title">Ingresos del Mes</div>
+                <div class="kpi-value" id="kpiIngresosMes">$0</div>
+                <div class="kpi-subtitle">Acumulado a la fecha</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-clock"></i></div>
+                <div class="kpi-title">Por Cobrar</div>
+                <div class="kpi-value" id="kpiPorCobrar">$0</div>
+                <div class="kpi-subtitle">Pendientes de pago</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-file-invoice"></i></div>
+                <div class="kpi-title">Cotizaciones</div>
+                <div class="kpi-value" id="kpiCotizaciones">0</div>
+                <div class="kpi-subtitle">Activas</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-chart-line"></i></div>
+                <div class="kpi-title">Ticket Promedio</div>
+                <div class="kpi-value" id="kpiTicketPromedio">$0</div>
+                <div class="kpi-subtitle">Por venta</div>
+            </div>
+        </div>
+
+        <!-- PANEL: Solicitudes de Taller Pendientes -->
+        <div class="panel">
+            <h2><i class="fas fa-tools"></i> Solicitudes de Taller Pendientes</h2>
+            <div id="solicitudesTaller" class="solicitudes-grid"></div>
+        </div>
+
+        <!-- PANEL: Cotizaciones Pendientes de Autorización -->
+        <div class="panel">
+            <h2><i class="fas fa-clock"></i> Cotizaciones Pendientes de Autorización</h2>
+            <div id="pendientesAutorizacion" class="solicitudes-grid"></div>
+        </div>
+
+        <!-- VISTA TABLA -->
+        <div id="tableView" class="view-container active">
+            <div class="table-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="font-size: 20px; font-weight: 800; color: var(--c-ventas);"><i class="fas fa-file-invoice"></i> Historial de Ventas</h2>
+                    <span style="font-size: 12px; color: var(--text-muted);">Total: <strong id="totalVentas">0</strong></span>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="sales-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Folio</th>
+                                <th>Cliente</th>
+                                <th>Tipo</th>
+                                <th>Estatus</th>
+                                <th>Total</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA KANBAN -->
+        <div id="kanbanView" class="view-container">
+            <div class="kanban-container">
+                <div class="kanban-col">
+                    <div class="kanban-header">
+                        <span><i class="fas fa-file-invoice"></i> Cotizaciones</span>
+                        <span class="kanban-count" id="kanbanCotizacionCount">0</span>
+                    </div>
+                    <div id="kanbanCotizacion" class="kanban-cards"></div>
+                </div>
+                <div class="kanban-col">
+                    <div class="kanban-header">
+                        <span><i class="fas fa-clock"></i> Pendientes</span>
+                        <span class="kanban-count" id="kanbanPendienteCount">0</span>
+                    </div>
+                    <div id="kanbanPendiente" class="kanban-cards"></div>
+                </div>
+                <div class="kanban-col">
+                    <div class="kanban-header">
+                        <span><i class="fas fa-check-circle"></i> Pagadas</span>
+                        <span class="kanban-count" id="kanbanPagadoCount">0</span>
+                    </div>
+                    <div id="kanbanPagado" class="kanban-cards"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA GRÁFICA -->
+        <div id="chartView" class="view-container">
+            <div class="chart-container">
+                <canvas id="ventasChart"></canvas>
+            </div>
+        </div>
+    </main>
+
+    <!-- SIDEBAR DERECHO (BITÁCORA) -->
+    <aside class="sidebar-right">
+        <div class="history-header">
+            <span><i class="fas fa-history"></i> BITÁCORA</span>
+            <span class="notification-badge" id="feedCount">0</span>
+        </div>
+        <div class="feed-list" id="feedList">
+            <div class="feed-item">
+                <div class="feed-dot"></div>
+                <div class="feed-meta"><span style="color:var(--c-ventas);">SISTEMA</span><span>ahora</span></div>
+                <div class="feed-body">Conectado a Firebase</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MODAL: CALCULADORA DE COSTOS -->
+    <div class="modal-backdrop" id="calculadoraModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-calculator"></i> Calculadora de Costos</h3>
+                <button class="modal-close" id="closeCalculadoraModal">&times;</button>
+            </div>
+            <div class="modal-body" id="calculadoraBody">
+                <!-- Contenido dinámico -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="document.getElementById('calculadoraModal').classList.remove('active')">Cancelar</button>
+                <button class="btn btn-primary" id="generarCotizacionBtn">📄 Generar Cotización</button>
+                <button class="btn btn-success" id="enviarCotizacionBtn">📧 Enviar al Cliente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDITOR DE COTIZACIÓN -->
+    <div class="modal-backdrop" id="cotizacionModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-edit"></i> Editar Cotización</h3>
+                <button class="modal-close" id="closeCotizacionModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="calculadora-section">
+                    <div class="calculadora-titulo"><i class="fas fa-chart-pie"></i> Desglose de Costos</div>
+                    <div class="editor-grid">
+                        <div class="editor-item">
+                            <label>GASTOS GENERALES</label>
+                            <input type="number" id="editGastosGenerales" value="0" step="0.01">
+                        </div>
+                        <div class="editor-item">
+                            <label>UTILIDAD 40%</label>
+                            <input type="number" id="editUtilidad" value="0" step="0.01" readonly>
+                        </div>
+                        <div class="editor-item">
+                            <label>CRÉDITO 3%</label>
+                            <input type="number" id="editCredito" value="0" step="0.01" readonly>
+                        </div>
+                        <div class="editor-item">
+                            <label>PRECIO FINAL (ANTES IVA)</label>
+                            <input type="number" id="editPrecioFinal" value="0" step="0.01" readonly>
+                        </div>
+                        <div class="editor-item">
+                            <label>IVA 16%</label>
+                            <input type="number" id="editIVA" value="0" step="0.01" readonly>
+                        </div>
+                        <div class="editor-item">
+                            <label>TOTAL CON IVA</label>
+                            <input type="number" id="editTotal" value="0" step="0.01" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="calculadora-section">
+                    <div class="calculadora-titulo"><i class="fas fa-user"></i> Datos del Cliente</div>
+                    <div class="editor-grid">
+                        <div class="editor-item">
+                            <label>Nombre / Empresa</label>
+                            <input type="text" id="editCliente" placeholder="Nombre del cliente">
+                        </div>
+                        <div class="editor-item">
+                            <label>Email</label>
+                            <input type="email" id="editEmail" placeholder="correo@ejemplo.com">
+                        </div>
+                        <div class="editor-item">
+                            <label>Teléfono</label>
+                            <input type="tel" id="editTelefono" placeholder="+52 123 456 7890">
+                        </div>
+                        <div class="editor-item">
+                            <label>RFC</label>
+                            <input type="text" id="editRFC" placeholder="RFC">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="calculadora-section">
+                    <div class="calculadora-titulo"><i class="fas fa-boxes"></i> Productos</div>
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left; padding:8px;">Descripción</th>
+                                <th style="text-align:center; padding:8px;">Cantidad</th>
+                                <th style="text-align:right; padding:8px;">Precio Unit.</th>
+                                <th style="text-align:right; padding:8px;">Total</th>
+                                <th style="width:40px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="editProductosBody"></tbody>
+                    </table>
+                    <button class="btn btn-sm btn-primary" style="margin-top:15px;" id="addProductoBtn">
+                        <i class="fas fa-plus"></i> Agregar Producto
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelEditBtn">Cancelar</button>
+                <button class="btn btn-primary" id="guardarCotizacionBtn">💾 Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: VISTA PREVIA DE COTIZACIÓN -->
+    <div class="modal-backdrop" id="vistaPreviaModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-file-pdf"></i> Vista Previa de Cotización</h3>
+                <button class="modal-close" id="closeVistaPreviaModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="background: var(--bg-panel); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <h2 style="color: var(--c-ventas); font-size: 28px;">SSEPI</h2>
+                        <p style="color: var(--text-secondary); font-size: 12px;">Soluciones en Sistemas Eléctricos y Proyectos Industriales</p>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px;">
+                        <div>
+                            <p><strong>Cliente:</strong> <span id="previewCliente"></span></p>
+                            <p><strong>RFC:</strong> <span id="previewRFC"></span></p>
+                        </div>
+                        <div style="text-align: right;">
+                            <p><strong>Folio:</strong> <span id="previewFolio"></span></p>
+                            <p><strong>Fecha:</strong> <span id="previewFecha"></span></p>
+                        </div>
+                    </div>
+
+                    <div style="border-top: 2px solid var(--c-ventas); padding-top: 20px; margin-top: 20px;">
+                        <div style="font-size: 32px; font-weight: 900; color: var(--c-ventas); text-align: right;">
+                            $<span id="previewTotal">0.00</span>
+                        </div>
+                        <p style="font-size: 12px; color: var(--text-muted); text-align: right;">IVA incluido</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="document.getElementById('vistaPreviaModal').classList.remove('active')">Cerrar</button>
+                <button class="btn btn-primary" id="descargarPDFBtn">
+                    <i class="fas fa-download"></i> Descargar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="costos-engine.js"></script>
+    <script src="ventas-core.js"></script>
+    <script>
+        (function() {
+            const interval = setInterval(() => {
+                if (window.auth) {
+                    clearInterval(interval);
+                    window.auth.onAuthStateChanged(user => {
+                        if (user && user.email === 'norbertomoro4@gmail.com') {
+                            if (window.VentasManager && typeof window.VentasManager.init === 'function') {
+                                window.VentasManager.init();
+                            }
+                        } else {
+                            window.location.href = 'ssepi_website.html';
+                        }
+                    });
+                }
+            }, 100);
+        })();
+    </script>
+</body>
+</html>

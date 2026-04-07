@@ -1,0 +1,72 @@
+/* Módulo Calculadoras — solo admin */
+.page-calculadoras main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.page-calculadoras .form-section {
+    margin-bottom: 1.5rem;
+}
+
+.page-calculadoras .section-title-form {
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.page-calculadoras .kpi-grid-calc {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.page-calculadoras .kpi-grid-calc .kpi-card {
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    background: var(--card-bg, #fff);
+}
+
+.page-calculadoras .kpi-grid-calc .kpi-title {
+    font-size: 0.85rem;
+    color: var(--text-muted, #64748b);
+}
+
+.page-calculadoras .kpi-grid-calc .kpi-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-top: 0.25rem;
+}
+
+.page-calculadoras .import-preview {
+    margin-top: 0.75rem;
+}
+
+.page-calculadoras .import-preview table {
+    font-size: 0.85rem;
+}
+
+.page-calculadoras .validacion-resultado {
+    margin-top: 0.75rem;
+}
+
+[data-theme="dark"] .page-calculadoras .kpi-grid-calc .kpi-card {
+    border-color: var(--border-color);
+}
+
+.page-calculadoras .modal-backdrop.calc-modal { display: none; align-items: center; justify-content: center; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; }
+.page-calculadoras .modal-backdrop.calc-modal.active { display: flex !important; }
+.page-calculadoras .calc-modal .modal { background: var(--card-bg, #fff); border-radius: 12px; max-width: 480px; width: 100%; border: 1px solid var(--border-color); box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+.page-calculadoras .calc-modal .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border-color); background: var(--accent, #28a745); color: #fff; }
+.page-calculadoras .calc-modal .modal-header h4 { margin: 0; font-size: 1rem; }
+.page-calculadoras .calc-modal .modal-close { background: none; border: none; color: inherit; font-size: 1.5rem; cursor: pointer; padding: 0 4px; line-height: 1; }
+.page-calculadoras .calc-modal .modal-body { padding: 18px; }
+.page-calculadoras .calc-modal .modal-footer { padding: 14px 18px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; flex-wrap: wrap; }
+.page-calculadoras .calc-modal .form-group { margin-bottom: 12px; }
+.page-calculadoras .calc-modal .form-group label { display: block; margin-bottom: 4px; font-size: 0.9rem; font-weight: 500; }
+.page-calculadoras .calc-modal .form-control { width: 100%; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.95rem; box-sizing: border-box; }
+.page-calculadoras .calc-modal .btn-danger { background: #dc3545; border-color: #dc3545; color: #fff; }
+.page-calculadoras .calc-modal .btn-danger:hover { background: #c82333; border-color: #bd2130; }
+.page-calculadoras .calc-modal .btn-secondary { background: #6c757d; border-color: #6c757d; color: #fff; }
+.page-calculadoras .calc-modal .btn-secondary:hover { background: #5a6268; border-color: #545b62; }
+.page-calculadoras .lista-table .btn-edit { padding: 4px 10px; font-size: 0.8rem; }

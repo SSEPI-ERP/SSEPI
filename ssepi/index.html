@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSEPI · Centro de Comando Ironclad</title>
+    <!-- Font Awesome 6 (para iconos) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        /* ==========================================================================
+           DISEÑO ORIGINAL DE NORBERTO (VARIABLES VERDES, DEGRADADOS, ANIMACIONES)
+           ========================================================================== */
+        :root {
+            --bg-body: #f4f7f6;
+            --bg-panel: #ffffff;
+            --bg-card: #ffffff;
+            --bg-gradient-main: linear-gradient(180deg, #e8f5e9 0%, #c8e6c9 100%);
+            --bg-gradient-header: linear-gradient(90deg, #e8f5e9 0%, #f1f8e9 100%);
+            --border-color: #cfd8dc;
+            --border-accent: #a5d6a7;
+            --text-main: #1b2e28;
+            --text-muted: #5d756d;
+            --text-header: #1b5e20;
+            --shadow-soft: 0 5px 15px rgba(0,0,0,0.05);
+            --shadow-hover: 0 15px 35px rgba(46,125,50,0.15);
+            --shadow-header: 0 4px 20px rgba(0,0,0,0.05);
+            --c-taller: #1976d2;           /* Azul para Laboratorio */
+            --c-motores: #5d4037;           /* Café para Motores */
+            --c-proyectos: #ffb300;          /* Amarillo para Proyectos Generales */
+            --c-automatizacion: #7b1fa2;      /* Púrpura para Automatización */
+            --c-ventas: #ff6d00;             /* Naranja para Ventas */
+            --c-compras: #7b1fa2;             /* Púrpura para Compras */
+            --c-stock: #0277bd;               /* Azul para Inventario */
+            --c-contact: #1565c0;             /* Azul para Contactos */
+            --c-analisis: #c62828;             /* Rojo para Análisis */
+            --c-contabilidad: #388e3c;         /* Verde para Contabilidad */
+            --c-facturacion: #2980b9;          /* Azul para Facturación */
+            --c-web: #37474f;                   /* Gris para Web */
+            --grid-line-color: rgba(46,125,50,0.15);
+            --sidebar-width: 280px;
+            --header-height: 70px;
+            --sidebar-collapsed-width: 0px;
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #050a05;
+            --bg-panel: #121212;
+            --bg-card: #1e1e1e;
+            --bg-gradient-main: linear-gradient(180deg, #0d1f12 0%, #051408 100%);
+            --bg-gradient-header: linear-gradient(90deg, #0d1f12 0%, #1b2e28 100%);
+            --border-color: #2c3e30;
+            --border-accent: #1b5e20;
+            --text-main: #e8f5e9;
+            --text-muted: #81c784;
+            --text-header: #e8f5e9;
+            --shadow-soft: 0 5px 15px rgba(0,0,0,0.5);
+            --shadow-hover: 0 15px 30px rgba(0,230,118,0.15);
+            --shadow-header: 0 4px 20px rgba(0,0,0,0.8);
+            --c-taller: #64b5f6;
+            --c-motores: #d7ccc8;
+            --c-proyectos: #ffd54f;
+            --c-automatizacion: #ba68c8;
+            --c-ventas: #ff9100;
+            --c-compras: #ba68c8;
+            --c-stock: #4fc3f7;
+            --c-contact: #64b5f6;
+            --c-analisis: #ff5252;
+            --c-contabilidad: #00e676;
+            --c-facturacion: #64b5f6;
+            --c-web: #b0bec5;
+            --grid-line-color: rgba(0,230,118,0.2);
+        }
+
+        * { box-sizing: border-box; outline: none; }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            width: 100vw;
+            display: grid;
+            grid-template-columns: var(--sidebar-width) 1fr 320px;
+            grid-template-rows: var(--header-height) 1fr;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.25,0.8,0.25,1);
+        }
+
+        body.sidebar-closed {
+            grid-template-columns: var(--sidebar-collapsed-width) 1fr 320px;
+        }
+
+        /* ANIMACIÓN DE FONDO */
+        .animated-floor {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 55vh;
+            background-image: 
+                linear-gradient(var(--grid-line-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line-color) 1px, transparent 1px);
+            background-size: 60px 60px;
+            background-position: center bottom;
+            transform: perspective(500px) rotateX(60deg) scale(1.5);
+            transform-origin: bottom center;
+            animation: moveGrid 6s linear infinite;
+            z-index: 0;
+            pointer-events: none;
+            mask-image: linear-gradient(to top, black 10%, transparent 95%);
+            -webkit-mask-image: linear-gradient(to top, black 10%, transparent 95%);
+        }
+
+        @keyframes moveGrid {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 60px; }
+        }
+
+        /* HEADER */
+        header {
+            grid-column: 1 / -1;
+            background: var(--bg-gradient-header);
+            border-bottom: 1px solid var(--border-accent);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            z-index: 20;
+            box-shadow: var(--shadow-header);
+            backdrop-filter: blur(10px);
+        }
+
+        .header-left { display: flex; align-items: center; gap: 20px; }
+        .toggle-btn {
+            background: transparent; border: none; font-size: 26px;
+            color: var(--text-header); cursor: pointer; padding: 8px;
+            border-radius: 8px; transition: all 0.2s ease;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .toggle-btn:hover { background: rgba(255,255,255,0.3); transform: scale(1.05); }
+
+        .brand-container { display: flex; align-items: center; gap: 15px; text-decoration: none; }
+        .logo-img {
+            height: 48px; width: auto; object-fit: contain;
+            transition: filter 0.3s ease;
+        }
+        [data-theme="dark"] .logo-img {
+            filter: brightness(0) invert(1) drop-shadow(0 0 4px rgba(0,230,118,0.6));
+            opacity: 0.95;
+        }
+        .brand-info { display: flex; flex-direction: column; justify-content: center; }
+        .brand-text { font-size: 22px; font-weight: 900; color: var(--text-header); line-height: 1; }
+        .brand-sub { font-weight: 600; font-size: 11px; color: var(--text-header); text-transform: uppercase; letter-spacing: 2px; opacity: 0.7; margin-top: 3px; }
+
+        .header-right { display: flex; align-items: center; gap: 20px; }
+        .live-clock {
+            font-family: 'Consolas', monospace; font-weight: 700; font-size: 14px;
+            color: var(--text-header); background: rgba(255,255,255,0.3);
+            padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.4);
+            letter-spacing: 1px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .theme-btn {
+            background: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.35);
+            width: 42px; height: 42px; border-radius: 50%; cursor: pointer;
+            font-size: 20px; display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s cubic-bezier(0.175,0.885,0.32,1.275);
+            color: var(--text-header);
+        }
+        .theme-btn:hover {
+            transform: rotate(45deg) scale(1.1);
+            background: var(--bg-panel); color: var(--c-ventas);
+            box-shadow: 0 0 15px var(--c-ventas); border-color: var(--c-ventas);
+        }
+        .user-pill {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(255,255,255,0.25); padding: 5px 15px 5px 5px;
+            border-radius: 30px; border: 1px solid rgba(255,255,255,0.35);
+            cursor: pointer; transition: 0.2s; color: var(--text-header);
+        }
+        .user-pill:hover {
+            background: var(--bg-panel); color: var(--text-main);
+            transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .avatar-circle {
+            width: 32px; height: 32px; background: linear-gradient(135deg, var(--c-contact), var(--c-compras));
+            color: white; font-weight: bold; border-radius: 50%;
+            display: grid; place-items: center; font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* SIDEBAR IZQUIERDA */
+        .sidebar-left {
+            background: var(--bg-gradient-main);
+            border-right: 1px solid var(--border-accent);
+            padding: 30px 15px;
+            display: flex; flex-direction: column; gap: 10px;
+            z-index: 15; box-shadow: 4px 0 15px rgba(0,0,0,0.03);
+            overflow: hidden; white-space: nowrap;
+            transition: width 0.4s cubic-bezier(0.25,0.8,0.25,1);
+        }
+
+        .menu-category {
+            font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;
+            color: var(--text-header); margin: 20px 0 8px 15px;
+            font-weight: 800; opacity: 0.6; border-bottom: 1px solid rgba(0,0,0,0.05);
+            padding-bottom: 5px;
+        }
+
+        .nav-item {
+            display: flex; align-items: center; gap: 15px; padding: 14px 20px;
+            color: var(--text-main); text-decoration: none; border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+            font-weight: 700; font-size: 14px;
+            background: rgba(255,255,255,0.4);
+            border: 1px solid rgba(255,255,255,0.5);
+            backdrop-filter: blur(5px);
+            position: relative; overflow: hidden;
+        }
+        [data-theme="dark"] .nav-item {
+            background: rgba(0,0,0,0.2);
+            border-color: rgba(255,255,255,0.05);
+            color: var(--text-muted);
+        }
+        .nav-item:hover {
+            transform: translateX(5px);
+            background: var(--bg-panel);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            color: var(--text-main);
+            padding-left: 25px;
+        }
+        .nav-item::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+            width: 0px; transition: width 0.2s ease;
+        }
+        .nav-item:hover::before { width: 5px; }
+        .nav-taller:hover { color: var(--c-taller); } .nav-taller:hover::before { background: var(--c-taller); }
+        .nav-motores:hover { color: var(--c-motores); } .nav-motores:hover::before { background: var(--c-motores); }
+        .nav-proyectos:hover { color: var(--c-proyectos); } .nav-proyectos:hover::before { background: var(--c-proyectos); }
+        .nav-automatizacion:hover { color: var(--c-automatizacion); } .nav-automatizacion:hover::before { background: var(--c-automatizacion); }
+        .nav-ventas:hover { color: var(--c-ventas); } .nav-ventas:hover::before { background: var(--c-ventas); }
+        .nav-compras:hover { color: var(--c-compras); } .nav-compras:hover::before { background: var(--c-compras); }
+        .nav-stock:hover { color: var(--c-stock); } .nav-stock:hover::before { background: var(--c-stock); }
+        .nav-contact:hover { color: var(--c-contact); } .nav-contact:hover::before { background: var(--c-contact); }
+        .nav-contabilidad:hover { color: var(--c-contabilidad); } .nav-contabilidad:hover::before { background: var(--c-contabilidad); }
+        .nav-analisis:hover { color: var(--c-analisis); } .nav-analisis:hover::before { background: var(--c-analisis); }
+        .nav-facturacion:hover { color: var(--c-facturacion); } .nav-facturacion:hover::before { background: var(--c-facturacion); }
+        .nav-web:hover { color: var(--c-web); } .nav-web:hover::before { background: var(--c-web); }
+
+        .icon-box { font-size: 18px; width: 24px; text-align: center; transition: transform 0.3s; }
+        .nav-item:hover .icon-box { transform: scale(1.25) rotate(5deg); }
+
+        /* MAIN CONTENT */
+        main {
+            padding: 40px 50px;
+            overflow-y: auto;
+            position: relative;
+            z-index: 5;
+        }
+
+        .welcome-header {
+            margin-bottom: 40px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+        @keyframes fadeInDown { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
+        .welcome-header h1 {
+            font-size: 36px; margin: 0; font-weight: 800;
+            color: var(--text-main); letter-spacing: -1px;
+        }
+        .welcome-header p {
+            font-size: 16px; color: var(--text-muted); margin-top: 8px; font-weight: 500;
+        }
+
+        /* KPIs */
+        .kpi-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+
+        .card-kpi {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            height: 180px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+            box-shadow: var(--shadow-soft);
+            border-top: 5px solid var(--border-accent);
+        }
+        .card-kpi:hover { transform: translateY(-8px); box-shadow: var(--shadow-hover); }
+
+        .kpi-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px;
+        }
+        .kpi-title {
+            font-size: 14px; font-weight: 700; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .kpi-icon {
+            font-size: 28px; color: var(--text-header);
+            background: rgba(46,125,50,0.1);
+            width: 50px; height: 50px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .kpi-value {
+            font-size: 42px; font-weight: 900; color: var(--text-main);
+            margin-bottom: 5px; line-height: 1;
+        }
+        .kpi-subtitle {
+            font-size: 13px; color: var(--text-muted); font-weight: 500;
+        }
+
+        .kpi-1 { border-top-color: var(--c-ventas); }
+        .kpi-1 .kpi-icon { color: var(--c-ventas); background: rgba(255,109,0,0.1); }
+        .kpi-2 { border-top-color: var(--c-taller); }
+        .kpi-2 .kpi-icon { color: var(--c-taller); background: rgba(25,118,210,0.1); }
+        .kpi-3 { border-top-color: var(--c-stock); }
+        .kpi-3 .kpi-icon { color: var(--c-stock); background: rgba(2,119,189,0.1); }
+        .kpi-4 { border-top-color: var(--c-compras); }
+        .kpi-4 .kpi-icon { color: var(--c-compras); background: rgba(123,31,162,0.1); }
+
+        /* MÓDULOS (TARJETAS DE ACCESO) */
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .card-module {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            text-decoration: none;
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 220px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+            box-shadow: var(--shadow-soft);
+        }
+        .card-module:hover {
+            transform: translateY(-12px) scale(1.02);
+            box-shadow: var(--shadow-hover);
+            z-index: 10;
+            border-color: transparent;
+        }
+        .card-module::after {
+            content: ''; position: absolute; top: 0; left: 0;
+            width: 100%; height: 6px;
+            transition: height 0.3s ease, opacity 0.3s;
+        }
+        .card-module:hover::after {
+            height: 100%; opacity: 0.04;
+        }
+
+        .card-taller { border-top: 5px solid var(--c-taller); } .card-taller::after { background: var(--c-taller); }
+        .card-motores { border-top: 5px solid var(--c-motores); } .card-motores::after { background: var(--c-motores); }
+        .card-proyectos { border-top: 5px solid var(--c-proyectos); } .card-proyectos::after { background: var(--c-proyectos); }
+        .card-automatizacion { border-top: 5px solid var(--c-automatizacion); } .card-automatizacion::after { background: var(--c-automatizacion); }
+        .card-ventas { border-top: 5px solid var(--c-ventas); } .card-ventas::after { background: var(--c-ventas); }
+        .card-compras { border-top: 5px solid var(--c-compras); } .card-compras::after { background: var(--c-compras); }
+        .card-stock { border-top: 5px solid var(--c-stock); } .card-stock::after { background: var(--c-stock); }
+        .card-contact { border-top: 5px solid var(--c-contact); } .card-contact::after { background: var(--c-contact); }
+        .card-analisis { border-top: 5px solid var(--c-analisis); } .card-analisis::after { background: var(--c-analisis); }
+        .card-contabilidad { border-top: 5px solid var(--c-contabilidad); } .card-contabilidad::after { background: var(--c-contabilidad); }
+        .card-facturacion { border-top: 5px solid var(--c-facturacion); } .card-facturacion::after { background: var(--c-facturacion); }
+        .card-web { border-top: 5px solid var(--c-web); } .card-web::after { background: var(--c-web); }
+
+        .card-big-icon {
+            font-size: 54px; margin-bottom: 15px;
+            transition: transform 0.4s ease; opacity: 0.9;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+        }
+        .card-module:hover .card-big-icon {
+            transform: translateX(10px) rotate(8deg) scale(1.1);
+            opacity: 1;
+        }
+        .card-title {
+            font-size: 24px; font-weight: 800; margin: 0;
+            letter-spacing: -0.5px;
+        }
+        .card-desc {
+            font-size: 13px; color: var(--text-muted);
+            margin-top: 10px; line-height: 1.5; font-weight: 500;
+        }
+
+        /* SIDEBAR DERECHO (FEED) */
+        .sidebar-right {
+            background: var(--bg-panel);
+            border-left: 1px solid var(--border-color);
+            display: flex; flex-direction: column;
+            z-index: 10; box-shadow: -4px 0 15px rgba(0,0,0,0.02);
+        }
+
+        .history-header {
+            padding: 25px; border-bottom: 1px solid var(--border-color);
+            font-weight: 900; font-size: 12px; letter-spacing: 2px;
+            text-transform: uppercase; color: var(--text-muted);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .notification-badge {
+            background: var(--c-analisis); color: white; font-size: 10px;
+            padding: 3px 8px; border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(198,40,40,0.4);
+        }
+
+        .feed-list {
+            padding: 25px; overflow-y: auto; flex: 1;
+        }
+
+        .feed-item {
+            position: relative; padding-left: 25px; margin-bottom: 35px;
+            border-left: 2px solid var(--border-color);
+            transition: border-color 0.3s;
+        }
+        .feed-item:hover { border-left-color: var(--text-main); }
+
+        .feed-dot {
+            position: absolute; left: -6px; top: 0;
+            width: 10px; height: 10px; border-radius: 50%;
+            background: var(--bg-panel);
+            border: 2px solid var(--text-muted);
+            box-shadow: 0 0 0 2px var(--bg-panel);
+        }
+        .dot-taller { border-color: var(--c-taller); background: var(--c-taller); box-shadow: 0 0 8px var(--c-taller); }
+        .dot-motores { border-color: var(--c-motores); background: var(--c-motores); box-shadow: 0 0 8px var(--c-motores); }
+        .dot-proyectos { border-color: var(--c-proyectos); background: var(--c-proyectos); box-shadow: 0 0 8px var(--c-proyectos); }
+        .dot-automatizacion { border-color: var(--c-automatizacion); background: var(--c-automatizacion); box-shadow: 0 0 8px var(--c-automatizacion); }
+        .dot-ventas { border-color: var(--c-ventas); background: var(--c-ventas); box-shadow: 0 0 8px var(--c-ventas); }
+        .dot-compras { border-color: var(--c-compras); background: var(--c-compras); box-shadow: 0 0 8px var(--c-compras); }
+        .dot-facturacion { border-color: var(--c-facturacion); background: var(--c-facturacion); box-shadow: 0 0 8px var(--c-facturacion); }
+        .dot-web { border-color: var(--c-web); background: var(--c-web); }
+
+        .feed-meta {
+            font-size: 10px; font-weight: 800; color: var(--text-muted);
+            margin-bottom: 6px; display: flex;
+            justify-content: space-between; text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .feed-body {
+            font-size: 13px; line-height: 1.5; color: var(--text-main);
+        }
+        .highlight { font-weight: 800; color: var(--text-main); background: rgba(0,0,0,0.05); padding: 0 4px; border-radius: 4px; }
+
+        .system-status {
+            padding: 15px; background: var(--bg-panel); border-top: 1px solid var(--border-color);
+            text-align: center; font-size: 11px; color: var(--text-muted);
+            font-weight: 700; letter-spacing: 1px;
+        }
+        .status-indicator {
+            display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+            background: #4CAF50; margin-right: 8px; animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { opacity:1; } 50% { opacity:0.5; } 100% { opacity:1; } }
+    </style>
+</head>
+<body>
+    <div class="animated-floor"></div>
+
+    <!-- ENCABEZADO -->
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenuBtn">☰</button>
+            <div class="brand-container">
+                <img src="logo.png" alt="SSEPI" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+                <div class="brand-info" style="display:none;"><div class="brand-text">SSEPI</div></div>
+                <div class="brand-info"><div class="brand-sub">Manager</div></div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div id="clock" class="live-clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn">🌙</button>
+            <div class="user-pill"><div class="avatar-circle">A</div><div style="font-size:13px; font-weight:700;">Admin</div></div>
+        </div>
+    </header>
+
+    <!-- SIDEBAR IZQUIERDA -->
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="ssepi_v3.html" class="nav-item nav-taller"><span class="icon-box">⚙️</span><span>Laboratorio Electrónica</span></a>
+        <a href="ssepi_motores.html" class="nav-item nav-motores"><span class="icon-box" style="color:var(--c-motores);">🏭</span><span>Taller Motores</span></a>
+        <a href="ssepi_proyectos.html" class="nav-item nav-proyectos"><span class="icon-box" style="color:var(--c-proyectos);">📐</span><span>Proyectos Generales</span></a>
+        <a href="ssepi_servicios.html" class="nav-item nav-automatizacion"><span class="icon-box" style="color:var(--c-automatizacion);">🤖</span><span>Automatización</span></a>
+        
+        <div class="menu-category">COMERCIAL</div>
+        <a href="ssepi_ventas.html" class="nav-item nav-ventas"><span class="icon-box">💰</span><span>Ventas</span></a>
+        <a href="ssepi_compras.html" class="nav-item nav-compras"><span class="icon-box">🛒</span><span>Compras</span></a>
+        
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="ssepi_productos.html" class="nav-item nav-stock"><span class="icon-box">📦</span><span>Inventario</span></a>
+        <a href="ssepi_contactos.html" class="nav-item nav-contact"><span class="icon-box">👥</span><span>Contactos</span></a>
+        <a href="ssepi_facturacion.html" class="nav-item nav-facturacion"><span class="icon-box" style="color:var(--c-facturacion);">📄</span><span>Facturación</span></a>
+        <a href="ssepi_contabilidad.html" class="nav-item nav-contabilidad"><span class="icon-box" style="color:var(--c-contabilidad);">💵</span><span>Contabilidad</span></a>
+        <a href="ssepi_analisis.html" class="nav-item nav-analisis"><span class="icon-box">📊</span><span>Análisis</span></a>
+        
+        <div class="menu-category">EXTERNOS</div>
+        <a href="ssepi_website.html" class="nav-item nav-web" target="_blank"><span class="icon-box">🌐</span><span>Sitio Web Público</span></a>
+    </nav>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main>
+        <div class="welcome-header">
+            <h1>Centro de Comando - EN VIVO</h1>
+            <p>Estado del sistema: <strong style="color:var(--c-taller);">Conectado a Firebase</strong>. Datos en tiempo real.</p>
+        </div>
+
+        <!-- KPIs EN TIEMPO REAL -->
+        <div class="kpi-dashboard">
+            <div class="card-kpi kpi-1">
+                <div class="kpi-header"><div class="kpi-title">Ventas del Mes</div><div class="kpi-icon">💰</div></div>
+                <div class="kpi-value" id="kpiVentasMes">$0</div>
+                <div class="kpi-subtitle">Ingresos por ventas</div>
+            </div>
+            <div class="card-kpi kpi-2">
+                <div class="kpi-header"><div class="kpi-title">Tareas Taller</div><div class="kpi-icon">⚙️</div></div>
+                <div class="kpi-value" id="kpiTareasTaller">0</div>
+                <div class="kpi-subtitle">Órdenes pendientes</div>
+            </div>
+            <div class="card-kpi kpi-3">
+                <div class="kpi-header"><div class="kpi-title">Valor Inventario</div><div class="kpi-icon">📦</div></div>
+                <div class="kpi-value" id="kpiValorInventario">$0</div>
+                <div class="kpi-subtitle">Capital en stock</div>
+            </div>
+            <div class="card-kpi kpi-4">
+                <div class="kpi-header"><div class="kpi-title">Compras Pendientes</div><div class="kpi-icon">🛒</div></div>
+                <div class="kpi-value" id="kpiComprasPendientes">0</div>
+                <div class="kpi-subtitle">Por recibir</div>
+            </div>
+        </div>
+
+        <!-- MÓDULOS DE ACCESO RÁPIDO (TODOS LOS MÓDULOS) -->
+        <div class="modules-grid">
+            <!-- OPERACIONES -->
+            <a href="ssepi_v3.html" class="card-module card-taller">
+                <div class="card-big-icon" style="color:var(--c-taller);">⚙️</div>
+                <div>
+                    <div class="card-title">Laboratorio</div>
+                    <div class="card-desc">Electrónica - Diagnóstico y reparación</div>
+                </div>
+            </a>
+            
+            <a href="ssepi_motores.html" class="card-module card-motores">
+                <div class="card-big-icon" style="color:var(--c-motores);">🏭</div>
+                <div>
+                    <div class="card-title">Motores</div>
+                    <div class="card-desc">Reparación de motores industriales</div>
+                </div>
+            </a>
+            
+            <a href="ssepi_proyectos.html" class="card-module card-proyectos">
+                <div class="card-big-icon" style="color:var(--c-proyectos);">📐</div>
+                <div>
+                    <div class="card-title">Proyectos</div>
+                    <div class="card-desc">Gestión de proyectos generales</div>
+                </div>
+            </a>
+            
+            <a href="ssepi_servicios.html" class="card-module card-automatizacion">
+                <div class="card-big-icon" style="color:var(--c-automatizacion);">🤖</div>
+                <div>
+                    <div class="card-title">Automatización</div>
+                    <div class="card-desc">Ingeniería y control</div>
+                </div>
+            </a>
+            
+            <!-- COMERCIAL -->
+            <a href="ssepi_ventas.html" class="card-module card-ventas">
+                <div class="card-big-icon" style="color:var(--c-ventas);">💰</div>
+                <div>
+                    <div class="card-title">Ventas</div>
+                    <div class="card-desc">Cotizaciones y facturación</div>
+                </div>
+            </a>
+            
+            <a href="ssepi_compras.html" class="card-module card-compras">
+                <div class="card-big-icon" style="color:var(--c-compras);">🛒</div>
+                <div>
+                    <div class="card-title">Compras</div>
+                    <div class="card-desc">Proveedores y adquisiciones</div>
+                </div>
+            </a>
+            
+            <!-- ADMINISTRACIÓN -->
+            <a href="ssepi_productos.html" class="card-module card-stock">
+                <div class="card-big-icon" style="color:var(--c-stock);">📦</div>
+                <div>
+                    <div class="card-title">Inventario</div>
+                    <div class="card-desc">Control de stock</div>
+                </div>
+            </a>
+            
+            <a href="ssepi_contactos.html" class="card-module card-contact">
+                <div class="card-big-icon" style="color:var(--c-contact);">👥</div>
+                <div>
+                    <div class="card-title">Contactos</div>
+                    <div class="card-desc">Clientes y proveedores</div>
+                </div>
+            </a>
+            
+            <a href="ssepi_facturacion.html" class="card-module card-facturacion">
+                <div class="card-big-icon" style="color:var(--c-facturacion);"><i class="fas fa-file-invoice"></i></div>
+                <div>
+                    <div class="card-title">Facturación</div>
+                    <div class="card-desc">Seguimiento integral</div>
+                </div>
+            </a>
+            
+            <a href="ssepi_contabilidad.html" class="card-module card-contabilidad">
+                <div class="card-big-icon" style="color:var(--c-contabilidad);"><i class="fas fa-coins"></i></div>
+                <div>
+                    <div class="card-title">Contabilidad</div>
+                    <div class="card-desc">Balance y finanzas</div>
+                </div>
+            </a>
+            
+            <a href="ssepi_analisis.html" class="card-module card-analisis">
+                <div class="card-big-icon" style="color:var(--c-analisis);">📊</div>
+                <div>
+                    <div class="card-title">Análisis</div>
+                    <div class="card-desc">KPIs y reportes</div>
+                </div>
+            </a>
+            
+            <!-- EXTERNOS -->
+            <a href="ssepi_website.html" class="card-module card-web" target="_blank">
+                <div class="card-big-icon" style="color:var(--c-web);">🌐</div>
+                <div>
+                    <div class="card-title">Sitio Web</div>
+                    <div class="card-desc">Portal público</div>
+                </div>
+            </a>
+        </div>
+    </main>
+
+    <!-- SIDEBAR DERECHO (FEED DE AUDITORÍA) -->
+    <aside class="sidebar-right">
+        <div class="history-header">BITÁCORA MAESTRA <span class="notification-badge" id="feedBadge">0</span></div>
+        <div class="feed-list" id="feedList"></div>
+        <div class="system-status"><span class="status-indicator"></span> CONECTADO A FIREBASE • DATOS EN VIVO</div>
+    </aside>
+
+    <!-- SCRIPTS: solo Firebase y config + guardián -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="index-core.js"></script>
+    <!-- Guardián de arranque -->
+    <script>
+        (function() {
+            let checkAuth = setInterval(function() {
+                if (window.auth) {
+                    clearInterval(checkAuth);
+                    window.auth.onAuthStateChanged(function(user) {
+                        if (user && user.email === 'norbertomoro4@gmail.com') {
+                            if (window.CommandCenter && typeof window.CommandCenter.init === 'function') {
+                                window.CommandCenter.init();
+                            }
+                        } else {
+                            window.location.href = 'ssepi_website.html';
+                        }
+                    });
+                }
+            }, 100);
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+# Motor bridge ERP → COI (pólizas en SQLite local).
+# Solo biblioteca estándar Python 3.9+ (urllib para coi_sync_log en Supabase).
+# El resto de dependencias del COI siguen en el entorno principal del proyecto mi-coi.
+#
+# Historial en la nube: crea mi-coi\.env con SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY
+# (ver bridge\README.md y .env.example).

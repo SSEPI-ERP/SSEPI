@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSEPI · Vacaciones</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/modules/taller.css">
+    <link rel="stylesheet" href="/css/modules/vacaciones.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="/js/core/supabase-config.js"></script>
+    <script type="module" src="/js/core/security-middleware.js"></script>
+    <script type="module" src="/js/core/auth-service.js"></script>
+    <script src="/js/core/theme-clock.js"></script>
+    <script src="/js/core/user-menu.js"></script>
+    <script src="/js/core/nav-by-role.js"></script>
+    <script type="module" src="/js/modules/vacaciones.js"></script>
+</head>
+<body class="page-vacaciones nav-loading">
+    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <div class="brand-icon"><i class="fas fa-umbrella-beach"></i></div>
+                <div>
+                    <div class="brand-text">VACACIONES</div>
+                    <div class="brand-sub">Solicitar vacaciones y ver calendario de días feriados</div>
+                </div>
+            </div>
+            <a href="/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn" type="button" aria-label="Cambiar a modo oscuro" title="Modo claro (clic para oscuro)"><i class="fas fa-moon"></i></button>
+            <div class="user-pill" id="userMenu">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Usuario</span>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
+        <a href="/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
+        <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
+        <a href="/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <div class="menu-category">EXTERNOS</div>
+        <a href="/pages/ssepi_paginas.html" class="nav-item" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/pages/ssepi_vacaciones.html" class="nav-item active" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+    </nav>
+
+    <main>
+        <div class="kpi-grid kpi-grid-vacaciones" style="max-width: 400px;">
+            <div class="kpi-card kpi-card-dias">
+                <div class="kpi-icon"><i class="fas fa-calendar-check"></i></div>
+                <div class="kpi-title">Días disponibles <span id="anioBalance">2025</span></div>
+                <div class="kpi-values">
+                    <div class="kpi-value" id="diasDisponibles">—</div>
+                    <div class="kpi-meta">Base 15 · Usados: <span id="diasUsados">—</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section vacaciones-calendar-section">
+            <h3 class="section-title-form"><i class="fas fa-calendar"></i> Calendario de vacaciones</h3>
+            <p class="form-hint">Haz clic en un día para ver qué trabajadores tienen vacaciones (aprobadas o pendientes).</p>
+            <div class="calendar-controls">
+                <button type="button" class="btn-ssepi btn-taller btn-cal" id="calPrevMonth" title="Mes anterior"><i class="fas fa-chevron-left"></i></button>
+                <span id="calMonthYear" class="cal-month-year"></span>
+                <button type="button" class="btn-ssepi btn-taller btn-cal" id="calNextMonth" title="Mes siguiente"><i class="fas fa-chevron-right"></i></button>
+                <button type="button" class="btn-ssepi btn-taller btn-cal btn-cal-anual" id="calToggleAnual" title="Ver todos los días del año por mes"><i class="fas fa-calendar-alt"></i> Desplegar días del año</button>
+            </div>
+            <div id="calGrid" class="cal-grid"></div>
+            <div id="calAnualSection" class="cal-anual-section hidden">
+                <div class="cal-anual-controls">
+                    <label>Año:</label>
+                    <select id="calAnualYear"></select>
+                    <button type="button" class="btn-ssepi btn-taller btn-cal" id="calAnualCerrar"><i class="fas fa-times"></i> Cerrar</button>
+                </div>
+                <div id="calAnualGrids" class="cal-anual-grids"></div>
+            </div>
+            <div id="calDayDetail" class="cal-day-detail hidden">
+                <strong>Día seleccionado: <span id="calDayDetailDate"></span></strong>
+                <ul id="calDayDetailList"></ul>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-paper-plane"></i> Solicitar vacaciones</h3>
+            <div class="filtros-bar">
+                <div class="filtro-grupo">
+                    <label>Desde:</label>
+                    <input type="date" id="solicitudDesde">
+                </div>
+                <div class="filtro-grupo">
+                    <label>Hasta:</label>
+                    <input type="date" id="solicitudHasta">
+                </div>
+                <button type="button" class="btn-ssepi btn-taller" id="btnSolicitar"><i class="fas fa-paper-plane"></i> Enviar solicitud</button>
+            </div>
+            <p class="form-hint">Los días feriados (legales y de suspensión de labores) no se descuentan de tu balance al solicitar.</p>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-list"></i> Mis solicitudes</h3>
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaSolicitudes">
+                    <thead>
+                        <tr><th>Desde</th><th>Hasta</th><th>Días</th><th>Estado</th></tr>
+                    </thead>
+                    <tbody id="tablaSolicitudesBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-calendar-alt"></i> Días feriados (no se trabaja)</h3>
+            <p class="form-hint">Legales, religiosos (católicos) y días de suspensión de labores.</p>
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaFeriados">
+                    <thead>
+                        <tr><th>Fecha</th><th>Nombre</th><th>Tipo</th></tr>
+                    </thead>
+                    <tbody id="tablaFeriadosBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-section" id="listaEmpleadosSection">
+            <h3 class="section-title-form"><i class="fas fa-users"></i> Empleados en el calendario</h3>
+            <p class="form-hint">Nombres y colores con los que aparecen en el calendario de vacaciones.</p>
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaEmpleados">
+                    <thead>
+                        <tr><th>Nombre</th><th>Rol / Área</th><th>Color</th></tr>
+                    </thead>
+                    <tbody id="tablaEmpleadosBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="adminBalanceSection" class="form-section hidden">
+            <h3 class="section-title-form"><i class="fas fa-user-cog"></i> Administrar días por usuario (solo admin)</h3>
+            <p class="form-hint">Días asignados por año (base 15). Solo administradores pueden modificar.</p>
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaAdminBalance">
+                    <thead>
+                        <tr><th>Usuario</th><th>Año</th><th>Días asignados</th><th>Días solicitados</th><th>Acción</th></tr>
+                    </thead>
+                    <tbody id="tablaAdminBalanceBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        window.addEventListener('load', function() {
+            (async function() {
+                var deadline = Date.now() + 5000;
+                while (!window.securityMiddleware || !window.authService) {
+                    if (Date.now() > deadline) return;
+                    await new Promise(function(r) { setTimeout(r, 50); });
+                }
+                await window.securityMiddleware.initSecurity();
+                await window.authService.requireAuth('/panel.html');
+                var profile = await window.authService.getCurrentProfile();
+                if (profile) {
+                    document.getElementById('userName').innerText = profile.nombre ? profile.nombre.split(' ')[0] : 'Usuario';
+                    document.getElementById('userAvatar').innerText = (profile.nombre ? profile.nombre[0] : 'U').toUpperCase();
+                }
+                if (window.vacacionesMod && window.vacacionesMod.init) window.vacacionesMod.init();
+            })();
+        });
+    </script>
+</body>
+</html>

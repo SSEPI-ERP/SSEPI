@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSEPI · Laboratorio de Electrónica</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/modules/taller.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="/js/core/supabase-config.js"></script>
+    <script type="module" src="/js/core/security-middleware.js"></script>
+    <script type="module" src="/js/core/auth-service.js"></script>
+    <script type="module" src="/js/core/data-service.js"></script>
+    <script type="module" src="/js/core/costos-engine.js"></script>
+    <script type="module" src="/js/core/contactos-formulas.js"></script>
+    <script src="/js/core/theme-clock.js"></script>
+    <script src="/js/core/user-menu.js"></script>
+    <script src="/js/core/nav-by-role.js"></script>
+    <script src="/js/core/folio-formats.js"></script>
+    <script type="module" src="/js/modules/taller.js"></script>
+</head>
+<body class="page-taller nav-loading">
+    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <div class="brand-icon"><i class="fas fa-microchip"></i></div>
+                <div>
+                    <div class="brand-text">LABORATORIO ELECTRÓNICA</div>
+                    <div class="brand-sub">Diagnóstico y Reparación</div>
+                </div>
+            </div>
+            <a href="/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <div class="notification-badge">
+                <i class="fas fa-bell"></i>
+                <span class="badge-count" id="notificacionesBadge">0</span>
+            </div>
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <div class="user-pill">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/pages/ssepi_taller.html" class="nav-item active" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
+        <a href="/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
+        <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
+        <a href="/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <div class="menu-category">EXTERNOS</div>
+        <a href="#" class="nav-item" target="_blank" rel="noopener" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+    </nav>
+
+    <main>
+        <!-- Filtros superiores -->
+        <div class="filtros-bar">
+            <div class="filtro-grupo">
+                <label>Desde:</label>
+                <input type="date" id="filtroFechaInicio">
+            </div>
+            <div class="filtro-grupo">
+                <label>Hasta:</label>
+                <input type="date" id="filtroFechaFin">
+            </div>
+            <div class="filtro-grupo">
+                <label>Técnico:</label>
+                <select id="filtroTecnico">
+                    <option value="todos">Todos</option>
+                </select>
+            </div>
+            <div class="filtro-grupo">
+                <label>Estado:</label>
+                <select id="filtroEstado">
+                    <option value="todos">Todos</option>
+                    <option value="Nuevo">Nuevo</option>
+                    <option value="Diagnóstico">Diagnóstico</option>
+                    <option value="En Espera">En Espera</option>
+                    <option value="Reparado">Reparado</option>
+                    <option value="Entregado">Entregado</option>
+                </select>
+            </div>
+            <div class="filtro-grupo">
+                <label>Buscar:</label>
+                <input type="text" id="filtroBuscar" placeholder="Cliente, equipo, folio">
+            </div>
+            <button class="btn-filtro" id="aplicarFiltrosBtn"><i class="fas fa-search"></i> Aplicar</button>
+            <div class="vistas">
+                <button id="vistaKanban" class="active"><i class="fas fa-columns"></i> Kanban</button>
+                <button id="vistaLista"><i class="fas fa-table"></i> Lista</button>
+                <button id="vistaGrafica"><i class="fas fa-chart-bar"></i> Gráfica</button>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-plus-circle"></i></div>
+                <div class="kpi-title">Nuevos</div>
+                <div class="kpi-value" id="kpiNuevo">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-stethoscope"></i></div>
+                <div class="kpi-title">Diagnóstico</div>
+                <div class="kpi-value" id="kpiDiagnostico">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-clock"></i></div>
+                <div class="kpi-title">En Espera</div>
+                <div class="kpi-value" id="kpiEspera">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="kpi-title">Reparado</div>
+                <div class="kpi-value" id="kpiReparado">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-truck"></i></div>
+                <div class="kpi-title">Entregado</div>
+                <div class="kpi-value" id="kpiEntregado">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-shopping-cart"></i></div>
+                <div class="kpi-title">Con Compra</div>
+                <div class="kpi-value" id="kpiConCompra">0</div>
+            </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="actions-header">
+            <h2 class="section-title"><i class="fas fa-clipboard-list"></i> Órdenes de Laboratorio</h2>
+            <button class="btn-ssepi btn-taller" id="newOrderBtn"><i class="fas fa-plus"></i> Nueva Orden</button>
+        </div>
+
+        <!-- Contenedores de vistas -->
+        <div id="kanbanContainer" class="kanban-container"></div>
+        <div id="listaContainer" class="lista-container"></div>
+        <div id="graficaContainer" class="grafica-container">
+            <canvas id="graficaCanvas"></canvas>
+        </div>
+    </main>
+
+    <!-- SIDEBAR DERECHO (FEED) -->
+    <aside class="sidebar-right">
+        <div class="history-header">
+            <span><i class="fas fa-history"></i> BITÁCORA</span>
+            <span class="notification-badge" id="feedCount">0</span>
+        </div>
+        <div class="feed-list" id="feedList">
+            <div class="feed-item">
+                <div class="feed-dot"></div>
+                <div class="feed-meta"><span style="color:var(--c-taller);">SISTEMA</span><span>ahora</span></div>
+                <div class="feed-body">Módulo de taller iniciado</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MODAL WORKSTATION (5 PASOS) -->
+    <div class="workstation-modal" id="wsModal">
+        <div class="ws-header">
+            <div class="ws-title-group">
+                <button class="btn-secondary" id="closeWsBtn"><i class="fas fa-arrow-left"></i> Volver</button>
+                <div>
+                    <div class="ws-title">LABORATORIO - 5 ETAPAS</div>
+                    <div class="ws-folio"><input type="text" id="inpFolio" class="ws-folio-input" readonly></div>
+                </div>
+            </div>
+            <div class="ws-steps">
+                <button class="ws-step-btn active" data-step="1">1. Recepción</button>
+                <button class="ws-step-btn" data-step="2">2. Diagnóstico</button>
+                <button class="ws-step-btn" data-step="3">3. En Espera</button>
+                <button class="ws-step-btn" data-step="4">4. Reparación</button>
+                <button class="ws-step-btn" data-step="5">5. Entrega</button>
+            </div>
+        </div>
+
+        <div class="ws-body">
+            <div class="ws-content">
+                <!-- PASO 1: RECEPCIÓN -->
+                <div id="step-1" class="step-content active">
+                    <div class="form-section">
+                        <div class="section-title-form"><i class="fas fa-clipboard-list"></i> Recepción de Equipo</div>
+                        <div class="form-grid">
+                            <div class="input-group required">
+                                <label>Cliente</label>
+                                <select id="selClient"></select>
+                            </div>
+                            <div class="input-group required">
+                                <label>Fecha/Hora Ingreso</label>
+                                <input type="datetime-local" id="inpDateTime" readonly>
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="input-group"><label>Referencia cliente</label><input type="text" id="inpClientRef"></div>
+                            <div class="input-group required"><label>Equipo</label><input type="text" id="inpEquip"></div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="input-group"><label>Marca</label><input type="text" id="inpBrand"></div>
+                            <div class="input-group"><label>Modelo</label><input type="text" id="inpModel"></div>
+                            <div class="input-group"><label>Serie</label><input type="text" id="inpSerial"></div>
+                        </div>
+                        <div class="input-group"><label>Falla reportada</label><textarea id="inpFail" rows="2"></textarea></div>
+                        <div class="input-group"><label>Condiciones físicas</label><textarea id="inpCond" rows="2"></textarea></div>
+                        <div class="form-grid">
+                            <div class="input-group"><label>Encargado de recepción</label><input type="text" id="inpReceptionBy"></div>
+                            <div class="input-group"><label><input type="checkbox" id="inpUnderWarranty"> ¿Bajo garantía?</label></div>
+                        </div>
+                        <div class="input-group">
+                            <label>Fotografía del equipo (opcional)</label>
+                            <div class="image-upload" onclick="document.getElementById('productImage').click()">
+                                <i class="fas fa-camera"></i> Haz clic para subir imagen
+                            </div>
+                            <input type="file" id="productImage" accept="image/*" style="display:none;">
+                            <div id="imagePreview" class="image-preview"></div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="input-group"><label>Fecha de inicio</label><span id="fechaInicioDisplay"></span></div>
+                            <div class="input-group"><label>Recibido por (Vendedor)</label><input type="text" id="recibidoPor"></div>
+                        </div>
+                        <div style="display:flex; justify-content:flex-end;">
+                            <button class="btn-etapa" id="terminarEtapa1" data-etapa="1"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PASO 2: DIAGNÓSTICO -->
+                <div id="step-2" class="step-content">
+                    <div class="form-section">
+                        <div class="section-title-form"><i class="fas fa-stethoscope"></i> Diagnóstico Técnico</div>
+                        <div class="form-grid">
+                            <div class="input-group required"><label>Técnico responsable</label><select id="techSelect"><option value="">Seleccionar</option><option value="Dani">Dani</option><option value="Carlos">Carlos</option><option value="Mario">Mario</option></select></div>
+                            <div class="input-group required"><label>Horas estimadas de reparación</label><input type="number" id="horasEstimadas" value="0" min="0" step="0.5"></div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="input-group"><label>Notas internas</label><textarea id="internalNotes" rows="2"></textarea></div>
+                            <div class="input-group"><label>Notas generales (para el cliente)</label><textarea id="generalNotes" rows="2"></textarea></div>
+                        </div>
+                        <div id="infoCompraVinculada" class="info-compra" style="display:none;"></div>
+
+                        <h4>Refacciones con enlace externo</h4>
+                        <table class="tabla-diagnostico" id="tablaEnlaces">
+                            <thead><tr><th>Descripción</th><th>SKU</th><th>Cantidad</th><th>Link</th><th></th></tr></thead>
+                            <tbody id="diagnosticoEnlacesBody"></tbody>
+                        </table>
+                        <button class="btn-add-row" id="addEnlaceBtn"><i class="fas fa-plus"></i> Agregar refacción con enlace</button>
+
+                        <h4>Refacciones desde inventario</h4>
+                        <table class="tabla-diagnostico">
+                            <thead><tr><th>SKU</th><th>Descripción</th><th>Stock disp.</th><th>Cantidad</th><th></th></tr></thead>
+                            <tbody id="diagnosticoInventarioBody"></tbody>
+                        </table>
+                        <button class="btn-add-row" id="addInventarioBtn"><i class="fas fa-plus"></i> Agregar desde inventario</button>
+
+                        <div style="display:flex; gap:15px; justify-content:flex-end; margin-top:30px;">
+                            <button class="btn-etapa" id="terminarEtapa2" data-etapa="2"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
+                            <button class="btn-primary" id="generarCompraBtn"><i class="fas fa-shopping-cart"></i> Generar Solicitud de Compra</button>
+                            <button class="btn-secondary" id="sinReparacionBtn" style="background:#f59e0b; color:white;"><i class="fas fa-ban"></i> Sin reparación</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PASO 3: EN ESPERA -->
+                <div id="step-3" class="step-content">
+                    <div class="form-section">
+                        <div class="section-title-form"><i class="fas fa-hourglass-half"></i> En Espera</div>
+                        <p>La orden está en espera. Puede deberse a falta de componentes o decisión del cliente.</p>
+                        <div class="info-compra" id="infoCompraEspera"></div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+                            <div><strong>Fecha de inicio de espera:</strong> <span id="fechaEsperaDisplay"></span></div>
+                            <button class="btn-etapa" id="terminarEtapa3" data-etapa="3"><i class="fas fa-flag-checkered"></i> Continuar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PASO 4: REPARACIÓN -->
+                <div id="step-4" class="step-content">
+                    <div class="form-section">
+                        <div class="section-title-form"><i class="fas fa-screwdriver-wrench"></i> Reparación</div>
+                        <div style="background:var(--bg-hover); padding:15px; border-radius:8px; margin-bottom:20px;">
+                            <h5>Datos de recepción</h5>
+                            <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px;">
+                                <div><strong>Cliente:</strong> <span id="resumenCliente"></span></div>
+                                <div><strong>Equipo:</strong> <span id="resumenEquipo"></span></div>
+                                <div><strong>Marca:</strong> <span id="resumenMarca"></span></div>
+                                <div><strong>Modelo:</strong> <span id="resumenModelo"></span></div>
+                                <div><strong>Serie:</strong> <span id="resumenSerie"></span></div>
+                                <div><strong>Falla:</strong> <span id="resumenFalla"></span></div>
+                                <div><strong>Condiciones:</strong> <span id="resumenCond"></span></div>
+                            </div>
+                        </div>
+                        <div class="input-group"><label>Notas de reparación</label><textarea id="reparacionNotas" rows="3"></textarea></div>
+
+                        <h4>Componentes usados desde inventario</h4>
+                        <table class="componentes-table">
+                            <thead><tr><th>SKU</th><th>Descripción</th><th>Solicitado</th><th>Usado</th><th></th></tr></thead>
+                            <tbody id="componentesInventarioBody"></tbody>
+                        </table>
+
+                        <h4>Componentes desde compra</h4>
+                        <table class="componentes-table">
+                            <thead><tr><th>Descripción</th><th>SKU</th><th>Recibido</th><th>Usado</th><th></th></tr></thead>
+                            <tbody id="componentesCompraBody"></tbody>
+                        </table>
+
+                        <h4>Consumibles usados</h4>
+                        <table class="componentes-table">
+                            <thead><tr><th>SKU</th><th>Descripción</th><th>Stock</th><th>Cantidad usada</th><th></th></tr></thead>
+                            <tbody id="consumiblesBody"></tbody>
+                        </table>
+                        <button class="btn-add-row" id="addConsumibleBtn"><i class="fas fa-plus"></i> Agregar consumible</button>
+
+                        <div style="display:flex; justify-content:flex-end; margin-top:30px;">
+                            <button class="btn-etapa" id="terminarReparacionBtn"><i class="fas fa-check-double"></i> Terminar reparación</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PASO 5: ENTREGA -->
+                <div id="step-5" class="step-content">
+                    <div class="form-section">
+                        <div class="section-title-form"><i class="fas fa-truck"></i> Entrega a Ventas</div>
+                        <div class="entrega-informe-section">
+                            <div class="section-title-form"><i class="fas fa-file-upload"></i> Subir informe u orden de entrega</div>
+                            <p class="upload-hint">Adjunta el informe de lo realizado o la hoja de orden de entrega.</p>
+                            <div class="upload-foto-controls">
+                                <input type="file" id="informeEntrega" accept="image/*,.pdf">
+                                <span id="informeEntregaNombre" class="file-name"></span>
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="input-group"><label>Resumen de lo realizado</label><textarea id="entregaResumen" rows="3" placeholder="Qué se hizo en esta entrega"></textarea></div>
+                            <div class="input-group"><label>Responsable de entrega (quién lo hizo)</label><input type="text" id="entregaResponsable" placeholder="Nombre del técnico"></div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="input-group required"><label>Fecha de entrega</label><input type="datetime-local" id="fechaEntrega"></div>
+                            <div class="input-group required"><label>Recibe (Ventas)</label><input type="text" id="recibeNombre"></div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="input-group"><label>Identificación</label><input type="text" id="recibeIdentificacion"></div>
+                            <div class="input-group"><label>Factura</label><input type="text" id="facturaNumero"></div>
+                        </div>
+                        <div class="input-group"><label>Observaciones</label><textarea id="entregaObs" rows="2"></textarea></div>
+                        <div class="input-group">
+                            <label>Foto de entrega (opcional)</label>
+                            <div class="image-upload" onclick="document.getElementById('fotoEntrega').click()"><i class="fas fa-camera"></i> Subir foto</div>
+                            <input type="file" id="fotoEntrega" accept="image/*" style="display:none;">
+                            <div id="previewEntrega" class="image-preview"></div>
+                        </div>
+                        <div class="form-section firmas-entrega">
+                            <div class="section-title-form"><i class="fas fa-signature"></i> Firmas</div>
+                            <div class="firmas-container">
+                                <div class="firma-item">
+                                    <div><strong>Firma del Cliente</strong></div>
+                                    <input type="text" id="firmaClienteNombre" placeholder="Nombre y fecha" class="firma-input">
+                                </div>
+                                <div class="firma-item">
+                                    <div><strong>Firma del Técnico</strong></div>
+                                    <input type="text" id="firmaTecnicoNombre" placeholder="Nombre y fecha" class="firma-input">
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+                            <div><strong>Fecha de inicio:</strong> <span id="fechaEntregaInicioDisplay"></span></div>
+                            <button class="btn-etapa" id="completarEntregaBtn"><i class="fas fa-flag-checkered"></i> Completar entrega</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ws-footer">
+            <button class="btn-secondary" id="cancelWsBtn">Cancelar</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-secondary" id="prevStepBtn" style="display:none;">← Anterior</button>
+                <button class="btn-primary" id="nextStepBtn">Siguiente →</button>
+                <button class="btn-primary" id="saveOrderBtn">💾 Guardar</button>
+                <button class="btn-primary" id="completeOrderBtn" style="display:none;">Completar Entrega</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', () => {
+            (async function() {
+                const deadline = Date.now() + 8000;
+                while (!window.securityMiddleware || !window.authService) {
+                    if (Date.now() > deadline) {
+                        console.error('SSEPI: securityMiddleware o authService no disponibles.');
+                        return;
+                    }
+                    await new Promise(r => setTimeout(r, 50));
+                }
+                while (!window.tallerModule && Date.now() < deadline) {
+                    await new Promise(r => setTimeout(r, 50));
+                }
+                await window.securityMiddleware.initSecurity();
+                const user = await window.authService.requireAuth('/');
+                if (user) {
+                    try {
+                        const profile = await window.authService.getCurrentProfile();
+                        document.getElementById('userName').innerText = profile?.nombre?.split(' ')[0] || 'Admin';
+                        document.getElementById('userAvatar').innerText = (profile?.nombre?.[0] || 'A').toUpperCase();
+                    } catch (e) {
+                        console.warn('[Taller] Perfil no cargado:', e);
+                    }
+                    if (window.tallerModule) window.tallerModule.init();
+                    else console.error('SSEPI: tallerModule no disponible.');
+                }
+            })();
+        });
+    </script>
+</body>
+</html>

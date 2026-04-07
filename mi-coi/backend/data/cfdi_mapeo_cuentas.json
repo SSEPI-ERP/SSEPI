@@ -1,0 +1,44 @@
+{
+  "_descripcion": "Mapeo sugerido por tipo de comprobante y método de pago. Ajuste los números de cuenta a su catálogo DETALLE.",
+  "por_clave": {
+    "I_PUE": {
+      "tipo_poliza": "INGRESO",
+      "cuenta_cargo": "102",
+      "cuenta_ingresos": "401",
+      "cuenta_iva_trasladado": "208",
+      "usar_banco_en_cargo": true
+    },
+    "I_PPD": {
+      "tipo_poliza": "INGRESO",
+      "cuenta_cargo": "115",
+      "cuenta_ingresos": "401",
+      "cuenta_iva_trasladado": "208",
+      "usar_banco_en_cargo": false
+    },
+    "E_PUE": {
+      "tipo_poliza": "EGRESO",
+      "cuenta_gasto": "501",
+      "cuenta_iva_acreditable": "118",
+      "cuenta_abono_banco": "102"
+    },
+    "E_PPD": {
+      "tipo_poliza": "EGRESO",
+      "cuenta_gasto": "501",
+      "cuenta_iva_acreditable": "118",
+      "cuenta_proveedor": "201"
+    },
+    "N": {
+      "tipo_poliza": "DIARIO",
+      "cuenta_sueldos": "601",
+      "cuenta_imss_trabajador": "206",
+      "cuenta_imss_patron": "605",
+      "cuenta_isr_retenido": "206",
+      "cuenta_por_pagar_nomina": "201"
+    },
+    "P": {
+      "tipo_poliza": "DIARIO",
+      "cuenta_banco": "102",
+      "cuenta_cliente_proveedor": "115"
+    }
+  }
+}

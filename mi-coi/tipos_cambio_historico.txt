@@ -1,0 +1,11 @@
+2026-03-21  Euro  21.9700  manual
+2026-03-21  Libra Esterl  21.9700  manual
+2026-03-20  USD/MXN  17.8174  Frankfurter-ECB
+2026-03-20  EUR/MXN  20.5880  Frankfurter-ECB
+2026-03-20  GBP/MXN  23.8180  Frankfurter-ECB
+2026-03-23  USD/MXN  17.7665  Frankfurter-ECB
+2026-03-24  USD/MXN  17.8854  Frankfurter-ECB
+2026-03-24  Euro  20.6970  manual
+2026-03-25  USD/MXN  17.7657  Frankfurter-ECB
+2026-03-25  EUR/MXN  20.5940  Frankfurter-ECB
+2026-03-26  USD/MXN  17.7548  DOF
