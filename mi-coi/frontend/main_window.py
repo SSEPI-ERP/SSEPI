@@ -658,15 +658,15 @@ class AspelCOI:
                     return
                 except tk.TclError:
                     pass
-        # Prioridad: sepi_logo.png (lo solicitado), luego ssepi_logo.png, luego logo.png
+        # Prioridad: logo.png (predilecto), luego sepi_logo.png, luego ssepi_logo.png
         for name in (
+            "assets/logo.png",
             "assets/sepi_logo.png",
             "assets/ssepi_logo.png",
-            "assets/logo.png",
             "assets/sepilogo.png",
+            "logo.png",
             "sepi_logo.png",
             "ssepi_logo.png",
-            "logo.png",
             "sepilogo.png",
         ):
             p = os.path.join(base, *name.split("/"))
@@ -870,12 +870,12 @@ class AspelCOI:
 
         # Logo SSEPI (izquierda)
         try:
-            # Prioridad: sepi_logo.png (lo que pide SSEPI), luego ssepi_logo.png, luego logo.png
+            # Prioridad: logo.png (predilecto), luego sepi_logo.png, luego ssepi_logo.png
             base_assets = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets"))
             logo_candidates = [
+                os.path.join(base_assets, "logo.png"),
                 os.path.join(base_assets, "sepi_logo.png"),
                 os.path.join(base_assets, "ssepi_logo.png"),
-                os.path.join(base_assets, "logo.png"),
             ]
             logo_path = next((p for p in logo_candidates if os.path.exists(p)), None)
             if logo_path and os.path.exists(logo_path):
@@ -883,15 +883,15 @@ class AspelCOI:
                 try:
                     from PIL import Image, ImageTk
                     img = Image.open(logo_path)
-                    th = 26
+                    th = 38
                     tw = int((img.width / img.height) * th) if img.height else 90
                     img = img.resize((max(1, tw), th))
                     self._ssepi_logo_img_small = ImageTk.PhotoImage(img)
                 except Exception:
                     self._ssepi_logo_img = tk.PhotoImage(file=logo_path)
-                    # escalar a altura ~26px (mantiene proporción por subsample)
-                    h = max(1, int(self._ssepi_logo_img.height() / 26))
-                    w = max(1, int(self._ssepi_logo_img.width() / 26))
+                    # escalar a altura ~38px (mantiene proporción por subsample)
+                    h = max(1, int(self._ssepi_logo_img.height() / 38))
+                    w = max(1, int(self._ssepi_logo_img.width() / 38))
                     self._ssepi_logo_img_small = self._ssepi_logo_img.subsample(w, h)
                 tk.Label(toolbar, image=self._ssepi_logo_img_small, bg=THEME["bg_toolbar"]).pack(side=tk.LEFT, padx=(8, 8), pady=4)
         except Exception:
