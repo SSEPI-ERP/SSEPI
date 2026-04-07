@@ -145,6 +145,7 @@ THEME_DARK_SNAP = {
 class AspelCOI:
     def __init__(self):
         self.root = tk.Tk()
+        self._set_windows_appid()
         # Config / tema lo más temprano posible.
         self.config_parametros = ConfigParametros()
         self._aplicar_tema_ui(self.config_parametros.obtener_ui_theme())
@@ -657,6 +658,21 @@ class AspelCOI:
                     return
                 except tk.TclError:
                     pass
+
+    def _set_windows_appid(self) -> None:
+        """
+        En Windows, fija un AppUserModelID para que la barra de tareas agrupe con un identificador propio
+        (y tome mejor el icono de la app cuando se usa python/pythonw).
+        """
+        try:
+            if sys.platform != "win32":
+                return
+            import ctypes  # noqa: F401
+
+            appid = "SSEPI.SSEPI-COI"
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)
+        except Exception:
+            pass
         for name in ("assets/logo.png", "logo.png", "assets/ssepi_logo.png"):
             p = os.path.join(base, *name.split("/"))
             if os.path.isfile(p):
