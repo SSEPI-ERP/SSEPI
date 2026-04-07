@@ -126,21 +126,52 @@ export class AuthService {
 
   /** Listar todos los perfiles (requiere que RLS permita a admin leer todos). */
   async listProfiles() {
-    const { data, error } = await this.supabase
-      .from('profiles')
-      .select('id, email, nombre, rol, telefono, created_at')
-      .order('nombre', { ascending: true });
-    if (error) throw error;
-    return data || [];
+    // El proyecto puede usar: usuarios, users o profiles (compatibilidad).
+    const candidates = [
+      { table: 'usuarios', select: 'auth_user_id, email, nombre, rol, telefono, created_at' },
+      { table: 'users', select: 'auth_user_id, email, nombre, rol, telefono, created_at' },
+      { table: 'profiles', select: 'id, email, nombre, rol, telefono, created_at' },
+    ];
+    for (const c of candidates) {
+      try {
+        const { data, error } = await this.supabase
+          .from(c.table)
+          .select(c.select)
+          .order('nombre', { ascending: true });
+        if (error) throw error;
+        const list = Array.isArray(data) ? data : [];
+        // Normalizar salida a {id,email,nombre,rol,...}
+        return list.map((row) => ({
+          id: row.id || row.auth_user_id,
+          email: row.email,
+          nombre: row.nombre,
+          rol: row.rol,
+          telefono: row.telefono ?? null,
+          created_at: row.created_at,
+          auth_user_id: row.auth_user_id || row.id,
+        }));
+      } catch (_) {
+        // intentar siguiente tabla
+      }
+    }
+    throw new Error("No se encontró tabla de perfiles (usuarios/users/profiles) o no hay permisos.");
   }
 
   /** Eliminar perfil por id (solo desde backend/admin en producción). La fila en auth.users debe gestionarse desde Dashboard o Admin API. */
   async deleteProfile(profileId) {
-    const { error } = await this.supabase
-      .from('profiles')
-      .delete()
-      .eq('id', profileId);
-    if (error) throw error;
+    // Intentar borrar por auth_user_id/id dependiendo del esquema.
+    const attempts = [
+      { table: 'usuarios', col: 'auth_user_id' },
+      { table: 'users', col: 'auth_user_id' },
+      { table: 'profiles', col: 'id' },
+    ];
+    let lastErr = null;
+    for (const a of attempts) {
+      const { error } = await this.supabase.from(a.table).delete().eq(a.col, profileId);
+      if (!error) return;
+      lastErr = error;
+    }
+    if (lastErr) throw lastErr;
   }
 
   /** Lee si el usuario actual puede ver costos (tabla users_ver_costos). Por defecto true. */
@@ -243,15 +274,29 @@ export class AuthService {
 
     if (Object.keys(updates).length === 0) return await this.getCurrentProfile();
 
-    const { data, error } = await this.supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', user.id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    // Actualizar en la tabla real (usuarios/users/profiles)
+    const attempts = [
+      { table: 'usuarios', col: 'auth_user_id' },
+      { table: 'users', col: 'auth_user_id' },
+      { table: 'profiles', col: 'id' },
+    ];
+    let lastErr = null;
+    for (const a of attempts) {
+      try {
+        const { data, error } = await this.supabase
+          .from(a.table)
+          .update(updates)
+          .eq(a.col, user.id)
+          .select()
+          .maybeSingle();
+        if (!error) return data || (await this.getCurrentProfile());
+        lastErr = error;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    if (lastErr) throw lastErr;
+    return await this.getCurrentProfile();
   }
 
   // ==================== VERIFICAR PERMISO ====================

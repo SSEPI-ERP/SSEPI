@@ -104,11 +104,34 @@ export async function requireRole(allowedRoles, redirectTo = '/') {
   const user = await requireAuth(redirectTo);
   if (!user) return null;
 
-  const { data: profile, error } = await window.supabase
-    .from('profiles')
-    .select('rol')
-    .eq('id', user.id)
-    .single();
+  // Compatibilidad: el proyecto puede usar usuarios/users/profiles
+  async function _try(table, col) {
+    const { data, error } = await window.supabase
+      .from(table)
+      .select('rol')
+      .eq(col, user.id)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
+  let profile = null;
+  let error = null;
+  try {
+    profile = await _try('usuarios', 'auth_user_id');
+  } catch (e) { error = e; }
+  if (!profile) {
+    try {
+      profile = await _try('users', 'auth_user_id');
+      error = null;
+    } catch (e) { error = e; }
+  }
+  if (!profile) {
+    try {
+      profile = await _try('profiles', 'id');
+      error = null;
+    } catch (e) { error = e; }
+  }
 
   if (error || !profile || !allowedRoles.includes(profile.rol)) {
     window.location.href = redirectTo;

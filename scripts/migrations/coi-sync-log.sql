@@ -35,7 +35,6 @@ ALTER TABLE public.coi_sync_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS coi_sync_log_admin_select ON public.coi_sync_log;
 CREATE POLICY coi_sync_log_admin_select ON public.coi_sync_log
   FOR SELECT USING (COALESCE(auth.jwt() ->> 'rol', '') IN ('admin', 'superadmin'));
-
 DROP POLICY IF EXISTS coi_sync_log_contabilidad_select ON public.coi_sync_log;
 CREATE POLICY coi_sync_log_contabilidad_select ON public.coi_sync_log
   FOR SELECT USING (auth.jwt() ->> 'rol' = 'contabilidad');
