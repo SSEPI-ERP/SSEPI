@@ -1,0 +1,17 @@
+SSEPI COI — Icono solicitado (PNG)
+
+La app prioriza este archivo:
+  mi-coi/assets/sepi_logo.png
+
+Si NO existe, usa:
+  mi-coi/assets/ssepi_logo.png
+  mi-coi/assets/logo.png
+
+Para aplicar:
+1) Cierra SSEPI COI
+2) Asegura que tu imagen se llame EXACTO: sepi_logo.png y esté dentro de mi-coi/assets/
+3) Abre SSEPI COI de nuevo
+
+Nota: Windows puede cachear el icono de barra de tareas; si no cambia al primer intento,
+cierra y abre otra vez.
+
