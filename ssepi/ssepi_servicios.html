@@ -1,0 +1,1352 @@
+<!-- ssepi_servicios.html - Automatización Industrial (con badge de notificaciones) -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSEPI - Automatización Industrial</title>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Configuración centralizada -->
+    <script src="firebase-config.js"></script>
+    
+    <!-- Core JS (lógica separada) -->
+    <script src="servicios-core.js" defer></script>
+
+    <style>
+        /* ===== ESTILOS COMPLETOS (igual que antes) ===== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        :root {
+            --primary: #002f6c;
+            --primary-light: #e0f2f1;
+            --primary-dark: #001f4e;
+            --accent: #ff6d00;
+            --success: #00c853;
+            --danger: #d50000;
+            --warning: #ffab00;
+            --bg: #f5f5f5;
+            --panel: #ffffff;
+            --border: #e0e0e0;
+            --text: #1a1a1a;
+            --text-light: #757575;
+            --sidebar-w: 260px;
+            --header-h: 70px;
+            --shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: grid;
+            grid-template-columns: var(--sidebar-w) 1fr;
+            grid-template-rows: var(--header-h) 1fr;
+            overflow: hidden;
+        }
+
+        body.sidebar-closed {
+            grid-template-columns: 70px 1fr;
+        }
+
+        /* ===== HEADER ===== */
+        header {
+            grid-column: 1 / -1;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            z-index: 10;
+            box-shadow: var(--shadow);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .toggle-btn {
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-light);
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .toggle-btn:hover {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .brand {
+            font-size: 22px;
+            font-weight: 900;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .home-link {
+            text-decoration: none;
+            color: var(--text-light);
+            font-weight: 500;
+            font-size: 13px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            transition: 0.2s;
+        }
+
+        .home-link:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .clock {
+            font-family: monospace;
+            font-weight: 700;
+            font-size: 14px;
+            background: var(--bg);
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+
+        .theme-btn {
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+
+        /* ===== NUEVO: BADGE DE NOTIFICACIONES ===== */
+        .notification-badge {
+            position: relative;
+            display: inline-flex;
+        }
+        .badge-count {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--danger);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            padding: 30px 15px;
+            overflow-y: auto;
+        }
+
+        .menu-label {
+            font-size: 11px;
+            font-weight: 900;
+            color: var(--text-light);
+            text-transform: uppercase;
+            margin: 20px 0 10px 15px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 20px;
+            color: var(--text);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .nav-item:hover {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .nav-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* ===== MAIN ===== */
+        main {
+            padding: 30px;
+            overflow-y: auto;
+            height: calc(100vh - var(--header-h));
+        }
+
+        /* ===== FILTROS ===== */
+        .filters {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 5px;
+            background: var(--bg);
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .period-selector {
+            display: flex;
+            gap: 5px;
+            background: var(--bg);
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        .period-option {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .period-option.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .search-box {
+            flex: 1;
+            position: relative;
+            min-width: 250px;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px 10px 36px;
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            border: none;
+            background: var(--bg);
+        }
+
+        .view-tabs {
+            display: flex;
+            gap: 5px;
+            background: var(--bg);
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        .view-tab {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .view-tab.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* ===== KPI CARDS ===== */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .kpi-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .kpi-card.orange {
+            border-left-color: var(--warning);
+        }
+
+        .kpi-card.green {
+            border-left-color: var(--success);
+        }
+
+        .kpi-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-light);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .kpi-sub {
+            font-size: 11px;
+            color: var(--text-light);
+        }
+
+        /* ===== VIEWS ===== */
+        .view-container {
+            display: none;
+        }
+
+        .view-container.active {
+            display: block;
+        }
+
+        /* ===== TABLA DE PROYECTOS ===== */
+        .table-container {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px;
+            background: #f9f9f9;
+            font-weight: 700;
+            font-size: 12px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            border-bottom: 2px solid var(--border);
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+
+        tr {
+            cursor: pointer;
+        }
+
+        tr:hover td {
+            background: #f5f5f5;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        .status-pendiente {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .status-progreso {
+            background: #e3f2fd;
+            color: #0d47a1;
+        }
+
+        .status-completado {
+            background: #e8f5e9;
+            color: #1b5e20;
+        }
+
+        /* ===== KANBAN ===== */
+        .kanban-container {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding: 10px 0;
+        }
+
+        .kanban-col {
+            background: #f5f5f5;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            min-width: 280px;
+            max-width: 280px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .kanban-header {
+            padding: 15px;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+        }
+
+        .kanban-count {
+            background: var(--primary);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+        }
+
+        .kanban-cards {
+            padding: 15px;
+            min-height: 400px;
+            overflow-y: auto;
+        }
+
+        .kanban-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+
+        .kanban-card:hover {
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+        }
+
+        .kanban-folio {
+            font-size: 11px;
+            color: var(--text-light);
+            margin-bottom: 5px;
+        }
+
+        .kanban-titulo {
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .kanban-cliente {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-bottom: 8px;
+        }
+
+        .kanban-footer {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-light);
+        }
+
+        /* ===== CHART ===== */
+        .chart-container {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            height: 400px;
+        }
+
+        /* ===== PROYECTO SELECCIONADO ===== */
+        .selected-project {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+            display: none;
+        }
+
+        .selected-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .selected-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .selected-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        /* ===== PASOS ===== */
+        .steps-nav {
+            display: flex;
+            gap: 5px;
+            margin: 20px 0;
+            background: #f5f5f5;
+            padding: 5px;
+            border-radius: 40px;
+            flex-wrap: wrap;
+        }
+
+        .step-btn {
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--text-light);
+            flex: 1;
+            white-space: nowrap;
+        }
+
+        .step-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .step-content {
+            display: none;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+
+        .step-content.active {
+            display: block;
+        }
+
+        .step-panel {
+            padding: 20px;
+        }
+
+        /* ===== FORMULARIOS ===== */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-light);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        /* ===== TABLA DE ACTIVIDADES ===== */
+        .actividades-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .actividades-table th {
+            background: #f0f0f0;
+            padding: 10px;
+            text-align: left;
+            font-size: 12px;
+        }
+
+        .actividades-table td {
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .actividades-table select,
+        .actividades-table input {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        .btn-add {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin: 10px 0;
+        }
+
+        .btn-remove {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* ===== CRONOGRAMA GANTT ===== */
+        .gantt-container {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+
+        .gantt-header {
+            display: flex;
+            margin-bottom: 10px;
+            font-weight: 700;
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        .gantt-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .gantt-label {
+            width: 200px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .gantt-bar-container {
+            flex: 1;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .gantt-bar {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .gantt-office {
+            background: #0277bd;
+        }
+
+        .gantt-plant {
+            background: #d84315;
+        }
+
+        /* ===== MATERIALES ===== */
+        .materiales-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .materiales-table th {
+            background: #f0f0f0;
+            padding: 10px;
+            text-align: left;
+            font-size: 12px;
+        }
+
+        .materiales-table td {
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .inventario-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .inventario-selector select {
+            flex: 1;
+            padding: 8px;
+        }
+
+        /* ===== ÉPICAS Y TAREAS ===== */
+        .epicas-container {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .epica-item {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .epica-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .epica-titulo {
+            font-weight: 700;
+        }
+
+        .epica-key {
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .tareas-container {
+            margin-left: 20px;
+        }
+
+        .tarea-item {
+            background: #f9f9f9;
+            border-left: 3px solid var(--warning);
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .tarea-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .tarea-asignado {
+            font-size: 11px;
+            color: var(--text-light);
+        }
+
+        .subtareas-list {
+            margin-left: 15px;
+            margin-top: 5px;
+        }
+
+        .subtarea-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+            font-size: 12px;
+        }
+
+        .subtarea-checkbox {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .subtarea-checkbox.checked {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .comentarios-container {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .comentario-item {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comentario-header {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        .comentario-avatar {
+            width: 30px;
+            height: 30px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .comentario-autor {
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .comentario-fecha {
+            font-size: 11px;
+            color: var(--text-light);
+        }
+
+        .input-comentario {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .input-comentario input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+        }
+
+        .input-comentario button {
+            padding: 10px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        /* ===== APARTADOS DE ENTREGA ===== */
+        .apartados-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .apartado-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .apartado-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .apartado-titulo-input {
+            border: none;
+            border-bottom: 1px solid var(--border);
+            font-weight: 700;
+            padding: 5px;
+            width: 70%;
+        }
+
+        .apartado-actions button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+
+        .apartado-nota {
+            width: 100%;
+            min-height: 60px;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            margin-bottom: 10px;
+            resize: vertical;
+        }
+
+        .archivo-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 13px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: var(--text);
+        }
+
+        .btn-nuevo-apartado {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand"><i class="fas fa-robot"></i> AUTOMATIZACIÓN</div>
+        </div>
+        <a href="index.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+        <div class="header-right">
+            <!-- ===== BADGE DE NOTIFICACIONES AGREGADO ===== -->
+            <div class="notification-badge">
+                <i class="fas fa-bell" style="font-size: 18px; color: var(--text-light);"></i>
+                <span class="badge-count" id="notificacionesBadge" style="display: none;">0</span>
+            </div>
+            <div class="clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn"><i class="fas fa-moon"></i></button>
+        </div>
+    </header>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar" id="sidebar">
+        <div class="menu-label">OPERACIONES</div>
+        <a href="ssepi_v3.html" class="nav-item"><i class="fas fa-microchip"></i> Laboratorio</a>
+        <a href="ssepi_motores.html" class="nav-item"><i class="fas fa-industry"></i> Motores</a>
+        <a href="ssepi_servicios.html" class="nav-item active"><i class="fas fa-robot"></i> Automatización</a>
+        <a href="ssepi_proyectos.html" class="nav-item"><i class="fas fa-clipboard-check"></i> Soporte Planta</a>
+        <div class="menu-label">COMERCIAL</div>
+        <a href="ssepi_ventas.html" class="nav-item"><i class="fas fa-file-invoice-dollar"></i> Ventas</a>
+        <a href="ssepi_compras.html" class="nav-item"><i class="fas fa-shopping-cart"></i> Compras</a>
+        <div class="menu-label">ADMINISTRACIÓN</div>
+        <a href="ssepi_productos.html" class="nav-item"><i class="fas fa-box"></i> Inventario</a>
+        <a href="ssepi_contactos.html" class="nav-item"><i class="fas fa-address-book"></i> Contactos</a>
+        <a href="ssepi_facturacion.html" class="nav-item"><i class="fas fa-file-invoice"></i> Facturación</a>
+        <a href="ssepi_analisis.html" class="nav-item"><i class="fas fa-chart-line"></i> Análisis</a>
+    </nav>
+
+    <!-- MAIN -->
+    <main>
+        <!-- FILTROS -->
+        <div class="filters">
+            <div class="filter-group">
+                <button class="filter-btn active" data-filter="all">Todos</button>
+                <button class="filter-btn" data-filter="pendiente">Pendientes</button>
+                <button class="filter-btn" data-filter="progreso">En Progreso</button>
+                <button class="filter-btn" data-filter="completado">Completados</button>
+            </div>
+
+            <div class="period-selector">
+                <button class="period-option active" data-period="day">Día</button>
+                <button class="period-option" data-period="month">Mes</button>
+                <button class="period-option" data-period="year">Año</button>
+            </div>
+
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Buscar proyectos...">
+            </div>
+
+            <div class="view-tabs">
+                <button class="view-tab active" data-view="table"><i class="fas fa-table"></i> Tabla</button>
+                <button class="view-tab" data-view="kanban"><i class="fas fa-columns"></i> Kanban</button>
+                <button class="view-tab" data-view="chart"><i class="fas fa-chart-bar"></i> Gráfica</button>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-title">Total Proyectos</div>
+                <div class="kpi-value" id="kpiTotal">0</div>
+                <div class="kpi-sub">Registrados</div>
+            </div>
+            <div class="kpi-card orange">
+                <div class="kpi-title">Pendientes</div>
+                <div class="kpi-value" id="kpiPendiente">0</div>
+                <div class="kpi-sub">Por iniciar</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">En Progreso</div>
+                <div class="kpi-value" id="kpiProgreso">0</div>
+                <div class="kpi-sub">En desarrollo</div>
+            </div>
+            <div class="kpi-card green">
+                <div class="kpi-title">Completados</div>
+                <div class="kpi-value" id="kpiCompletado">0</div>
+                <div class="kpi-sub">Entregados</div>
+            </div>
+        </div>
+
+        <!-- VISTA TABLA -->
+        <div id="tableView" class="view-container active">
+            <div class="table-container">
+                <table id="proyectosTable">
+                    <thead>
+                        <tr>
+                            <th>Folio</th>
+                            <th>Proyecto</th>
+                            <th>Cliente</th>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                            <th>Avance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaProyectosBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- VISTA KANBAN -->
+        <div id="kanbanView" class="view-container">
+            <div class="kanban-container">
+                <div class="kanban-col">
+                    <div class="kanban-header">
+                        <span>📋 Pendientes</span>
+                        <span class="kanban-count" id="kanbanPendienteCount">0</span>
+                    </div>
+                    <div class="kanban-cards" id="kanbanPendiente"></div>
+                </div>
+                <div class="kanban-col">
+                    <div class="kanban-header">
+                        <span>⚙️ En Progreso</span>
+                        <span class="kanban-count" id="kanbanProgresoCount">0</span>
+                    </div>
+                    <div class="kanban-cards" id="kanbanProgreso"></div>
+                </div>
+                <div class="kanban-col">
+                    <div class="kanban-header">
+                        <span>✅ Completados</span>
+                        <span class="kanban-count" id="kanbanCompletadoCount">0</span>
+                    </div>
+                    <div class="kanban-cards" id="kanbanCompletado"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA GRÁFICA -->
+        <div id="chartView" class="view-container">
+            <div class="chart-container">
+                <canvas id="proyectosChart"></canvas>
+            </div>
+        </div>
+
+        <!-- PROYECTO SELECCIONADO -->
+        <div id="selectedProject" class="selected-project">
+            <div class="selected-header">
+                <div>
+                    <span class="selected-title" id="selectedTitulo">Proyecto Seleccionado</span>
+                    <span style="font-size:12px; color:var(--text-light); margin-left:10px;" id="selectedFolio"></span>
+                </div>
+                <button class="btn btn-secondary" id="btnCerrarProyecto">
+                    <i class="fas fa-times"></i> Cerrar
+                </button>
+            </div>
+
+            <div class="selected-info" id="selectedInfo"></div>
+
+            <!-- BOTONES DE PASOS -->
+            <div class="steps-nav">
+                <button class="step-btn active" data-step="1">1. Levantamiento</button>
+                <button class="step-btn" data-step="2">2. Ingeniería</button>
+                <button class="step-btn" data-step="3">3. Materiales</button>
+                <button class="step-btn" data-step="4">4. Desarrollo</button>
+                <button class="step-btn" data-step="5">5. Entrega</button>
+            </div>
+
+            <!-- PASO 1: LEVANTAMIENTO -->
+            <div id="paso1" class="step-content active">
+                <div class="step-panel">
+                    <h3 style="margin-bottom:15px;">Levantamiento</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Nombre del Proyecto</label>
+                            <input type="text" id="paso1_nombre">
+                        </div>
+                        <div class="form-group">
+                            <label>Cliente</label>
+                            <input type="text" id="paso1_cliente">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha</label>
+                            <input type="date" id="paso1_fecha">
+                        </div>
+                        <div class="form-group">
+                            <label>Vendedor</label>
+                            <input type="text" id="paso1_vendedor">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Notas Generales</label>
+                        <textarea id="paso1_notasGenerales" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Notas Internas</label>
+                        <textarea id="paso1_notasInternas" rows="3"></textarea>
+                    </div>
+                    <button class="btn btn-primary" id="guardarPaso1">Guardar</button>
+                </div>
+            </div>
+
+            <!-- PASO 2: INGENIERÍA -->
+            <div id="paso2" class="step-content">
+                <div class="step-panel">
+                    <h3 style="margin-bottom:15px;">Ingeniería</h3>
+                    <button class="btn-add" id="agregarActividad"><i class="fas fa-plus"></i> Agregar Actividad</button>
+                    
+                    <table class="actividades-table">
+                        <thead>
+                            <tr>
+                                <th>Área</th>
+                                <th>Actividad</th>
+                                <th>Tipo</th>
+                                <th>Horas</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="actividadesBody"></tbody>
+                    </table>
+
+                    <button class="btn btn-primary" id="generarCronograma">
+                        <i class="fas fa-calendar-alt"></i> Generar Cronograma
+                    </button>
+
+                    <div id="ganttContainer" class="gantt-container" style="display: none;">
+                        <h4 style="margin-bottom:15px;">Cronograma de Actividades</h4>
+                        <div id="ganttHeader" class="gantt-header"></div>
+                        <div id="ganttBody"></div>
+                        <button class="btn btn-secondary" id="exportarCronogramaPDF">
+                            <i class="fas fa-file-pdf"></i> Exportar PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PASO 3: MATERIALES -->
+            <div id="paso3" class="step-content">
+                <div class="step-panel">
+                    <h3 style="margin-bottom:15px;">Materiales</h3>
+                    
+                    <div class="inventario-selector">
+                        <select id="inventarioSelect">
+                            <option value="">Seleccionar producto</option>
+                        </select>
+                        <button class="btn btn-secondary" id="agregarDesdeInventario">Agregar</button>
+                    </div>
+
+                    <button class="btn-add" id="agregarMaterialManual"><i class="fas fa-plus"></i> Agregar Manual</button>
+
+                    <table class="materiales-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Cantidad</th>
+                                <th>SKU</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="materialesBody"></tbody>
+                    </table>
+
+                    <button class="btn btn-primary" id="guardarMateriales">Guardar</button>
+                </div>
+            </div>
+
+            <!-- PASO 4: DESARROLLO -->
+            <div id="paso4" class="step-content">
+                <div class="step-panel">
+                    <h3 style="margin-bottom:15px;">Desarrollo</h3>
+                    
+                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                        <input type="text" id="nuevaEpica" placeholder="Nueva épica..." style="flex:1; padding:8px;">
+                        <button class="btn btn-primary" id="crearEpica">Crear</button>
+                    </div>
+
+                    <div class="epicas-container" id="epicasContainer"></div>
+                </div>
+            </div>
+
+            <!-- PASO 5: ENTREGA -->
+            <div id="paso5" class="step-content">
+                <div class="step-panel">
+                    <h3 style="margin-bottom:15px;">Entrega</h3>
+                    
+                    <button class="btn-nuevo-apartado" id="crearNuevoApartado">
+                        <i class="fas fa-plus-circle"></i> Nuevo Apartado
+                    </button>
+
+                    <div class="apartados-grid" id="apartadosContainer"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Guardián de arranque -->
+    <script>
+        (function() {
+            let checkAuth = setInterval(function() {
+                if (window.auth) {
+                    clearInterval(checkAuth);
+                    window.auth.onAuthStateChanged(function(user) {
+                        if (user && user.email === 'norbertomoro4@gmail.com') {
+                            if (window.ServiciosCore && typeof window.ServiciosCore.init === 'function') {
+                                window.ServiciosCore.init();
+                            }
+                        } else {
+                            window.location.href = 'ssepi_website.html';
+                        }
+                    });
+                }
+            }, 100);
+        })();
+    </script>
+</body>
+</html>

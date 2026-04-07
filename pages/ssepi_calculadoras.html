@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSEPI · Calculadoras</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/modules/calculadoras.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script type="module" src="/js/core/supabase-config.js"></script>
+    <script type="module" src="/js/core/security-middleware.js"></script>
+    <script type="module" src="/js/core/auth-service.js"></script>
+    <script src="/js/core/theme-clock.js"></script>
+    <script src="/js/core/user-menu.js"></script>
+    <script src="/js/core/nav-by-role.js"></script>
+    <script type="module" src="/js/modules/calculadoras.js"></script>
+</head>
+<body class="page-calculadoras nav-loading">
+    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <div class="brand-icon"><i class="fas fa-calculator"></i></div>
+                <div>
+                    <div class="brand-text">CALCULADORAS</div>
+                    <div class="brand-sub">Funciones, costos e información de clientes (admin)</div>
+                </div>
+            </div>
+            <a href="/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn" type="button" aria-label="Cambiar tema"><i class="fas fa-moon"></i></button>
+            <div class="user-pill" id="userMenu">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Usuario</span>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
+        <a href="/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
+        <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
+        <a href="/pages/ssepi_calculadoras.html" class="nav-item active" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <div class="menu-category">EXTERNOS</div>
+        <a href="/pages/ssepi_paginas.html" class="nav-item" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+    </nav>
+
+    <main>
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-function"></i> Funciones de calculadora</h3>
+            <p class="form-hint">Configuración y funciones disponibles por calculadora.</p>
+            <div class="filtros-bar" style="margin-bottom:10px">
+                <button type="button" class="btn-ssepi" id="btnNuevaCalculadora"><i class="fas fa-plus"></i> Nueva calculadora</button>
+            </div>
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaFunciones">
+                    <thead>
+                        <tr><th>Nombre</th><th>Tipo</th><th>Funciones</th><th>Estado</th><th>Acciones</th></tr>
+                    </thead>
+                    <tbody id="tablaFuncionesBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-dollar-sign"></i> Costos</h3>
+            <p class="form-hint">Costos vinculados a calculadoras.</p>
+            <div class="filtros-bar" style="margin-bottom:10px">
+                <button type="button" class="btn-ssepi" id="btnNuevoCosto"><i class="fas fa-plus"></i> Nuevo costo</button>
+            </div>
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaCostos">
+                    <thead>
+                        <tr><th>Calculadora</th><th>Concepto</th><th>Costo</th><th>Moneda</th><th>Acciones</th></tr>
+                    </thead>
+                    <tbody id="tablaCostosBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-users"></i> Información de clientes</h3>
+            <p class="form-hint">Clientes asociados a calculadoras (desde BD o importación).</p>
+            <div class="filtros-bar" style="margin-bottom:10px">
+                <button type="button" class="btn-ssepi" id="btnNuevoCliente"><i class="fas fa-plus"></i> Nuevo cliente</button>
+            </div>
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaClientes">
+                    <thead>
+                        <tr><th>Calculadora</th><th>Cliente</th><th>Email</th><th>Acciones</th></tr>
+                    </thead>
+                    <tbody id="tablaClientesBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-file-excel"></i> Importar desde plantilla</h3>
+            <p class="form-hint">Usa la plantilla <strong>Plantilla de cotización (sale.order.template).xlsx</strong> desde la carpeta excel del proyecto. Selecciona el archivo para cargar datos.</p>
+            <div class="filtros-bar">
+                <input type="file" id="excelFileCalculadoras" accept=".xlsx,.xls" style="display:none">
+                <button type="button" class="btn-ssepi" id="btnSeleccionarExcel"><i class="fas fa-upload"></i> Seleccionar archivo Excel</button>
+                <button type="button" class="btn-ssepi" id="btnProcesarImport" style="display:none"><i class="fas fa-check"></i> Agregar / Actualizar</button>
+            </div>
+            <div id="importPreview" class="import-preview"></div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-check-circle"></i> Validar calculadoras</h3>
+            <p class="form-hint">Comprueba que los datos importados y las calculadoras estén correctos.</p>
+            <button type="button" class="btn-ssepi" id="btnValidar"><i class="fas fa-search"></i> Validar</button>
+            <div id="validacionResultado" class="validacion-resultado"></div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-chart-bar"></i> Analizar</h3>
+            <p class="form-hint">Resumen y estado de las calculadoras.</p>
+            <div class="kpi-grid kpi-grid-calc">
+                <div class="kpi-card"><div class="kpi-title">Calculadoras</div><div class="kpi-value" id="analisisTotalCalc">0</div></div>
+                <div class="kpi-card"><div class="kpi-title">Costos registrados</div><div class="kpi-value" id="analisisTotalCostos">0</div></div>
+                <div class="kpi-card"><div class="kpi-title">Clientes vinculados</div><div class="kpi-value" id="analisisTotalClientes">0</div></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Editar Calculadora -->
+    <div class="modal-backdrop calc-modal" id="modalCalc" aria-hidden="true">
+        <div class="modal">
+            <div class="modal-header"><h4 id="modalCalcTitle">Editar calculadora</h4><button type="button" class="modal-close" id="modalCalcClose" aria-label="Cerrar">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="modalCalcId">
+                <div class="form-group"><label for="modalCalcNombre">Nombre</label><input type="text" id="modalCalcNombre" class="form-control"></div>
+                <div class="form-group"><label for="modalCalcTipo">Tipo</label><input type="text" id="modalCalcTipo" class="form-control" placeholder="ej. importado"></div>
+                <div class="form-group"><label for="modalCalcFunciones">Funciones</label><textarea id="modalCalcFunciones" class="form-control" rows="3"></textarea></div>
+                <div class="form-group"><label><input type="checkbox" id="modalCalcActivo" checked> Activa</label></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi" id="modalCalcGuardar"><i class="fas fa-save"></i> Guardar</button>
+                <button type="button" class="btn-ssepi btn-danger" id="modalCalcEliminar"><i class="fas fa-trash"></i> Eliminar</button>
+                <button type="button" class="btn-ssepi btn-secondary" id="modalCalcCancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    <!-- Modal Editar Costo -->
+    <div class="modal-backdrop calc-modal" id="modalCosto" aria-hidden="true">
+        <div class="modal">
+            <div class="modal-header"><h4 id="modalCostoTitle">Editar costo</h4><button type="button" class="modal-close" id="modalCostoClose" aria-label="Cerrar">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="modalCostoId">
+                <div class="form-group"><label for="modalCostoCalculadora">Calculadora</label><select id="modalCostoCalculadora" class="form-control"></select></div>
+                <div class="form-group"><label for="modalCostoConcepto">Concepto</label><input type="text" id="modalCostoConcepto" class="form-control"></div>
+                <div class="form-group"><label for="modalCostoCosto">Costo</label><input type="number" step="0.01" id="modalCostoCosto" class="form-control"></div>
+                <div class="form-group"><label for="modalCostoMoneda">Moneda</label><input type="text" id="modalCostoMoneda" class="form-control" value="MXN"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi" id="modalCostoGuardar"><i class="fas fa-save"></i> Guardar</button>
+                <button type="button" class="btn-ssepi btn-danger" id="modalCostoEliminar"><i class="fas fa-trash"></i> Eliminar</button>
+                <button type="button" class="btn-ssepi btn-secondary" id="modalCostoCancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    <!-- Modal Editar Cliente -->
+    <div class="modal-backdrop calc-modal" id="modalCliente" aria-hidden="true">
+        <div class="modal">
+            <div class="modal-header"><h4 id="modalClienteTitle">Editar cliente</h4><button type="button" class="modal-close" id="modalClienteClose" aria-label="Cerrar">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="modalClienteId">
+                <div class="form-group"><label for="modalClienteCalculadora">Calculadora</label><select id="modalClienteCalculadora" class="form-control"></select></div>
+                <div class="form-group"><label for="modalClienteNombre">Cliente</label><input type="text" id="modalClienteNombre" class="form-control"></div>
+                <div class="form-group"><label for="modalClienteEmail">Email</label><input type="email" id="modalClienteEmail" class="form-control"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi" id="modalClienteGuardar"><i class="fas fa-save"></i> Guardar</button>
+                <button type="button" class="btn-ssepi btn-danger" id="modalClienteEliminar"><i class="fas fa-trash"></i> Eliminar</button>
+                <button type="button" class="btn-ssepi btn-secondary" id="modalClienteCancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', function() {
+            (async function() {
+                var deadline = Date.now() + 5000;
+                while (!window.securityMiddleware || !window.authService) {
+                    if (Date.now() > deadline) return;
+                    await new Promise(function(r) { setTimeout(r, 50); });
+                }
+                await window.securityMiddleware.initSecurity();
+                await window.authService.requireAuth('/panel.html');
+                var profile = await window.authService.getCurrentProfile();
+                if (profile) {
+                    var rol = profile.rol || '';
+                    if (rol !== 'admin' && rol !== 'superadmin') {
+                        window.location.href = '/panel.html';
+                        return;
+                    }
+                    document.getElementById('userName').innerText = profile.nombre ? profile.nombre.split(' ')[0] : 'Usuario';
+                    document.getElementById('userAvatar').innerText = (profile.nombre ? profile.nombre[0] : 'U').toUpperCase();
+                }
+                if (window.calculadorasMod && window.calculadorasMod.init) window.calculadorasMod.init();
+                document.body.classList.remove('nav-loading');
+                document.body.classList.add('nav-ready');
+            })();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador CFDI 4.0</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══ UI EDITOR ═══ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--s1:#161b22;--s2:#21262d;--s3:#2d333b;--border:#30363d;--acc:#2f81f7;--acc2:#79c0ff;--text:#e6edf3;--muted:#8b949e;--r:8px}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+.topbar{height:56px;background:var(--s1);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;flex-shrink:0;position:sticky;top:0;z-index:200}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-ic{width:34px;height:34px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.brand-name{font-size:15px;font-weight:700}
+.brand-sub{font-size:10px;color:var(--muted)}
+.top-btns{display:flex;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 18px;border-radius:7px;border:none;font-family:'Inter',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all .15s}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--s2)}
+.btn-blue{background:var(--acc);color:white}
+.btn-blue:hover{background:#388bfd}
+.btn-pdf{background:linear-gradient(135deg,#dc2626,#ef4444);color:white;font-size:14px;padding:10px 24px}
+.btn-pdf:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(220,38,38,.45)}
+.btn-pdf:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.workspace{display:grid;grid-template-columns:400px 1fr;flex:1;overflow:hidden;height:calc(100vh - 56px)}
+.sidebar{background:var(--s1);border-right:1px solid var(--border);overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.sec{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.sec-hd{padding:9px 12px;background:var(--s3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
+.sec-hd em{font-size:13px;font-style:normal}
+.sec-hd b{font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--text)}
+.arr{margin-left:auto;font-size:9px;color:var(--muted);transition:transform .2s}
+.sec-hd.open .arr{transform:rotate(180deg)}
+.sec-bd{padding:12px;display:none;flex-direction:column;gap:9px}
+.sec-bd.open{display:flex}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+.f{display:flex;flex-direction:column;gap:3px}
+.f.full{grid-column:1/-1}
+label{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
+input,select,textarea{background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'Inter',sans-serif;font-size:12px;padding:6px 9px;outline:none;transition:border-color .15s;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--acc)}
+input::placeholder{color:var(--muted)}
+select option{background:#21262d}
+textarea{resize:vertical;font-family:'JetBrains Mono',monospace;font-size:10px}
+.mn{font-family:'JetBrains Mono',monospace;font-size:11px}
+.itbl{width:100%;border-collapse:collapse;font-size:11px}
+.itbl th{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:5px 3px 5px 0;border-bottom:1px solid var(--border)}
+.itbl td{padding:3px 3px 3px 0;vertical-align:middle}
+.ii{background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Inter',sans-serif;font-size:11px;padding:4px 6px;outline:none;width:100%}
+.ii:focus{border-color:var(--acc)}
+.del{width:22px;height:22px;border-radius:4px;background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.2);color:#f85149;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px}
+.del:hover{background:rgba(248,81,73,.25)}
+.add-row{display:flex;align-items:center;justify-content:center;gap:5px;padding:7px;border:1px dashed rgba(47,129,247,.35);border-radius:5px;background:rgba(47,129,247,.04);color:var(--acc2);font-size:11px;font-weight:600;cursor:pointer;width:100%}
+.add-row:hover{background:rgba(47,129,247,.1)}
+.totbox{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:9px 11px;display:flex;flex-direction:column;gap:4px}
+.tr{display:flex;justify-content:space-between;font-size:12px}
+.tr.main{border-top:1px solid var(--border);padding-top:5px;margin-top:2px;font-size:14px;font-weight:700;color:var(--acc2)}
+.tl{color:var(--muted);font-size:11px}
+.tv{font-family:'JetBrains Mono',monospace;font-weight:600}
+.preview-side{display:flex;flex-direction:column;overflow:hidden}
+.prev-bar{height:42px;background:var(--s1);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-shrink:0}
+.wd{width:10px;height:10px;border-radius:50%}
+.prev-scroll{flex:1;overflow:auto;background:#c8c8c8;padding:16px;display:flex;justify-content:center;align-items:flex-start}
+.loading{position:fixed;inset:0;background:rgba(13,17,23,.9);z-index:999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.loading.show{display:flex}
+.spin{width:46px;height:46px;border:4px solid var(--border);border-top-color:var(--acc);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ═══════════════════════════════════════
+   FACTURA — COPIA EXACTA DE LA FOTO
+═══════════════════════════════════════ */
+#factura-wrap{
+  width:794px;
+  min-height:1122px;
+  background:white;
+  padding:14px 16px 14px 16px;
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:8.5px;
+  color:#111;
+  line-height:1.3;
+  box-shadow:0 4px 30px rgba(0,0,0,.5);
+  flex-shrink:0;
+}
+
+/* ── CABECERA ── */
+.f-cab{display:flex;align-items:flex-start;border-bottom:2px solid #1a56a0;padding-bottom:8px;margin-bottom:8px;gap:8px}
+.f-logo{width:68px;height:68px;border:2px solid #1a56a0;border-radius:3px;display:flex;align-items:center;justify-content:center;flex-direction:column;flex-shrink:0}
+.f-logo img{max-width:62px;max-height:62px;object-fit:contain}
+.f-logo-txt{font-size:10px;font-weight:900;color:#1a56a0;text-align:center;line-height:1.1}
+.f-empresa{flex:1;text-align:center;padding:4px 6px}
+.f-empresa h1{font-size:13.5px;font-weight:900;color:#1a56a0;text-transform:uppercase;letter-spacing:.3px;line-height:1.2}
+.f-folio-box{min-width:185px;max-width:200px;border:1px solid #bbb;border-radius:3px;padding:6px 8px;font-size:7.5px}
+.frow{display:flex;gap:3px;margin-bottom:2px;align-items:flex-start}
+.frow-l{color:#555;font-weight:600;min-width:72px;flex-shrink:0;font-size:7px;line-height:1.3}
+.frow-v{font-family:'Courier New',monospace;font-weight:700;word-break:break-all;color:#111;font-size:7px;line-height:1.3}
+
+/* ── DATOS EMISOR/RECEPTOR ── */
+.f-2col{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+.f-box{border:1px solid #c0cad8;border-radius:2px;overflow:hidden}
+.f-box-hd{background:#1a56a0;color:white;font-size:7px;font-weight:700;padding:2.5px 6px;text-transform:uppercase;letter-spacing:.5px}
+.f-box-bd{padding:4px 6px}
+.fl{display:flex;gap:3px;margin-bottom:2px;font-size:7.5px;line-height:1.25}
+.fl-l{color:#444;font-weight:700;min-width:95px;flex-shrink:0;font-size:7px}
+.fl-v{color:#111;word-break:break-word;font-size:7.5px}
+
+/* ── CONCEPTOS ── */
+table.tconc{width:100%;border-collapse:collapse;margin-bottom:7px;font-size:7.5px}
+table.tconc th{background:#1a56a0;color:white;padding:3.5px 4px;text-align:left;font-size:6.5px;font-weight:700;text-transform:uppercase;line-height:1.2}
+table.tconc th.nr,table.tconc td.nr{text-align:right}
+table.tconc td{padding:3.5px 4px;border-bottom:1px solid #dde2ef;vertical-align:top;font-size:7.5px}
+table.tconc tr:nth-child(even) td{background:#f4f6fc}
+
+/* ── PARTE INFERIOR ── */
+.f-bot{display:grid;grid-template-columns:1fr 190px;gap:7px;margin-bottom:7px;align-items:start}
+.f-letras{border:1px solid #c0cad8;border-radius:2px;padding:5px 7px;margin-bottom:5px}
+.f-letras-l{font-size:6.5px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.3px;margin-bottom:1.5px}
+.f-letras-v{font-size:8px;font-weight:700;color:#1a56a0;line-height:1.4}
+.f-tot-box{border:1px solid #c0cad8;border-radius:2px;overflow:hidden}
+table.ftot{width:100%;border-collapse:collapse}
+table.ftot td{padding:3px 7px;font-size:8.5px;border-bottom:1px solid #e8ecf5}
+table.ftot td:last-child{text-align:right;font-family:'Courier New',monospace;font-weight:700;white-space:nowrap}
+.ftot-main td{background:#1a56a0;color:white!important;font-weight:900;font-size:10px;border:none}
+.f-imptras{padding:4px 7px;border-top:1px solid #c0cad8}
+.f-imptras-l{font-size:6.5px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:2px}
+table.fimp{width:100%;border-collapse:collapse;font-size:7.5px}
+table.fimp th{font-size:6.5px;font-weight:700;color:#666;text-transform:uppercase;padding:1px 3px;border-bottom:1px solid #dde}
+table.fimp td{padding:2px 3px}
+table.fimp td:last-child{text-align:right;font-family:'Courier New',monospace;font-weight:700}
+
+/* ── SELLOS ── */
+.f-sello{border:1px solid #c0cad8;border-radius:2px;padding:4px 7px;margin-bottom:4px}
+.f-sello-l{font-size:6.5px;font-weight:700;color:#333;text-transform:uppercase;letter-spacing:.3px;margin-bottom:1.5px}
+.f-sello-v{font-family:'Courier New',monospace;font-size:5.5px;color:#111;word-break:break-all;line-height:1.35}
+.f-sello-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px}
+.f-sello-mini{border:1px solid #c0cad8;border-radius:2px;padding:3px 6px}
+.f-sello-mini-l{font-size:6px;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:1px}
+.f-sello-mini-v{font-family:'Courier New',monospace;font-size:5.5px;color:#111;word-break:break-all;line-height:1.3}
+
+/* ── FOOTER QR ── */
+.f-footer{display:grid;grid-template-columns:88px 1fr;gap:10px;border-top:1.5px solid #a0aec0;padding-top:7px;margin-top:4px}
+.f-qr img{width:82px;height:82px;display:block}
+.f-footer-r{display:flex;flex-direction:column;gap:4px}
+.f-timbre{display:grid;grid-template-columns:1fr 1fr;gap:3px;font-size:6.5px;margin-bottom:3px}
+.f-timbre-lbl{font-weight:700;color:#333;margin-bottom:1px;font-size:6.5px}
+.f-timbre-val{font-family:'Courier New',monospace;word-break:break-all;color:#111;font-size:6px;line-height:1.3}
+.f-nota{font-size:6.5px;color:#444;line-height:1.55;border-top:1px dashed #bbb;padding-top:4px}
+.f-nota b{color:#1a56a0}
+.f-pag{text-align:right;font-size:7px;color:#666;margin-top:4px}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading" id="loading">
+  <div class="spin"></div>
+  <div style="font-size:15px;font-weight:600;color:#e6edf3">Generando PDF...</div>
+  <div style="font-size:12px;color:#8b949e">Por favor espera unos segundos</div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-ic">📄</div>
+    <div>
+      <div class="brand-name">Generador CFDI 4.0</div>
+      <div class="brand-sub">Factura Electrónica Mexicana</div>
+    </div>
+  </div>
+  <div class="top-btns">
+    <button class="btn btn-ghost" onclick="resetForm()">↺ Limpiar</button>
+    <button class="btn btn-blue" onclick="render()">👁 Vista Previa</button>
+    <button class="btn btn-pdf" id="btnpdf" onclick="descargarPDF()">⬇ DESCARGAR PDF</button>
+  </div>
+</div>
+
+<div class="workspace">
+
+<!-- ══════ FORMULARIO ══════ -->
+<aside class="sidebar">
+
+  <!-- EMISOR -->
+  <div class="sec">
+    <div class="sec-hd open" onclick="toggle(this)"><em>🏢</em><b>Emisor</b><span class="arr">▼</span></div>
+    <div class="sec-bd open">
+      <div class="f full"><label>Razón Social</label>
+        <input id="e_nom" value="SOLUCIONES Y SERVICIOS ELECTRONICOS PROFESIONALES INSDUSTRIALES"></div>
+      <div class="r2">
+        <div class="f"><label>RFC Emisor</label><input id="e_rfc" class="mn" value="VATi2407350PA"></div>
+        <div class="f"><label>Código Postal</label><input id="e_cp" value="47180" maxlength="5"></div>
+      </div>
+      <div class="f full"><label>Régimen Fiscal</label>
+        <select id="e_reg">
+          <option value="612" selected>612 - Personas Físicas con Actividades Empresariales y Profesionales</option>
+          <option value="601">601 - General de Ley Personas Morales</option>
+          <option value="621">621 - Incorporación Fiscal</option>
+          <option value="626">626 - Simplificado de Confianza</option>
+          <option value="605">605 - Sueldos y Salarios</option>
+          <option value="616">616 - Sin obligaciones fiscales</option>
+        </select>
+      </div>
+      <div class="r2">
+        <div class="f"><label>Logo (URL imagen)</label><input id="e_logo" placeholder="https://..."></div>
+        <div class="f"><label>Texto si no hay logo</label><input id="e_ltxt" value="SSEPI"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECEPTOR -->
+  <div class="sec">
+    <div class="sec-hd open" onclick="toggle(this)"><em>👤</em><b>Receptor</b><span class="arr">▼</span></div>
+    <div class="sec-bd open">
+      <div class="r2">
+        <div class="f"><label>RFC Receptor</label><input id="r_rfc" class="mn" value="VAZD150622TY0"></div>
+        <div class="f"><label>Nombre receptor</label><input id="r_nom" value="DANIEL YOSEL VALDES ZUÑIGA"></div>
+      </div>
+      <div class="r3">
+        <div class="f"><label>Folio</label><input id="r_folio" class="mn" value="207"></div>
+        <div class="f"><label>Nombre comercial</label><input id="r_com" value="ANCRUPLAST"></div>
+        <div class="f"><label>Código postal</label><input id="r_cp" value="47180" maxlength="5"></div>
+      </div>
+      <div class="f full"><label>Régimen Fiscal Receptor</label>
+        <select id="r_reg">
+          <option value="601" selected>601 - General de Ley Personas Morales</option>
+          <option value="612">612 - Personas Físicas con Actividades Empresariales</option>
+          <option value="616">616 - Sin obligaciones fiscales</option>
+          <option value="621">621 - Incorporación Fiscal</option>
+          <option value="626">626 - Simplificado de Confianza</option>
+        </select>
+      </div>
+      <div class="f full"><label>Uso CFDI</label>
+        <select id="r_uso">
+          <option value="G03" selected>G03 - Gastos en general</option>
+          <option value="G01">G01 - Adquisición de mercancias</option>
+          <option value="I04">I04 - Equipo de computo y accesorios</option>
+          <option value="S01">S01 - Sin efectos fiscales</option>
+          <option value="CP01">CP01 - Pagos</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPROBANTE -->
+  <div class="sec">
+    <div class="sec-hd open" onclick="toggle(this)"><em>📋</em><b>Comprobante</b><span class="arr">▼</span></div>
+    <div class="sec-bd open">
+      <div class="f full"><label>Folio Fiscal</label>
+        <input id="c_folio" class="mn" value="7CD968A3-F02D-4D2A-9FCC-44AT1B1B50C"></div>
+      <div class="r3">
+        <div class="f"><label>No. Serie CSD</label><input id="c_serie" class="mn" value="A"></div>
+        <div class="f"><label>No. Certificado</label><input id="c_cert" class="mn" value="00001000000705098297"></div>
+        <div class="f"><label>Efecto</label><input id="c_efecto" value="Ingreso"></div>
+      </div>
+      <div class="r2">
+        <div class="f"><label>Fecha y hora emisión</label><input id="c_fecha" type="datetime-local" value="2025-03-10T11:45:02"></div>
+        <div class="f"><label>Tipo Comprobante</label>
+          <select id="c_tipo"><option value="I" selected>I - Ingreso</option><option value="E">E - Egreso</option><option value="T">T - Traslado</option></select>
+        </div>
+      </div>
+      <div class="r2">
+        <div class="f"><label>Forma de Pago</label>
+          <select id="c_forma">
+            <option value="99" selected>99 - Por definir</option>
+            <option value="01">01 - Efectivo</option>
+            <option value="03">03 - Transferencia</option>
+            <option value="04">04 - Tarjeta crédito</option>
+            <option value="28">28 - Tarjeta débito</option>
+          </select>
+        </div>
+        <div class="f"><label>Método de Pago</label>
+          <select id="c_metodo">
+            <option value="PPD" selected>PPD - Parcialidades o diferido</option>
+            <option value="PUE">PUE - Una sola exhibición</option>
+          </select>
+        </div>
+      </div>
+      <div class="r2">
+        <div class="f"><label>Moneda</label>
+          <select id="c_moneda"><option value="MXN" selected>MXN - Peso Mexicano</option><option value="USD">USD</option><option value="EUR">EUR</option></select>
+        </div>
+        <div class="f"><label>Exportación</label>
+          <select id="c_export"><option value="01" selected>01 - No aplica</option><option value="02">02 - Definitiva</option></select>
+        </div>
+      </div>
+      <div class="r2">
+        <div class="f"><label>Condiciones de Pago</label><input id="c_cond" value="CREDITO"></div>
+        <div class="f"><label>Lugar de Expedición</label><input id="c_lugar" value="47180"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONCEPTOS -->
+  <div class="sec">
+    <div class="sec-hd open" onclick="toggle(this)"><em>📦</em><b>Conceptos</b><span class="arr">▼</span></div>
+    <div class="sec-bd open">
+      <div style="overflow-x:auto">
+        <table class="itbl">
+          <thead><tr>
+            <th style="width:72px">Clave SAT</th>
+            <th>Descripción</th>
+            <th style="width:36px">Cant</th>
+            <th style="width:58px">Cve unid</th>
+            <th style="width:55px">Unidad</th>
+            <th style="width:75px">Precio Unit.</th>
+            <th style="width:24px"></th>
+          </tr></thead>
+          <tbody id="items-body"></tbody>
+        </table>
+      </div>
+      <button class="add-row" onclick="addRow()">＋ Agregar concepto</button>
+      <div class="r2">
+        <div class="f"><label>IVA %</label>
+          <select id="iva_p" onchange="recalc()">
+            <option value="16" selected>16%</option><option value="8">8%</option><option value="0">0% Exento</option>
+          </select>
+        </div>
+        <div class="f"><label>Descuento %</label>
+          <input type="number" id="desc_p" value="0" min="0" max="100" step="0.01" oninput="recalc()">
+        </div>
+      </div>
+      <div class="totbox">
+        <div class="tr"><span class="tl">Subtotal</span><span class="tv" id="ts">$0.00</span></div>
+        <div class="tr"><span class="tl">Descuento</span><span class="tv" id="tdesc">$0.00</span></div>
+        <div class="tr"><span class="tl">Base imponible</span><span class="tv" id="tbase">$0.00</span></div>
+        <div class="tr"><span class="tl" id="tival">IVA 16%</span><span class="tv" id="tiva">$0.00</span></div>
+        <div class="tr main"><span>TOTAL</span><span id="ttot">$0.00</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SELLOS -->
+  <div class="sec">
+    <div class="sec-hd" onclick="toggle(this)"><em>🔏</em><b>Sellos Digitales</b><span class="arr">▼</span></div>
+    <div class="sec-bd">
+      <div class="f"><label>Sello digital del CFDI</label>
+        <textarea id="s_cfdi" rows="3">ZWyMz06SE4AvxmIPkJIPF4ouYRNWNPqT1U3CoQSSGCCYpDvO412B3Pwrmdq9B62FqsB05TRnYMChKpAQBIJle+ZWyMz06SE4AvxmIPkJIPF4ouYRNWNPqT1U3CoQSSGCCYpDvO412B3Pwrmdq9B62FqsB05TRnYMChKpAQBIJleB17CD968A3F02D4D2A9FCC44</textarea>
+      </div>
+      <div class="f"><label>Sello digital del SAT</label>
+        <textarea id="s_sat" rows="3">oB0DQP1rwDuFsqWsNOgwA0UrBAxCbQr25RENC2ADlQGebAoMY0=cRTCwS+pPS+goZ012D6ZBsLqIACyJruGda3bboALCyJruGda3bboAL+u/J73SbWrgSNNguiVhACU2uAh5dv2DNt+bWuS54TNING==</textarea>
+      </div>
+      <div class="r2">
+        <div class="f"><label>RFC PAC certificador</label><input id="s_pac" class="mn" value="SAT1207070N43"></div>
+        <div class="f"><label>No. Serie Certificado SAT</label><input id="s_csat" class="mn" value="00001000000703250088"></div>
+      </div>
+      <div class="r2">
+        <div class="f"><label>UUID / Folio Fiscal Timbre</label><input id="s_uuid" class="mn" value="00001000000705088297"></div>
+        <div class="f"><label>Fecha y hora certificación</label><input id="s_fcert" type="datetime-local" value="2025-03-10T11:45:32"></div>
+      </div>
+      <div class="f"><label>Cadena Original del Complemento</label>
+        <textarea id="s_cad" rows="2">||1.1|00001000000705088297|2025-03-10T11:45:02|ZWyMz06SE4Avxm|oB0DQP1rwDuFs||</textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- XML TIMBRADO -->
+  <div class="sec">
+    <div class="sec-hd" onclick="toggle(this)"><em>🧾</em><b>XML timbrado</b><span class="arr">▼</span></div>
+    <div class="sec-bd">
+      <div class="f"><label>XML CFDI timbrado (para respaldo / enviar a soporte)</label>
+        <textarea id="xml_timbrado" rows="6" placeholder="Aquí aparecerá el XML timbrado si viene desde la app..."></textarea>
+      </div>
+      <div class="r2">
+        <div class="f">
+          <button class="btn btn-ghost" type="button" onclick="copiarXml()">Copiar XML</button>
+        </div>
+        <div class="f">
+          <button class="btn btn-blue" type="button" onclick="descargarXml()">Descargar XML</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:20px"></div>
+</aside>
+
+<!-- ══════ PREVIEW ══════ -->
+<div class="preview-side">
+  <div class="prev-bar">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="wd" style="background:#ff5f57"></div>
+      <div class="wd" style="background:#ffbd2e"></div>
+      <div class="wd" style="background:#28c840"></div>
+      <span style="font-size:11px;color:var(--muted);margin-left:6px">Vista previa CFDI</span>
+    </div>
+    <button class="btn btn-pdf" onclick="descargarPDF()" style="padding:5px 14px;font-size:12px">⬇ Descargar PDF</button>
+  </div>
+  <div class="prev-scroll">
+    <div id="factura-wrap">
+      <div style="text-align:center;padding:80px 0;color:#aaa;font-size:13px">
+        Llena el formulario → haz clic en <b style="color:#1a56a0">👁 Vista Previa</b> o <b style="color:#dc2626">⬇ Descargar PDF</b>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- workspace -->
+
+<script>
+/* ═══ DATOS INICIALES ═══ */
+let rows=[{
+  clave:'SER REPARACION: SENSOR ALINEACION RE SP4.5-10 SP3 24V DC IC 49900',
+  desc:'SER REPARACION: SENSOR ALINEACION RE SP4.5-10 SP3 24V DC IC 49900',
+  cant:1, cve_unid:'E48', unidad:'Servicio', precio:5090.112069
+}];
+
+/* ═══ MAPAS ═══ */
+const REGIMEN={'601':'General de Ley Personas Morales','612':'Personas Físicas con Actividades Empresariales y Profesionales','621':'Incorporación Fiscal','626':'Simplificado de Confianza','605':'Sueldos y Salarios','616':'Sin obligaciones fiscales'};
+const USO={'G03':'Gastos en general','G01':'Adquisición de mercancias','I04':'Equipo de computo y accesorios','S01':'Sin efectos fiscales','CP01':'Pagos'};
+const FORMA={'99':'Por definir','01':'Efectivo','02':'Cheque nominativo','03':'Transferencia electrónica de fondos','04':'Tarjeta de crédito','28':'Tarjeta de débito'};
+const METODO={'PUE':'Pago en una sola exhibición','PPD':'Pago en parcialidades o diferido'};
+const EXPORTA={'01':'No aplica','02':'Definitiva','03':'Temporal'};
+
+/* ═══ ACCORDION ═══ */
+function toggle(hd){hd.classList.toggle('open');hd.nextElementSibling.classList.toggle('open')}
+
+/* ═══ ITEMS ═══ */
+function renderRows(){
+  document.getElementById('items-body').innerHTML=rows.map((r,i)=>`
+    <tr>
+      <td><input class="ii" style="font-size:9px;font-family:monospace" value="${esc(r.clave)}" oninput="rows[${i}].clave=this.value"></td>
+      <td><input class="ii" value="${esc(r.desc)}" oninput="rows[${i}].desc=this.value;recalc()"></td>
+      <td><input class="ii" type="number" value="${r.cant}" min="0" step="any" oninput="rows[${i}].cant=+this.value;recalc()" style="text-align:right"></td>
+      <td><input class="ii" value="${esc(r.cve_unid||'')}" oninput="rows[${i}].cve_unid=this.value"></td>
+      <td><input class="ii" value="${esc(r.unidad)}" oninput="rows[${i}].unidad=this.value"></td>
+      <td><input class="ii" type="number" value="${r.precio}" min="0" step="any" oninput="rows[${i}].precio=+this.value;recalc()" style="text-align:right"></td>
+      <td><button class="del" onclick="delRow(${i})">✕</button></td>
+    </tr>`).join('');
+  recalc();
+}
+function addRow(){rows.push({clave:'',desc:'',cant:1,cve_unid:'E48',unidad:'Pieza',precio:0});renderRows()}
+function delRow(i){if(rows.length<2)return;rows.splice(i,1);renderRows()}
+function esc(s){return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+
+/* ═══ RECALC ═══ */
+function recalc(){
+  const sub=rows.reduce((s,r)=>s+r.cant*r.precio,0);
+  const dp=(+gv('desc_p')||0)/100;
+  const desc=sub*dp, base=sub-desc;
+  const ivap=+gv('iva_p')/100, iva=base*ivap, tot=base+iva;
+  const f=n=>'$'+n.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('ts').textContent=f(sub);
+  document.getElementById('tdesc').textContent=f(desc);
+  document.getElementById('tbase').textContent=f(base);
+  document.getElementById('tival').textContent=`IVA ${(ivap*100).toFixed(0)}%`;
+  document.getElementById('tiva').textContent=f(iva);
+  document.getElementById('ttot').textContent=f(tot);
+}
+
+/* ═══ HELPERS ═══ */
+const gv=id=>document.getElementById(id)?.value||'';
+const fmx=(n,d=2)=>Number(n).toLocaleString('es-MX',{minimumFractionDigits:d,maximumFractionDigits:d});
+const f2=n=>'$ '+fmx(n,2);
+const f6=n=>fmx(n,6);
+
+function setv(id, v){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.value = (v ?? '');
+}
+
+function applyPayload(p){
+  if(!p) return;
+  // Emisor / Receptor
+  setv('e_nom', p.emisor?.nombre);
+  setv('e_rfc', p.emisor?.rfc);
+  setv('e_cp', p.emisor?.cp);
+  if(p.emisor?.regimen) setv('e_reg', p.emisor.regimen);
+  if(p.emisor?.logo_url) setv('e_logo', p.emisor.logo_url);
+  if(p.emisor?.logo_texto) setv('e_ltxt', p.emisor.logo_texto);
+
+  setv('r_rfc', p.receptor?.rfc);
+  setv('r_nom', p.receptor?.nombre);
+  setv('r_cp', p.receptor?.cp);
+  if(p.receptor?.regimen) setv('r_reg', p.receptor.regimen);
+  if(p.receptor?.uso_cfdi) setv('r_uso', p.receptor.uso_cfdi);
+
+  // Comprobante / Timbre
+  setv('c_folio', p.comprobante?.folio_fiscal);
+  setv('c_serie', p.comprobante?.serie);
+  setv('c_cert', p.comprobante?.no_certificado);
+  setv('c_efecto', p.comprobante?.efecto);
+  if(p.comprobante?.fecha_emision) setv('c_fecha', p.comprobante.fecha_emision);
+  if(p.comprobante?.tipo) setv('c_tipo', p.comprobante.tipo);
+  if(p.comprobante?.forma_pago) setv('c_forma', p.comprobante.forma_pago);
+  if(p.comprobante?.metodo_pago) setv('c_metodo', p.comprobante.metodo_pago);
+  if(p.comprobante?.moneda) setv('c_moneda', p.comprobante.moneda);
+  if(p.comprobante?.exportacion) setv('c_export', p.comprobante.exportacion);
+  setv('c_cond', p.comprobante?.condiciones);
+  setv('c_lugar', p.comprobante?.lugar_expedicion);
+
+  setv('s_cfdi', p.timbre?.sello_cfdi);
+  setv('s_sat', p.timbre?.sello_sat);
+  setv('s_pac', p.timbre?.rfc_pac);
+  setv('s_csat', p.timbre?.no_certificado_sat);
+  setv('s_uuid', p.timbre?.uuid);
+  if(p.timbre?.fecha_timbrado) setv('s_fcert', p.timbre.fecha_timbrado);
+  setv('s_cad', p.timbre?.cadena_original);
+
+  // XML timbrado
+  setv('xml_timbrado', p.xml_timbrado);
+
+  // Conceptos
+  if(Array.isArray(p.conceptos) && p.conceptos.length){
+    rows = p.conceptos.map(c => ({
+      clave: c.clave_prod_serv || '',
+      desc: c.descripcion || '',
+      cant: Number(c.cantidad || 1),
+      cve_unid: c.clave_unidad || 'E48',
+      unidad: c.unidad || 'Servicio',
+      precio: Number(c.valor_unitario || 0),
+    }));
+  }
+
+  renderRows();
+  render();
+}
+
+function numLetras(n){
+  const u=['','UN','DOS','TRES','CUATRO','CINCO','SEIS','SIETE','OCHO','NUEVE','DIEZ','ONCE','DOCE','TRECE','CATORCE','QUINCE','DIECISÉIS','DIECISIETE','DIECIOCHO','DIECINUEVE'];
+  const d=['','DIEZ','VEINTE','TREINTA','CUARENTA','CINCUENTA','SESENTA','SETENTA','OCHENTA','NOVENTA'];
+  const c=['','CIENTO','DOSCIENTOS','TRESCIENTOS','CUATROCIENTOS','QUINIENTOS','SEISCIENTOS','SETECIENTOS','OCHOCIENTOS','NOVECIENTOS'];
+  function cv(n){
+    if(n===0)return'CERO';if(n<20)return u[n];
+    if(n<100){const a=Math.floor(n/10),b=n%10;return b===0?d[a]:a===2?'VEINTI'+u[b]:d[a]+' Y '+u[b];}
+    if(n===100)return'CIEN';if(n<1000)return c[Math.floor(n/100)]+(n%100?' '+cv(n%100):'');
+    if(n<2000)return'MIL'+(n%1000?' '+cv(n%1000):'');
+    if(n<1000000){const m=Math.floor(n/1000),r=n%1000;return cv(m)+' MIL'+(r?' '+cv(r):'');}
+    const m=Math.floor(n/1000000),r=n%1000000;return cv(m)+(m===1?' MILLÓN':' MILLONES')+(r?' '+cv(r):'');
+  }
+  const ent=Math.floor(n),cts=Math.round((n-ent)*100);
+  return cv(ent)+' '+(cts>0?String(cts).padStart(2,'0')+'/100':'00/100')+' '+gv('c_moneda');
+}
+
+/* QR placeholder SVG */
+function makeQR(s){
+  let q=`<svg xmlns="http://www.w3.org/2000/svg" width="82" height="82"><rect width="82" height="82" fill="white"/>`;
+  [[2,2],[56,2],[2,56]].forEach(([x,y])=>{
+    q+=`<rect x="${x}" y="${y}" width="24" height="24" fill="black"/>`;
+    q+=`<rect x="${x+3}" y="${y+3}" width="18" height="18" fill="white"/>`;
+    q+=`<rect x="${x+6}" y="${y+6}" width="12" height="12" fill="black"/>`;
+  });
+  q+=`<rect x="56" y="56" width="24" height="24" fill="black"/><rect x="59" y="59" width="18" height="18" fill="white"/><rect x="62" y="62" width="12" height="12" fill="black"/>`;
+  for(let i=0;i<250;i++){
+    const px=((s.charCodeAt(i%s.length)*137+i*53)%62);
+    const py=((s.charCodeAt(i%s.length)*97+i*71)%62);
+    if(px<24&&py<24)continue;if(px>56&&py<24)continue;if(px<24&&py>56)continue;if(px>56&&py>56)continue;
+    if(i%2===0)q+=`<rect x="${px+8}" y="${py+8}" width="3" height="3" fill="black"/>`;
+  }
+  return q+'</svg>';
+}
+
+/* ═══ RENDER FACTURA HTML ═══ */
+function buildFactura(){
+  /* totales */
+  const sub=rows.reduce((s,r)=>s+r.cant*r.precio,0);
+  const dp=(+gv('desc_p')||0)/100;
+  const desc=sub*dp, base=sub-desc;
+  const ivap=+gv('iva_p')/100, iva=base*ivap, tot=base+iva;
+
+  const fecha=gv('c_fecha').replace('T',' ');
+  const fechaCert=gv('s_fcert').replace('T',' ');
+  const logoUrl=gv('e_logo');
+  const logoInner=logoUrl
+    ?`<img src="${logoUrl}" style="max-width:62px;max-height:62px;object-fit:contain">`
+    :`<span class="f-logo-txt">${gv('e_ltxt')||'LOGO'}</span>`;
+
+  /* filas de conceptos */
+  const concRows=rows.map(r=>{
+    const imp=r.cant*r.precio, ivaI=imp*ivap;
+    return `<tr>
+      <td style="font-size:6.5px;word-break:break-all;font-family:'Courier New',monospace;max-width:160px">${r.clave||''}</td>
+      <td class="nr">${r.cant}</td>
+      <td style="font-size:7px">${r.cve_unid||''}</td>
+      <td style="font-size:7px">${r.unidad}</td>
+      <td class="nr" style="font-family:'Courier New',monospace">${f6(r.precio)}</td>
+      <td class="nr" style="font-family:'Courier New',monospace">${fmx(imp)}</td>
+      <td style="text-align:center;font-size:7px">T</td>
+      <td style="font-size:7px">Traslado</td>
+      <td class="nr" style="font-family:'Courier New',monospace">${fmx(ivap*100,2)}%</td>
+      <td class="nr" style="font-family:'Courier New',monospace">${fmx(ivaI)}</td>
+      <td class="nr" style="font-family:'Courier New',monospace">${fmx(imp+ivaI)}</td>
+    </tr>`;
+  }).join('');
+
+  const qr='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(makeQR(gv('s_uuid')))));
+
+  return `
+  <!-- ▓▓ CABECERA ▓▓ -->
+  <div class="f-cab">
+    <div class="f-logo">${logoInner}</div>
+    <div class="f-empresa"><h1>${gv('e_nom')}</h1></div>
+    <div class="f-folio-box">
+      <div class="frow"><span class="frow-l">Folio Fiscal:</span></div>
+      <div class="frow"><span class="frow-v" style="font-size:6.5px">${gv('c_folio')}</span></div>
+      <div class="frow" style="margin-top:2px">
+        <span class="frow-l">No. de serie del CSD:</span>
+        <span class="frow-v">${gv('c_serie')}</span>
+      </div>
+      <div class="frow">
+        <span class="frow-l">Código postal, fecha y hora de emisión:</span>
+      </div>
+      <div class="frow">
+        <span class="frow-v">${gv('e_cp')} ${fecha}</span>
+      </div>
+      <div class="frow">
+        <span class="frow-l">Efecto del comprobante:</span>
+        <span class="frow-v">${gv('c_efecto')}</span>
+      </div>
+      <div class="frow">
+        <span class="frow-l">Régimen fiscal:</span>
+      </div>
+      <div class="frow">
+        <span class="frow-v" style="font-size:6.5px">${REGIMEN[gv('e_reg')]||gv('e_reg')}</span>
+      </div>
+      <div class="frow">
+        <span class="frow-l">Exportación:</span>
+        <span class="frow-v">${EXPORTA[gv('c_export')]||gv('c_export')}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ▓▓ EMISOR / RECEPTOR ▓▓ -->
+  <div class="f-2col">
+    <div class="f-box">
+      <div class="f-box-hd">RFC emisor</div>
+      <div class="f-box-bd">
+        <div class="fl"><span class="fl-l">RFC emisor:</span><span class="fl-v">${gv('e_rfc')}</span></div>
+        <div class="fl"><span class="fl-l">Nombre emisor:</span><span class="fl-v">${gv('e_nom')}</span></div>
+        <div class="fl"><span class="fl-l">Folio:</span><span class="fl-v" style="font-family:'Courier New',monospace;font-size:7px">${gv('c_folio')}</span></div>
+      </div>
+    </div>
+    <div class="f-box">
+      <div class="f-box-hd">RFC receptor</div>
+      <div class="f-box-bd">
+        <div class="fl"><span class="fl-l">RFC receptor:</span><span class="fl-v">${gv('r_rfc')}</span></div>
+        <div class="fl"><span class="fl-l">Nombre receptor:</span><span class="fl-v">${gv('r_nom')}</span></div>
+        <div class="fl"><span class="fl-l">Folio:</span><span class="fl-v">${gv('r_folio')}</span></div>
+        <div class="fl"><span class="fl-l">Nombre receptor:</span><span class="fl-v">${gv('r_com')}</span></div>
+        <div class="fl"><span class="fl-l">Código postal del receptor:</span><span class="fl-v">${gv('r_cp')}</span></div>
+        <div class="fl"><span class="fl-l">Régimen fiscal receptor:</span><span class="fl-v" style="font-size:7px">${REGIMEN[gv('r_reg')]||gv('r_reg')}</span></div>
+        <div class="fl"><span class="fl-l">Uso CFDI:</span><span class="fl-v">${USO[gv('r_uso')]||gv('r_uso')}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ▓▓ CONCEPTOS ▓▓ -->
+  <table class="tconc">
+    <thead>
+      <tr>
+        <th style="width:18%">Clave del producto<br>y servicio</th>
+        <th class="nr" style="width:5%">Cantidad</th>
+        <th style="width:6%">Cve<br>unid</th>
+        <th style="width:7%">Unidad</th>
+        <th class="nr" style="width:11%">Valor unitario</th>
+        <th class="nr" style="width:9%">Importe</th>
+        <th style="width:3%;text-align:center">Tipo</th>
+        <th style="width:7%">Factor</th>
+        <th class="nr" style="width:7%">Tasa o<br>Cuota</th>
+        <th class="nr" style="width:10%">Importe<br>impuesto</th>
+        <th class="nr" style="width:10%">Objeto<br>imponible</th>
+      </tr>
+    </thead>
+    <tbody>${concRows}</tbody>
+  </table>
+
+  <!-- ▓▓ BLOQUE INFERIOR ▓▓ -->
+  <div class="f-bot">
+    <!-- Izquierda: letras + pago + descuento -->
+    <div>
+      <div class="f-letras">
+        <div class="f-letras-l">Importe con letra:</div>
+        <div class="f-letras-v">${numLetras(tot)}</div>
+      </div>
+      <div class="f-2col" style="margin-bottom:0">
+        <div class="f-box">
+          <div class="f-box-hd">Pago</div>
+          <div class="f-box-bd">
+            <div class="fl"><span class="fl-l">Moneda:</span><span class="fl-v">${gv('c_moneda')}</span></div>
+            <div class="fl"><span class="fl-l">Forma de pago:</span><span class="fl-v">${FORMA[gv('c_forma')]||gv('c_forma')}</span></div>
+            <div class="fl"><span class="fl-l">Método de pago:</span><span class="fl-v">${METODO[gv('c_metodo')]||gv('c_metodo')}</span></div>
+            <div class="fl"><span class="fl-l">Condiciones de pago:</span><span class="fl-v">${gv('c_cond')}</span></div>
+          </div>
+        </div>
+        <div class="f-box">
+          <div class="f-box-hd">Descuento</div>
+          <div class="f-box-bd">
+            <div class="fl"><span class="fl-l">Tipo:</span><span class="fl-v">Factor</span></div>
+            <div class="fl"><span class="fl-l">Tasa:</span><span class="fl-v">${fmx(dp,6)}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Derecha: totales + impuestos trasladados -->
+    <div class="f-tot-box">
+      <table class="ftot">
+        <tr><td>Subtotal</td><td>${f2(sub)}</td></tr>
+        ${desc>0?`<tr><td>Descuento</td><td>${f2(desc)}</td></tr>`:''}
+        <tr><td style="color:#555">Subtotal</td><td>${f2(base)}</td></tr>
+        <tr><td>IVA ${fmx(ivap*100,0)}%</td><td>${f2(iva)}</td></tr>
+        <tr class="ftot-main"><td>Total</td><td>${f2(tot)}</td></tr>
+      </table>
+      <div class="f-imptras">
+        <div class="f-imptras-l">Impuestos trasladados</div>
+        <table class="fimp">
+          <thead><tr><th>Base</th><th>Impuesto</th><th>Tipo</th><th>Tasa o Cuota</th><th>Importe</th></tr></thead>
+          <tbody>
+            <tr>
+              <td style="font-family:'Courier New',monospace">${fmx(base)}</td>
+              <td>IVA</td>
+              <td>Tasa</td>
+              <td style="text-align:right">${fmx(ivap*100,6)}</td>
+              <td>${f2(iva)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ▓▓ SELLOS ▓▓ -->
+  <div class="f-sello">
+    <div class="f-sello-l">Sello digital del CFDI:</div>
+    <div class="f-sello-v">${gv('s_cfdi')}</div>
+  </div>
+  <div class="f-sello">
+    <div class="f-sello-l">Sello digital del SAT:</div>
+    <div class="f-sello-v">${gv('s_sat')}</div>
+  </div>
+
+  <div class="f-sello-grid">
+    <div>
+      <div class="f-sello" style="margin-bottom:0">
+        <div class="f-sello-l">Cadena Original del complemento de certificación digital del SAT:</div>
+        <div class="f-sello-v">${gv('s_cad')}</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div class="f-sello-mini">
+        <div class="f-sello-mini-l">Fecha y hora de certificación:</div>
+        <div class="f-sello-mini-v">${fechaCert}</div>
+      </div>
+      <div class="f-sello-mini">
+        <div class="f-sello-mini-l">RFC del proveedor de certificación:</div>
+        <div class="f-sello-mini-v">${gv('s_pac')}</div>
+      </div>
+      <div class="f-sello-mini">
+        <div class="f-sello-mini-l">No. de serie del certificado SAT:</div>
+        <div class="f-sello-mini-v">${gv('s_csat')}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ▓▓ FOOTER: QR + NOTA ▓▓ -->
+  <div class="f-footer">
+    <div class="f-qr"><img src="${qr}" width="82" height="82"></div>
+    <div class="f-footer-r">
+      <div class="f-timbre">
+        <div>
+          <div class="f-timbre-lbl">Folio fiscal UUID:</div>
+          <div class="f-timbre-val">${gv('s_uuid')}</div>
+        </div>
+        <div>
+          <div class="f-timbre-lbl">No. de certificado:</div>
+          <div class="f-timbre-val">${gv('c_cert')}</div>
+        </div>
+        <div>
+          <div class="f-timbre-lbl">Fecha y hora de certificación:</div>
+          <div class="f-timbre-val">${fechaCert}</div>
+        </div>
+        <div>
+          <div class="f-timbre-lbl">No. de serie del certificado SAT:</div>
+          <div class="f-timbre-val">${gv('s_csat')}</div>
+        </div>
+      </div>
+      <div class="f-nota">
+        <b>Este documento es una representación impresa de un CFDI.</b><br>
+        El logotipo de esta factura es responsabilidad única y exclusiva de quien la emite.<br>
+        El SAT quiere reservarse de cumplir cualquier obligación que derive del acto.
+      </div>
+    </div>
+  </div>
+  <div class="f-pag">Página 1 de 1</div>`;
+}
+
+/* ═══ RENDER EN PANTALLA ═══ */
+function render(){
+  document.getElementById('factura-wrap').innerHTML=buildFactura();
+}
+
+/* ═══ DESCARGAR PDF ═══ */
+async function descargarPDF(){
+  render();
+  await new Promise(r=>setTimeout(r,250));
+
+  const btn=document.getElementById('btnpdf');
+  const ld=document.getElementById('loading');
+  btn.disabled=true;
+  ld.classList.add('show');
+
+  try{
+    const el=document.getElementById('factura-wrap');
+    const canvas=await html2canvas(el,{
+      scale:2.5,
+      useCORS:true,
+      backgroundColor:'#ffffff',
+      logging:false,
+      windowWidth:860,
+      allowTaint:true
+    });
+
+    const img=canvas.toDataURL('image/jpeg',0.97);
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+
+    const pw=pdf.internal.pageSize.getWidth();
+    const ph=pdf.internal.pageSize.getHeight();
+    const iw=canvas.width, ih=canvas.height;
+    const ratio=iw/ih;
+    let fw=pw-10, fh=fw/ratio;
+    if(fh>ph-6){fh=ph-6;fw=fh*ratio;}
+    const ox=(pw-fw)/2;
+
+    pdf.addImage(img,'JPEG',ox,3,fw,fh);
+
+    const folio=gv('c_folio').replace(/[^a-zA-Z0-9]/g,'').substring(0,10)||'factura';
+    const rfc=gv('e_rfc').replace(/[^a-zA-Z0-9]/g,'')||'CFDI';
+    pdf.save(`factura_${rfc}_${folio}.pdf`);
+
+  }catch(err){
+    alert('Error al generar PDF:\n'+err.message);
+    console.error(err);
+  }finally{
+    btn.disabled=false;
+    ld.classList.remove('show');
+  }
+}
+
+/* ═══ RESET ═══ */
+function resetForm(){
+  if(!confirm('¿Limpiar todo?'))return;
+  rows=[{clave:'',desc:'',cant:1,cve_unid:'E48',unidad:'Pieza',precio:0}];
+  renderRows();
+  document.getElementById('factura-wrap').innerHTML='<div style="text-align:center;padding:80px;color:#aaa">Llena el formulario</div>';
+}
+
+function copiarXml(){
+  const t = document.getElementById('xml_timbrado');
+  if(!t || !t.value) return alert('No hay XML para copiar.');
+  t.select();
+  document.execCommand('copy');
+  alert('XML copiado.');
+}
+
+function descargarXml(){
+  const xml = gv('xml_timbrado');
+  if(!xml) return alert('No hay XML para descargar.');
+  const blob = new Blob([xml], {type:'application/xml;charset=utf-8'});
+  const a = document.createElement('a');
+  const folio = (gv('c_folio')||'factura').replace(/[^a-zA-Z0-9]/g,'').substring(0,10) || 'factura';
+  const rfc = (gv('e_rfc')||'CFDI').replace(/[^a-zA-Z0-9]/g,'') || 'CFDI';
+  a.href = URL.createObjectURL(blob);
+  a.download = `factura_${rfc}_${folio}.xml`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+
+/* ═══ AUTO PREVIEW ═══ */
+let pt=null;
+function dp2(){clearTimeout(pt);pt=setTimeout(render,700)}
+document.addEventListener('input',dp2);
+document.addEventListener('change',dp2);
+
+/* ═══ INIT ═══ */
+if (window.__CFDI_PAYLOAD__) {
+  applyPayload(window.__CFDI_PAYLOAD__);
+} else {
+  renderRows();
+  render();
+}
+</script>
+</body>
+</html>
+

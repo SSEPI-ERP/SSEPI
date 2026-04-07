@@ -1,0 +1,5 @@
+customtkinter==5.2.2
+Pillow==10.1.0
+sqlite3
+datetime
+tkinter

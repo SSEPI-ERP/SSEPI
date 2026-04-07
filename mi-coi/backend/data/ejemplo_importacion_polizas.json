@@ -1,0 +1,69 @@
+{
+  "_instrucciones": "Importación masiva (Pólizas → Importar lote). Solo se usa la clave 'polizas'. Cada póliza: tipo, fecha (YYYY-MM-DD), concepto y movimientos (mínimo 2). Por línea: num_cuenta, concepto, cargo, abono; moneda y tipo_cambio; opcional cargo_mn y abono_mn si ya están en MN.",
+  "polizas": [
+    {
+      "tipo": "DIARIO",
+      "fecha": "2026-03-01",
+      "concepto": "Ejemplo 1 — traspaso entre cuentas (ajustar números a su catálogo DETALLE)",
+      "movimientos": [
+        {
+          "num_cuenta": "101.01.001",
+          "concepto": "Cargo ejemplo",
+          "cargo": 1500.0,
+          "abono": 0.0,
+          "moneda": "MXN",
+          "tipo_cambio": 1.0,
+          "cargo_mn": 1500.0,
+          "abono_mn": 0.0
+        },
+        {
+          "num_cuenta": "201.01.001",
+          "concepto": "Abono ejemplo",
+          "cargo": 0.0,
+          "abono": 1500.0,
+          "moneda": "MXN",
+          "tipo_cambio": 1.0,
+          "cargo_mn": 0.0,
+          "abono_mn": 1500.0
+        }
+      ]
+    },
+    {
+      "tipo": "INGRESO",
+      "fecha": "2026-03-15",
+      "concepto": "Ejemplo 2 — ingreso (mismas reglas de cuadre en MN)",
+      "movimientos": [
+        {
+          "num_cuenta": "102.01.001",
+          "concepto": "Banco",
+          "cargo": 2360.0,
+          "abono": 0.0,
+          "moneda": "MXN",
+          "tipo_cambio": 1.0,
+          "cargo_mn": 2360.0,
+          "abono_mn": 0.0
+        },
+        {
+          "num_cuenta": "401.01.001",
+          "concepto": "Ventas",
+          "cargo": 0.0,
+          "abono": 2000.0,
+          "moneda": "MXN",
+          "tipo_cambio": 1.0,
+          "cargo_mn": 0.0,
+          "abono_mn": 2000.0
+        },
+        {
+          "num_cuenta": "208.01.001",
+          "concepto": "IVA trasladado",
+          "cargo": 0.0,
+          "abono": 360.0,
+          "moneda": "MXN",
+          "tipo_cambio": 1.0,
+          "cargo_mn": 0.0,
+          "abono_mn": 360.0
+        }
+      ]
+    }
+  ]
+}

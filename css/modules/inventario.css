@@ -1,0 +1,239 @@
+/* ================================================
+   ARCHIVO: inventario.css
+   DESCRIPCIÓN: Estilos específicos para Inventario (Industrial White – Reaction)
+   ================================================ */
+
+:root {
+  --c-stock: #28a745;
+  --c-stock-light: #d4edda;
+  --c-stock-dark: #1e7e34;
+  --accent: var(--c-stock);
+}
+
+/* Botones de categoría (Refacciones, Almacenables, etc.) con color del módulo */
+.filtros-bar .cat-btn {
+  border-color: var(--c-stock);
+  color: var(--c-stock);
+}
+.filtros-bar .cat-btn:hover {
+  background: var(--c-stock-light);
+  color: var(--c-stock-dark);
+}
+.filtros-bar .cat-btn.active {
+  background: var(--c-stock);
+  border-color: var(--c-stock);
+  color: #fff;
+}
+
+/* Vistas Grid / Tabla / Gráfica */
+.filtros-bar .vistas button:hover {
+  color: var(--c-stock);
+}
+.filtros-bar .vistas button.active {
+  background: var(--c-stock);
+  border-color: var(--c-stock);
+  color: #fff;
+}
+
+/* Mostrar solo la vista activa (Grid, Tabla o Gráfica) */
+.page-inventario .view-container {
+  display: none;
+}
+.page-inventario .view-container.active {
+  display: block;
+}
+.page-inventario .chart-container {
+  min-height: 320px;
+  position: relative;
+}
+
+/* KPIs con borde e icono verde */
+.kpi-grid .kpi-card {
+  border-left-color: var(--c-stock);
+}
+.kpi-grid .kpi-card .kpi-icon {
+  color: var(--c-stock);
+}
+
+/* Botón Importar Excel con mismo estilo que Nuevo Producto */
+.btn-import {
+  border-color: var(--c-stock);
+  color: var(--c-stock);
+}
+.btn-import:hover {
+  background: var(--c-stock);
+  border-color: var(--c-stock);
+  color: #fff;
+}
+
+/* Layouts típicos */
+.toolbar,
+.filtros-superiores {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  box-shadow: none;
+}
+
+.card,
+.panel,
+.product-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.product-card:hover {
+  border-color: var(--accent);
+}
+
+.badge-stock {
+  background: var(--c-stock-light);
+  color: var(--c-stock-dark);
+  border: 1px solid color-mix(in srgb, var(--c-stock-dark) 35%, white);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* Tabla de inventario: cabeceras y celdas bien separadas */
+.table-container,
+.table-wrapper {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  overflow-x: auto;
+}
+.table-wrapper {
+  width: 100%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.inventory-table.dashboard-table {
+  width: 100%;
+  min-width: 900px;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+/* Columnas numéricas alineadas a la derecha */
+.inventory-table .col-num {
+  text-align: right;
+}
+.inventory-table td.col-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+/* Descripción con ancho máximo y texto cortado */
+.inventory-table .col-desc {
+  max-width: 180px;
+}
+.inventory-table td.col-desc {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Grid más denso: más cards por fila */
+.page-inventario .products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+.inventory-table thead {
+  background: var(--bg-hover);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.inventory-table th {
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--c-stock);
+  white-space: nowrap;
+}
+.inventory-table td {
+  padding: 10px 14px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+.inventory-table tbody tr:hover td {
+  background: var(--c-stock-light);
+}
+.inventory-table tbody tr:nth-child(even) td {
+  background: var(--bg-hover);
+}
+.inventory-table tbody tr:nth-child(even):hover td {
+  background: var(--c-stock-light);
+}
+
+/* ========== MODALES (Nuevo Producto / Importar Excel) ========== */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+.modal-backdrop.active {
+  display: flex !important;
+}
+.page-inventario .modal {
+  background: var(--bg-panel);
+  border-radius: 12px;
+  max-width: 560px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+.page-inventario .modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--c-stock);
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.page-inventario .modal-body { padding: 20px; }
+.page-inventario .modal-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+.page-inventario .modal-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Perfil Ventas: ocultar costos y valor en inventario */
+.page-inventario.inventario-perfil-ventas .hide-for-ventas,
+.page-inventario.inventario-perfil-ventas [data-hide-for-ventas="true"],
+.inventario-perfil-ventas .hide-for-ventas,
+.inventario-perfil-ventas [data-hide-for-ventas="true"] {
+  display: none !important;
+}
+.page-inventario .chart-ventas-msg {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted, #64748b);
+  font-size: 0.95rem;
+}

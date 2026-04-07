@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSEPI · Soporte de Planta</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/modules/proyectos.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <script type="module" src="/js/core/supabase-config.js"></script>
+    <script type="module" src="/js/core/security-middleware.js"></script>
+    <script type="module" src="/js/core/auth-service.js"></script>
+    <script type="module" src="/js/core/data-service.js"></script>
+    <script src="/js/core/theme-clock.js"></script>
+    <script src="/js/core/user-menu.js"></script>
+    <script src="/js/core/nav-by-role.js"></script>
+    <script type="module" src="/js/modules/proyectos.js"></script>
+</head>
+<body class="page-proyectos nav-loading">
+    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <div class="brand-icon"><i class="fas fa-clipboard-check"></i></div>
+                <div>
+                    <div class="brand-text">SOPORTE DE PLANTA</div>
+                    <div class="brand-sub">Visitas y Proyectos</div>
+                </div>
+            </div>
+            <a href="/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <div class="notification-badge">
+                <i class="fas fa-bell"></i>
+                <span class="badge-count" id="notificacionesBadge">0</span>
+            </div>
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <div class="user-pill" id="userMenu">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
+        <a href="/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/pages/ssepi_proyectos.html" class="nav-item active" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
+        <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
+        <a href="/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <div class="menu-category">EXTERNOS</div>
+        <a href="#" class="nav-item" target="_blank" rel="noopener" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+    </nav>
+
+    <main>
+        <!-- Filtros superiores -->
+        <div class="filtros-bar">
+            <div class="filtro-grupo">
+                <label>Desde:</label>
+                <input type="date" id="filtroFechaInicio">
+            </div>
+            <div class="filtro-grupo">
+                <label>Hasta:</label>
+                <input type="date" id="filtroFechaFin">
+            </div>
+            <div class="filtro-grupo">
+                <label>Técnico:</label>
+                <select id="filtroTecnico">
+                    <option value="todos">Todos</option>
+                </select>
+            </div>
+            <div class="filtro-grupo">
+                <label>Estado:</label>
+                <select id="filtroEstado">
+                    <option value="todos">Todos</option>
+                    <option value="confirmacion">Confirmación</option>
+                    <option value="proyecto">Proyecto</option>
+                    <option value="cancelado">Cancelado</option>
+                </select>
+            </div>
+            <div class="filtro-grupo">
+                <label>Buscar:</label>
+                <input type="text" id="filtroBuscar" placeholder="Cliente, folio">
+            </div>
+            <button class="btn-filtro" id="aplicarFiltrosBtn"><i class="fas fa-search"></i> Aplicar</button>
+            <div class="vistas">
+                <button id="vistaKanban" class="active"><i class="fas fa-columns"></i> Kanban</button>
+                <button id="vistaLista"><i class="fas fa-table"></i> Lista</button>
+                <button id="vistaGrafica"><i class="fas fa-chart-bar"></i> Gráfica</button>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-calendar-check"></i></div>
+                <div class="kpi-title">Total Visitas</div>
+                <div class="kpi-value" id="kpiTotal">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-clock"></i></div>
+                <div class="kpi-title">En Confirmación</div>
+                <div class="kpi-value" id="kpiConfirmacion">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-cogs"></i></div>
+                <div class="kpi-title">Convertidas</div>
+                <div class="kpi-value" id="kpiProyecto">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-times-circle"></i></div>
+                <div class="kpi-title">Canceladas</div>
+                <div class="kpi-value" id="kpiCancelado">0</div>
+            </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="actions-header">
+            <h2 class="section-title"><i class="fas fa-clipboard-list"></i> Visitas de Soporte</h2>
+            <button class="btn-ssepi btn-proyectos" id="newVisitaBtn"><i class="fas fa-plus"></i> Nueva Visita</button>
+        </div>
+
+        <!-- Contenedores de vistas -->
+        <div id="kanbanContainer" class="kanban-container"></div>
+        <div id="listaContainer" class="lista-container"></div>
+        <div id="graficaContainer" class="grafica-container">
+            <canvas id="graficaCanvas"></canvas>
+        </div>
+    </main>
+
+    <!-- SIDEBAR DERECHO (FEED) -->
+    <aside class="sidebar-right">
+        <div class="history-header">
+            <span><i class="fas fa-history"></i> BITÁCORA</span>
+            <span class="notification-badge" id="feedCount">0</span>
+        </div>
+        <div class="feed-list" id="feedList">
+            <div class="feed-item">
+                <div class="feed-dot"></div>
+                <div class="feed-meta"><span style="color:var(--c-proyectos);">SISTEMA</span><span>ahora</span></div>
+                <div class="feed-body">Módulo de soporte iniciado</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MODAL DE VISITA -->
+    <div class="workstation-modal" id="wsModal">
+        <div class="ws-header">
+            <div class="ws-title-group">
+                <button class="btn-secondary" id="closeWsBtn"><i class="fas fa-arrow-left"></i> Volver</button>
+                <div>
+                    <div class="ws-title">VISITA DE SOPORTE</div>
+                    <div class="ws-folio"><input type="text" id="inpFolio" class="ws-folio-input" readonly></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ws-body">
+            <div class="ws-content">
+                <div class="form-section">
+                    <div class="section-title-form"><i class="fas fa-clipboard-list"></i> Datos de la Visita</div>
+                    <div class="upload-foto-section">
+                        <div class="section-title-form"><i class="fas fa-camera"></i> Subir foto de hoja de orden</div>
+                        <p class="upload-hint">Sube una foto o escaneo de la hoja de orden. El sistema intentará extraer los datos y rellenar el formulario automáticamente.</p>
+                        <div class="upload-foto-controls">
+                            <input type="file" id="fotoHojaOrden" accept="image/*" capture="environment">
+                            <button type="button" class="btn-secondary" id="rellenarDesdeImagenBtn" title="Extraer texto de la imagen y rellenar el formulario"><i class="fas fa-magic"></i> Rellenar desde imagen</button>
+                        </div>
+                        <div id="fotoPreviewContainer" class="foto-preview-container" style="display:none;">
+                            <img id="fotoPreview" alt="Vista previa" class="foto-preview-img">
+                            <div id="ocrProgress" class="ocr-progress" style="display:none;"><span class="ocr-progress-text">Analizando imagen…</span></div>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="input-group required"><label>Fecha</label><input type="date" id="fecha"></div>
+                        <div class="input-group required"><label>Folio</label><input type="text" id="folio" readonly></div>
+                        <div class="input-group required"><label>Cliente</label><input type="text" id="cliente"></div>
+                        <div class="input-group"><label>Área</label><input type="text" id="area"></div>
+                        <div class="input-group"><label>Ubicación</label><input type="text" id="ubicacion"></div>
+                        <div class="input-group"><label>Equipo</label><input type="text" id="equipo"></div>
+                        <div class="input-group"><label>Responsable Cliente</label><input type="text" id="responsableCliente"></div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="input-group required"><label>Técnico</label><input type="text" id="tecnico"></div>
+                        <div class="input-group"><label>Departamento</label>
+                            <select id="departamento">
+                                <option value="Electrónica">Electrónica</option>
+                                <option value="Automatización">Automatización</option>
+                                <option value="Motores">Motores</option>
+                            </select>
+                        </div>
+                        <div class="input-group"><label>Hora Inicio</label><input type="time" id="horaInicio"></div>
+                        <div class="input-group"><label>Hora Final</label><input type="time" id="horaFinal"></div>
+                    </div>
+                    <div class="input-group"><label>Objetivo de la Visita</label><textarea id="objetivo" rows="3"></textarea></div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title-form"><i class="fas fa-tasks"></i> Actividades Realizadas</div>
+                    <div class="checkbox-group" id="actividadesCheckbox">
+                        <label class="checkbox-item"><input type="checkbox" value="Inspección visual"> Inspección visual de los equipos</label>
+                        <label class="checkbox-item"><input type="checkbox" value="Verificación cableado"> Verificación del cableado eléctrico</label>
+                        <label class="checkbox-item"><input type="checkbox" value="Identificación daños"> Identificación de daños</label>
+                        <label class="checkbox-item"><input type="checkbox" value="Verificación alimentación"> Verificación de alimentación eléctrica</label>
+                        <label class="checkbox-item"><input type="checkbox" value="Inspección protecciones"> Inspección de protecciones eléctricas</label>
+                        <label class="checkbox-item"><input type="checkbox" value="Verificación sensores"> Verificación de sensores</label>
+                        <label class="checkbox-item"><input type="checkbox" value="Limpieza"> Limpieza básica de componentes</label>
+                        <label class="checkbox-item"><input type="checkbox" value="Revisión control"> Revisión de equipos de control</label>
+                        <label class="checkbox-item"><input type="checkbox" value="Verificación secuencias"> Verificación de secuencias de operación</label>
+                        <label class="checkbox-item"><input type="checkbox" value="Lectura fallas"> Lectura de fallas y diagnósticos</label>
+                        <label class="checkbox-item"><input type="checkbox" value="Ajuste parámetros"> Ajuste de parámetros de operación</label>
+                        <label class="checkbox-item"><input type="checkbox" value="Revisión motores"> Revisión de condiciones de motores</label>
+                        <label class="checkbox-item"><input type="checkbox" value="Puesta en marcha"> Puesta en marcha del equipo</label>
+                        <label class="checkbox-item"><input type="checkbox" value="Revisión garantía"> Revisión por garantía</label>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title-form"><i class="fas fa-file-alt"></i> Descripción y Observaciones</div>
+                    <div class="input-group"><label>Descripción de Actividades</label><textarea id="descripcionActividades" rows="4"></textarea></div>
+                    <div class="input-group"><label>Pruebas Realizadas</label><textarea id="pruebasRealizadas" rows="3"></textarea></div>
+                    <div class="input-group"><label>Recomendaciones</label><textarea id="recomendaciones" rows="3"></textarea></div>
+                    <div class="input-group"><label>Observaciones del Cliente</label><textarea id="observacionesCliente" rows="3"></textarea></div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="ws-footer">
+            <button class="btn-secondary" id="cancelWsBtn">Cancelar</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-primary" id="guardarVisitaBtn">💾 Guardar Visita</button>
+                <button class="btn-success" id="confirmarVisitaBtn">✅ Confirmar (Enviar a proyecto)</button>
+                <button class="btn-danger" id="cancelarVisitaEstadoBtn">❌ Cancelar Visita</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', function () {
+            (async function () {
+                var deadline = Date.now() + 8000;
+                while (!window.securityMiddleware || !window.authService) {
+                    if (Date.now() > deadline) {
+                        console.error('SSEPI: securityMiddleware o authService no disponibles.');
+                        return;
+                    }
+                    await new Promise(function (r) { setTimeout(r, 50); });
+                }
+                try {
+                    await window.securityMiddleware.initSecurity();
+                } catch (e) {
+                    console.warn('SSEPI security init:', e);
+                }
+                var user;
+                try {
+                    user = await window.authService.requireAuth('/');
+                } catch (e) {
+                    console.error('SSEPI auth:', e);
+                    return;
+                }
+                if (user) {
+                    try {
+                        var profile = await window.authService.getCurrentProfile();
+                        var nameEl = document.getElementById('userName');
+                        var avatarEl = document.getElementById('userAvatar');
+                        if (nameEl) nameEl.innerText = (profile && profile.nombre && profile.nombre.split(' ')[0]) || 'Admin';
+                        if (avatarEl) avatarEl.innerText = (profile && profile.nombre && profile.nombre[0]) ? profile.nombre[0].toUpperCase() : 'A';
+                    } catch (e) {
+                        console.warn('Perfil:', e);
+                    }
+                    if (typeof window.proyectosModule !== 'undefined' && window.proyectosModule.init) {
+                        try {
+                            await window.proyectosModule.init();
+                        } catch (err) {
+                            console.error('Proyectos/Soporte init error:', err);
+                            alert('Error al iniciar Soporte de Planta. Revisa la consola (F12).');
+                        }
+                    } else {
+                        console.error('window.proyectosModule no está definido.');
+                        alert('El módulo de Soporte de Planta no cargó. Revisa la consola (F12).');
+                    }
+                }
+            })();
+        });
+    </script>
+</body>
+</html>

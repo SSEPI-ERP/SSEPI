@@ -1,0 +1,43 @@
+<?xml version="1.0" ?>
+<Catalogo RFC="SSE-123456-ABC" Mes="03" Anio="2026" TipoSistema="COI" FechaEnvio="2026-03-12">
+  <Cuenta CodAgrup="10000" NumCta="1000" Desc="ACTIVO" Nivel="1" Naturaleza="D"/>
+  <Cuenta CodAgrup="11000" NumCta="1100" Desc="ACTIVO CIRCULANTE" Nivel="2" Naturaleza="D" SubCtaDe="1000"/>
+  <Cuenta CodAgrup="11000" NumCta="1101" Desc="CAJA" Nivel="3" Naturaleza="D" SubCtaDe="1100"/>
+  <Cuenta CodAgrup="11000" NumCta="1102" Desc="BANCOS" Nivel="3" Naturaleza="D" SubCtaDe="1100"/>
+  <Cuenta CodAgrup="11000" NumCta="1103" Desc="CLIENTES" Nivel="3" Naturaleza="D" SubCtaDe="1100"/>
+  <Cuenta CodAgrup="11000" NumCta="1104" Desc="DEUDORES DIVERSOS" Nivel="3" Naturaleza="D" SubCtaDe="1100"/>
+  <Cuenta CodAgrup="11000" NumCta="1105" Desc="INVENTARIOS" Nivel="3" Naturaleza="D" SubCtaDe="1100"/>
+  <Cuenta CodAgrup="12000" NumCta="1200" Desc="ACTIVO FIJO" Nivel="2" Naturaleza="D" SubCtaDe="1000"/>
+  <Cuenta CodAgrup="12000" NumCta="1201" Desc="MOBILIARIO Y EQUIPO" Nivel="3" Naturaleza="D" SubCtaDe="1200"/>
+  <Cuenta CodAgrup="12000" NumCta="1202" Desc="EQUIPO DE COMPUTO" Nivel="3" Naturaleza="D" SubCtaDe="1200"/>
+  <Cuenta CodAgrup="12000" NumCta="1203" Desc="MAQUINARIA" Nivel="3" Naturaleza="D" SubCtaDe="1200"/>
+  <Cuenta CodAgrup="13000" NumCta="1300" Desc="ACTIVO DIFERIDO" Nivel="2" Naturaleza="D" SubCtaDe="1000"/>
+  <Cuenta CodAgrup="13000" NumCta="1301" Desc="GASTOS DE INSTALACION" Nivel="3" Naturaleza="D" SubCtaDe="1300"/>
+  <Cuenta CodAgrup="20000" NumCta="2000" Desc="PASIVO" Nivel="1" Naturaleza="A"/>
+  <Cuenta CodAgrup="21000" NumCta="2100" Desc="PASIVO CIRCULANTE" Nivel="2" Naturaleza="A" SubCtaDe="2000"/>
+  <Cuenta CodAgrup="21000" NumCta="2101" Desc="PROVEEDORES" Nivel="3" Naturaleza="A" SubCtaDe="2100"/>
+  <Cuenta CodAgrup="21000" NumCta="2102" Desc="ACREEDORES DIVERSOS" Nivel="3" Naturaleza="A" SubCtaDe="2100"/>
+  <Cuenta CodAgrup="21000" NumCta="2103" Desc="IMPUESTOS POR PAGAR" Nivel="3" Naturaleza="A" SubCtaDe="2100"/>
+  <Cuenta CodAgrup="21000" NumCta="2104" Desc="IVA POR PAGAR" Nivel="3" Naturaleza="A" SubCtaDe="2100"/>
+  <Cuenta CodAgrup="21000" NumCta="2105" Desc="ISR POR PAGAR" Nivel="3" Naturaleza="A" SubCtaDe="2100"/>
+  <Cuenta CodAgrup="22000" NumCta="2200" Desc="PASIVO LARGO PLAZO" Nivel="2" Naturaleza="A" SubCtaDe="2000"/>
+  <Cuenta CodAgrup="22000" NumCta="2201" Desc="PRESTAMOS BANCARIOS" Nivel="3" Naturaleza="A" SubCtaDe="2200"/>
+  <Cuenta CodAgrup="30000" NumCta="3000" Desc="CAPITAL CONTABLE" Nivel="1" Naturaleza="A"/>
+  <Cuenta CodAgrup="31000" NumCta="3100" Desc="CAPITAL SOCIAL" Nivel="2" Naturaleza="A" SubCtaDe="3000"/>
+  <Cuenta CodAgrup="31000" NumCta="3101" Desc="CAPITAL APORTADO" Nivel="3" Naturaleza="A" SubCtaDe="3100"/>
+  <Cuenta CodAgrup="31000" NumCta="3102" Desc="CAPITAL SSEPI" Nivel="3" Naturaleza="A" SubCtaDe="3100"/>
+  <Cuenta CodAgrup="32000" NumCta="3200" Desc="UTILIDADES ACUMULADAS" Nivel="2" Naturaleza="A" SubCtaDe="3000"/>
+  <Cuenta CodAgrup="32000" NumCta="3201" Desc="UTILIDAD DEL EJERCICIO" Nivel="3" Naturaleza="A" SubCtaDe="3200"/>
+  <Cuenta CodAgrup="40000" NumCta="4000" Desc="INGRESOS" Nivel="1" Naturaleza="A"/>
+  <Cuenta CodAgrup="41000" NumCta="4100" Desc="VENTAS" Nivel="2" Naturaleza="A" SubCtaDe="4000"/>
+  <Cuenta CodAgrup="41000" NumCta="4101" Desc="VENTAS NETAS" Nivel="3" Naturaleza="A" SubCtaDe="4100"/>
+  <Cuenta CodAgrup="41000" NumCta="4102" Desc="VENTAS SSEPI" Nivel="3" Naturaleza="A" SubCtaDe="4100"/>
+  <Cuenta CodAgrup="50000" NumCta="5000" Desc="COSTOS" Nivel="1" Naturaleza="D"/>
+  <Cuenta CodAgrup="51000" NumCta="5100" Desc="COSTO DE VENTAS" Nivel="2" Naturaleza="D" SubCtaDe="5000"/>
+  <Cuenta CodAgrup="51000" NumCta="5101" Desc="COSTO DE VENTAS NETO" Nivel="3" Naturaleza="D" SubCtaDe="5100"/>
+  <Cuenta CodAgrup="60000" NumCta="6000" Desc="GASTOS" Nivel="1" Naturaleza="D"/>
+  <Cuenta CodAgrup="61000" NumCta="6100" Desc="GASTOS DE OPERACIÓN" Nivel="2" Naturaleza="D" SubCtaDe="6000"/>
+  <Cuenta CodAgrup="61000" NumCta="6101" Desc="GASTOS ADMINISTRATIVOS" Nivel="3" Naturaleza="D" SubCtaDe="6100"/>
+  <Cuenta CodAgrup="61000" NumCta="6102" Desc="GASTOS DE VENTA" Nivel="3" Naturaleza="D" SubCtaDe="6100"/>
+  <Cuenta CodAgrup="61000" NumCta="6103" Desc="GASTOS DE SSEPI" Nivel="3" Naturaleza="D" SubCtaDe="6100"/>
+</Catalogo>

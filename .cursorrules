@@ -1,0 +1,11 @@
+REGLAS CRÍTICAS PARA SSEPI ERP:
+
+Prohibido Firebase: No uses, menciones ni sugieras nada relacionado con Firebase. Todo es Supabase.
+
+Orden de Arranque: Todos los scripts en los HTML deben estar dentro de window.addEventListener('load', ...). Nunca llames a initSecurity antes de esto.
+
+Servidor Fijo: El servidor local corre en http://localhost:8081. Ignora cualquier sugerencia de usar el puerto 3000 o 8080.
+
+Estilo Obligatorio: Los botones deben ser .btn-ssepi (outline blanco con relleno de color al hover).
+
+Verificación de IDs: Antes de vincular un botón (como newOrderBtn), confirma que el ID existe físicamente en el HTML abierto.

@@ -1,0 +1,1078 @@
+<?xml version="1.0" ?>
+<Catalogo RFC="SSE-123456-ABC" Mes="03" Anio="2026" TipoSistema="COI" FechaEnvio="2026-03-27">
+  <Cuenta CodAgrup="100-00-000" NumCta="100" Desc="Activo" Nivel="0" Naturaleza="D"/>
+  <Cuenta CodAgrup="100-01-000" NumCta="100.01" Desc="Activo a corto plazo" Nivel="2" Naturaleza="D" SubCtaDe="100"/>
+  <Cuenta CodAgrup="100-02-000" NumCta="100.02" Desc="Activo a largo plazo" Nivel="2" Naturaleza="D" SubCtaDe="100"/>
+  <Cuenta CodAgrup="101-00-000" NumCta="101" Desc="Caja" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="101-01-000" NumCta="101.01" Desc="Caja y efectivo" Nivel="2" Naturaleza="D" SubCtaDe="101"/>
+  <Cuenta CodAgrup="102-00-000" NumCta="102" Desc="Bancos" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="102-01-000" NumCta="102.01" Desc="Bancos nacionales" Nivel="2" Naturaleza="D" SubCtaDe="102"/>
+  <Cuenta CodAgrup="102-02-000" NumCta="102.02" Desc="Bancos extranjeros" Nivel="2" Naturaleza="D" SubCtaDe="102"/>
+  <Cuenta CodAgrup="103-00-000" NumCta="103" Desc="Inversiones" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="103-01-000" NumCta="103.01" Desc="Inversiones temporales" Nivel="2" Naturaleza="D" SubCtaDe="103"/>
+  <Cuenta CodAgrup="103-02-000" NumCta="103.02" Desc="Inversiones en fideicomisos" Nivel="2" Naturaleza="D" SubCtaDe="103"/>
+  <Cuenta CodAgrup="103-03-000" NumCta="103.03" Desc="Otras inversiones" Nivel="2" Naturaleza="D" SubCtaDe="103"/>
+  <Cuenta CodAgrup="104-00-000" NumCta="104" Desc="Otros instrumentos financieros" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="104-01-000" NumCta="104.01" Desc="Otros instrumentos financieros" Nivel="2" Naturaleza="D" SubCtaDe="104"/>
+  <Cuenta CodAgrup="105-00-000" NumCta="105" Desc="Clientes" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="105-01-000" NumCta="105.01" Desc="Clientes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="105"/>
+  <Cuenta CodAgrup="105-02-000" NumCta="105.02" Desc="Clientes extranjeros" Nivel="2" Naturaleza="D" SubCtaDe="105"/>
+  <Cuenta CodAgrup="105-03-000" NumCta="105.03" Desc="Clientes nacionales parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="105"/>
+  <Cuenta CodAgrup="105-04-000" NumCta="105.04" Desc="Clientes extranjeros parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="105"/>
+  <Cuenta CodAgrup="106-00-000" NumCta="106" Desc="Cuentas y documentos por cobrar a corto plazo" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="106-01-000" NumCta="106.01" Desc="Cuentas y documentos por cobrar a corto plazo nacional" Nivel="2" Naturaleza="D" SubCtaDe="106"/>
+  <Cuenta CodAgrup="106-02-000" NumCta="106.02" Desc="Cuentas y documentos por cobrar a corto plazo extranjero" Nivel="2" Naturaleza="D" SubCtaDe="106"/>
+  <Cuenta CodAgrup="106-03-000" NumCta="106.03" Desc="Cuentas y documentos por cobrar a corto plazo nacional parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="106"/>
+  <Cuenta CodAgrup="106-04-000" NumCta="106.04" Desc="Cuentas y documentos por cobrar a corto plazo extranjero parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="106"/>
+  <Cuenta CodAgrup="106-05-000" NumCta="106.05" Desc="Intereses por cobrar a corto plazo nacional" Nivel="2" Naturaleza="D" SubCtaDe="106"/>
+  <Cuenta CodAgrup="106-06-000" NumCta="106.06" Desc="Intereses por cobrar a corto plazo extranjero" Nivel="2" Naturaleza="D" SubCtaDe="106"/>
+  <Cuenta CodAgrup="106-07-000" NumCta="106.07" Desc="Intereses por cobrar a corto plazo nacional parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="106"/>
+  <Cuenta CodAgrup="106-08-000" NumCta="106.08" Desc="Intereses por cobrar a corto plazo extranjero parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="106"/>
+  <Cuenta CodAgrup="106-09-000" NumCta="106.09" Desc="Otras cuentas y documentos por cobrar a corto plazo" Nivel="2" Naturaleza="D" SubCtaDe="106"/>
+  <Cuenta CodAgrup="106-10-000" NumCta="106.10" Desc="Otras cuentas y documentos por cobrar a corto plazo parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="106"/>
+  <Cuenta CodAgrup="107-00-000" NumCta="107" Desc="Deudores diversos" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="107-01-000" NumCta="107.01" Desc="Funcionarios y empleados" Nivel="2" Naturaleza="D" SubCtaDe="107"/>
+  <Cuenta CodAgrup="107-02-000" NumCta="107.02" Desc="Socios y accionistas" Nivel="2" Naturaleza="D" SubCtaDe="107"/>
+  <Cuenta CodAgrup="107-03-000" NumCta="107.03" Desc="Partes relacionadas nacionales" Nivel="2" Naturaleza="D" SubCtaDe="107"/>
+  <Cuenta CodAgrup="107-04-000" NumCta="107.04" Desc="Partes relacionadas extranjeros" Nivel="2" Naturaleza="D" SubCtaDe="107"/>
+  <Cuenta CodAgrup="107-05-000" NumCta="107.05" Desc="Otros deudores diversos" Nivel="2" Naturaleza="D" SubCtaDe="107"/>
+  <Cuenta CodAgrup="108-00-000" NumCta="108" Desc="Estimación de cuentas incobrables" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="108-01-000" NumCta="108.01" Desc="Estimación de cuentas incobrables nacional" Nivel="2" Naturaleza="D" SubCtaDe="108"/>
+  <Cuenta CodAgrup="108-02-000" NumCta="108.02" Desc="Estimación de cuentas incobrables extranjero" Nivel="2" Naturaleza="D" SubCtaDe="108"/>
+  <Cuenta CodAgrup="108-03-000" NumCta="108.03" Desc="Estimación de cuentas incobrables nacional parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="108"/>
+  <Cuenta CodAgrup="108-04-000" NumCta="108.04" Desc="Estimación de cuentas incobrables extranjero parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="108"/>
+  <Cuenta CodAgrup="109-00-000" NumCta="109" Desc="Pagos anticipados" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="109-01-000" NumCta="109.01" Desc="Seguros y fianzas pagados por anticipado nacional" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-02-000" NumCta="109.02" Desc="Seguros y fianzas pagados por anticipado extranjero" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-03-000" NumCta="109.03" Desc="Seguros y fianzas pagados por anticipado nacional parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-04-000" NumCta="109.04" Desc="Seguros y fianzas pagados por anticipado extranjero parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-05-000" NumCta="109.05" Desc="Rentas pagados por anticipado nacional" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-06-000" NumCta="109.06" Desc="Rentas pagados por anticipado extranjero" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-07-000" NumCta="109.07" Desc="Rentas pagados por anticipado nacional parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-08-000" NumCta="109.08" Desc="Rentas pagados por anticipado extranjero parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-09-000" NumCta="109.09" Desc="Intereses pagados por anticipado nacional" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-10-000" NumCta="109.10" Desc="Intereses pagados por anticipado extranjero" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-11-000" NumCta="109.11" Desc="Intereses pagados por anticipado nacional parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-12-000" NumCta="109.12" Desc="Intereses pagados por anticipado extranjero parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-13-000" NumCta="109.13" Desc="Factoraje financiero pagados por anticipado nacional" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-14-000" NumCta="109.14" Desc="Factoraje financiero pagados por anticipado extranjero" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-15-000" NumCta="109.15" Desc="Factoraje financiero pagados por anticipado nacional parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-16-000" NumCta="109.16" Desc="Factoraje financiero pagados por anticipado extranjero parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-17-000" NumCta="109.17" Desc="Arrendamiento financiero pagados por anticipado nacional" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-18-000" NumCta="109.18" Desc="Arrendamiento financiero pagados por anticipado extranjero" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-19-000" NumCta="109.19" Desc="Arrendamiento financiero pagados por anticipado nacional parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-20-000" NumCta="109.20" Desc="Arrendamiento financiero pagados por anticipado extranjero parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-21-000" NumCta="109.21" Desc="Pérdida por deterioro de pagos anticipados" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-22-000" NumCta="109.22" Desc="Derechos fiduciarios" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="109-23-000" NumCta="109.23" Desc="Otros pagos anticipados" Nivel="2" Naturaleza="D" SubCtaDe="109"/>
+  <Cuenta CodAgrup="110-00-000" NumCta="110" Desc="Subsidio al empleo por aplicar" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="110-01-000" NumCta="110.01" Desc="Subsidio al empleo por aplicar" Nivel="2" Naturaleza="D" SubCtaDe="110"/>
+  <Cuenta CodAgrup="111-00-000" NumCta="111" Desc="Crédito al diesel por acreditar" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="111-01-000" NumCta="111.01" Desc="Crédito al diesel por acreditar" Nivel="2" Naturaleza="D" SubCtaDe="111"/>
+  <Cuenta CodAgrup="112-00-000" NumCta="112" Desc="Otros estímulos" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="112-01-000" NumCta="112.01" Desc="Otros estímulos" Nivel="2" Naturaleza="D" SubCtaDe="112"/>
+  <Cuenta CodAgrup="113-00-000" NumCta="113" Desc="Impuestos a favor" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="113-01-000" NumCta="113.01" Desc="IVA a favor" Nivel="2" Naturaleza="D" SubCtaDe="113"/>
+  <Cuenta CodAgrup="113-02-000" NumCta="113.02" Desc="ISR a favor" Nivel="2" Naturaleza="D" SubCtaDe="113"/>
+  <Cuenta CodAgrup="113-03-000" NumCta="113.03" Desc="IETU a favor" Nivel="2" Naturaleza="D" SubCtaDe="113"/>
+  <Cuenta CodAgrup="113-04-000" NumCta="113.04" Desc="IDE a favor" Nivel="2" Naturaleza="D" SubCtaDe="113"/>
+  <Cuenta CodAgrup="113-05-000" NumCta="113.05" Desc="IA a favor" Nivel="2" Naturaleza="D" SubCtaDe="113"/>
+  <Cuenta CodAgrup="113-06-000" NumCta="113.06" Desc="Subsidio al empleo" Nivel="2" Naturaleza="D" SubCtaDe="113"/>
+  <Cuenta CodAgrup="113-07-000" NumCta="113.07" Desc="Pago de lo indebido" Nivel="2" Naturaleza="D" SubCtaDe="113"/>
+  <Cuenta CodAgrup="113-08-000" NumCta="113.08" Desc="Otros impuestos a favor" Nivel="2" Naturaleza="D" SubCtaDe="113"/>
+  <Cuenta CodAgrup="114-00-000" NumCta="114" Desc="Pagos provisionales" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="114-01-000" NumCta="114.01" Desc="Pagos provisionales de ISR" Nivel="2" Naturaleza="D" SubCtaDe="114"/>
+  <Cuenta CodAgrup="115-00-000" NumCta="115" Desc="Inventario" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="115-01-000" NumCta="115.01" Desc="Inventario" Nivel="2" Naturaleza="D" SubCtaDe="115"/>
+  <Cuenta CodAgrup="115-02-000" NumCta="115.02" Desc="Materia prima y materiales" Nivel="2" Naturaleza="D" SubCtaDe="115"/>
+  <Cuenta CodAgrup="115-03-000" NumCta="115.03" Desc="Producción en proceso" Nivel="2" Naturaleza="D" SubCtaDe="115"/>
+  <Cuenta CodAgrup="115-04-000" NumCta="115.04" Desc="Productos terminados" Nivel="2" Naturaleza="D" SubCtaDe="115"/>
+  <Cuenta CodAgrup="115-05-000" NumCta="115.05" Desc="Mercancías en tránsito" Nivel="2" Naturaleza="D" SubCtaDe="115"/>
+  <Cuenta CodAgrup="115-06-000" NumCta="115.06" Desc="Mercancías en poder de terceros" Nivel="2" Naturaleza="D" SubCtaDe="115"/>
+  <Cuenta CodAgrup="115-07-000" NumCta="115.07" Desc="Otros" Nivel="2" Naturaleza="D" SubCtaDe="115"/>
+  <Cuenta CodAgrup="116-00-000" NumCta="116" Desc="Estimación de inventarios obsoletos y de lento movimiento" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="116-01-000" NumCta="116.01" Desc="Estimación de inventarios obsoletos y de lento movimiento" Nivel="2" Naturaleza="D" SubCtaDe="116"/>
+  <Cuenta CodAgrup="117-00-000" NumCta="117" Desc="Obras en proceso de inmuebles" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="117-01-000" NumCta="117.01" Desc="Obras en proceso de inmuebles" Nivel="2" Naturaleza="D" SubCtaDe="117"/>
+  <Cuenta CodAgrup="118-00-000" NumCta="118" Desc="Impuestos acreditables pagados" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="118-01-000" NumCta="118.01" Desc="IVA acreditable pagado" Nivel="2" Naturaleza="D" SubCtaDe="118"/>
+  <Cuenta CodAgrup="118-02-000" NumCta="118.02" Desc="IVA acreditable de importación pagado" Nivel="2" Naturaleza="D" SubCtaDe="118"/>
+  <Cuenta CodAgrup="118-03-000" NumCta="118.03" Desc="IEPS acreditable pagado" Nivel="2" Naturaleza="D" SubCtaDe="118"/>
+  <Cuenta CodAgrup="118-04-000" NumCta="118.04" Desc="IEPS pagado en importación" Nivel="2" Naturaleza="D" SubCtaDe="118"/>
+  <Cuenta CodAgrup="119-00-000" NumCta="119" Desc="Impuestos acreditables por pagar" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="119-01-000" NumCta="119.01" Desc="IVA pendiente de pago" Nivel="2" Naturaleza="D" SubCtaDe="119"/>
+  <Cuenta CodAgrup="119-02-000" NumCta="119.02" Desc="IVA de importación pendiente de pago" Nivel="2" Naturaleza="D" SubCtaDe="119"/>
+  <Cuenta CodAgrup="119-03-000" NumCta="119.03" Desc="IEPS pendiente de pago" Nivel="2" Naturaleza="D" SubCtaDe="119"/>
+  <Cuenta CodAgrup="119-04-000" NumCta="119.04" Desc="IEPS pendiente de pago en importación" Nivel="2" Naturaleza="D" SubCtaDe="119"/>
+  <Cuenta CodAgrup="120-00-000" NumCta="120" Desc="Anticipo a proveedores" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="120-01-000" NumCta="120.01" Desc="Anticipo a proveedores nacional" Nivel="2" Naturaleza="D" SubCtaDe="120"/>
+  <Cuenta CodAgrup="120-02-000" NumCta="120.02" Desc="Anticipo a proveedores extranjero" Nivel="2" Naturaleza="D" SubCtaDe="120"/>
+  <Cuenta CodAgrup="120-03-000" NumCta="120.03" Desc="Anticipo a proveedores nacional parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="120"/>
+  <Cuenta CodAgrup="120-04-000" NumCta="120.04" Desc="Anticipo a proveedores extranjero parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="120"/>
+  <Cuenta CodAgrup="121-00-000" NumCta="121" Desc="Otros activos a corto plazo" Nivel="1" Naturaleza="D" SubCtaDe="100.01"/>
+  <Cuenta CodAgrup="121-01-000" NumCta="121.01" Desc="Otros activos a corto plazo" Nivel="2" Naturaleza="D" SubCtaDe="121"/>
+  <Cuenta CodAgrup="151-00-000" NumCta="151" Desc="Terrenos" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="151-01-000" NumCta="151.01" Desc="Terrenos" Nivel="2" Naturaleza="D" SubCtaDe="151"/>
+  <Cuenta CodAgrup="152-00-000" NumCta="152" Desc="Edificios" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="152-01-000" NumCta="152.01" Desc="Edificios" Nivel="2" Naturaleza="D" SubCtaDe="152"/>
+  <Cuenta CodAgrup="153-00-000" NumCta="153" Desc="Maquinaria y equipo" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="153-01-000" NumCta="153.01" Desc="Maquinaria y equipo" Nivel="2" Naturaleza="D" SubCtaDe="153"/>
+  <Cuenta CodAgrup="154-00-000" NumCta="154" Desc="Automóviles autobuses camiones de carga tractocamiones montacargas y remolques" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="154-01-000" NumCta="154.01" Desc="Automóviles autobuses camiones de carga tractocamiones montacargas y remolques" Nivel="2" Naturaleza="D" SubCtaDe="154"/>
+  <Cuenta CodAgrup="155-00-000" NumCta="155" Desc="Mobiliario y equipo de oficina" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="155-01-000" NumCta="155.01" Desc="Mobiliario y equipo de oficina" Nivel="2" Naturaleza="D" SubCtaDe="155"/>
+  <Cuenta CodAgrup="156-00-000" NumCta="156" Desc="Equipo de cómputo" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="156-01-000" NumCta="156.01" Desc="Equipo de cómputo" Nivel="2" Naturaleza="D" SubCtaDe="156"/>
+  <Cuenta CodAgrup="157-00-000" NumCta="157" Desc="Equipo de comunicación" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="157-01-000" NumCta="157.01" Desc="Equipo de comunicación" Nivel="2" Naturaleza="D" SubCtaDe="157"/>
+  <Cuenta CodAgrup="158-00-000" NumCta="158" Desc="Activos biológicos vegetales y semovientes" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="158-01-000" NumCta="158.01" Desc="Activos biológicos vegetales y semovientes" Nivel="2" Naturaleza="D" SubCtaDe="158"/>
+  <Cuenta CodAgrup="159-00-000" NumCta="159" Desc="Obras en proceso de activos fijos" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="159-01-000" NumCta="159.01" Desc="Obras en proceso de activos fijos" Nivel="2" Naturaleza="D" SubCtaDe="159"/>
+  <Cuenta CodAgrup="160-00-000" NumCta="160" Desc="Otros activos fijos" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="160-01-000" NumCta="160.01" Desc="Otros activos fijos" Nivel="2" Naturaleza="D" SubCtaDe="160"/>
+  <Cuenta CodAgrup="161-00-000" NumCta="161" Desc="Ferrocarriles" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="161-01-000" NumCta="161.01" Desc="Ferrocarriles" Nivel="2" Naturaleza="D" SubCtaDe="161"/>
+  <Cuenta CodAgrup="162-00-000" NumCta="162" Desc="Embarcaciones" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="162-01-000" NumCta="162.01" Desc="Embarcaciones" Nivel="2" Naturaleza="D" SubCtaDe="162"/>
+  <Cuenta CodAgrup="163-00-000" NumCta="163" Desc="Aviones" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="163-01-000" NumCta="163.01" Desc="Aviones" Nivel="2" Naturaleza="D" SubCtaDe="163"/>
+  <Cuenta CodAgrup="164-00-000" NumCta="164" Desc="Troqueles moldes matrices y herramental" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="164-01-000" NumCta="164.01" Desc="Troqueles moldes matrices y herramental" Nivel="2" Naturaleza="D" SubCtaDe="164"/>
+  <Cuenta CodAgrup="165-00-000" NumCta="165" Desc="Equipo de comunicaciones telefónicas" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="165-01-000" NumCta="165.01" Desc="Equipo de comunicaciones telefónicas" Nivel="2" Naturaleza="D" SubCtaDe="165"/>
+  <Cuenta CodAgrup="166-00-000" NumCta="166" Desc="Equipo de comunicación satelital" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="166-01-000" NumCta="166.01" Desc="Equipo de comunicación satelital" Nivel="2" Naturaleza="D" SubCtaDe="166"/>
+  <Cuenta CodAgrup="167-00-000" NumCta="167" Desc="Equipo de adaptaciones para personas con capacidades diferentes" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="167-01-000" NumCta="167.01" Desc="Equipo de adaptaciones para personas con capacidades diferentes" Nivel="2" Naturaleza="D" SubCtaDe="167"/>
+  <Cuenta CodAgrup="168-00-000" NumCta="168" Desc="Maquinaria y equipo de generación de energía de fuentes renovables" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="168-01-000" NumCta="168.01" Desc="Maquinaria y equipo de generación de energía de fuentes renovables" Nivel="2" Naturaleza="D" SubCtaDe="168"/>
+  <Cuenta CodAgrup="169-00-000" NumCta="169" Desc="Otra maquinaria y equipo" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="169-01-000" NumCta="169.01" Desc="Otra maquinaria y equipo" Nivel="2" Naturaleza="D" SubCtaDe="169"/>
+  <Cuenta CodAgrup="170-00-000" NumCta="170" Desc="Adaptaciones y mejoras" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="170-01-000" NumCta="170.01" Desc="Adaptaciones y mejoras" Nivel="2" Naturaleza="D" SubCtaDe="170"/>
+  <Cuenta CodAgrup="171-00-000" NumCta="171" Desc="Depreciación acumulada de activos fijos" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="171-01-000" NumCta="171.01" Desc="Depreciación acumulada de edificios" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-02-000" NumCta="171.02" Desc="Depreciación acumulada de maquinaria y equipo" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-03-000" NumCta="171.03" Desc="Depreciación acumulada de automóviles autobuses camiones montacargas y remolques" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-04-000" NumCta="171.04" Desc="Depreciación acumulada de mobiliario y equipo de oficina" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-05-000" NumCta="171.05" Desc="Depreciación acumulada de equipo de cómputo" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-06-000" NumCta="171.06" Desc="Depreciación acumulada de equipo de comunicación" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-07-000" NumCta="171.07" Desc="Depreciación acumulada de activos biológicos vegetales y semovientes" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-08-000" NumCta="171.08" Desc="Depreciación acumulada de otros activos fijos" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-09-000" NumCta="171.09" Desc="Depreciación acumulada de ferrocarriles" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-10-000" NumCta="171.10" Desc="Depreciación acumulada de embarcaciones" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-11-000" NumCta="171.11" Desc="Depreciación acumulada de aviones" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-12-000" NumCta="171.12" Desc="Depreciación acumulada de troqueles moldes matrices y herramental" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-13-000" NumCta="171.13" Desc="Depreciación acumulada de equipo de comunicaciones telefónicas" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-14-000" NumCta="171.14" Desc="Depreciación acumulada de equipo de comunicación satelital" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-15-000" NumCta="171.15" Desc="Depreciación acumulada de equipo de adaptaciones para personas con capacidades diferentes" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-16-000" NumCta="171.16" Desc="Depreciación acumulada de maquinaria y equipo de generación de energía renovable" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-17-000" NumCta="171.17" Desc="Depreciación acumulada de adaptaciones y mejoras" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="171-18-000" NumCta="171.18" Desc="Depreciación acumulada de otra maquinaria y equipo" Nivel="2" Naturaleza="D" SubCtaDe="171"/>
+  <Cuenta CodAgrup="172-00-000" NumCta="172" Desc="Pérdida por deterioro acumulado de activos fijos" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="172-01-000" NumCta="172.01" Desc="Pérdida por deterioro acumulado de edificios" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-02-000" NumCta="172.02" Desc="Pérdida por deterioro acumulado de maquinaria y equipo" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-03-000" NumCta="172.03" Desc="Pérdida por deterioro acumulado de automóviles camiones montacargas y remolques" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-04-000" NumCta="172.04" Desc="Pérdida por deterioro acumulado de mobiliario y equipo de oficina" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-05-000" NumCta="172.05" Desc="Pérdida por deterioro acumulado de equipo de cómputo" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-06-000" NumCta="172.06" Desc="Pérdida por deterioro acumulado de equipo de comunicación" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-07-000" NumCta="172.07" Desc="Pérdida por deterioro acumulado de activos biológicos vegetales y semovientes" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-08-000" NumCta="172.08" Desc="Pérdida por deterioro acumulado de otros activos fijos" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-09-000" NumCta="172.09" Desc="Pérdida por deterioro acumulado de ferrocarriles" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-10-000" NumCta="172.10" Desc="Pérdida por deterioro acumulado de embarcaciones" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-11-000" NumCta="172.11" Desc="Pérdida por deterioro acumulado de aviones" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-12-000" NumCta="172.12" Desc="Pérdida por deterioro acumulado de troqueles moldes matrices y herramental" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-13-000" NumCta="172.13" Desc="Pérdida por deterioro acumulado de equipo de comunicaciones telefónicas" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-14-000" NumCta="172.14" Desc="Pérdida por deterioro acumulado de equipo de comunicación satelital" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-15-000" NumCta="172.15" Desc="Pérdida por deterioro acumulado de equipo de adaptaciones para personas con capacidades diferentes" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-16-000" NumCta="172.16" Desc="Pérdida por deterioro acumulado de maquinaria generación energía renovable" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-17-000" NumCta="172.17" Desc="Pérdida por deterioro acumulado de adaptaciones y mejoras" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="172-18-000" NumCta="172.18" Desc="Pérdida por deterioro acumulado de otra maquinaria y equipo" Nivel="2" Naturaleza="D" SubCtaDe="172"/>
+  <Cuenta CodAgrup="173-00-000" NumCta="173" Desc="Gastos diferidos" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="173-01-000" NumCta="173.01" Desc="Gastos diferidos" Nivel="2" Naturaleza="D" SubCtaDe="173"/>
+  <Cuenta CodAgrup="174-00-000" NumCta="174" Desc="Gastos pre operativos" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="174-01-000" NumCta="174.01" Desc="Gastos pre operativos" Nivel="2" Naturaleza="D" SubCtaDe="174"/>
+  <Cuenta CodAgrup="175-00-000" NumCta="175" Desc="Regalías asistencia técnica y otros gastos diferidos" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="175-01-000" NumCta="175.01" Desc="Regalías asistencia técnica y otros gastos diferidos" Nivel="2" Naturaleza="D" SubCtaDe="175"/>
+  <Cuenta CodAgrup="176-00-000" NumCta="176" Desc="Activos intangibles" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="176-01-000" NumCta="176.01" Desc="Activos intangibles" Nivel="2" Naturaleza="D" SubCtaDe="176"/>
+  <Cuenta CodAgrup="177-00-000" NumCta="177" Desc="Gastos de organización" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="177-01-000" NumCta="177.01" Desc="Gastos de organización" Nivel="2" Naturaleza="D" SubCtaDe="177"/>
+  <Cuenta CodAgrup="178-00-000" NumCta="178" Desc="Investigación y desarrollo de mercado" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="178-01-000" NumCta="178.01" Desc="Investigación y desarrollo de mercado" Nivel="2" Naturaleza="D" SubCtaDe="178"/>
+  <Cuenta CodAgrup="179-00-000" NumCta="179" Desc="Marcas y patentes" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="179-01-000" NumCta="179.01" Desc="Marcas y patentes" Nivel="2" Naturaleza="D" SubCtaDe="179"/>
+  <Cuenta CodAgrup="180-00-000" NumCta="180" Desc="Crédito mercantil" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="180-01-000" NumCta="180.01" Desc="Crédito mercantil" Nivel="2" Naturaleza="D" SubCtaDe="180"/>
+  <Cuenta CodAgrup="181-00-000" NumCta="181" Desc="Gastos de instalación" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="181-01-000" NumCta="181.01" Desc="Gastos de instalación" Nivel="2" Naturaleza="D" SubCtaDe="181"/>
+  <Cuenta CodAgrup="182-00-000" NumCta="182" Desc="Otros activos diferidos" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="182-01-000" NumCta="182.01" Desc="Otros activos diferidos" Nivel="2" Naturaleza="D" SubCtaDe="182"/>
+  <Cuenta CodAgrup="183-00-000" NumCta="183" Desc="Amortización acumulada de activos diferidos" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="183-01-000" NumCta="183.01" Desc="Amortización acumulada de gastos diferidos" Nivel="2" Naturaleza="D" SubCtaDe="183"/>
+  <Cuenta CodAgrup="183-02-000" NumCta="183.02" Desc="Amortización acumulada de gastos pre operativos" Nivel="2" Naturaleza="D" SubCtaDe="183"/>
+  <Cuenta CodAgrup="183-03-000" NumCta="183.03" Desc="Amortización acumulada de regalías asistencia técnica y otros gastos diferidos" Nivel="2" Naturaleza="D" SubCtaDe="183"/>
+  <Cuenta CodAgrup="183-04-000" NumCta="183.04" Desc="Amortización acumulada de activos intangibles" Nivel="2" Naturaleza="D" SubCtaDe="183"/>
+  <Cuenta CodAgrup="183-05-000" NumCta="183.05" Desc="Amortización acumulada de gastos de organización" Nivel="2" Naturaleza="D" SubCtaDe="183"/>
+  <Cuenta CodAgrup="183-06-000" NumCta="183.06" Desc="Amortización acumulada de investigación y desarrollo de mercado" Nivel="2" Naturaleza="D" SubCtaDe="183"/>
+  <Cuenta CodAgrup="183-07-000" NumCta="183.07" Desc="Amortización acumulada de marcas y patentes" Nivel="2" Naturaleza="D" SubCtaDe="183"/>
+  <Cuenta CodAgrup="183-08-000" NumCta="183.08" Desc="Amortización acumulada de crédito mercantil" Nivel="2" Naturaleza="D" SubCtaDe="183"/>
+  <Cuenta CodAgrup="183-09-000" NumCta="183.09" Desc="Amortización acumulada de gastos de instalación" Nivel="2" Naturaleza="D" SubCtaDe="183"/>
+  <Cuenta CodAgrup="183-10-000" NumCta="183.10" Desc="Amortización acumulada de otros activos diferidos" Nivel="2" Naturaleza="D" SubCtaDe="183"/>
+  <Cuenta CodAgrup="184-00-000" NumCta="184" Desc="Depósitos en garantía" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="184-01-000" NumCta="184.01" Desc="Depósitos de fianzas" Nivel="2" Naturaleza="D" SubCtaDe="184"/>
+  <Cuenta CodAgrup="184-02-000" NumCta="184.02" Desc="Depósitos de arrendamiento de bienes inmuebles" Nivel="2" Naturaleza="D" SubCtaDe="184"/>
+  <Cuenta CodAgrup="184-03-000" NumCta="184.03" Desc="Otros depósitos en garantía" Nivel="2" Naturaleza="D" SubCtaDe="184"/>
+  <Cuenta CodAgrup="185-00-000" NumCta="185" Desc="Impuestos diferidos" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="185-01-000" NumCta="185.01" Desc="Impuestos diferidos ISR" Nivel="2" Naturaleza="D" SubCtaDe="185"/>
+  <Cuenta CodAgrup="186-00-000" NumCta="186" Desc="Cuentas y documentos por cobrar a largo plazo" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="186-01-000" NumCta="186.01" Desc="Cuentas y documentos por cobrar a largo plazo nacional" Nivel="2" Naturaleza="D" SubCtaDe="186"/>
+  <Cuenta CodAgrup="186-02-000" NumCta="186.02" Desc="Cuentas y documentos por cobrar a largo plazo extranjero" Nivel="2" Naturaleza="D" SubCtaDe="186"/>
+  <Cuenta CodAgrup="186-03-000" NumCta="186.03" Desc="Cuentas y documentos por cobrar a largo plazo nacional parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="186"/>
+  <Cuenta CodAgrup="186-04-000" NumCta="186.04" Desc="Cuentas y documentos por cobrar a largo plazo extranjero parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="186"/>
+  <Cuenta CodAgrup="186-05-000" NumCta="186.05" Desc="Intereses por cobrar a largo plazo nacional" Nivel="2" Naturaleza="D" SubCtaDe="186"/>
+  <Cuenta CodAgrup="186-06-000" NumCta="186.06" Desc="Intereses por cobrar a largo plazo extranjero" Nivel="2" Naturaleza="D" SubCtaDe="186"/>
+  <Cuenta CodAgrup="186-07-000" NumCta="186.07" Desc="Intereses por cobrar a largo plazo nacional parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="186"/>
+  <Cuenta CodAgrup="186-08-000" NumCta="186.08" Desc="Intereses por cobrar a largo plazo extranjero parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="186"/>
+  <Cuenta CodAgrup="186-09-000" NumCta="186.09" Desc="Otras cuentas y documentos por cobrar a largo plazo" Nivel="2" Naturaleza="D" SubCtaDe="186"/>
+  <Cuenta CodAgrup="186-10-000" NumCta="186.10" Desc="Otras cuentas y documentos por cobrar a largo plazo parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="186"/>
+  <Cuenta CodAgrup="187-00-000" NumCta="187" Desc="Participación de los trabajadores en las utilidades diferidas" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="187-01-000" NumCta="187.01" Desc="Participación de los trabajadores en las utilidades diferidas" Nivel="2" Naturaleza="D" SubCtaDe="187"/>
+  <Cuenta CodAgrup="188-00-000" NumCta="188" Desc="Inversiones permanentes en acciones" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="188-01-000" NumCta="188.01" Desc="Inversiones a largo plazo en subsidiarias" Nivel="2" Naturaleza="D" SubCtaDe="188"/>
+  <Cuenta CodAgrup="188-02-000" NumCta="188.02" Desc="Inversiones a largo plazo en asociadas" Nivel="2" Naturaleza="D" SubCtaDe="188"/>
+  <Cuenta CodAgrup="188-03-000" NumCta="188.03" Desc="Otras inversiones permanentes en acciones" Nivel="2" Naturaleza="D" SubCtaDe="188"/>
+  <Cuenta CodAgrup="189-00-000" NumCta="189" Desc="Estimación por deterioro de inversiones permanentes en acciones" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="189-01-000" NumCta="189.01" Desc="Estimación por deterioro de inversiones permanentes en acciones" Nivel="2" Naturaleza="D" SubCtaDe="189"/>
+  <Cuenta CodAgrup="190-00-000" NumCta="190" Desc="Otros instrumentos financieros" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="190-01-000" NumCta="190.01" Desc="Otros instrumentos financieros" Nivel="2" Naturaleza="D" SubCtaDe="190"/>
+  <Cuenta CodAgrup="191-00-000" NumCta="191" Desc="Otros activos a largo plazo" Nivel="1" Naturaleza="D" SubCtaDe="100.02"/>
+  <Cuenta CodAgrup="191-01-000" NumCta="191.01" Desc="Otros activos a largo plazo" Nivel="2" Naturaleza="D" SubCtaDe="191"/>
+  <Cuenta CodAgrup="200-00-000" NumCta="200" Desc="Pasivo" Nivel="0" Naturaleza="A"/>
+  <Cuenta CodAgrup="200-01-000" NumCta="200.01" Desc="Pasivo a corto plazo" Nivel="2" Naturaleza="A" SubCtaDe="200"/>
+  <Cuenta CodAgrup="200-02-000" NumCta="200.02" Desc="Pasivo a largo plazo" Nivel="2" Naturaleza="A" SubCtaDe="200"/>
+  <Cuenta CodAgrup="201-00-000" NumCta="201" Desc="Proveedores" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="201-01-000" NumCta="201.01" Desc="Proveedores nacionales" Nivel="2" Naturaleza="A" SubCtaDe="201"/>
+  <Cuenta CodAgrup="201-02-000" NumCta="201.02" Desc="Proveedores extranjeros" Nivel="2" Naturaleza="A" SubCtaDe="201"/>
+  <Cuenta CodAgrup="201-03-000" NumCta="201.03" Desc="Proveedores nacionales parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="201"/>
+  <Cuenta CodAgrup="201-04-000" NumCta="201.04" Desc="Proveedores extranjeros parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="201"/>
+  <Cuenta CodAgrup="202-00-000" NumCta="202" Desc="Cuentas por pagar a corto plazo" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="202-01-000" NumCta="202.01" Desc="Documentos por pagar bancario y financiero nacional" Nivel="2" Naturaleza="A" SubCtaDe="202"/>
+  <Cuenta CodAgrup="202-02-000" NumCta="202.02" Desc="Documentos por pagar bancario y financiero extranjero" Nivel="2" Naturaleza="A" SubCtaDe="202"/>
+  <Cuenta CodAgrup="202-03-000" NumCta="202.03" Desc="Documentos y cuentas por pagar a corto plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="202"/>
+  <Cuenta CodAgrup="202-04-000" NumCta="202.04" Desc="Documentos y cuentas por pagar a corto plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="202"/>
+  <Cuenta CodAgrup="202-05-000" NumCta="202.05" Desc="Documentos y cuentas por pagar a corto plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="202"/>
+  <Cuenta CodAgrup="202-06-000" NumCta="202.06" Desc="Documentos y cuentas por pagar a corto plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="202"/>
+  <Cuenta CodAgrup="202-07-000" NumCta="202.07" Desc="Intereses por pagar a corto plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="202"/>
+  <Cuenta CodAgrup="202-08-000" NumCta="202.08" Desc="Intereses por pagar a corto plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="202"/>
+  <Cuenta CodAgrup="202-09-000" NumCta="202.09" Desc="Intereses por pagar a corto plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="202"/>
+  <Cuenta CodAgrup="202-10-000" NumCta="202.10" Desc="Intereses por pagar a corto plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="202"/>
+  <Cuenta CodAgrup="202-11-000" NumCta="202.11" Desc="Dividendo por pagar nacional" Nivel="2" Naturaleza="A" SubCtaDe="202"/>
+  <Cuenta CodAgrup="202-12-000" NumCta="202.12" Desc="Dividendo por pagar extranjero" Nivel="2" Naturaleza="A" SubCtaDe="202"/>
+  <Cuenta CodAgrup="203-00-000" NumCta="203" Desc="Cobros anticipados a corto plazo" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="203-01-000" NumCta="203.01" Desc="Rentas cobradas por anticipado a corto plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-02-000" NumCta="203.02" Desc="Rentas cobradas por anticipado a corto plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-03-000" NumCta="203.03" Desc="Rentas cobradas por anticipado a corto plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-04-000" NumCta="203.04" Desc="Rentas cobradas por anticipado a corto plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-05-000" NumCta="203.05" Desc="Intereses cobrados por anticipado a corto plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-06-000" NumCta="203.06" Desc="Intereses cobrados por anticipado a corto plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-07-000" NumCta="203.07" Desc="Intereses cobrados por anticipado a corto plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-08-000" NumCta="203.08" Desc="Intereses cobrados por anticipado a corto plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-09-000" NumCta="203.09" Desc="Factoraje financiero cobrados por anticipado a corto plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-10-000" NumCta="203.10" Desc="Factoraje financiero cobrados por anticipado a corto plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-11-000" NumCta="203.11" Desc="Factoraje financiero cobrados por anticipado a corto plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-12-000" NumCta="203.12" Desc="Factoraje financiero cobrados por anticipado a corto plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-13-000" NumCta="203.13" Desc="Arrendamiento financiero cobrados por anticipado a corto plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-14-000" NumCta="203.14" Desc="Arrendamiento financiero cobrados por anticipado a corto plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-15-000" NumCta="203.15" Desc="Arrendamiento financiero cobrados por anticipado a corto plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-16-000" NumCta="203.16" Desc="Arrendamiento financiero cobrados por anticipado a corto plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-17-000" NumCta="203.17" Desc="Derechos fiduciarios" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="203-18-000" NumCta="203.18" Desc="Otros cobros anticipados" Nivel="2" Naturaleza="A" SubCtaDe="203"/>
+  <Cuenta CodAgrup="204-00-000" NumCta="204" Desc="Instrumentos financieros a corto plazo" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="204-01-000" NumCta="204.01" Desc="Instrumentos financieros a corto plazo" Nivel="2" Naturaleza="A" SubCtaDe="204"/>
+  <Cuenta CodAgrup="205-00-000" NumCta="205" Desc="Acreedores diversos a corto plazo" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="205-01-000" NumCta="205.01" Desc="Socios accionistas o representante legal" Nivel="2" Naturaleza="A" SubCtaDe="205"/>
+  <Cuenta CodAgrup="205-02-000" NumCta="205.02" Desc="Acreedores diversos a corto plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="205"/>
+  <Cuenta CodAgrup="205-03-000" NumCta="205.03" Desc="Acreedores diversos a corto plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="205"/>
+  <Cuenta CodAgrup="205-04-000" NumCta="205.04" Desc="Acreedores diversos a corto plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="205"/>
+  <Cuenta CodAgrup="205-05-000" NumCta="205.05" Desc="Acreedores diversos a corto plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="205"/>
+  <Cuenta CodAgrup="205-06-000" NumCta="205.06" Desc="Otros acreedores diversos a corto plazo" Nivel="2" Naturaleza="A" SubCtaDe="205"/>
+  <Cuenta CodAgrup="206-00-000" NumCta="206" Desc="Anticipo de cliente" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="206-01-000" NumCta="206.01" Desc="Anticipo de cliente nacional" Nivel="2" Naturaleza="A" SubCtaDe="206"/>
+  <Cuenta CodAgrup="206-02-000" NumCta="206.02" Desc="Anticipo de cliente extranjero" Nivel="2" Naturaleza="A" SubCtaDe="206"/>
+  <Cuenta CodAgrup="206-03-000" NumCta="206.03" Desc="Anticipo de cliente nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="206"/>
+  <Cuenta CodAgrup="206-04-000" NumCta="206.04" Desc="Anticipo de cliente extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="206"/>
+  <Cuenta CodAgrup="206-05-000" NumCta="206.05" Desc="Otros anticipos de clientes" Nivel="2" Naturaleza="A" SubCtaDe="206"/>
+  <Cuenta CodAgrup="207-00-000" NumCta="207" Desc="Impuestos trasladados" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="207-01-000" NumCta="207.01" Desc="IVA trasladado" Nivel="2" Naturaleza="A" SubCtaDe="207"/>
+  <Cuenta CodAgrup="207-02-000" NumCta="207.02" Desc="IEPS trasladado" Nivel="2" Naturaleza="A" SubCtaDe="207"/>
+  <Cuenta CodAgrup="208-00-000" NumCta="208" Desc="Impuestos trasladados cobrados" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="208-01-000" NumCta="208.01" Desc="IVA trasladado cobrado" Nivel="2" Naturaleza="A" SubCtaDe="208"/>
+  <Cuenta CodAgrup="208-02-000" NumCta="208.02" Desc="IEPS trasladado cobrado" Nivel="2" Naturaleza="A" SubCtaDe="208"/>
+  <Cuenta CodAgrup="209-00-000" NumCta="209" Desc="Impuestos trasladados no cobrados" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="209-01-000" NumCta="209.01" Desc="IVA trasladado no cobrado" Nivel="2" Naturaleza="A" SubCtaDe="209"/>
+  <Cuenta CodAgrup="209-02-000" NumCta="209.02" Desc="IEPS trasladado no cobrado" Nivel="2" Naturaleza="A" SubCtaDe="209"/>
+  <Cuenta CodAgrup="210-00-000" NumCta="210" Desc="Provisión de sueldos y salarios por pagar" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="210-01-000" NumCta="210.01" Desc="Provisión de sueldos y salarios por pagar" Nivel="2" Naturaleza="A" SubCtaDe="210"/>
+  <Cuenta CodAgrup="210-02-000" NumCta="210.02" Desc="Provisión de vacaciones por pagar" Nivel="2" Naturaleza="A" SubCtaDe="210"/>
+  <Cuenta CodAgrup="210-03-000" NumCta="210.03" Desc="Provisión de aguinaldo por pagar" Nivel="2" Naturaleza="A" SubCtaDe="210"/>
+  <Cuenta CodAgrup="210-04-000" NumCta="210.04" Desc="Provisión de fondo de ahorro por pagar" Nivel="2" Naturaleza="A" SubCtaDe="210"/>
+  <Cuenta CodAgrup="210-05-000" NumCta="210.05" Desc="Provisión de asimilados a salarios por pagar" Nivel="2" Naturaleza="A" SubCtaDe="210"/>
+  <Cuenta CodAgrup="210-06-000" NumCta="210.06" Desc="Provisión de anticipos o remanentes por distribuir" Nivel="2" Naturaleza="A" SubCtaDe="210"/>
+  <Cuenta CodAgrup="210-07-000" NumCta="210.07" Desc="Provisión de otros sueldos y salarios por pagar" Nivel="2" Naturaleza="A" SubCtaDe="210"/>
+  <Cuenta CodAgrup="211-00-000" NumCta="211" Desc="Provisión de contribuciones de seguridad social por pagar" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="211-01-000" NumCta="211.01" Desc="Provisión de IMSS patronal por pagar" Nivel="2" Naturaleza="A" SubCtaDe="211"/>
+  <Cuenta CodAgrup="211-02-000" NumCta="211.02" Desc="Provisión de SAR por pagar" Nivel="2" Naturaleza="A" SubCtaDe="211"/>
+  <Cuenta CodAgrup="211-03-000" NumCta="211.03" Desc="Provisión de infonavit por pagar" Nivel="2" Naturaleza="A" SubCtaDe="211"/>
+  <Cuenta CodAgrup="212-00-000" NumCta="212" Desc="Provisión de impuesto estatal sobre nómina por pagar" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="212-01-000" NumCta="212.01" Desc="Provisión de impuesto estatal sobre nómina por pagar" Nivel="2" Naturaleza="A" SubCtaDe="212"/>
+  <Cuenta CodAgrup="213-00-000" NumCta="213" Desc="Impuestos y derechos por pagar" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="213-01-000" NumCta="213.01" Desc="IVA por pagar" Nivel="2" Naturaleza="A" SubCtaDe="213"/>
+  <Cuenta CodAgrup="213-02-000" NumCta="213.02" Desc="IEPS por pagar" Nivel="2" Naturaleza="A" SubCtaDe="213"/>
+  <Cuenta CodAgrup="213-03-000" NumCta="213.03" Desc="ISR por pagar" Nivel="2" Naturaleza="A" SubCtaDe="213"/>
+  <Cuenta CodAgrup="213-04-000" NumCta="213.04" Desc="Impuesto estatal sobre nómina por pagar" Nivel="2" Naturaleza="A" SubCtaDe="213"/>
+  <Cuenta CodAgrup="213-05-000" NumCta="213.05" Desc="Impuesto estatal y municipal por pagar" Nivel="2" Naturaleza="A" SubCtaDe="213"/>
+  <Cuenta CodAgrup="213-06-000" NumCta="213.06" Desc="Derechos por pagar" Nivel="2" Naturaleza="A" SubCtaDe="213"/>
+  <Cuenta CodAgrup="213-07-000" NumCta="213.07" Desc="Otros impuestos por pagar" Nivel="2" Naturaleza="A" SubCtaDe="213"/>
+  <Cuenta CodAgrup="214-00-000" NumCta="214" Desc="Dividendos por pagar" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="214-01-000" NumCta="214.01" Desc="Dividendos por pagar" Nivel="2" Naturaleza="A" SubCtaDe="214"/>
+  <Cuenta CodAgrup="215-00-000" NumCta="215" Desc="PTU por pagar" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="215-01-000" NumCta="215.01" Desc="PTU por pagar" Nivel="2" Naturaleza="A" SubCtaDe="215"/>
+  <Cuenta CodAgrup="215-02-000" NumCta="215.02" Desc="PTU por pagar de ejercicios anteriores" Nivel="2" Naturaleza="A" SubCtaDe="215"/>
+  <Cuenta CodAgrup="215-03-000" NumCta="215.03" Desc="Provisión de PTU por pagar" Nivel="2" Naturaleza="A" SubCtaDe="215"/>
+  <Cuenta CodAgrup="216-00-000" NumCta="216" Desc="Impuestos retenidos" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="216-01-000" NumCta="216.01" Desc="Impuestos retenidos de ISR por sueldos y salarios" Nivel="2" Naturaleza="A" SubCtaDe="216"/>
+  <Cuenta CodAgrup="216-02-000" NumCta="216.02" Desc="Impuestos retenidos de ISR por asimilados a salarios" Nivel="2" Naturaleza="A" SubCtaDe="216"/>
+  <Cuenta CodAgrup="216-03-000" NumCta="216.03" Desc="Impuestos retenidos de ISR por arrendamiento" Nivel="2" Naturaleza="A" SubCtaDe="216"/>
+  <Cuenta CodAgrup="216-04-000" NumCta="216.04" Desc="Impuestos retenidos de ISR por servicios profesionales" Nivel="2" Naturaleza="A" SubCtaDe="216"/>
+  <Cuenta CodAgrup="216-05-000" NumCta="216.05" Desc="Impuestos retenidos de ISR por dividendos" Nivel="2" Naturaleza="A" SubCtaDe="216"/>
+  <Cuenta CodAgrup="216-06-000" NumCta="216.06" Desc="Impuestos retenidos de ISR por intereses" Nivel="2" Naturaleza="A" SubCtaDe="216"/>
+  <Cuenta CodAgrup="216-07-000" NumCta="216.07" Desc="Impuestos retenidos de ISR por pagos al extranjero" Nivel="2" Naturaleza="A" SubCtaDe="216"/>
+  <Cuenta CodAgrup="216-08-000" NumCta="216.08" Desc="Impuestos retenidos de ISR por venta de acciones" Nivel="2" Naturaleza="A" SubCtaDe="216"/>
+  <Cuenta CodAgrup="216-09-000" NumCta="216.09" Desc="Impuestos retenidos de ISR por venta de partes sociales" Nivel="2" Naturaleza="A" SubCtaDe="216"/>
+  <Cuenta CodAgrup="216-10-000" NumCta="216.10" Desc="Impuestos retenidos de IVA" Nivel="2" Naturaleza="A" SubCtaDe="216"/>
+  <Cuenta CodAgrup="216-11-000" NumCta="216.11" Desc="Retenciones de IMSS a los trabajadores" Nivel="2" Naturaleza="A" SubCtaDe="216"/>
+  <Cuenta CodAgrup="216-12-000" NumCta="216.12" Desc="Otras impuestos retenidos" Nivel="2" Naturaleza="A" SubCtaDe="216"/>
+  <Cuenta CodAgrup="217-00-000" NumCta="217" Desc="Pagos realizados por cuenta de terceros" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="217-01-000" NumCta="217.01" Desc="Pagos realizados por cuenta de terceros" Nivel="2" Naturaleza="A" SubCtaDe="217"/>
+  <Cuenta CodAgrup="218-00-000" NumCta="218" Desc="Otros pasivos a corto plazo" Nivel="1" Naturaleza="A" SubCtaDe="200.01"/>
+  <Cuenta CodAgrup="218-01-000" NumCta="218.01" Desc="Otros pasivos a corto plazo" Nivel="2" Naturaleza="A" SubCtaDe="218"/>
+  <Cuenta CodAgrup="251-00-000" NumCta="251" Desc="Acreedores diversos a largo plazo" Nivel="1" Naturaleza="A" SubCtaDe="200.02"/>
+  <Cuenta CodAgrup="251-01-000" NumCta="251.01" Desc="Socios accionistas o representante legal" Nivel="2" Naturaleza="A" SubCtaDe="251"/>
+  <Cuenta CodAgrup="251-02-000" NumCta="251.02" Desc="Acreedores diversos a largo plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="251"/>
+  <Cuenta CodAgrup="251-03-000" NumCta="251.03" Desc="Acreedores diversos a largo plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="251"/>
+  <Cuenta CodAgrup="251-04-000" NumCta="251.04" Desc="Acreedores diversos a largo plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="251"/>
+  <Cuenta CodAgrup="251-05-000" NumCta="251.05" Desc="Acreedores diversos a largo plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="251"/>
+  <Cuenta CodAgrup="251-06-000" NumCta="251.06" Desc="Otros acreedores diversos a largo plazo" Nivel="2" Naturaleza="A" SubCtaDe="251"/>
+  <Cuenta CodAgrup="252-00-000" NumCta="252" Desc="Cuentas por pagar a largo plazo" Nivel="1" Naturaleza="A" SubCtaDe="200.02"/>
+  <Cuenta CodAgrup="252-01-000" NumCta="252.01" Desc="Documentos bancarios y financieros por pagar a largo plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-02-000" NumCta="252.02" Desc="Documentos bancarios y financieros por pagar a largo plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-03-000" NumCta="252.03" Desc="Documentos y cuentas por pagar a largo plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-04-000" NumCta="252.04" Desc="Documentos y cuentas por pagar a largo plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-05-000" NumCta="252.05" Desc="Documentos y cuentas por pagar a largo plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-06-000" NumCta="252.06" Desc="Documentos y cuentas por pagar a largo plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-07-000" NumCta="252.07" Desc="Hipotecas por pagar a largo plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-08-000" NumCta="252.08" Desc="Hipotecas por pagar a largo plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-09-000" NumCta="252.09" Desc="Hipotecas por pagar a largo plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-10-000" NumCta="252.10" Desc="Hipotecas por pagar a largo plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-11-000" NumCta="252.11" Desc="Intereses por pagar a largo plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-12-000" NumCta="252.12" Desc="Intereses por pagar a largo plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-13-000" NumCta="252.13" Desc="Intereses por pagar a largo plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-14-000" NumCta="252.14" Desc="Intereses por pagar a largo plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-15-000" NumCta="252.15" Desc="Dividendos por pagar nacionales" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-16-000" NumCta="252.16" Desc="Dividendos por pagar extranjeros" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="252-17-000" NumCta="252.17" Desc="Otras cuentas y documentos por pagar a largo plazo" Nivel="2" Naturaleza="A" SubCtaDe="252"/>
+  <Cuenta CodAgrup="253-00-000" NumCta="253" Desc="Cobros anticipados a largo plazo" Nivel="1" Naturaleza="A" SubCtaDe="200.02"/>
+  <Cuenta CodAgrup="253-01-000" NumCta="253.01" Desc="Rentas cobradas por anticipado a largo plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-02-000" NumCta="253.02" Desc="Rentas cobradas por anticipado a largo plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-03-000" NumCta="253.03" Desc="Rentas cobradas por anticipado a largo plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-04-000" NumCta="253.04" Desc="Rentas cobradas por anticipado a largo plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-05-000" NumCta="253.05" Desc="Intereses cobrados por anticipado a largo plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-06-000" NumCta="253.06" Desc="Intereses cobrados por anticipado a largo plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-07-000" NumCta="253.07" Desc="Intereses cobrados por anticipado a largo plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-08-000" NumCta="253.08" Desc="Intereses cobrados por anticipado a largo plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-09-000" NumCta="253.09" Desc="Factoraje financiero cobrados por anticipado a largo plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-10-000" NumCta="253.10" Desc="Factoraje financiero cobrados por anticipado a largo plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-11-000" NumCta="253.11" Desc="Factoraje financiero cobrados por anticipado a largo plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-12-000" NumCta="253.12" Desc="Factoraje financiero cobrados por anticipado a largo plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-13-000" NumCta="253.13" Desc="Arrendamiento financiero cobrados por anticipado a largo plazo nacional" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-14-000" NumCta="253.14" Desc="Arrendamiento financiero cobrados por anticipado a largo plazo extranjero" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-15-000" NumCta="253.15" Desc="Arrendamiento financiero cobrados por anticipado a largo plazo nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-16-000" NumCta="253.16" Desc="Arrendamiento financiero cobrados por anticipado a largo plazo extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-17-000" NumCta="253.17" Desc="Derechos fiduciarios" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="253-18-000" NumCta="253.18" Desc="Otros cobros anticipados" Nivel="2" Naturaleza="A" SubCtaDe="253"/>
+  <Cuenta CodAgrup="254-00-000" NumCta="254" Desc="Instrumentos financieros a largo plazo" Nivel="1" Naturaleza="A" SubCtaDe="200.02"/>
+  <Cuenta CodAgrup="254-01-000" NumCta="254.01" Desc="Instrumentos financieros a largo plazo" Nivel="2" Naturaleza="A" SubCtaDe="254"/>
+  <Cuenta CodAgrup="255-00-000" NumCta="255" Desc="Pasivos por beneficios a los empleados a largo plazo" Nivel="1" Naturaleza="A" SubCtaDe="200.02"/>
+  <Cuenta CodAgrup="255-01-000" NumCta="255.01" Desc="Pasivos por beneficios a los empleados a largo plazo" Nivel="2" Naturaleza="A" SubCtaDe="255"/>
+  <Cuenta CodAgrup="256-00-000" NumCta="256" Desc="Otros pasivos a largo plazo" Nivel="1" Naturaleza="A" SubCtaDe="200.02"/>
+  <Cuenta CodAgrup="256-01-000" NumCta="256.01" Desc="Otros pasivos a largo plazo" Nivel="2" Naturaleza="A" SubCtaDe="256"/>
+  <Cuenta CodAgrup="257-00-000" NumCta="257" Desc="Participación de los trabajadores en las utilidades diferida" Nivel="1" Naturaleza="A" SubCtaDe="200.02"/>
+  <Cuenta CodAgrup="257-01-000" NumCta="257.01" Desc="Participación de los trabajadores en las utilidades diferida" Nivel="2" Naturaleza="A" SubCtaDe="257"/>
+  <Cuenta CodAgrup="258-00-000" NumCta="258" Desc="Obligaciones contraídas de fideicomisos" Nivel="1" Naturaleza="A" SubCtaDe="200.02"/>
+  <Cuenta CodAgrup="258-01-000" NumCta="258.01" Desc="Obligaciones contraídas de fideicomisos" Nivel="2" Naturaleza="A" SubCtaDe="258"/>
+  <Cuenta CodAgrup="259-00-000" NumCta="259" Desc="Impuestos diferidos" Nivel="1" Naturaleza="A" SubCtaDe="200.02"/>
+  <Cuenta CodAgrup="259-01-000" NumCta="259.01" Desc="ISR diferido" Nivel="2" Naturaleza="A" SubCtaDe="259"/>
+  <Cuenta CodAgrup="259-02-000" NumCta="259.02" Desc="ISR por dividendo diferido" Nivel="2" Naturaleza="A" SubCtaDe="259"/>
+  <Cuenta CodAgrup="259-03-000" NumCta="259.03" Desc="Otros impuestos diferidos" Nivel="2" Naturaleza="A" SubCtaDe="259"/>
+  <Cuenta CodAgrup="260-00-000" NumCta="260" Desc="Pasivos diferidos" Nivel="1" Naturaleza="A" SubCtaDe="200.02"/>
+  <Cuenta CodAgrup="260-01-000" NumCta="260.01" Desc="Pasivos diferidos" Nivel="2" Naturaleza="A" SubCtaDe="260"/>
+  <Cuenta CodAgrup="300-00-000" NumCta="300" Desc="Capital contable" Nivel="0" Naturaleza="A"/>
+  <Cuenta CodAgrup="301-00-000" NumCta="301" Desc="Capital social" Nivel="1" Naturaleza="A" SubCtaDe="300"/>
+  <Cuenta CodAgrup="301-01-000" NumCta="301.01" Desc="Capital fijo" Nivel="2" Naturaleza="A" SubCtaDe="301"/>
+  <Cuenta CodAgrup="301-02-000" NumCta="301.02" Desc="Capital variable" Nivel="2" Naturaleza="A" SubCtaDe="301"/>
+  <Cuenta CodAgrup="301-03-000" NumCta="301.03" Desc="Aportaciones para futuros aumentos de capital" Nivel="2" Naturaleza="A" SubCtaDe="301"/>
+  <Cuenta CodAgrup="301-04-000" NumCta="301.04" Desc="Prima en suscripción de acciones" Nivel="2" Naturaleza="A" SubCtaDe="301"/>
+  <Cuenta CodAgrup="301-05-000" NumCta="301.05" Desc="Prima en suscripción de partes sociales" Nivel="2" Naturaleza="A" SubCtaDe="301"/>
+  <Cuenta CodAgrup="302-00-000" NumCta="302" Desc="Patrimonio" Nivel="1" Naturaleza="A" SubCtaDe="300"/>
+  <Cuenta CodAgrup="302-01-000" NumCta="302.01" Desc="Patrimonio" Nivel="2" Naturaleza="A" SubCtaDe="302"/>
+  <Cuenta CodAgrup="302-02-000" NumCta="302.02" Desc="Aportación patrimonial" Nivel="2" Naturaleza="A" SubCtaDe="302"/>
+  <Cuenta CodAgrup="302-03-000" NumCta="302.03" Desc="Déficit o remanente del ejercicio" Nivel="2" Naturaleza="A" SubCtaDe="302"/>
+  <Cuenta CodAgrup="303-00-000" NumCta="303" Desc="Reserva legal" Nivel="1" Naturaleza="A" SubCtaDe="300"/>
+  <Cuenta CodAgrup="303-01-000" NumCta="303.01" Desc="Reserva legal" Nivel="2" Naturaleza="A" SubCtaDe="303"/>
+  <Cuenta CodAgrup="304-00-000" NumCta="304" Desc="Resultado de ejercicios anteriores" Nivel="1" Naturaleza="A" SubCtaDe="300"/>
+  <Cuenta CodAgrup="304-01-000" NumCta="304.01" Desc="Utilidad de ejercicios anteriores" Nivel="2" Naturaleza="A" SubCtaDe="304"/>
+  <Cuenta CodAgrup="304-02-000" NumCta="304.02" Desc="Pérdida de ejercicios anteriores" Nivel="2" Naturaleza="A" SubCtaDe="304"/>
+  <Cuenta CodAgrup="304-03-000" NumCta="304.03" Desc="Resultado integral de ejercicios anteriores" Nivel="2" Naturaleza="A" SubCtaDe="304"/>
+  <Cuenta CodAgrup="304-04-000" NumCta="304.04" Desc="Déficit o remanente de ejercicio anteriores" Nivel="2" Naturaleza="A" SubCtaDe="304"/>
+  <Cuenta CodAgrup="305-00-000" NumCta="305" Desc="Resultado del ejercicio" Nivel="1" Naturaleza="A" SubCtaDe="300"/>
+  <Cuenta CodAgrup="305-01-000" NumCta="305.01" Desc="Utilidad del ejercicio" Nivel="2" Naturaleza="A" SubCtaDe="305"/>
+  <Cuenta CodAgrup="305-02-000" NumCta="305.02" Desc="Pérdida del ejercicio" Nivel="2" Naturaleza="A" SubCtaDe="305"/>
+  <Cuenta CodAgrup="305-03-000" NumCta="305.03" Desc="Resultado integral" Nivel="2" Naturaleza="A" SubCtaDe="305"/>
+  <Cuenta CodAgrup="306-00-000" NumCta="306" Desc="Otras cuentas de capital" Nivel="1" Naturaleza="A" SubCtaDe="300"/>
+  <Cuenta CodAgrup="306-01-000" NumCta="306.01" Desc="Otras cuentas de capital" Nivel="2" Naturaleza="A" SubCtaDe="306"/>
+  <Cuenta CodAgrup="400-00-000" NumCta="400" Desc="Ingresos" Nivel="0" Naturaleza="A"/>
+  <Cuenta CodAgrup="401-00-000" NumCta="401" Desc="Ingresos" Nivel="1" Naturaleza="A" SubCtaDe="400"/>
+  <Cuenta CodAgrup="401-01-000" NumCta="401.01" Desc="Ventas y o servicios gravados a la tasa general" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-02-000" NumCta="401.02" Desc="Ventas y o servicios gravados a la tasa general de contado" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-03-000" NumCta="401.03" Desc="Ventas y o servicios gravados a la tasa general a crédito" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-04-000" NumCta="401.04" Desc="Ventas y o servicios gravados al 0%" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-05-000" NumCta="401.05" Desc="Ventas y o servicios gravados al 0% de contado" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-06-000" NumCta="401.06" Desc="Ventas y o servicios gravados al 0% a crédito" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-07-000" NumCta="401.07" Desc="Ventas y o servicios exentos" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-08-000" NumCta="401.08" Desc="Ventas y o servicios exentos de contado" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-09-000" NumCta="401.09" Desc="Ventas y o servicios exentos a crédito" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-10-000" NumCta="401.10" Desc="Ventas y o servicios gravados tasa general nacionales partes relacionadas" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-11-000" NumCta="401.11" Desc="Ventas y o servicios gravados tasa general extranjeros partes relacionadas" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-12-000" NumCta="401.12" Desc="Ventas y o servicios gravados al 0% nacionales partes relacionadas" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-13-000" NumCta="401.13" Desc="Ventas y o servicios gravados al 0% extranjeros partes relacionadas" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-14-000" NumCta="401.14" Desc="Ventas y o servicios exentos nacionales partes relacionadas" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-15-000" NumCta="401.15" Desc="Ventas y o servicios exentos extranjeros partes relacionadas" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-16-000" NumCta="401.16" Desc="Ingresos por servicios administrativos" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-17-000" NumCta="401.17" Desc="Ingresos por servicios administrativos nacionales partes relacionadas" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-18-000" NumCta="401.18" Desc="Ingresos por servicios administrativos extranjeros partes relacionadas" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-19-000" NumCta="401.19" Desc="Ingresos por servicios profesionales" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-20-000" NumCta="401.20" Desc="Ingresos por servicios profesionales nacionales partes relacionadas" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-21-000" NumCta="401.21" Desc="Ingresos por servicios profesionales extranjeros partes relacionadas" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-22-000" NumCta="401.22" Desc="Ingresos por arrendamiento" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-23-000" NumCta="401.23" Desc="Ingresos por arrendamiento nacionales partes relacionadas" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-24-000" NumCta="401.24" Desc="Ingresos por arrendamiento extranjeros partes relacionadas" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-25-000" NumCta="401.25" Desc="Ingresos por exportación" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-26-000" NumCta="401.26" Desc="Ingresos por comisiones" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-27-000" NumCta="401.27" Desc="Ingresos por maquila" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-28-000" NumCta="401.28" Desc="Ingresos por coordinados" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-29-000" NumCta="401.29" Desc="Ingresos por regalías" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-30-000" NumCta="401.30" Desc="Ingresos por asistencia técnica" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-31-000" NumCta="401.31" Desc="Ingresos por donativos" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-32-000" NumCta="401.32" Desc="Ingresos por intereses actividad propia" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-33-000" NumCta="401.33" Desc="Ingresos de copropiedad" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-34-000" NumCta="401.34" Desc="Ingresos por fideicomisos" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-35-000" NumCta="401.35" Desc="Ingresos por factoraje financiero" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-36-000" NumCta="401.36" Desc="Ingresos por arrendamiento financiero" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-37-000" NumCta="401.37" Desc="Ingresos de extranjeros con establecimiento en el país" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="401-38-000" NumCta="401.38" Desc="Otros ingresos propios" Nivel="2" Naturaleza="A" SubCtaDe="401"/>
+  <Cuenta CodAgrup="402-00-000" NumCta="402" Desc="Devoluciones descuentos o bonificaciones sobre ingresos" Nivel="1" Naturaleza="A" SubCtaDe="400"/>
+  <Cuenta CodAgrup="402-01-000" NumCta="402.01" Desc="Devoluciones descuentos o bonificaciones sobre ventas y o servicios tasa general" Nivel="2" Naturaleza="A" SubCtaDe="402"/>
+  <Cuenta CodAgrup="402-02-000" NumCta="402.02" Desc="Devoluciones descuentos o bonificaciones sobre ventas y o servicios al 0%" Nivel="2" Naturaleza="A" SubCtaDe="402"/>
+  <Cuenta CodAgrup="402-03-000" NumCta="402.03" Desc="Devoluciones descuentos o bonificaciones sobre ventas y o servicios exentos" Nivel="2" Naturaleza="A" SubCtaDe="402"/>
+  <Cuenta CodAgrup="402-04-000" NumCta="402.04" Desc="Devoluciones descuentos o bonificaciones de otros ingresos" Nivel="2" Naturaleza="A" SubCtaDe="402"/>
+  <Cuenta CodAgrup="403-00-000" NumCta="403" Desc="Otros ingresos" Nivel="1" Naturaleza="A" SubCtaDe="400"/>
+  <Cuenta CodAgrup="403-01-000" NumCta="403.01" Desc="Otros Ingresos" Nivel="2" Naturaleza="A" SubCtaDe="403"/>
+  <Cuenta CodAgrup="403-02-000" NumCta="403.02" Desc="Otros ingresos nacionales parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="403"/>
+  <Cuenta CodAgrup="403-03-000" NumCta="403.03" Desc="Otros ingresos extranjeros parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="403"/>
+  <Cuenta CodAgrup="403-04-000" NumCta="403.04" Desc="Ingresos por operaciones discontinuas" Nivel="2" Naturaleza="A" SubCtaDe="403"/>
+  <Cuenta CodAgrup="403-05-000" NumCta="403.05" Desc="Ingresos por condonación de adeudo" Nivel="2" Naturaleza="A" SubCtaDe="403"/>
+  <Cuenta CodAgrup="500-00-000" NumCta="500" Desc="Costos" Nivel="0" Naturaleza="D"/>
+  <Cuenta CodAgrup="501-00-000" NumCta="501" Desc="Costo de venta y o servicio" Nivel="1" Naturaleza="D" SubCtaDe="500"/>
+  <Cuenta CodAgrup="501-01-000" NumCta="501.01" Desc="Costo de venta" Nivel="2" Naturaleza="D" SubCtaDe="501"/>
+  <Cuenta CodAgrup="501-02-000" NumCta="501.02" Desc="Costo de servicios Mano de obra" Nivel="2" Naturaleza="D" SubCtaDe="501"/>
+  <Cuenta CodAgrup="501-03-000" NumCta="501.03" Desc="Materia prima directa utilizada para la producción" Nivel="2" Naturaleza="D" SubCtaDe="501"/>
+  <Cuenta CodAgrup="501-04-000" NumCta="501.04" Desc="Materia prima consumida en el proceso productivo" Nivel="2" Naturaleza="D" SubCtaDe="501"/>
+  <Cuenta CodAgrup="501-05-000" NumCta="501.05" Desc="Mano de obra directa consumida" Nivel="2" Naturaleza="D" SubCtaDe="501"/>
+  <Cuenta CodAgrup="501-06-000" NumCta="501.06" Desc="Mano de obra directa" Nivel="2" Naturaleza="D" SubCtaDe="501"/>
+  <Cuenta CodAgrup="501-07-000" NumCta="501.07" Desc="Cargos indirectos de producción" Nivel="2" Naturaleza="D" SubCtaDe="501"/>
+  <Cuenta CodAgrup="501-08-000" NumCta="501.08" Desc="Otros conceptos de costo" Nivel="2" Naturaleza="D" SubCtaDe="501"/>
+  <Cuenta CodAgrup="502-00-000" NumCta="502" Desc="Compras" Nivel="1" Naturaleza="D" SubCtaDe="500"/>
+  <Cuenta CodAgrup="502-01-000" NumCta="502.01" Desc="Compras nacionales" Nivel="2" Naturaleza="D" SubCtaDe="502"/>
+  <Cuenta CodAgrup="502-02-000" NumCta="502.02" Desc="Compras nacionales parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="502"/>
+  <Cuenta CodAgrup="502-03-000" NumCta="502.03" Desc="Compras de Importación" Nivel="2" Naturaleza="D" SubCtaDe="502"/>
+  <Cuenta CodAgrup="502-04-000" NumCta="502.04" Desc="Compras de Importación partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="502"/>
+  <Cuenta CodAgrup="503-00-000" NumCta="503" Desc="Devoluciones descuentos o bonificaciones sobre compras" Nivel="1" Naturaleza="D" SubCtaDe="500"/>
+  <Cuenta CodAgrup="503-01-000" NumCta="503.01" Desc="Devoluciones descuentos o bonificaciones sobre compras" Nivel="2" Naturaleza="D" SubCtaDe="503"/>
+  <Cuenta CodAgrup="504-00-000" NumCta="504" Desc="Otras cuentas de costos" Nivel="1" Naturaleza="D" SubCtaDe="500"/>
+  <Cuenta CodAgrup="504-01-000" NumCta="504.01" Desc="Gastos indirectos de fabricación" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-02-000" NumCta="504.02" Desc="Gastos indirectos de fabricación partes relacionadas nacionales" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-03-000" NumCta="504.03" Desc="Gastos indirectos de fabricación partes relacionadas extranjeras" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-04-000" NumCta="504.04" Desc="Otras cuentas de costos incurridos" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-05-000" NumCta="504.05" Desc="Otras cuentas de costos incurridos partes relacionadas nacionales" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-06-000" NumCta="504.06" Desc="Otras cuentas de costos incurridos partes relacionadas extranjeras" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-07-000" NumCta="504.07" Desc="Depreciación de edificios" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-08-000" NumCta="504.08" Desc="Depreciación de maquinaria y equipo" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-09-000" NumCta="504.09" Desc="Depreciación de automóviles camiones montacargas y remolques" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-10-000" NumCta="504.10" Desc="Depreciación de mobiliario y equipo de oficina" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-11-000" NumCta="504.11" Desc="Depreciación de equipo de cómputo" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-12-000" NumCta="504.12" Desc="Depreciación de equipo de comunicación" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-13-000" NumCta="504.13" Desc="Depreciación de activos biológicos vegetales y semovientes" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-14-000" NumCta="504.14" Desc="Depreciación de otros activos fijos" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-15-000" NumCta="504.15" Desc="Depreciación de ferrocarriles" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-16-000" NumCta="504.16" Desc="Depreciación de embarcaciones" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-17-000" NumCta="504.17" Desc="Depreciación de aviones" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-18-000" NumCta="504.18" Desc="Depreciación de troqueles moldes matrices y herramental" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-19-000" NumCta="504.19" Desc="Depreciación de equipo de comunicaciones telefónicas" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-20-000" NumCta="504.20" Desc="Depreciación de equipo de comunicación satelital" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-21-000" NumCta="504.21" Desc="Depreciación de equipo de adaptaciones para personas con capacidades diferentes" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-22-000" NumCta="504.22" Desc="Depreciación de maquinaria generación energía renovable" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-23-000" NumCta="504.23" Desc="Depreciación de adaptaciones y mejoras" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-24-000" NumCta="504.24" Desc="Depreciación de otra maquinaria y equipo" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="504-25-000" NumCta="504.25" Desc="Otras cuentas de costos" Nivel="2" Naturaleza="D" SubCtaDe="504"/>
+  <Cuenta CodAgrup="505-00-000" NumCta="505" Desc="Costo de activo fijo" Nivel="1" Naturaleza="D" SubCtaDe="500"/>
+  <Cuenta CodAgrup="505-01-000" NumCta="505.01" Desc="Costo por venta de activo fijo" Nivel="2" Naturaleza="D" SubCtaDe="505"/>
+  <Cuenta CodAgrup="505-02-000" NumCta="505.02" Desc="Costo por baja de activo fijo" Nivel="2" Naturaleza="D" SubCtaDe="505"/>
+  <Cuenta CodAgrup="600-00-000" NumCta="600" Desc="Gastos" Nivel="0" Naturaleza="D"/>
+  <Cuenta CodAgrup="601-00-000" NumCta="601" Desc="Gastos generales" Nivel="1" Naturaleza="D" SubCtaDe="600"/>
+  <Cuenta CodAgrup="601-01-000" NumCta="601.01" Desc="Sueldos y salarios" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-02-000" NumCta="601.02" Desc="Compensaciones" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-03-000" NumCta="601.03" Desc="Tiempos extras" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-04-000" NumCta="601.04" Desc="Premios de asistencia" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-05-000" NumCta="601.05" Desc="Premios de puntualidad" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-06-000" NumCta="601.06" Desc="Vacaciones" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-07-000" NumCta="601.07" Desc="Prima vacacional" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-08-000" NumCta="601.08" Desc="Prima dominical" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-09-000" NumCta="601.09" Desc="Días festivos" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-10-000" NumCta="601.10" Desc="Gratificaciones" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-11-000" NumCta="601.11" Desc="Primas de antigüedad" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-12-000" NumCta="601.12" Desc="Aguinaldo" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-13-000" NumCta="601.13" Desc="Indemnizaciones" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-14-000" NumCta="601.14" Desc="Destajo" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-15-000" NumCta="601.15" Desc="Despensa" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-16-000" NumCta="601.16" Desc="Transporte" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-17-000" NumCta="601.17" Desc="Servicio médico" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-18-000" NumCta="601.18" Desc="Ayuda en gastos funerarios" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-19-000" NumCta="601.19" Desc="Fondo de ahorro" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-20-000" NumCta="601.20" Desc="Cuotas sindicales" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-21-000" NumCta="601.21" Desc="PTU" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-22-000" NumCta="601.22" Desc="Estímulo al personal" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-23-000" NumCta="601.23" Desc="Previsión social" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-24-000" NumCta="601.24" Desc="Aportaciones para el plan de jubilación" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-25-000" NumCta="601.25" Desc="Otras prestaciones al personal" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-26-000" NumCta="601.26" Desc="Cuotas al IMSS" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-27-000" NumCta="601.27" Desc="Aportaciones al infonavit" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-28-000" NumCta="601.28" Desc="Aportaciones al SAR" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-29-000" NumCta="601.29" Desc="Impuesto estatal sobre nóminas" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-30-000" NumCta="601.30" Desc="Otras aportaciones" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-31-000" NumCta="601.31" Desc="Asimilados a salarios" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-32-000" NumCta="601.32" Desc="Servicios administrativos" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-33-000" NumCta="601.33" Desc="Servicios administrativos partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-34-000" NumCta="601.34" Desc="Honorarios a personas físicas residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-35-000" NumCta="601.35" Desc="Honorarios a personas físicas residentes nacionales partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-36-000" NumCta="601.36" Desc="Honorarios a personas físicas residentes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-37-000" NumCta="601.37" Desc="Honorarios a personas físicas residentes del extranjero partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-38-000" NumCta="601.38" Desc="Honorarios a personas morales residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-39-000" NumCta="601.39" Desc="Honorarios a personas morales residentes nacionales partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-40-000" NumCta="601.40" Desc="Honorarios a personas morales residentes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-41-000" NumCta="601.41" Desc="Honorarios a personas morales residentes del extranjero partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-42-000" NumCta="601.42" Desc="Honorarios aduanales personas físicas" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-43-000" NumCta="601.43" Desc="Honorarios aduanales personas morales" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-44-000" NumCta="601.44" Desc="Honorarios al consejo de administración" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-45-000" NumCta="601.45" Desc="Arrendamiento a personas físicas residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-46-000" NumCta="601.46" Desc="Arrendamiento a personas morales residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-47-000" NumCta="601.47" Desc="Arrendamiento a residentes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-48-000" NumCta="601.48" Desc="Combustibles y lubricantes" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-49-000" NumCta="601.49" Desc="Viáticos y gastos de viaje" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-50-000" NumCta="601.50" Desc="Teléfono internet" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-51-000" NumCta="601.51" Desc="Agua" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-52-000" NumCta="601.52" Desc="Energía eléctrica" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-53-000" NumCta="601.53" Desc="Vigilancia y seguridad" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-54-000" NumCta="601.54" Desc="Limpieza" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-55-000" NumCta="601.55" Desc="Papelería y artículos de oficina" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-56-000" NumCta="601.56" Desc="Mantenimiento y conservación" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-57-000" NumCta="601.57" Desc="Seguros y fianzas" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-58-000" NumCta="601.58" Desc="Otros impuestos y derechos" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-59-000" NumCta="601.59" Desc="Recargos fiscales" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-60-000" NumCta="601.60" Desc="Cuotas y suscripciones" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-61-000" NumCta="601.61" Desc="Propaganda y publicidad" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-62-000" NumCta="601.62" Desc="Capacitación al personal" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-63-000" NumCta="601.63" Desc="Donativos y ayudas" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-64-000" NumCta="601.64" Desc="Asistencia técnica" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-65-000" NumCta="601.65" Desc="Regalías sujetas a otros porcentajes" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-66-000" NumCta="601.66" Desc="Regalías sujetas al 5%" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-67-000" NumCta="601.67" Desc="Regalías sujetas al 10%" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-68-000" NumCta="601.68" Desc="Regalías sujetas al 15%" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-69-000" NumCta="601.69" Desc="Regalías sujetas al 25%" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-70-000" NumCta="601.70" Desc="Regalías sujetas al 30%" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-71-000" NumCta="601.71" Desc="Regalías sin retención" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-72-000" NumCta="601.72" Desc="Fletes y acarreos" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-73-000" NumCta="601.73" Desc="Gastos de importación" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-74-000" NumCta="601.74" Desc="Comisiones sobre ventas" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-75-000" NumCta="601.75" Desc="Comisiones por tarjetas de crédito" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-76-000" NumCta="601.76" Desc="Patentes y marcas" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-77-000" NumCta="601.77" Desc="Uniformes" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-78-000" NumCta="601.78" Desc="Prediales" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-79-000" NumCta="601.79" Desc="Gastos generales de urbanización" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-80-000" NumCta="601.80" Desc="Gastos generales de construcción" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-81-000" NumCta="601.81" Desc="Fletes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-82-000" NumCta="601.82" Desc="Recolección de bienes del sector agropecuario y o ganadero" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-83-000" NumCta="601.83" Desc="Gastos no deducibles sin requisitos fiscales" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="601-84-000" NumCta="601.84" Desc="Otros gastos generales" Nivel="2" Naturaleza="D" SubCtaDe="601"/>
+  <Cuenta CodAgrup="602-00-000" NumCta="602" Desc="Gastos de venta" Nivel="1" Naturaleza="D" SubCtaDe="600"/>
+  <Cuenta CodAgrup="602-01-000" NumCta="602.01" Desc="Sueldos y salarios" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-02-000" NumCta="602.02" Desc="Compensaciones" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-03-000" NumCta="602.03" Desc="Tiempos extras" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-04-000" NumCta="602.04" Desc="Premios de asistencia" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-05-000" NumCta="602.05" Desc="Premios de puntualidad" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-06-000" NumCta="602.06" Desc="Vacaciones" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-07-000" NumCta="602.07" Desc="Prima vacacional" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-08-000" NumCta="602.08" Desc="Prima dominical" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-09-000" NumCta="602.09" Desc="Días festivos" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-10-000" NumCta="602.10" Desc="Gratificaciones" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-11-000" NumCta="602.11" Desc="Primas de antigüedad" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-12-000" NumCta="602.12" Desc="Aguinaldo" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-13-000" NumCta="602.13" Desc="Indemnizaciones" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-14-000" NumCta="602.14" Desc="Destajo" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-15-000" NumCta="602.15" Desc="Despensa" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-16-000" NumCta="602.16" Desc="Transporte" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-17-000" NumCta="602.17" Desc="Servicio médico" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-18-000" NumCta="602.18" Desc="Ayuda en gastos funerarios" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-19-000" NumCta="602.19" Desc="Fondo de ahorro" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-20-000" NumCta="602.20" Desc="Cuotas sindicales" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-21-000" NumCta="602.21" Desc="PTU" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-22-000" NumCta="602.22" Desc="Estímulo al personal" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-23-000" NumCta="602.23" Desc="Previsión social" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-24-000" NumCta="602.24" Desc="Aportaciones para el plan de jubilación" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-25-000" NumCta="602.25" Desc="Otras prestaciones al personal" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-26-000" NumCta="602.26" Desc="Cuotas al IMSS" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-27-000" NumCta="602.27" Desc="Aportaciones al infonavit" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-28-000" NumCta="602.28" Desc="Aportaciones al SAR" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-29-000" NumCta="602.29" Desc="Impuesto estatal sobre nóminas" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-30-000" NumCta="602.30" Desc="Otras aportaciones" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-31-000" NumCta="602.31" Desc="Asimilados a salarios" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-32-000" NumCta="602.32" Desc="Servicios administrativos" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-33-000" NumCta="602.33" Desc="Servicios administrativos partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-34-000" NumCta="602.34" Desc="Honorarios a personas físicas residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-35-000" NumCta="602.35" Desc="Honorarios a personas físicas residentes nacionales partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-36-000" NumCta="602.36" Desc="Honorarios a personas físicas residentes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-37-000" NumCta="602.37" Desc="Honorarios a personas físicas residentes del extranjero partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-38-000" NumCta="602.38" Desc="Honorarios a personas morales residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-39-000" NumCta="602.39" Desc="Honorarios a personas morales residentes nacionales partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-40-000" NumCta="602.40" Desc="Honorarios a personas morales residentes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-41-000" NumCta="602.41" Desc="Honorarios a personas morales residentes del extranjero partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-42-000" NumCta="602.42" Desc="Honorarios aduanales personas físicas" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-43-000" NumCta="602.43" Desc="Honorarios aduanales personas morales" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-44-000" NumCta="602.44" Desc="Honorarios al consejo de administración" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-45-000" NumCta="602.45" Desc="Arrendamiento a personas físicas residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-46-000" NumCta="602.46" Desc="Arrendamiento a personas morales residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-47-000" NumCta="602.47" Desc="Arrendamiento a residentes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-48-000" NumCta="602.48" Desc="Combustibles y lubricantes" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-49-000" NumCta="602.49" Desc="Viáticos y gastos de viaje" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-50-000" NumCta="602.50" Desc="Teléfono internet" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-51-000" NumCta="602.51" Desc="Agua" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-52-000" NumCta="602.52" Desc="Energía eléctrica" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-53-000" NumCta="602.53" Desc="Vigilancia y seguridad" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-54-000" NumCta="602.54" Desc="Limpieza" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-55-000" NumCta="602.55" Desc="Papelería y artículos de oficina" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-56-000" NumCta="602.56" Desc="Mantenimiento y conservación" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-57-000" NumCta="602.57" Desc="Seguros y fianzas" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-58-000" NumCta="602.58" Desc="Otros impuestos y derechos" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-59-000" NumCta="602.59" Desc="Recargos fiscales" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-60-000" NumCta="602.60" Desc="Cuotas y suscripciones" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-61-000" NumCta="602.61" Desc="Propaganda y publicidad" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-62-000" NumCta="602.62" Desc="Capacitación al personal" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-63-000" NumCta="602.63" Desc="Donativos y ayudas" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-64-000" NumCta="602.64" Desc="Asistencia técnica" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-65-000" NumCta="602.65" Desc="Regalías sujetas a otros porcentajes" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-66-000" NumCta="602.66" Desc="Regalías sujetas al 5%" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-67-000" NumCta="602.67" Desc="Regalías sujetas al 10%" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-68-000" NumCta="602.68" Desc="Regalías sujetas al 15%" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-69-000" NumCta="602.69" Desc="Regalías sujetas al 25%" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-70-000" NumCta="602.70" Desc="Regalías sujetas al 30%" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-71-000" NumCta="602.71" Desc="Regalías sin retención" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-72-000" NumCta="602.72" Desc="Fletes y acarreos" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-73-000" NumCta="602.73" Desc="Gastos de importación" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-74-000" NumCta="602.74" Desc="Comisiones sobre ventas" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-75-000" NumCta="602.75" Desc="Comisiones por tarjetas de crédito" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-76-000" NumCta="602.76" Desc="Patentes y marcas" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-77-000" NumCta="602.77" Desc="Uniformes" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-78-000" NumCta="602.78" Desc="Prediales" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-79-000" NumCta="602.79" Desc="Gastos de venta de urbanización" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-80-000" NumCta="602.80" Desc="Gastos de venta de construcción" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-81-000" NumCta="602.81" Desc="Fletes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-82-000" NumCta="602.82" Desc="Recolección de bienes del sector agropecuario y o ganadero" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-83-000" NumCta="602.83" Desc="Gastos no deducibles sin requisitos fiscales" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="602-84-000" NumCta="602.84" Desc="Otros gastos de venta" Nivel="2" Naturaleza="D" SubCtaDe="602"/>
+  <Cuenta CodAgrup="603-00-000" NumCta="603" Desc="Gastos de administración" Nivel="1" Naturaleza="D" SubCtaDe="600"/>
+  <Cuenta CodAgrup="603-01-000" NumCta="603.01" Desc="Sueldos y salarios" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-02-000" NumCta="603.02" Desc="Compensaciones" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-03-000" NumCta="603.03" Desc="Tiempos extras" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-04-000" NumCta="603.04" Desc="Premios de asistencia" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-05-000" NumCta="603.05" Desc="Premios de puntualidad" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-06-000" NumCta="603.06" Desc="Vacaciones" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-07-000" NumCta="603.07" Desc="Prima vacacional" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-08-000" NumCta="603.08" Desc="Prima dominical" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-09-000" NumCta="603.09" Desc="Días festivos" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-10-000" NumCta="603.10" Desc="Gratificaciones" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-11-000" NumCta="603.11" Desc="Primas de antigüedad" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-12-000" NumCta="603.12" Desc="Aguinaldo" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-13-000" NumCta="603.13" Desc="Indemnizaciones" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-14-000" NumCta="603.14" Desc="Destajo" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-15-000" NumCta="603.15" Desc="Despensa" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-16-000" NumCta="603.16" Desc="Transporte" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-17-000" NumCta="603.17" Desc="Servicio médico" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-18-000" NumCta="603.18" Desc="Ayuda en gastos funerarios" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-19-000" NumCta="603.19" Desc="Fondo de ahorro" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-20-000" NumCta="603.20" Desc="Cuotas sindicales" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-21-000" NumCta="603.21" Desc="PTU" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-22-000" NumCta="603.22" Desc="Estímulo al personal" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-23-000" NumCta="603.23" Desc="Previsión social" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-24-000" NumCta="603.24" Desc="Aportaciones para el plan de jubilación" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-25-000" NumCta="603.25" Desc="Otras prestaciones al personal" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-26-000" NumCta="603.26" Desc="Cuotas al IMSS" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-27-000" NumCta="603.27" Desc="Aportaciones al infonavit" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-28-000" NumCta="603.28" Desc="Aportaciones al SAR" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-29-000" NumCta="603.29" Desc="Impuesto estatal sobre nóminas" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-30-000" NumCta="603.30" Desc="Otras aportaciones" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-31-000" NumCta="603.31" Desc="Asimilados a salarios" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-32-000" NumCta="603.32" Desc="Servicios administrativos" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-33-000" NumCta="603.33" Desc="Servicios administrativos partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-34-000" NumCta="603.34" Desc="Honorarios a personas físicas residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-35-000" NumCta="603.35" Desc="Honorarios a personas físicas residentes nacionales partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-36-000" NumCta="603.36" Desc="Honorarios a personas físicas residentes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-37-000" NumCta="603.37" Desc="Honorarios a personas físicas residentes del extranjero partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-38-000" NumCta="603.38" Desc="Honorarios a personas morales residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-39-000" NumCta="603.39" Desc="Honorarios a personas morales residentes nacionales partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-40-000" NumCta="603.40" Desc="Honorarios a personas morales residentes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-41-000" NumCta="603.41" Desc="Honorarios a personas morales residentes del extranjero partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-42-000" NumCta="603.42" Desc="Honorarios aduanales personas físicas" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-43-000" NumCta="603.43" Desc="Honorarios aduanales personas morales" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-44-000" NumCta="603.44" Desc="Honorarios al consejo de administración" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-45-000" NumCta="603.45" Desc="Arrendamiento a personas físicas residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-46-000" NumCta="603.46" Desc="Arrendamiento a personas morales residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-47-000" NumCta="603.47" Desc="Arrendamiento a residentes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-48-000" NumCta="603.48" Desc="Combustibles y lubricantes" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-49-000" NumCta="603.49" Desc="Viáticos y gastos de viaje" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-50-000" NumCta="603.50" Desc="Teléfono internet" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-51-000" NumCta="603.51" Desc="Agua" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-52-000" NumCta="603.52" Desc="Energía eléctrica" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-53-000" NumCta="603.53" Desc="Vigilancia y seguridad" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-54-000" NumCta="603.54" Desc="Limpieza" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-55-000" NumCta="603.55" Desc="Papelería y artículos de oficina" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-56-000" NumCta="603.56" Desc="Mantenimiento y conservación" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-57-000" NumCta="603.57" Desc="Seguros y fianzas" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-58-000" NumCta="603.58" Desc="Otros impuestos y derechos" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-59-000" NumCta="603.59" Desc="Recargos fiscales" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-60-000" NumCta="603.60" Desc="Cuotas y suscripciones" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-61-000" NumCta="603.61" Desc="Propaganda y publicidad" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-62-000" NumCta="603.62" Desc="Capacitación al personal" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-63-000" NumCta="603.63" Desc="Donativos y ayudas" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-64-000" NumCta="603.64" Desc="Asistencia técnica" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-65-000" NumCta="603.65" Desc="Regalías sujetas a otros porcentajes" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-66-000" NumCta="603.66" Desc="Regalías sujetas al 5%" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-67-000" NumCta="603.67" Desc="Regalías sujetas al 10%" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-68-000" NumCta="603.68" Desc="Regalías sujetas al 15%" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-69-000" NumCta="603.69" Desc="Regalías sujetas al 25%" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-70-000" NumCta="603.70" Desc="Regalías sujetas al 30%" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-71-000" NumCta="603.71" Desc="Regalías sin retención" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-72-000" NumCta="603.72" Desc="Fletes y acarreos" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-73-000" NumCta="603.73" Desc="Gastos de importación" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-74-000" NumCta="603.74" Desc="Patentes y marcas" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-75-000" NumCta="603.75" Desc="Uniformes" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-76-000" NumCta="603.76" Desc="Prediales" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-77-000" NumCta="603.77" Desc="Gastos de administración de urbanización" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-78-000" NumCta="603.78" Desc="Gastos de administración de construcción" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-79-000" NumCta="603.79" Desc="Fletes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-80-000" NumCta="603.80" Desc="Recolección de bienes del sector agropecuario y o ganadero" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-81-000" NumCta="603.81" Desc="Gastos no deducibles sin requisitos fiscales" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="603-82-000" NumCta="603.82" Desc="Otros gastos de administración" Nivel="2" Naturaleza="D" SubCtaDe="603"/>
+  <Cuenta CodAgrup="604-00-000" NumCta="604" Desc="Gastos de fabricación" Nivel="1" Naturaleza="D" SubCtaDe="600"/>
+  <Cuenta CodAgrup="604-01-000" NumCta="604.01" Desc="Sueldos y salarios" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-02-000" NumCta="604.02" Desc="Compensaciones" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-03-000" NumCta="604.03" Desc="Tiempos extras" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-04-000" NumCta="604.04" Desc="Premios de asistencia" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-05-000" NumCta="604.05" Desc="Premios de puntualidad" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-06-000" NumCta="604.06" Desc="Vacaciones" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-07-000" NumCta="604.07" Desc="Prima vacacional" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-08-000" NumCta="604.08" Desc="Prima dominical" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-09-000" NumCta="604.09" Desc="Días festivos" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-10-000" NumCta="604.10" Desc="Gratificaciones" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-11-000" NumCta="604.11" Desc="Primas de antigüedad" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-12-000" NumCta="604.12" Desc="Aguinaldo" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-13-000" NumCta="604.13" Desc="Indemnizaciones" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-14-000" NumCta="604.14" Desc="Destajo" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-15-000" NumCta="604.15" Desc="Despensa" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-16-000" NumCta="604.16" Desc="Transporte" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-17-000" NumCta="604.17" Desc="Servicio médico" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-18-000" NumCta="604.18" Desc="Ayuda en gastos funerarios" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-19-000" NumCta="604.19" Desc="Fondo de ahorro" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-20-000" NumCta="604.20" Desc="Cuotas sindicales" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-21-000" NumCta="604.21" Desc="PTU" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-22-000" NumCta="604.22" Desc="Estímulo al personal" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-23-000" NumCta="604.23" Desc="Previsión social" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-24-000" NumCta="604.24" Desc="Aportaciones para el plan de jubilación" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-25-000" NumCta="604.25" Desc="Otras prestaciones al personal" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-26-000" NumCta="604.26" Desc="Cuotas al IMSS" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-27-000" NumCta="604.27" Desc="Aportaciones al infonavit" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-28-000" NumCta="604.28" Desc="Aportaciones al SAR" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-29-000" NumCta="604.29" Desc="Impuesto estatal sobre nóminas" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-30-000" NumCta="604.30" Desc="Otras aportaciones" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-31-000" NumCta="604.31" Desc="Asimilados a salarios" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-32-000" NumCta="604.32" Desc="Servicios administrativos" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-33-000" NumCta="604.33" Desc="Servicios administrativos partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-34-000" NumCta="604.34" Desc="Honorarios a personas físicas residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-35-000" NumCta="604.35" Desc="Honorarios a personas físicas residentes nacionales partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-36-000" NumCta="604.36" Desc="Honorarios a personas físicas residentes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-37-000" NumCta="604.37" Desc="Honorarios a personas físicas residentes del extranjero partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-38-000" NumCta="604.38" Desc="Honorarios a personas morales residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-39-000" NumCta="604.39" Desc="Honorarios a personas morales residentes nacionales partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-40-000" NumCta="604.40" Desc="Honorarios a personas morales residentes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-41-000" NumCta="604.41" Desc="Honorarios a personas morales residentes del extranjero partes relacionadas" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-42-000" NumCta="604.42" Desc="Honorarios aduanales personas físicas" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-43-000" NumCta="604.43" Desc="Honorarios aduanales personas morales" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-44-000" NumCta="604.44" Desc="Honorarios al consejo de administración" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-45-000" NumCta="604.45" Desc="Arrendamiento a personas físicas residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-46-000" NumCta="604.46" Desc="Arrendamiento a personas morales residentes nacionales" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-47-000" NumCta="604.47" Desc="Arrendamiento a residentes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-48-000" NumCta="604.48" Desc="Combustibles y lubricantes" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-49-000" NumCta="604.49" Desc="Viáticos y gastos de viaje" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-50-000" NumCta="604.50" Desc="Teléfono internet" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-51-000" NumCta="604.51" Desc="Agua" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-52-000" NumCta="604.52" Desc="Energía eléctrica" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-53-000" NumCta="604.53" Desc="Vigilancia y seguridad" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-54-000" NumCta="604.54" Desc="Limpieza" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-55-000" NumCta="604.55" Desc="Papelería y artículos de oficina" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-56-000" NumCta="604.56" Desc="Mantenimiento y conservación" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-57-000" NumCta="604.57" Desc="Seguros y fianzas" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-58-000" NumCta="604.58" Desc="Otros impuestos y derechos" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-59-000" NumCta="604.59" Desc="Recargos fiscales" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-60-000" NumCta="604.60" Desc="Cuotas y suscripciones" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-61-000" NumCta="604.61" Desc="Propaganda y publicidad" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-62-000" NumCta="604.62" Desc="Capacitación al personal" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-63-000" NumCta="604.63" Desc="Donativos y ayudas" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-64-000" NumCta="604.64" Desc="Asistencia técnica" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-65-000" NumCta="604.65" Desc="Regalías sujetas a otros porcentajes" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-66-000" NumCta="604.66" Desc="Regalías sujetas al 5%" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-67-000" NumCta="604.67" Desc="Regalías sujetas al 10%" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-68-000" NumCta="604.68" Desc="Regalías sujetas al 15%" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-69-000" NumCta="604.69" Desc="Regalías sujetas al 25%" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-70-000" NumCta="604.70" Desc="Regalías sujetas al 30%" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-71-000" NumCta="604.71" Desc="Regalías sin retención" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-72-000" NumCta="604.72" Desc="Fletes y acarreos" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-73-000" NumCta="604.73" Desc="Gastos de importación" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-74-000" NumCta="604.74" Desc="Patentes y marcas" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-75-000" NumCta="604.75" Desc="Uniformes" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-76-000" NumCta="604.76" Desc="Prediales" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-77-000" NumCta="604.77" Desc="Gastos de fabricación de urbanización" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-78-000" NumCta="604.78" Desc="Gastos de fabricación de construcción" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-79-000" NumCta="604.79" Desc="Fletes del extranjero" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-80-000" NumCta="604.80" Desc="Recolección de bienes del sector agropecuario y o ganadero" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-81-000" NumCta="604.81" Desc="Gastos no deducibles sin requisitos fiscales" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="604-82-000" NumCta="604.82" Desc="Otros gastos de fabricación" Nivel="2" Naturaleza="D" SubCtaDe="604"/>
+  <Cuenta CodAgrup="605-00-000" NumCta="605" Desc="Mano de obra directa" Nivel="1" Naturaleza="D" SubCtaDe="600"/>
+  <Cuenta CodAgrup="605-01-000" NumCta="605.01" Desc="Mano de obra" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-02-000" NumCta="605.02" Desc="Sueldos y Salarios" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-03-000" NumCta="605.03" Desc="Compensaciones" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-04-000" NumCta="605.04" Desc="Tiempos extras" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-05-000" NumCta="605.05" Desc="Premios de asistencia" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-06-000" NumCta="605.06" Desc="Premios de puntualidad" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-07-000" NumCta="605.07" Desc="Vacaciones" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-08-000" NumCta="605.08" Desc="Prima vacacional" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-09-000" NumCta="605.09" Desc="Prima dominical" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-10-000" NumCta="605.10" Desc="Días festivos" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-11-000" NumCta="605.11" Desc="Gratificaciones" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-12-000" NumCta="605.12" Desc="Primas de antigüedad" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-13-000" NumCta="605.13" Desc="Aguinaldo" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-14-000" NumCta="605.14" Desc="Indemnizaciones" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-15-000" NumCta="605.15" Desc="Destajo" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-16-000" NumCta="605.16" Desc="Despensa" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-17-000" NumCta="605.17" Desc="Transporte" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-18-000" NumCta="605.18" Desc="Servicio médico" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-19-000" NumCta="605.19" Desc="Ayuda en gastos funerarios" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-20-000" NumCta="605.20" Desc="Fondo de ahorro" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-21-000" NumCta="605.21" Desc="Cuotas sindicales" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-22-000" NumCta="605.22" Desc="PTU" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-23-000" NumCta="605.23" Desc="Estímulo al personal" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-24-000" NumCta="605.24" Desc="Previsión social" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-25-000" NumCta="605.25" Desc="Aportaciones para el plan de jubilación" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-26-000" NumCta="605.26" Desc="Otras prestaciones al personal" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-27-000" NumCta="605.27" Desc="Asimilados a salarios" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-28-000" NumCta="605.28" Desc="Cuotas al IMSS" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-29-000" NumCta="605.29" Desc="Aportaciones al infonavit" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-30-000" NumCta="605.30" Desc="Aportaciones al SAR" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="605-31-000" NumCta="605.31" Desc="Otros costos de mano de obra directa" Nivel="2" Naturaleza="D" SubCtaDe="605"/>
+  <Cuenta CodAgrup="606-00-000" NumCta="606" Desc="Facilidades administrativas fiscales" Nivel="1" Naturaleza="D" SubCtaDe="600"/>
+  <Cuenta CodAgrup="606-01-000" NumCta="606.01" Desc="Facilidades administrativas fiscales" Nivel="2" Naturaleza="D" SubCtaDe="606"/>
+  <Cuenta CodAgrup="607-00-000" NumCta="607" Desc="Participación de los trabajadores en las utilidades" Nivel="1" Naturaleza="D" SubCtaDe="600"/>
+  <Cuenta CodAgrup="607-01-000" NumCta="607.01" Desc="Participación de los trabajadores en las utilidades" Nivel="2" Naturaleza="D" SubCtaDe="607"/>
+  <Cuenta CodAgrup="608-00-000" NumCta="608" Desc="Participación en resultados de subsidiarias" Nivel="1" Naturaleza="D" SubCtaDe="600"/>
+  <Cuenta CodAgrup="608-01-000" NumCta="608.01" Desc="Participación en resultados de subsidiarias" Nivel="2" Naturaleza="D" SubCtaDe="608"/>
+  <Cuenta CodAgrup="609-00-000" NumCta="609" Desc="Participación en resultados de asociadas" Nivel="1" Naturaleza="D" SubCtaDe="600"/>
+  <Cuenta CodAgrup="609-01-000" NumCta="609.01" Desc="Participación en resultados de asociadas" Nivel="2" Naturaleza="D" SubCtaDe="609"/>
+  <Cuenta CodAgrup="610-00-000" NumCta="610" Desc="Participación de los trabajadores en las utilidades diferida" Nivel="1" Naturaleza="D" SubCtaDe="600"/>
+  <Cuenta CodAgrup="610-01-000" NumCta="610.01" Desc="Participación de los trabajadores en las utilidades diferida" Nivel="2" Naturaleza="D" SubCtaDe="610"/>
+  <Cuenta CodAgrup="611-00-000" NumCta="611" Desc="Impuesto Sobre la renta" Nivel="1" Naturaleza="D" SubCtaDe="600"/>
+  <Cuenta CodAgrup="611-01-000" NumCta="611.01" Desc="Impuesto Sobre la renta" Nivel="2" Naturaleza="D" SubCtaDe="611"/>
+  <Cuenta CodAgrup="611-02-000" NumCta="611.02" Desc="Impuesto Sobre la renta por remanente distribuible" Nivel="2" Naturaleza="D" SubCtaDe="611"/>
+  <Cuenta CodAgrup="612-00-000" NumCta="612" Desc="Gastos no deducibles para CUFIN" Nivel="1" Naturaleza="D" SubCtaDe="600"/>
+  <Cuenta CodAgrup="612-01-000" NumCta="612.01" Desc="Gastos no deducibles para CUFIN" Nivel="2" Naturaleza="D" SubCtaDe="612"/>
+  <Cuenta CodAgrup="613-00-000" NumCta="613" Desc="Depreciación contable" Nivel="1" Naturaleza="D" SubCtaDe="600"/>
+  <Cuenta CodAgrup="613-01-000" NumCta="613.01" Desc="Depreciación de edificios" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-02-000" NumCta="613.02" Desc="Depreciación de maquinaria y equipo" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-03-000" NumCta="613.03" Desc="Depreciación de automóviles camiones montacargas y remolques" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-04-000" NumCta="613.04" Desc="Depreciación de mobiliario y equipo de oficina" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-05-000" NumCta="613.05" Desc="Depreciación de equipo de cómputo" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-06-000" NumCta="613.06" Desc="Depreciación de equipo de comunicación" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-07-000" NumCta="613.07" Desc="Depreciación de activos biológicos vegetales y semovientes" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-08-000" NumCta="613.08" Desc="Depreciación de otros activos fijos" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-09-000" NumCta="613.09" Desc="Depreciación de ferrocarriles" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-10-000" NumCta="613.10" Desc="Depreciación de embarcaciones" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-11-000" NumCta="613.11" Desc="Depreciación de aviones" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-12-000" NumCta="613.12" Desc="Depreciación de troqueles moldes matrices y herramental" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-13-000" NumCta="613.13" Desc="Depreciación de equipo de comunicaciones telefónicas" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-14-000" NumCta="613.14" Desc="Depreciación de equipo de comunicación satelital" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-15-000" NumCta="613.15" Desc="Depreciación de equipo de adaptaciones para personas con capacidades diferentes" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-16-000" NumCta="613.16" Desc="Depreciación de maquinaria generación energía renovable" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-17-000" NumCta="613.17" Desc="Depreciación de adaptaciones y mejoras" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="613-18-000" NumCta="613.18" Desc="Depreciación de otra maquinaria y equipo" Nivel="2" Naturaleza="D" SubCtaDe="613"/>
+  <Cuenta CodAgrup="614-00-000" NumCta="614" Desc="Amortización contable" Nivel="1" Naturaleza="D" SubCtaDe="600"/>
+  <Cuenta CodAgrup="614-01-000" NumCta="614.01" Desc="Amortización de gastos diferidos" Nivel="2" Naturaleza="D" SubCtaDe="614"/>
+  <Cuenta CodAgrup="614-02-000" NumCta="614.02" Desc="Amortización de gastos pre operativos" Nivel="2" Naturaleza="D" SubCtaDe="614"/>
+  <Cuenta CodAgrup="614-03-000" NumCta="614.03" Desc="Amortización de regalías asistencia técnica y otros gastos diferidos" Nivel="2" Naturaleza="D" SubCtaDe="614"/>
+  <Cuenta CodAgrup="614-04-000" NumCta="614.04" Desc="Amortización de activos intangibles" Nivel="2" Naturaleza="D" SubCtaDe="614"/>
+  <Cuenta CodAgrup="614-05-000" NumCta="614.05" Desc="Amortización de gastos de organización" Nivel="2" Naturaleza="D" SubCtaDe="614"/>
+  <Cuenta CodAgrup="614-06-000" NumCta="614.06" Desc="Amortización de investigación y desarrollo de mercado" Nivel="2" Naturaleza="D" SubCtaDe="614"/>
+  <Cuenta CodAgrup="614-07-000" NumCta="614.07" Desc="Amortización de marcas y patentes" Nivel="2" Naturaleza="D" SubCtaDe="614"/>
+  <Cuenta CodAgrup="614-08-000" NumCta="614.08" Desc="Amortización de crédito mercantil" Nivel="2" Naturaleza="D" SubCtaDe="614"/>
+  <Cuenta CodAgrup="614-09-000" NumCta="614.09" Desc="Amortización de gastos de instalación" Nivel="2" Naturaleza="D" SubCtaDe="614"/>
+  <Cuenta CodAgrup="614-10-000" NumCta="614.10" Desc="Amortización de otros activos diferidos" Nivel="2" Naturaleza="D" SubCtaDe="614"/>
+  <Cuenta CodAgrup="700-00-000" NumCta="700" Desc="Resultado integral de financiamiento" Nivel="0" Naturaleza="A"/>
+  <Cuenta CodAgrup="701-00-000" NumCta="701" Desc="Gastos financieros" Nivel="1" Naturaleza="D" SubCtaDe="700"/>
+  <Cuenta CodAgrup="701-01-000" NumCta="701.01" Desc="Pérdida cambiaria" Nivel="2" Naturaleza="D" SubCtaDe="701"/>
+  <Cuenta CodAgrup="701-02-000" NumCta="701.02" Desc="Pérdida cambiaria nacional parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="701"/>
+  <Cuenta CodAgrup="701-03-000" NumCta="701.03" Desc="Pérdida cambiaria extranjero parte relacionada" Nivel="2" Naturaleza="D" SubCtaDe="701"/>
+  <Cuenta CodAgrup="701-04-000" NumCta="701.04" Desc="Intereses a cargo bancario nacional" Nivel="2" Naturaleza="D" SubCtaDe="701"/>
+  <Cuenta CodAgrup="701-05-000" NumCta="701.05" Desc="Intereses a cargo bancario extranjero" Nivel="2" Naturaleza="D" SubCtaDe="701"/>
+  <Cuenta CodAgrup="701-06-000" NumCta="701.06" Desc="Intereses a cargo de personas físicas nacional" Nivel="2" Naturaleza="D" SubCtaDe="701"/>
+  <Cuenta CodAgrup="701-07-000" NumCta="701.07" Desc="Intereses a cargo de personas físicas extranjero" Nivel="2" Naturaleza="D" SubCtaDe="701"/>
+  <Cuenta CodAgrup="701-08-000" NumCta="701.08" Desc="Intereses a cargo de personas morales nacional" Nivel="2" Naturaleza="D" SubCtaDe="701"/>
+  <Cuenta CodAgrup="701-09-000" NumCta="701.09" Desc="Intereses a cargo de personas morales extranjero" Nivel="2" Naturaleza="D" SubCtaDe="701"/>
+  <Cuenta CodAgrup="701-10-000" NumCta="701.10" Desc="Comisiones bancarias" Nivel="2" Naturaleza="D" SubCtaDe="701"/>
+  <Cuenta CodAgrup="701-11-000" NumCta="701.11" Desc="Otros gastos financieros" Nivel="2" Naturaleza="D" SubCtaDe="701"/>
+  <Cuenta CodAgrup="702-00-000" NumCta="702" Desc="Productos financieros" Nivel="1" Naturaleza="A" SubCtaDe="700"/>
+  <Cuenta CodAgrup="702-01-000" NumCta="702.01" Desc="Utilidad cambiaria" Nivel="2" Naturaleza="A" SubCtaDe="702"/>
+  <Cuenta CodAgrup="702-02-000" NumCta="702.02" Desc="Utilidad cambiaria nacional parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="702"/>
+  <Cuenta CodAgrup="702-03-000" NumCta="702.03" Desc="Utilidad cambiaria extranjero parte relacionada" Nivel="2" Naturaleza="A" SubCtaDe="702"/>
+  <Cuenta CodAgrup="702-04-000" NumCta="702.04" Desc="Intereses a favor bancarios nacional" Nivel="2" Naturaleza="A" SubCtaDe="702"/>
+  <Cuenta CodAgrup="702-05-000" NumCta="702.05" Desc="Intereses a favor bancarios extranjero" Nivel="2" Naturaleza="A" SubCtaDe="702"/>
+  <Cuenta CodAgrup="702-06-000" NumCta="702.06" Desc="Intereses a favor de personas físicas nacional" Nivel="2" Naturaleza="A" SubCtaDe="702"/>
+  <Cuenta CodAgrup="702-07-000" NumCta="702.07" Desc="Intereses a favor de personas físicas extranjero" Nivel="2" Naturaleza="A" SubCtaDe="702"/>
+  <Cuenta CodAgrup="702-08-000" NumCta="702.08" Desc="Intereses a favor de personas morales nacional" Nivel="2" Naturaleza="A" SubCtaDe="702"/>
+  <Cuenta CodAgrup="702-09-000" NumCta="702.09" Desc="Intereses a favor de personas morales extranjero" Nivel="2" Naturaleza="A" SubCtaDe="702"/>
+  <Cuenta CodAgrup="702-10-000" NumCta="702.10" Desc="Otros productos financieros" Nivel="2" Naturaleza="A" SubCtaDe="702"/>
+  <Cuenta CodAgrup="703-00-000" NumCta="703" Desc="Otros gastos" Nivel="1" Naturaleza="A" SubCtaDe="700"/>
+  <Cuenta CodAgrup="703-01-000" NumCta="703.01" Desc="Pérdida en venta y o baja de terrenos" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-02-000" NumCta="703.02" Desc="Pérdida en venta y o baja de edificios" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-03-000" NumCta="703.03" Desc="Pérdida en venta y o baja de maquinaria y equipo" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-04-000" NumCta="703.04" Desc="Pérdida en venta y o baja de automóviles camiones montacargas y remolques" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-05-000" NumCta="703.05" Desc="Pérdida en venta y o baja de mobiliario y equipo de oficina" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-06-000" NumCta="703.06" Desc="Pérdida en venta y o baja de equipo de cómputo" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-07-000" NumCta="703.07" Desc="Pérdida en venta y o baja de equipo de comunicación" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-08-000" NumCta="703.08" Desc="Pérdida en venta y o baja de activos biológicos vegetales y semovientes" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-09-000" NumCta="703.09" Desc="Pérdida en venta y o baja de otros activos fijos" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-10-000" NumCta="703.10" Desc="Pérdida en venta y o baja de ferrocarriles" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-11-000" NumCta="703.11" Desc="Pérdida en venta y o baja de embarcaciones" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-12-000" NumCta="703.12" Desc="Pérdida en venta y o baja de aviones" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-13-000" NumCta="703.13" Desc="Pérdida en venta y o baja de troqueles moldes matrices y herramental" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-14-000" NumCta="703.14" Desc="Pérdida en venta y o baja de equipo de comunicaciones telefónicas" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-15-000" NumCta="703.15" Desc="Pérdida en venta y o baja de equipo de comunicación satelital" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-16-000" NumCta="703.16" Desc="Pérdida en venta y o baja de equipo de adaptaciones para personas con capacidades diferentes" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-17-000" NumCta="703.17" Desc="Pérdida en venta y o baja de maquinaria generación energía renovable" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-18-000" NumCta="703.18" Desc="Pérdida en venta y o baja de otra maquinaria y equipo" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-19-000" NumCta="703.19" Desc="Pérdida por enajenación de acciones" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-20-000" NumCta="703.20" Desc="Pérdida por enajenación de partes sociales" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="703-21-000" NumCta="703.21" Desc="Otros gastos" Nivel="2" Naturaleza="A" SubCtaDe="703"/>
+  <Cuenta CodAgrup="704-00-000" NumCta="704" Desc="Otros productos" Nivel="1" Naturaleza="A" SubCtaDe="700"/>
+  <Cuenta CodAgrup="704-01-000" NumCta="704.01" Desc="Ganancia en venta y o baja de terrenos" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-02-000" NumCta="704.02" Desc="Ganancia en venta y o baja de edificios" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-03-000" NumCta="704.03" Desc="Ganancia en venta y o baja de maquinaria y equipo" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-04-000" NumCta="704.04" Desc="Ganancia en venta y o baja de automóviles camiones montacargas y remolques" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-05-000" NumCta="704.05" Desc="Ganancia en venta y o baja de mobiliario y equipo de oficina" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-06-000" NumCta="704.06" Desc="Ganancia en venta y o baja de equipo de cómputo" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-07-000" NumCta="704.07" Desc="Ganancia en venta y o baja de equipo de comunicación" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-08-000" NumCta="704.08" Desc="Ganancia en venta y o baja de activos biológicos vegetales y semovientes" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-09-000" NumCta="704.09" Desc="Ganancia en venta y o baja de otros activos fijos" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-10-000" NumCta="704.10" Desc="Ganancia en venta y o baja de ferrocarriles" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-11-000" NumCta="704.11" Desc="Ganancia en venta y o baja de embarcaciones" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-12-000" NumCta="704.12" Desc="Ganancia en venta y o baja de aviones" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-13-000" NumCta="704.13" Desc="Ganancia en venta y o baja de troqueles moldes matrices y herramental" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-14-000" NumCta="704.14" Desc="Ganancia en venta y o baja de equipo de comunicaciones telefónicas" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-15-000" NumCta="704.15" Desc="Ganancia en venta y o baja de equipo de comunicación satelital" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-16-000" NumCta="704.16" Desc="Ganancia en venta y o baja de equipo de adaptaciones para personas con capacidades diferentes" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-17-000" NumCta="704.17" Desc="Ganancia en venta de maquinaria generación energía renovable" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-18-000" NumCta="704.18" Desc="Ganancia en venta y o baja de otra maquinaria y equipo" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-19-000" NumCta="704.19" Desc="Ganancia por enajenación de acciones" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-20-000" NumCta="704.20" Desc="Ganancia por enajenación de partes sociales" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-21-000" NumCta="704.21" Desc="Ingresos por estímulos fiscales" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-22-000" NumCta="704.22" Desc="Ingresos por condonación de adeudo" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="704-23-000" NumCta="704.23" Desc="Otros productos" Nivel="2" Naturaleza="A" SubCtaDe="704"/>
+  <Cuenta CodAgrup="800-00-000" NumCta="800" Desc="Cuentas de orden" Nivel="0" Naturaleza="A"/>
+  <Cuenta CodAgrup="801-00-000" NumCta="801" Desc="UFIN del ejercicio" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="801-01-000" NumCta="801.01" Desc="UFIN" Nivel="2" Naturaleza="A" SubCtaDe="801"/>
+  <Cuenta CodAgrup="801-02-000" NumCta="801.02" Desc="Contra cuenta UFIN" Nivel="2" Naturaleza="A" SubCtaDe="801"/>
+  <Cuenta CodAgrup="802-00-000" NumCta="802" Desc="CUFIN del ejercicio" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="802-01-000" NumCta="802.01" Desc="CUFIN" Nivel="2" Naturaleza="A" SubCtaDe="802"/>
+  <Cuenta CodAgrup="802-02-000" NumCta="802.02" Desc="Contra cuenta CUFIN" Nivel="2" Naturaleza="A" SubCtaDe="802"/>
+  <Cuenta CodAgrup="803-00-000" NumCta="803" Desc="CUFIN de ejercicios anteriores" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="803-01-000" NumCta="803.01" Desc="CUFIN de ejercicios anteriores" Nivel="2" Naturaleza="A" SubCtaDe="803"/>
+  <Cuenta CodAgrup="803-02-000" NumCta="803.02" Desc="Contra cuenta CUFIN de ejercicios anteriores" Nivel="2" Naturaleza="A" SubCtaDe="803"/>
+  <Cuenta CodAgrup="804-00-000" NumCta="804" Desc="CUFINRE del ejercicio" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="804-01-000" NumCta="804.01" Desc="CUFINRE" Nivel="2" Naturaleza="A" SubCtaDe="804"/>
+  <Cuenta CodAgrup="804-02-000" NumCta="804.02" Desc="Contra cuenta CUFINRE" Nivel="2" Naturaleza="A" SubCtaDe="804"/>
+  <Cuenta CodAgrup="805-00-000" NumCta="805" Desc="CUFINRE de ejercicios anteriores" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="805-01-000" NumCta="805.01" Desc="CUFINRE de ejercicios anteriores" Nivel="2" Naturaleza="A" SubCtaDe="805"/>
+  <Cuenta CodAgrup="805-02-000" NumCta="805.02" Desc="Contra cuenta CUFINRE de ejercicios anteriores" Nivel="2" Naturaleza="A" SubCtaDe="805"/>
+  <Cuenta CodAgrup="806-00-000" NumCta="806" Desc="CUCA del ejercicio" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="806-01-000" NumCta="806.01" Desc="CUCA" Nivel="2" Naturaleza="A" SubCtaDe="806"/>
+  <Cuenta CodAgrup="806-02-000" NumCta="806.02" Desc="Contra cuenta CUCA" Nivel="2" Naturaleza="A" SubCtaDe="806"/>
+  <Cuenta CodAgrup="807-00-000" NumCta="807" Desc="CUCA de ejercicios anteriores" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="807-01-000" NumCta="807.01" Desc="CUCA de ejercicios anteriores" Nivel="2" Naturaleza="A" SubCtaDe="807"/>
+  <Cuenta CodAgrup="807-02-000" NumCta="807.02" Desc="Contra cuenta CUCA de ejercicios anteriores" Nivel="2" Naturaleza="A" SubCtaDe="807"/>
+  <Cuenta CodAgrup="808-00-000" NumCta="808" Desc="Ajuste anual por inflación acumulable" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="808-01-000" NumCta="808.01" Desc="Ajuste anual por inflación acumulable" Nivel="2" Naturaleza="A" SubCtaDe="808"/>
+  <Cuenta CodAgrup="808-02-000" NumCta="808.02" Desc="Acumulación del ajuste anual inflacionario" Nivel="2" Naturaleza="A" SubCtaDe="808"/>
+  <Cuenta CodAgrup="809-00-000" NumCta="809" Desc="Ajuste anual por inflación deducible" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="809-01-000" NumCta="809.01" Desc="Ajuste anual por inflación deducible" Nivel="2" Naturaleza="A" SubCtaDe="809"/>
+  <Cuenta CodAgrup="809-02-000" NumCta="809.02" Desc="Deducción del ajuste anual inflacionario" Nivel="2" Naturaleza="A" SubCtaDe="809"/>
+  <Cuenta CodAgrup="810-00-000" NumCta="810" Desc="Deducción de inversión" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="810-01-000" NumCta="810.01" Desc="Deducción de inversión" Nivel="2" Naturaleza="A" SubCtaDe="810"/>
+  <Cuenta CodAgrup="810-02-000" NumCta="810.02" Desc="Contra cuenta deducción de inversiones" Nivel="2" Naturaleza="A" SubCtaDe="810"/>
+  <Cuenta CodAgrup="811-00-000" NumCta="811" Desc="Utilidad o pérdida fiscal en venta y o baja de activo fijo" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="811-01-000" NumCta="811.01" Desc="Utilidad o pérdida fiscal en venta y o baja de activo fijo" Nivel="2" Naturaleza="A" SubCtaDe="811"/>
+  <Cuenta CodAgrup="811-02-000" NumCta="811.02" Desc="Contra cuenta utilidad o pérdida fiscal en venta y o baja de activo fijo" Nivel="2" Naturaleza="A" SubCtaDe="811"/>
+  <Cuenta CodAgrup="812-00-000" NumCta="812" Desc="Utilidad o pérdida fiscal en venta acciones o partes sociales" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="812-01-000" NumCta="812.01" Desc="Utilidad o pérdida fiscal en venta acciones o partes sociales" Nivel="2" Naturaleza="A" SubCtaDe="812"/>
+  <Cuenta CodAgrup="812-02-000" NumCta="812.02" Desc="Contra cuenta utilidad o pérdida fiscal en venta acciones o partes sociales" Nivel="2" Naturaleza="A" SubCtaDe="812"/>
+  <Cuenta CodAgrup="813-00-000" NumCta="813" Desc="Pérdidas fiscales pendientes de amortizar actualizadas de ejercicios anteriores" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="813-01-000" NumCta="813.01" Desc="Pérdidas fiscales pendientes de amortizar actualizadas de ejercicios anteriores" Nivel="2" Naturaleza="A" SubCtaDe="813"/>
+  <Cuenta CodAgrup="813-02-000" NumCta="813.02" Desc="Actualización de pérdidas fiscales pendientes de amortizar de ejercicios anteriores" Nivel="2" Naturaleza="A" SubCtaDe="813"/>
+  <Cuenta CodAgrup="814-00-000" NumCta="814" Desc="Mercancías recibidas en consignación" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="814-01-000" NumCta="814.01" Desc="Mercancías recibidas en consignación" Nivel="2" Naturaleza="A" SubCtaDe="814"/>
+  <Cuenta CodAgrup="814-02-000" NumCta="814.02" Desc="Consignación de mercancías recibidas" Nivel="2" Naturaleza="A" SubCtaDe="814"/>
+  <Cuenta CodAgrup="815-00-000" NumCta="815" Desc="Crédito fiscal de IVA e IEPS por la importación de mercancías para empresas certificadas" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="815-01-000" NumCta="815.01" Desc="Crédito fiscal de IVA e IEPS por la importación de mercancías" Nivel="2" Naturaleza="A" SubCtaDe="815"/>
+  <Cuenta CodAgrup="815-02-000" NumCta="815.02" Desc="Importación de mercancías con aplicación de crédito fiscal de IVA e IEPS" Nivel="2" Naturaleza="A" SubCtaDe="815"/>
+  <Cuenta CodAgrup="816-00-000" NumCta="816" Desc="Crédito fiscal de IVA e IEPS por la importación de activos fijos para empresas certificadas" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="816-01-000" NumCta="816.01" Desc="Crédito fiscal de IVA e IEPS por la importación de activo fijo" Nivel="2" Naturaleza="A" SubCtaDe="816"/>
+  <Cuenta CodAgrup="816-02-000" NumCta="816.02" Desc="Importación de activo fijo con aplicación de crédito fiscal de IVA e IEPS" Nivel="2" Naturaleza="A" SubCtaDe="816"/>
+  <Cuenta CodAgrup="899-00-000" NumCta="899" Desc="Otras cuentas de orden" Nivel="1" Naturaleza="A" SubCtaDe="800"/>
+  <Cuenta CodAgrup="899-01-000" NumCta="899.01" Desc="Otras cuentas de orden" Nivel="2" Naturaleza="A" SubCtaDe="899"/>
+  <Cuenta CodAgrup="899-02-000" NumCta="899.02" Desc="Contra cuenta otras cuentas de orden" Nivel="2" Naturaleza="A" SubCtaDe="899"/>
+</Catalogo>

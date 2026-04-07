@@ -1,0 +1,83 @@
+ El volumen de la unidad D no tiene etiqueta.
+ El n£mero de serie del volumen es: 7887-7191
+
+ Directorio de D:\SSEPI
+
+25/02/2026  03:42 p. m.             1,837 404.html
+25/02/2026  03:20 p. m.            12,880 index.html
+26/02/2026  12:17 p. m.             1,749 listado.txt
+26/02/2026  12:17 p. m.                 0 listado_completo.txt
+               4 archivos         16,466 bytes
+
+ Directorio de D:\SSEPI\css
+
+25/02/2026  03:43 p. m.            18,366 main.css
+               1 archivos         18,366 bytes
+
+ Directorio de D:\SSEPI\css\modules
+
+26/02/2026  09:26 a. m.             5,490 analisis.css
+26/02/2026  09:23 a. m.             9,978 compras.css
+26/02/2026  09:27 a. m.            15,577 contabilidad.css
+26/02/2026  09:24 a. m.            12,136 contactos.css
+26/02/2026  09:28 a. m.             9,292 facturacion.css
+26/02/2026  09:24 a. m.            10,939 inventario.css
+26/02/2026  09:25 a. m.            13,652 servicios.css
+26/02/2026  09:22 a. m.            14,661 taller.css
+26/02/2026  09:23 a. m.            12,670 ventas.css
+               9 archivos        104,395 bytes
+
+ Directorio de D:\SSEPI\docs
+
+25/02/2026  03:48 p. m.             1,215 arquitectura-maestra.md
+26/02/2026  08:19 a. m.             3,119 security-architecture.md
+               2 archivos          4,334 bytes
+
+ Directorio de D:\SSEPI\js\core
+
+25/02/2026  03:23 p. m.             4,858 auth-service.js
+25/02/2026  03:36 p. m.             5,456 costos-engine.js
+25/02/2026  03:23 p. m.             6,864 data-service.js
+25/02/2026  09:41 p. m.             1,844 encryption-utils.js
+25/02/2026  03:38 p. m.             1,733 index-core.js
+25/02/2026  03:23 p. m.             8,678 pdf-generator.js
+25/02/2026  09:36 p. m.             3,242 security-middleware.js
+25/02/2026  03:22 p. m.             1,263 supabase-config.js
+25/02/2026  03:24 p. m.             2,350 validators.js
+               9 archivos         36,288 bytes
+
+ Directorio de D:\SSEPI\js\modules
+
+25/02/2026  04:20 p. m.            22,113 analisis.js
+25/02/2026  04:19 p. m.            28,447 compras.js
+26/02/2026  08:17 a. m.            54,317 contabilidad.js
+25/02/2026  04:19 p. m.            37,093 contactos.js
+26/02/2026  08:18 a. m.            33,697 facturacion.js
+25/02/2026  04:19 p. m.            31,502 inventario.js
+26/02/2026  08:16 a. m.            36,677 servicios.js
+25/02/2026  04:18 p. m.            60,315 taller.js
+25/02/2026  03:24 p. m.            46,582 ventas.js
+               9 archivos        350,743 bytes
+
+ Directorio de D:\SSEPI\pages
+
+25/02/2026  04:21 p. m.             9,515 ssepi_analisis.html
+25/02/2026  04:21 p. m.             7,082 ssepi_compras.html
+25/02/2026  04:22 p. m.             8,664 ssepi_contabilidad.html
+25/02/2026  04:21 p. m.             6,800 ssepi_contactos.html
+26/02/2026  08:17 a. m.             7,057 ssepi_facturacion.html
+25/02/2026  04:21 p. m.             7,475 ssepi_productos.html
+25/02/2026  09:52 p. m.             8,225 ssepi_servicios.html
+25/02/2026  04:20 p. m.             7,895 ssepi_taller.html
+25/02/2026  03:38 p. m.             9,280 ssepi_ventas.html
+               9 archivos         71,993 bytes
+
+ Directorio de D:\SSEPI\scripts
+
+25/02/2026  03:46 p. m.            40,400 init.sql
+25/02/2026  03:48 p. m.             9,261 migrate.py
+               2 archivos         49,661 bytes
+
+     Total de archivos en la lista:
+              45 archivos        652,246 bytes
+               0 dirs  473,418,014,720 bytes libres

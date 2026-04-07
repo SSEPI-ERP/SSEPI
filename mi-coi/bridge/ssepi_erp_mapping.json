@@ -1,0 +1,20 @@
+{
+  "tipo_poliza_venta": "INGRESO",
+  "tipo_poliza_compra": "EGRESO",
+  "tipo_poliza_factura": "INGRESO",
+  "tipo_poliza_nomina": "EGRESO",
+  "tipo_poliza_bancos": "DIARIO",
+  "cuenta_caja_mn": "101.01",
+  "cuenta_banco_mn": "102.01",
+  "cuenta_ingresos_ventas": "401.01",
+  "cuenta_ingresos_servicios": "401.01",
+  "cuenta_iva_trasladado_por_pagar": "208.01",
+  "cuenta_compras_gasto": "501.01",
+  "cuenta_iva_acreditable": "118.01",
+  "cuenta_proveedores_por_pagar": "201.01",
+  "cuenta_nomina_gasto": "601.01",
+  "cuenta_isr_por_pagar": "213.01",
+  "cuenta_otras_deducciones": "209.99",
+  "cuenta_contrapartida_ingreso_bancos": "401.01",
+  "cuenta_contrapartida_egreso_bancos": "601.01"
+}

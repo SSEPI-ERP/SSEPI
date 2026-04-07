@@ -1,0 +1,22 @@
+100	100	Activo
+100.01	100.01	Activo a corto plazo
+1	101	Caja
+2	101.01	Caja y efectivo
+1	102	Bancos
+2	102.01	Bancos nacionales
+1	105	Clientes
+2	105.01	Clientes nacionales
+200	200	Pasivo
+200.01	200.01	Pasivo a corto plazo
+1	201	Proveedores
+2	201.01	Proveedores nacionales
+300	300	Capital contable
+1	301	Capital social
+2	301.01	Capital fijo
+400	400	Ingresos
+1	401	Ingresos
+2	401.01	Ventas y/o servicios gravados a la tasa general
+600	600	Gastos
+1	601	Gastos generales
+2	601.01	Comisiones sobre ventas
+2	601.02	Arrendamiento
