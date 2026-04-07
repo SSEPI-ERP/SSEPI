@@ -281,17 +281,37 @@
         }
         var supabase = window.supabase;
         if (!supabase) { alert('Supabase no disponible.'); return; }
-        supabase.from('profiles').insert({ id: idRaw, email: email, nombre: nombre, rol: rol }).then(function (r) {
-            if (r.error) {
-                if (r.error.code === '23503') alert('No existe un usuario en Authentication con ese ID. Crea primero el usuario en Supabase Dashboard (Authentication → Add user) y usa su UUID.');
-                else alert('Error: ' + (r.error.message || r.error));
+        var payload = { auth_user_id: idRaw, email: email, nombre: nombre, rol: rol };
+        function tryInsert(table, row, cb) {
+            supabase.from(table).insert(row).then(cb);
+        }
+        // Preferir "usuarios", luego "users", y al final "profiles" (legacy)
+        tryInsert('usuarios', payload, function (r1) {
+            if (!r1.error) {
+                document.getElementById('usersAddForm').style.display = 'none';
+                loadUsersList();
+                alert('Perfil añadido.');
                 return;
             }
-            document.getElementById('usersAddForm').style.display = 'none';
-            loadUsersList();
-            alert('Perfil añadido.');
-        }).catch(function (err) {
-            alert('Error: ' + (err.message || err));
+            tryInsert('users', payload, function (r2) {
+                if (!r2.error) {
+                    document.getElementById('usersAddForm').style.display = 'none';
+                    loadUsersList();
+                    alert('Perfil añadido.');
+                    return;
+                }
+                // fallback: profiles usa id como PK
+                supabase.from('profiles').insert({ id: idRaw, email: email, nombre: nombre, rol: rol }).then(function (r3) {
+                    if (r3.error) {
+                        if (r3.error.code === '23503') alert('No existe un usuario en Authentication con ese ID. Crea primero el usuario en Supabase Dashboard (Authentication → Add user) y usa su UUID.');
+                        else alert('Error: ' + (r3.error.message || r3.error));
+                        return;
+                    }
+                    document.getElementById('usersAddForm').style.display = 'none';
+                    loadUsersList();
+                    alert('Perfil añadido.');
+                });
+            });
         });
     }
 
