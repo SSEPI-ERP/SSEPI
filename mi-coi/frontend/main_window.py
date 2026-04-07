@@ -869,8 +869,15 @@ class AspelCOI:
 
         # Logo SSEPI (izquierda)
         try:
-            logo_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "ssepi_logo.png"))
-            if os.path.exists(logo_path):
+            # Prioridad: sepi_logo.png (lo que pide SSEPI), luego ssepi_logo.png, luego logo.png
+            base_assets = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets"))
+            logo_candidates = [
+                os.path.join(base_assets, "sepi_logo.png"),
+                os.path.join(base_assets, "ssepi_logo.png"),
+                os.path.join(base_assets, "logo.png"),
+            ]
+            logo_path = next((p for p in logo_candidates if os.path.exists(p)), None)
+            if logo_path and os.path.exists(logo_path):
                 # Preferir PIL para mantener proporción y buena calidad
                 try:
                     from PIL import Image, ImageTk
@@ -950,6 +957,7 @@ class AspelCOI:
             ("✏️", "Editar", "Editar", self.editar_seleccion),
             ("🗑️", "Eliminar", "Eliminar", self.eliminar_seleccion),
             ("🔁", "Actualizar", "Actualizar", self.actualizar_todo),
+            ("📥", "Entradas", "Entradas SSEPI ERP (Ctrl+Shift+Q)", self.mostrar_entradas_ssepi_erp),
             ("🧭", "Guía", "Asistente guiado (Ctrl+Shift+A)", self.mostrar_asistente_gui),
             ("❓", "Ayuda", "Ayuda (F1)", self.acerca_de),
         ]
