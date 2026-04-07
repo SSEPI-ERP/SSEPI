@@ -864,7 +864,7 @@ class AspelCOI:
     def crear_toolbar(self):
         """Barra de herramientas con estilo moderno."""
         # Un poco más alta para permitir icono + texto sin desperdiciar espacio horizontal.
-        toolbar = tk.Frame(self.root, bg=THEME["bg_toolbar"], height=56, relief=tk.FLAT, highlightthickness=1, highlightbackground=THEME["border"])
+        toolbar = tk.Frame(self.root, bg=THEME["bg_toolbar"], height=74, relief=tk.FLAT, highlightthickness=1, highlightbackground=THEME["border"])
         toolbar.pack(side=tk.TOP, fill=tk.X)
         toolbar.pack_propagate(False)
 
@@ -883,17 +883,17 @@ class AspelCOI:
                 try:
                     from PIL import Image, ImageTk
                     img = Image.open(logo_path)
-                    th = 38
+                    th = 56
                     tw = int((img.width / img.height) * th) if img.height else 90
                     img = img.resize((max(1, tw), th))
                     self._ssepi_logo_img_small = ImageTk.PhotoImage(img)
                 except Exception:
                     self._ssepi_logo_img = tk.PhotoImage(file=logo_path)
-                    # escalar a altura ~38px (mantiene proporción por subsample)
-                    h = max(1, int(self._ssepi_logo_img.height() / 38))
-                    w = max(1, int(self._ssepi_logo_img.width() / 38))
+                    # escalar a altura ~56px (mantiene proporción por subsample)
+                    h = max(1, int(self._ssepi_logo_img.height() / 56))
+                    w = max(1, int(self._ssepi_logo_img.width() / 56))
                     self._ssepi_logo_img_small = self._ssepi_logo_img.subsample(w, h)
-                tk.Label(toolbar, image=self._ssepi_logo_img_small, bg=THEME["bg_toolbar"]).pack(side=tk.LEFT, padx=(8, 8), pady=4)
+                tk.Label(toolbar, image=self._ssepi_logo_img_small, bg=THEME["bg_toolbar"]).pack(side=tk.LEFT, padx=(10, 10), pady=6)
         except Exception:
             pass
         
