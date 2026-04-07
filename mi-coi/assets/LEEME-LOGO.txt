@@ -2,12 +2,11 @@ SSEPI COI — Logo / Icono (Windows)
 
 Para que el logo se vea también en la barra de tareas, coloca UNO de estos archivos:
 
-1) mi-coi/assets/app.ico   (recomendado)
-2) mi-coi/assets/logo.png
+1) mi-coi/assets/logo.png
+2) mi-coi/assets/ssepi_logo.png
 3) mi-coi/logo.png
 
 Luego:
-- Ejecuta: mi-coi/scripts/generar_icono.bat  (genera assets/app.ico desde logo.png)
 - Abre SSEPI COI normalmente.
 
 Nota: si abres la app desde pythonw/launcher, Windows a veces cachea el icono.

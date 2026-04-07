@@ -658,6 +658,24 @@ class AspelCOI:
                     return
                 except tk.TclError:
                     pass
+        for name in (
+            "assets/logo.png",
+            "assets/ssepi_logo.png",
+            "assets/sepi_logo.png",
+            "assets/sepilogo.png",
+            "logo.png",
+            "ssepi_logo.png",
+            "sepi_logo.png",
+            "sepilogo.png",
+        ):
+            p = os.path.join(base, *name.split("/"))
+            if os.path.isfile(p):
+                try:
+                    self._icon_photo = tk.PhotoImage(file=p)
+                    self.root.iconphoto(True, self._icon_photo)
+                    return
+                except tk.TclError:
+                    pass
 
     def _set_windows_appid(self) -> None:
         """
@@ -667,21 +685,12 @@ class AspelCOI:
         try:
             if sys.platform != "win32":
                 return
-            import ctypes  # noqa: F401
+            import ctypes
 
             appid = "SSEPI.SSEPI-COI"
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)
         except Exception:
             pass
-        for name in ("assets/logo.png", "logo.png", "assets/ssepi_logo.png"):
-            p = os.path.join(base, *name.split("/"))
-            if os.path.isfile(p):
-                try:
-                    self._icon_photo = tk.PhotoImage(file=p)
-                    self.root.iconphoto(True, self._icon_photo)
-                    return
-                except tk.TclError:
-                    pass
 
     def setup_atajos(self):
         """Configura los atajos de teclado estilo ASPEL"""
