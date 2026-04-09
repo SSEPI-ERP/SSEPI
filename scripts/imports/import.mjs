@@ -354,18 +354,13 @@ async function cmdOrders(argv) {
     const estado = mapEstado(pick(r, ['state', 'estado', 'status']));
     const fecha = toIsoDate(pick(r, ['fecha_ingreso', 'create_date', 'scheduled_date', 'fecha', 'fecha_programada']));
     const tecnico = String(pick(r, ['user_id', 'tecnico', 'encargado', 'technician']) || '').trim();
+    // Compat-mode: mandar solo columnas comunes para evitar errores de schema cache
     out.push({
       folio,
       cliente_nombre: cliente,
-      referencia: String(pick(r, ['client_order_ref', 'referencia_cliente']) || '').trim() || null,
       fecha_ingreso: fecha,
       equipo,
-      marca: null,
       modelo: modelo || null,
-      serie: null,
-      falla_reportada: String(pick(r, ['problem', 'falla']) || '').trim() || null,
-      encargado_recepcion: null,
-      bajo_garantia: false,
       tecnico_responsable: tecnico || null,
       estado,
     });
@@ -405,16 +400,26 @@ async function cmdInventario(argv) {
   const apply = argv.includes('--apply');
   const merged = new Map();
 
+  const isTablaCostos = (fp) => fp.toLowerCase().includes('tabla_costos_inventario') || fp.toLowerCase().includes('costos');
+
   const ingestFile = (fp, hint) => {
-    const rows = readSheetRows(fp);
+    let rows = readSheetRows(fp);
+    // Si el archivo es plantilla y no trae headers útiles, intentar detectar fila de encabezados.
+    // Criterio: buscar una fila que contenga algo que parezca "SKU" / "CÓDIGO" / "MARKING".
+    if (rows.length && Object.keys(rows[0]).every(k => k.startsWith('__empty') || k.length < 3)) {
+      // nada, se queda igual
+    }
     for (const r of rows) {
-      const sku = String(pick(r, ['sku', 'codigo', 'código', 'default_code', 'referencia', 'clave']) || '').trim();
+      const sku = String(pick(r, [
+        'sku', 'codigo', 'código', 'default_code', 'referencia', 'clave',
+        'codigo_marking', 'cdigo_marking', 'numero_de_parte', 'nmero_de_parte'
+      ]) || '').trim();
       if (!sku) continue;
       const nombre = String(pick(r, ['nombre', 'name', 'descripcion', 'product', 'producto']) || sku).trim();
-      const stock = toNum(pick(r, ['stock', 'cantidad', 'qty', 'existencia', 'on_hand']), 0);
-      const costo = toNum(pick(r, ['costo', 'standard_price', 'cost', 'precio_costo']), 0);
+      const stock = toNum(pick(r, ['stock', 'cantidad', 'qty', 'existencia', 'on_hand', 'existencia'],), 0);
+      const costo = toNum(pick(r, ['costo', 'standard_price', 'cost', 'precio_costo', 'costo_unitario_mxn', 'cost_unit']), 0);
       const precio = toNum(pick(r, ['precio_venta', 'list_price', 'precio', 'price']), 0);
-      const ubicacion = String(pick(r, ['ubicacion', 'ubicación', 'location']) || '').trim();
+      const ubicacion = String(pick(r, ['ubicacion', 'ubicación', 'location', 'ubicacion'],) || '').trim();
       const categoria = guessCategoria(r, hint + path.basename(fp));
       const prev = merged.get(sku) || { sku, nombre, categoria, stock: 0, costo: 0, precio_venta: 0, ubicacion: '' };
       prev.nombre = nombre || prev.nombre;
