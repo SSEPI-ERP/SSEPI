@@ -240,20 +240,31 @@ export const IndexCore = (function() {
         await _loadFeed();
     }
 
+    function _auditTableName(log) {
+        if (!log) return '';
+        if (log.table_name) return String(log.table_name);
+        if (log.metadata && typeof log.metadata === 'object' && log.metadata.table) return String(log.metadata.table);
+        return '';
+    }
+
     async function _loadFeed() {
         const supabase = window.supabase;
-        const { data, error } = await supabase
-            .from('audit_logs')
-            .select('*')
-            .order('timestamp', { ascending: false })
-            .limit(10);
+        const feedList = document.getElementById('feedList');
+        if (!feedList || !supabase) return;
 
+        const selFull = 'id,timestamp,action,record_id,user_email,user_role,table_name,old_data,new_data,metadata';
+        const selSafe = 'id,timestamp,action,record_id,user_email,user_role,old_data,new_data,metadata';
+        let data = [];
+        let { data: rows, error } = await supabase.from('audit_logs').select(selFull).order('timestamp', { ascending: false }).limit(10);
+        if (error && String(error.message || '').includes('table_name')) {
+            ({ data: rows, error } = await supabase.from('audit_logs').select(selSafe).order('timestamp', { ascending: false }).limit(10));
+        }
         if (error) {
             console.error('Error cargando feed:', error);
-            return;
+            rows = [];
         }
+        data = rows || [];
 
-        const feedList = document.getElementById('feedList');
         feedList.innerHTML = '';
         const pend = listPendingEntries().slice(0, 8);
         pend.forEach((e) => {
@@ -272,16 +283,17 @@ export const IndexCore = (function() {
             feedList.appendChild(item);
         });
         data.forEach(log => {
+            const tbl = _auditTableName(log) || 'sistema';
             const item = document.createElement('div');
             item.className = 'feed-item';
             item.innerHTML = `
                 <div class="feed-dot"></div>
                 <div class="feed-meta">
-                    <span>${log.table_name?.toUpperCase() || 'SISTEMA'}</span>
+                    <span>${tbl.toUpperCase()}</span>
                     <span>${new Date(log.timestamp).toLocaleTimeString()}</span>
                 </div>
                 <div class="feed-body">
-                    <strong>${log.action}</strong> en ${log.table_name} ID: ${log.record_id?.substring(0,8)}...
+                    <strong>${log.action}</strong> · ${tbl}${log.record_id ? ' · ' + String(log.record_id).substring(0, 8) + '…' : ''}
                 </div>
             `;
             feedList.appendChild(item);

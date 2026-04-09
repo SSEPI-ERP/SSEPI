@@ -1054,28 +1054,45 @@ const TallerModule = (function() {
         push('Reparado', fe['4'], 'Reparación terminada');
         push('Entregado', fe['5'], 'Entrega registrada');
 
-        // 2) audit_logs (si existe)
+        // 2) audit_logs (si existe; sin filtrar table_name si la columna no está en BD)
         if (supabase && orden?.id) {
             try {
-                const { data, error } = await supabase
+                let rows = [];
+                const q1 = await supabase
                     .from('audit_logs')
-                    .select('*')
+                    .select('timestamp,action,table_name')
                     .eq('table_name', 'ordenes_taller')
                     .eq('record_id', orden.id)
                     .order('timestamp', { ascending: false })
                     .limit(30);
-                if (!error && data && data.length) {
-                    data.forEach(l => {
+                if (!q1.error && q1.data) {
+                    rows = q1.data;
+                } else if (q1.error && String(q1.error.message || '').includes('table_name')) {
+                    const q2 = await supabase
+                        .from('audit_logs')
+                        .select('timestamp,action,metadata')
+                        .eq('record_id', orden.id)
+                        .order('timestamp', { ascending: false })
+                        .limit(40);
+                    if (!q2.error && q2.data) {
+                        rows = (q2.data || []).filter((l) => {
+                            const t = (l.metadata && l.metadata.table) || '';
+                            return !t || t === 'ordenes_taller';
+                        }).slice(0, 30);
+                    }
+                }
+                if (rows.length) {
+                    rows.forEach(l => {
                         const d = l.timestamp ? new Date(l.timestamp) : null;
                         items.push({
                             when: d ? d.toLocaleString('es-MX') : '—',
                             title: String(l.action || 'EVENTO'),
-                            body: String(l.table_name || 'ordenes_taller')
+                            body: 'ordenes_taller'
                         });
                     });
                 }
             } catch (e) {
-                // silencio; audit_logs puede no existir
+                /* audit_logs opcional */
             }
         }
 
