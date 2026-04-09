@@ -45,7 +45,7 @@ function _syncExternalModuleLinks() {
     const qVentas = _queryString({});
     const qVentasPend = _queryString({ estado: 'Pendiente' });
     const qCompras = _queryString({});
-    const qNom = _queryString({ tab: 'nomina' });
+    const qNom = _queryString({});
 
     const setHref = (id, path) => {
         const el = document.getElementById(id);
@@ -55,7 +55,7 @@ function _syncExternalModuleLinks() {
     setHref('contabLinkVentas', `/pages/ssepi_ventas.html${qVentas}`);
     setHref('contabLinkCompras', `/pages/ssepi_compras.html${qCompras}`);
     setHref('contabLinkCobranza', `/pages/ssepi_ventas.html${qVentasPend}`);
-    setHref('contabLinkNomina', `/pages/ssepi_contabilidad.html${qNom}`);
+    setHref('contabLinkNomina', `/pages/ssepi_nomina.html${qNom}`);
     setHref('contabDupFacturacion', `/pages/ssepi_facturacion.html${qFactEmit}`);
     setHref('contabDupCompras', `/pages/ssepi_compras.html${qCompras}`);
     setHref('contabDupCobranza', `/pages/ssepi_ventas.html${qVentasPend}`);
