@@ -1,4 +1,5 @@
 import { createDataService } from '../core/data-service.js';
+import { initAuditFeed } from '../core/audit-feed.js';
 
 const facturasService = createDataService('facturas');
 const comprasService = createDataService('compras');
@@ -369,6 +370,13 @@ async function init() {
     else if (tab === 'cobranza') _setActiveTab('tabCobranza');
     else if (tab === 'nomina') _setActiveTab('tabNomina');
     else _setActiveTab('tabVentas');
+
+    // Bitácora (audit_logs) filtrada a tablas de este módulo
+    initAuditFeed({
+        tables: ['facturas', 'compras', 'movimientos_banco', 'pagos_nomina'],
+        label: 'CONTABILIDAD',
+        accentCssVar: '--c-contabilidad'
+    });
 
     _syncExternalModuleLinks();
     await refreshAll();
