@@ -9,6 +9,9 @@
 import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
 import { CostosEngine } from '../core/costos-engine.js';
+import { getPrioritySuppliersForModule } from '../core/ssepi-runtime/priority-suppliers-catalog.js';
+import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
+import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
 
 const ServiciosModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -55,6 +58,8 @@ const ServiciosModule = (function() {
 
     // Suscripciones
     let subscriptions = [];
+    let serviciosAutosaveCtrl = null;
+    let serviciosDraftSessionKey = null;
 
     // ==================== INICIALIZACIÓN ====================
     async function init() {
@@ -69,7 +74,126 @@ const ServiciosModule = (function() {
         } catch (e) {
             console.error('[Automatización] init error:', e);
         }
+        _renderAutoPriorityChips();
+        _initServiciosAutosave();
+        _tryResumeServiciosDraft();
         console.log('✅ Módulo automatización iniciado');
+    }
+
+    function _serviciosRecordKey() {
+        if (projectId) return String(projectId);
+        const folio = (document.getElementById('inpFolio') && document.getElementById('inpFolio').value || '').trim();
+        if (folio) return 'new:' + folio;
+        if (!serviciosDraftSessionKey) serviciosDraftSessionKey = 'tmp:' + Date.now();
+        return serviciosDraftSessionKey;
+    }
+
+    function _collectServiciosDraftPayload() {
+        return {
+            v: 1,
+            currentStep: currentStep,
+            projectId: projectId,
+            isNewProject: isNewProject,
+            folio: document.getElementById('inpFolio') ? document.getElementById('inpFolio').value : '',
+            paso1_nombre: document.getElementById('paso1_nombre') ? document.getElementById('paso1_nombre').value : '',
+            paso1_cliente: document.getElementById('paso1_cliente') ? document.getElementById('paso1_cliente').value : '',
+            paso1_fecha: document.getElementById('paso1_fecha') ? document.getElementById('paso1_fecha').value : '',
+            paso1_vendedor: document.getElementById('paso1_vendedor') ? document.getElementById('paso1_vendedor').value : '',
+            paso1_notasGenerales: document.getElementById('paso1_notasGenerales') ? document.getElementById('paso1_notasGenerales').value : '',
+            paso1_notasInternas: document.getElementById('paso1_notasInternas') ? document.getElementById('paso1_notasInternas').value : '',
+            actividades: actividades,
+            materiales: materiales,
+            epicas: epicas,
+            apartados: apartados,
+        };
+    }
+
+    function _applyServiciosDraft(w) {
+        if (!w || !w.payload) return;
+        const p = w.payload;
+        const setv = (id, val) => {
+            const el = document.getElementById(id);
+            if (el && val !== undefined) el.value = val == null ? '' : val;
+        };
+        setv('inpFolio', p.folio);
+        setv('paso1_nombre', p.paso1_nombre);
+        setv('paso1_cliente', p.paso1_cliente);
+        setv('paso1_fecha', p.paso1_fecha);
+        setv('paso1_vendedor', p.paso1_vendedor);
+        setv('paso1_notasGenerales', p.paso1_notasGenerales);
+        setv('paso1_notasInternas', p.paso1_notasInternas);
+        if (Array.isArray(p.actividades)) actividades = p.actividades.slice();
+        if (Array.isArray(p.materiales)) materiales = p.materiales.slice();
+        if (Array.isArray(p.epicas)) epicas = p.epicas.slice();
+        if (Array.isArray(p.apartados)) apartados = p.apartados.slice();
+        projectId = p.projectId || null;
+        isNewProject = p.isNewProject !== false && !projectId;
+        currentStep = p.currentStep || 1;
+        _renderActividades();
+        _renderMateriales();
+        _renderEpicas();
+        _renderApartados();
+        _irPaso(currentStep);
+    }
+
+    function _renderAutoPriorityChips() {
+        const host = document.getElementById('autoPrioritySuppliers');
+        if (!host) return;
+        const list = getPrioritySuppliersForModule('automatizacion');
+        const esc = (s) => {
+            const d = document.createElement('div');
+            d.textContent = s == null ? '' : String(s);
+            return d.innerHTML;
+        };
+        let chips = '';
+        list.forEach((s) => {
+            chips += '<button type="button" class="prio-chip" data-url="' + esc(s.url) + '" title="' + esc(s.ubicacion) + '">' + esc(s.etiqueta) + ' · ' + esc(s.nombre) + '</button>';
+        });
+        host.innerHTML = '<div class="priority-suppliers-wrap"><div class="priority-suppliers-label">Tiendas de componentes (abrir en nueva pestaña)</div><div class="priority-suppliers-chips">' + chips + '</div></div>';
+        host.querySelectorAll('.prio-chip').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const u = btn.getAttribute('data-url');
+                if (u) window.open(u, '_blank', 'noopener,noreferrer');
+            });
+        });
+    }
+
+    function _initServiciosAutosave() {
+        serviciosAutosaveCtrl = createAutosaveController({
+            module: 'proyectos_automatizacion',
+            getRecordKey: _serviciosRecordKey,
+            collectPayload: _collectServiciosDraftPayload,
+            getLabel: () => {
+                const n = document.getElementById('paso1_nombre') && document.getElementById('paso1_nombre').value;
+                return 'Auto ' + (n || 'borrador');
+            },
+            debounceMs: 1800,
+        });
+        const modal = document.getElementById('wsModal');
+        if (modal) {
+            modal.addEventListener('input', () => { if (serviciosAutosaveCtrl) serviciosAutosaveCtrl.schedule(); }, true);
+            modal.addEventListener('change', () => { if (serviciosAutosaveCtrl) serviciosAutosaveCtrl.schedule(); }, true);
+        }
+    }
+
+    function _tryResumeServiciosDraft() {
+        const resume = new URLSearchParams(window.location.search).get('resume');
+        if (!resume) return;
+        const w = loadLocalDraft('proyectos_automatizacion', resume);
+        if (!w || !w.payload) return;
+        if (!confirm('¿Recuperar borrador guardado en este equipo?')) {
+            history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
+        serviciosDraftSessionKey = resume.indexOf('tmp:') === 0 ? resume : null;
+        currentProject = null;
+        projectId = w.payload.projectId || null;
+        isNewProject = !projectId;
+        _resetForm();
+        _applyServiciosDraft(w);
+        const modal = document.getElementById('wsModal');
+        if (modal) modal.classList.add('active');
+        history.replaceState({}, document.title, window.location.pathname);
     }
 
     function _setVistaInicial() {

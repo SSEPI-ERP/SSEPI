@@ -669,6 +669,106 @@ tr.inbound-unread td { font-weight: 500; }
   font-size: 9px;
 }
 
+.ssepi-nav-pending-mini {
+  max-height: 140px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+  padding: 0 4px;
+  font-size: 11px;
+}
+.ssepi-pending-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+  background: var(--bg-hover);
+}
+.ssepi-pending-item:hover {
+  border-color: var(--accent, #1976d2);
+}
+.ssepi-pending-badge {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: rgba(245, 158, 11, 0.25);
+  color: #b45309;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.ssepi-pending-title { flex: 1; min-width: 0; font-weight: 600; }
+.ssepi-pending-time { font-size: 10px; color: var(--text-muted); }
+.ssepi-pending-empty { font-size: 11px; color: var(--text-muted); padding: 4px 6px; margin: 0; }
+
+.priority-suppliers-wrap {
+  margin: 12px 0 16px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  background: var(--bg-hover);
+}
+.priority-suppliers-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.priority-suppliers-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.prio-chip {
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+.prio-chip:hover {
+  border-color: var(--c-taller, #1976d2);
+  color: var(--c-taller, #1976d2);
+}
+body.page-motores .prio-chip:hover {
+  border-color: var(--c-motores, #e65100);
+  color: var(--c-motores, #e65100);
+}
+body.page-servicios .prio-chip:hover {
+  border-color: var(--c-automatizacion, #7c3aed);
+  color: var(--c-automatizacion, #7c3aed);
+}
+
+.ssepi-index-pending {
+  margin: 0 0 24px;
+  padding: 16px 18px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+.ssepi-index-pending h2 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ssepi-index-pending .ssepi-pending-list-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 /* ========== MAIN ========== */
 main {
   padding: 30px;
