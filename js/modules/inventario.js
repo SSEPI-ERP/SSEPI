@@ -173,6 +173,8 @@ const InventarioModule = (function() {
         // Ventas: no crear ni importar
         var newBtn = document.getElementById('newProductBtn');
         if (newBtn) { newBtn.style.display = 'none'; newBtn.classList.add('hide-for-ventas'); }
+        var importGeneralBtn = document.getElementById('importGeneralBtn');
+        if (importGeneralBtn) { importGeneralBtn.style.display = 'none'; importGeneralBtn.classList.add('hide-for-ventas'); }
         var importBtn = document.getElementById('importExcelBtn');
         if (importBtn) { importBtn.style.display = 'none'; importBtn.classList.add('hide-for-ventas'); }
         var initBtn = document.getElementById('initDataBtn');
@@ -255,6 +257,7 @@ const InventarioModule = (function() {
         if (byId('vistaGrafica')) byId('vistaGrafica').addEventListener('click', () => _cambiarVista('chart'));
 
         if (byId('newProductBtn')) byId('newProductBtn').addEventListener('click', _abrirModalNuevo);
+        if (byId('importGeneralBtn')) byId('importGeneralBtn').addEventListener('click', _abrirImportacionGeneral);
         if (byId('importExcelBtn')) byId('importExcelBtn').addEventListener('click', _abrirModalImportacion);
         if (byId('initDataBtn')) byId('initDataBtn').addEventListener('click', _cargarDatosIniciales);
 
@@ -273,6 +276,7 @@ const InventarioModule = (function() {
         if (byId('excelFile')) byId('excelFile').addEventListener('change', _manejarArchivoExcel);
         if (byId('processImportBtn')) byId('processImportBtn').addEventListener('click', _procesarImportacion);
         if (byId('fileInput')) byId('fileInput').addEventListener('change', _manejarArchivoDirecto);
+        if (byId('generalImportInput')) byId('generalImportInput').addEventListener('change', _manejarImportacionGeneral);
 
         const productModal = byId('productModal');
         if (productModal) productModal.addEventListener('click', function(e) {
@@ -689,6 +693,93 @@ const InventarioModule = (function() {
     // ==================== IMPORTACIÓN EXCEL ====================
     let excelData = null;
 
+    function _abrirImportacionGeneral() {
+        const input = document.getElementById('generalImportInput');
+        if (!input) return;
+        input.value = '';
+        input.click();
+    }
+
+    function _categoriaPorNombreArchivo(fileName) {
+        const n = _normalizarTexto(fileName || '');
+        if (n.includes('electronica')) return 'refaccion';
+        if (n.includes('automatizacion')) return 'almacenable';
+        if (n.includes('herramienta') || n.includes('herramientas')) return 'almacenable';
+        if (n.includes('costo') || n.includes('costos') || n.includes('precio') || n.includes('precios')) return 'refaccion';
+        return categoriaActual || 'refaccion';
+    }
+
+    async function _leerArchivoComoArrayBuffer(file) {
+        if (file.arrayBuffer) return await file.arrayBuffer();
+        return await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => resolve(ev.target.result);
+            reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    async function _leerArchivoComoTexto(file) {
+        if (file.text) return await file.text();
+        return await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => resolve(String(ev.target.result || ''));
+            reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+            reader.readAsText(file);
+        });
+    }
+
+    async function _manejarImportacionGeneral(e) {
+        const input = e.target;
+        const files = Array.from(input?.files || []);
+        if (!files.length) return;
+        const progress = document.querySelector('.import-progress');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        if (progress) progress.style.display = 'block';
+        if (progressFill) progressFill.style.width = '0%';
+        if (progressText) progressText.textContent = 'Preparando importación...';
+
+        let okFiles = 0;
+        const errores = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const name = (file.name || '').toLowerCase();
+            if (name.endsWith('.pdf') || file.type === 'application/pdf') continue;
+            const categoria = _categoriaPorNombreArchivo(file.name);
+            try {
+                if (progressText) progressText.textContent = `Leyendo ${file.name} (${i + 1}/${files.length})...`;
+                let workbook = null;
+                if (name.endsWith('.csv') || file.type === 'text/csv') {
+                    const csv = await _leerArchivoComoTexto(file);
+                    workbook = XLSX.read(csv, { type: 'string' });
+                } else {
+                    const ab = await _leerArchivoComoArrayBuffer(file);
+                    const data = new Uint8Array(ab);
+                    workbook = XLSX.read(data, { type: 'array' });
+                }
+                const result = _obtenerDatosDeWorkbook(workbook);
+                if (!result || !result.data || result.data.length === 0) {
+                    throw new Error('No se detectaron columnas/filas válidas');
+                }
+                if (progressText) progressText.textContent = `Importando ${file.name} → ${categoria} (${result.data.length} filas)...`;
+                await _procesarFilas(result.data, categoria, result.columnMap);
+                okFiles++;
+            } catch (err) {
+                errores.push(`${file.name}: ${err?.message || String(err)}`);
+            }
+            const pct = Math.round(((i + 1) / files.length) * 100);
+            if (progressFill) progressFill.style.width = `${pct}%`;
+        }
+        if (progress) progress.style.display = 'none';
+        input.value = '';
+        if (errores.length) {
+            alert(`✅ Archivos importados: ${okFiles}\n❌ Con error: ${errores.length}\n\n- ${errores.slice(0, 8).join('\n- ')}${errores.length > 8 ? '\n- ...' : ''}`);
+        } else {
+            alert(`✅ Archivos importados: ${okFiles}`);
+        }
+    }
+
     function _abrirModalImportacion() {
         document.getElementById('importModal').classList.add('active');
         document.querySelector('.import-progress').style.display = 'none';
@@ -822,6 +913,11 @@ const InventarioModule = (function() {
                 if (existe) {
                     const oldStock = existe.stock || 0;
                     await inventarioService.update(existe.id, { stock, ubicacion, costo, precio_venta: precioVenta, updated_at: now }, csrfToken);
+                    existe.stock = stock;
+                    existe.ubicacion = ubicacion;
+                    existe.costo = costo;
+                    existe.precio_venta = precioVenta;
+                    existe.updated_at = now;
                     if (stock !== oldStock) {
                         await _registrarMovimiento(existe.id, sku, oldStock, stock, 'importe', 'Actualización por importación');
                     }
@@ -831,6 +927,7 @@ const InventarioModule = (function() {
                         created_at: now, updated_at: now
                     };
                     const inserted = await inventarioService.insert(newProduct, csrfToken);
+                    productos.push({ ...newProduct, id: inserted?.id || inserted?.[0]?.id || inserted?.data?.id });
                     await _registrarMovimiento(inserted.id, sku, 0, stock, 'importe', 'Importación inicial');
                 }
                 importados++;

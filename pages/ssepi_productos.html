@@ -131,6 +131,7 @@
         <div class="actions-header">
             <div class="toolbar-actions">
                 <button class="btn-ssepi btn-inventario" id="newProductBtn" data-hide-for-ventas="true"><i class="fas fa-plus"></i> Nuevo Producto</button>
+                <button class="btn btn-import" id="importGeneralBtn" data-hide-for-ventas="true" title="Importa varios archivos y los categoriza automáticamente"><i class="fas fa-file-arrow-up"></i> Importación general</button>
                 <button class="btn btn-import" id="importExcelBtn" data-hide-for-ventas="true"><i class="fas fa-file-excel"></i> Importar Excel</button>
                 <button class="btn btn-secondary" id="initDataBtn" style="display: none;"><i class="fas fa-database"></i> Cargar Datos Iniciales</button>
             </div>
@@ -319,6 +320,7 @@
     </div>
 
     <!-- INPUT OCULTO PARA IMPORTACIÓN DIRECTA -->
+    <input type="file" id="generalImportInput" multiple accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" style="display: none;">
     <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf" style="display: none;">
 
     <script>
