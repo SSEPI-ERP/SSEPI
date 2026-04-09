@@ -23,6 +23,40 @@ function _escape(s) {
     return d.innerHTML;
 }
 
+/** Texto legible: colapsa espacios y evita celdas “vacías” por blanks. */
+function _trimDisplay(s) {
+    if (s == null) return '';
+    return String(s).replace(/\s+/g, ' ').trim();
+}
+
+function _normalizeFacturaRow(r) {
+    if (!r) return r;
+    const fe = r.fecha_emision != null ? r.fecha_emision : (r.created_at ? String(r.created_at).slice(0, 10) : null);
+    return {
+        ...r,
+        folio_factura: _trimDisplay(r.folio_factura || r.folio || '') || null,
+        cliente: _trimDisplay(r.cliente || r.cliente_nombre || '') || null,
+        estatus: _trimDisplay(r.estatus || r.estado || '') || null,
+        fecha_emision: fe,
+        total: r.total != null ? r.total : 0,
+    };
+}
+
+async function _selectFacturasRows() {
+    try {
+        const rows = await facturasService.select({}, { orderBy: 'fecha_emision', ascending: false, limit: 400 });
+        return (rows || []).map(_normalizeFacturaRow);
+    } catch (e) {
+        const m = String(e?.message || e);
+        const sb = window.supabase;
+        if (!sb || !m.includes('facturas')) throw e;
+        if (!(m.includes('does not exist') || m.includes('schema cache') || m.includes('Could not find'))) throw e;
+        const { data, error } = await sb.from('facturacion').select('*').order('fecha_emision', { ascending: false }).limit(400);
+        if (error) throw error;
+        return (data || []).map(_normalizeFacturaRow);
+    }
+}
+
 function _getFilterInputs() {
     const desde = (document.getElementById('contabDesde')?.value || '').trim();
     const hasta = (document.getElementById('contabHasta')?.value || '').trim();
@@ -46,7 +80,6 @@ function _syncExternalModuleLinks() {
     const qVentas = _queryString({});
     const qVentasPend = _queryString({ estado: 'Pendiente' });
     const qCompras = _queryString({});
-    const qNom = _queryString({});
 
     const setHref = (id, path) => {
         const el = document.getElementById(id);
@@ -56,7 +89,13 @@ function _syncExternalModuleLinks() {
     setHref('contabLinkVentas', `/pages/ssepi_ventas.html${qVentas}`);
     setHref('contabLinkCompras', `/pages/ssepi_compras.html${qCompras}`);
     setHref('contabLinkCobranza', `/pages/ssepi_ventas.html${qVentasPend}`);
-    setHref('contabLinkNomina', `/pages/ssepi_nomina.html${qNom}`);
+    const nomParams = new URLSearchParams();
+    const { desde, hasta, cat } = _getFilterInputs();
+    if (desde) nomParams.set('desde', desde);
+    if (hasta) nomParams.set('hasta', hasta);
+    if (cat && cat !== 'todos') nomParams.set('departamento', cat);
+    nomParams.set('tab', 'nomina');
+    setHref('contabLinkNomina', `/pages/ssepi_contabilidad.html?${nomParams.toString()}`);
     setHref('contabDupFacturacion', `/pages/ssepi_facturacion.html${qFactEmit}`);
     setHref('contabDupCompras', `/pages/ssepi_compras.html${qCompras}`);
     setHref('contabDupCobranza', `/pages/ssepi_ventas.html${qVentasPend}`);
@@ -115,10 +154,10 @@ async function _renderVentasFacturas() {
     tbody.innerHTML = '<tr><td colspan="6" class="coi-log-loading">Cargando…</td></tr>';
     const { desde, hasta } = _getFilterInputs();
     try {
-        const rows = await facturasService.select({}, { orderBy: 'fecha_emision', ascending: false, limit: 300 });
+        const rows = await _selectFacturasRows();
         let list = (rows || []).filter(f => _inDateRange(f.fecha_emision, desde, hasta));
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">Sin facturas en el rango.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">Sin facturas en el rango. Si la tabla aún no existe, ejecuta <code>contabilidad-supabase-fix.sql</code> en Supabase.</td></tr>';
             return;
         }
         list = list.slice(0, 200);
@@ -126,17 +165,22 @@ async function _renderVentasFacturas() {
         tbody.innerHTML = list.map(f => `
             <tr>
                 <td>${_escape(_fmtDate(f.fecha_emision))}</td>
-                <td><strong>${_escape(f.folio_factura || '—')}</strong></td>
-                <td>${_escape(f.cliente || '—')}</td>
+                <td><strong>${_escape(_trimDisplay(f.folio_factura) || '—')}</strong></td>
+                <td>${_escape(_trimDisplay(f.cliente) || '—')}</td>
                 <td>${_escape(_fmtMoney(f.total || 0))}</td>
-                <td>${_escape(f.estatus || '—')}</td>
+                <td>${_escape(_trimDisplay(f.estatus) || '—')}</td>
                 <td>
                     <a class="btn-ssepi btn-ssepi--sm" href="/pages/ssepi_facturacion.html${q}"><i class="fas fa-external-link-alt"></i></a>
                 </td>
             </tr>
         `).join('');
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="6" class="coi-log-empty">Error: ${_escape(e?.message || e)}</td></tr>`;
+        const msg = String(e?.message || e);
+        if (msg.includes('facturacion') && (msg.includes('does not exist') || msg.includes('schema cache'))) {
+            tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">Crea <code>public.facturas</code> con <code>scripts/migrations/contabilidad-supabase-fix.sql</code>.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = `<tr><td colspan="6" class="coi-log-empty">Error: ${_escape(msg)}</td></tr>`;
     }
 }
 
@@ -199,8 +243,8 @@ async function _renderCobranza() {
         tbody.innerHTML = list.map(m => `
             <tr>
                 <td>${_escape(_fmtDate(m.fecha))}</td>
-                <td>${_escape(m.concepto || '—')}</td>
-                <td>${_escape(m.metodo || '—')}</td>
+                <td>${_escape(_trimDisplay(m.concepto) || '—')}</td>
+                <td>${_escape(_trimDisplay(m.metodo) || '—')}</td>
                 <td>${_escape(_fmtMoney(m.monto || 0))}</td>
                 <td><span class="coi-badge coi-badge-ok">OK</span></td>
             </tr>
@@ -231,7 +275,7 @@ async function _renderNomina() {
         tbody.innerHTML = list.map(n => `
             <tr>
                 <td>${_escape(_fmtDate(n.fecha_pago))}</td>
-                <td>${_escape(n.empleado_nombre || '—')}</td>
+                <td>${_escape(_trimDisplay(n.empleado_nombre) || '—')}</td>
                 <td>${_escape((n.periodo_inicio || '—') + ' → ' + (n.periodo_fin || '—'))}</td>
                 <td>${_escape(_fmtMoney(n.total || 0))}</td>
                 <td>${_escape(n.estado || '—')}</td>
@@ -316,6 +360,45 @@ async function pagarCompra(compraId) {
     }
 }
 
+async function _updateContabKpis() {
+    const kf = document.getElementById('contabKpiFacturado');
+    const kc = document.getElementById('contabKpiCompras');
+    const kb = document.getElementById('contabKpiCobros');
+    const kn = document.getElementById('contabKpiNomina');
+    const set = (el, v) => { if (el) el.textContent = v; };
+    const { desde, hasta } = _getFilterInputs();
+    try {
+        const [factRows, comprasRows, bancoRows, nomRows] = await Promise.all([
+            _selectFacturasRows().catch(() => []),
+            _selectComprasOrdered().catch(() => []),
+            bancosService.select({}, { orderBy: 'fecha', ascending: false, limit: 400 }).catch(() => []),
+            nominaService.select({}, { orderBy: 'fecha_pago', ascending: false, limit: 400 }).catch(() => [])
+        ]);
+        const factSum = (factRows || [])
+            .filter(f => _inDateRange(f.fecha_emision, desde, hasta))
+            .reduce((a, f) => a + (Number(f.total) || 0), 0);
+        const comprasSum = (comprasRows || [])
+            .filter(c => _inDateRange(_comprasFechaRaw(c), desde, hasta))
+            .reduce((a, c) => a + (Number(c.total) || 0), 0);
+        const cobrosSum = (bancoRows || [])
+            .filter(x => (x.tipo || '').toLowerCase() === 'ingreso')
+            .filter(m => _inDateRange(m.fecha, desde, hasta))
+            .reduce((a, m) => a + (Number(m.monto) || 0), 0);
+        const nomSum = (nomRows || [])
+            .filter(n => _inDateRange(n.fecha_pago, desde, hasta))
+            .reduce((a, n) => a + (Number(n.total) || 0), 0);
+        set(kf, _fmtMoney(factSum));
+        set(kc, _fmtMoney(comprasSum));
+        set(kb, _fmtMoney(cobrosSum));
+        set(kn, _fmtMoney(nomSum));
+    } catch (_) {
+        set(kf, '—');
+        set(kc, '—');
+        set(kb, '—');
+        set(kn, '—');
+    }
+}
+
 async function refreshAll() {
     _syncExternalModuleLinks();
     await Promise.all([
@@ -323,7 +406,8 @@ async function refreshAll() {
         _renderCompras(),
         _renderCobranza(),
         _renderNomina(),
-        _renderInventarioKPIs()
+        _renderInventarioKPIs(),
+        _updateContabKpis()
     ]);
 }
 

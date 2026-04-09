@@ -33,7 +33,7 @@
   --c-stock: #28a745;
   --c-contact: #dc3545;
   --c-facturacion: #fd7e14;
-  --c-contabilidad: #2e7d32;
+  --c-contabilidad: #b91c1c;
   --c-analisis: #6610f2;
   --c-web: #37474f;
 
@@ -69,7 +69,7 @@
   --c-stock: #81c784;
   --c-contact: #e57373;
   --c-facturacion: #ffb74d;
-  --c-contabilidad: #81c784;
+  --c-contabilidad: #f87171;
   --c-analisis: #b39ddb;
   --c-web: #b0bec5;
 
@@ -126,6 +126,8 @@ body.page-inventario { --module-accent: var(--c-stock); }
 body.page-contactos { --module-accent: var(--c-contact); }
 body.page-facturacion { --module-accent: var(--c-facturacion); }
 body.page-contabilidad { --module-accent: var(--c-contabilidad); }
+body.page-nomina { --module-accent: var(--c-contabilidad); }
+body.page-calculadoras { --module-accent: var(--c-automatizacion); }
 body.page-analisis { --module-accent: var(--c-analisis); }
 
 ::-webkit-scrollbar {
@@ -528,6 +530,7 @@ tr.inbound-unread td { font-weight: 500; }
   box-shadow: none;
   transition: all 0.3s ease;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .menu-category {
@@ -610,6 +613,60 @@ tr.inbound-unread td { font-weight: 500; }
   font-size: 18px;
   width: 24px;
   text-align: center;
+}
+
+/* Actividad (audit_logs) al pie del menú lateral */
+.ssepi-nav-activity {
+  margin-top: auto;
+  padding: 12px 8px 16px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  max-height: min(38vh, 320px);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.ssepi-nav-activity-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  padding: 0 6px;
+}
+.ssepi-nav-activity-count {
+  background: var(--bg-hover);
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+.ssepi-nav-activity-list {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding-right: 4px;
+}
+.ssepi-nav-activity-list .feed-item {
+  padding-left: 18px;
+  margin-bottom: 12px;
+  border-left: 2px solid var(--border);
+}
+.ssepi-nav-activity-list .feed-dot {
+  left: -5px;
+  width: 8px;
+  height: 8px;
+}
+.ssepi-nav-activity-list .feed-body {
+  font-size: 11px;
+  line-height: 1.35;
+}
+.ssepi-nav-activity-list .feed-meta {
+  font-size: 9px;
 }
 
 /* ========== MAIN ========== */

@@ -690,12 +690,38 @@ main {
 
 .ws-header {
     background: var(--bg-panel);
-    padding: 15px 30px;
+    padding: 14px 24px 16px;
     border-bottom: 2px solid var(--c-taller);
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
     box-shadow: none;
+    flex-shrink: 0;
+}
+
+.ws-header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.ws-print-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.ws-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
 }
 
 .ws-title-group {
@@ -723,25 +749,30 @@ main {
 
 .ws-steps {
     display: flex;
+    flex-wrap: wrap;
     background: var(--bg-hover);
-    padding: 5px;
-    border-radius: 30px;
-    margin: 0 30px;
+    padding: 6px;
+    border-radius: 12px;
+    margin: 0;
+    gap: 4px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .ws-step-btn {
-    padding: 10px 20px;
+    padding: 10px 14px;
     border: none;
     background: transparent;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-muted);
     cursor: pointer;
-    border-radius: 30px;
+    border-radius: 8px;
     transition: 0.2s;
-    flex: 1;
+    flex: 1 1 auto;
     text-align: center;
     white-space: nowrap;
+    min-width: 0;
 }
 .ws-step-btn.active {
     background: var(--c-taller);
@@ -750,8 +781,9 @@ main {
 
 .ws-body {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
-    padding: 30px;
+    padding: 20px 24px 28px;
     background: var(--bg-body);
 }
 

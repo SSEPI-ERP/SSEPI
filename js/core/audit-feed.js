@@ -16,6 +16,7 @@ export function initAuditFeed({
   const listEl = document.getElementById(listId);
   const countEl = document.getElementById(countId);
   const supabase = window.supabase;
+  const tableFilter = (tables || []).map((t) => String(t).trim()).filter(Boolean);
   if (!listEl || !countEl || !supabase) return { refresh: async () => {}, cleanup: () => {} };
 
   const render = (rows) => {
@@ -28,13 +29,15 @@ export function initAuditFeed({
       const table = (log.table_name || '').toUpperCase() || 'SISTEMA';
       const action = (log.action || '').toUpperCase() || 'EVENTO';
       const rid = (log.record_id || '').toString();
+      const who = (log.user_email || log.user_role || '').toString();
+      const whoShort = who.length > 22 ? who.slice(0, 20) + '…' : who;
       item.innerHTML = `
         <div class="feed-dot"></div>
         <div class="feed-meta">
           <span style="color:var(${accentCssVar}); font-weight:800;">${label}</span>
           <span>${time}</span>
         </div>
-        <div class="feed-body"><strong>${action}</strong> ${table} <span style="opacity:.7">${rid ? rid.slice(0, 8) + '…' : ''}</span></div>
+        <div class="feed-body"><strong>${action}</strong> ${table}${rid ? ` <span style="opacity:.7">${rid.slice(0, 8)}…</span>` : ''}${whoShort ? `<br><span style="opacity:.75;font-size:10px;">${whoShort}</span>` : ''}</div>
       `;
       listEl.appendChild(item);
     });
@@ -43,7 +46,7 @@ export function initAuditFeed({
 
   const buildQuery = () => {
     let q = supabase.from('audit_logs').select('*').order('timestamp', { ascending: false }).limit(limit);
-    if (tables && tables.length) q = q.in('table_name', tables);
+    if (tableFilter.length) q = q.in('table_name', tableFilter);
     return q;
   };
 

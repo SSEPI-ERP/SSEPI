@@ -12,6 +12,7 @@
     var costosList = [];
     var clientesList = [];
     var excelDataPreview = null;
+    var simAutoTarifas = [];
 
     function loadCalculadoras() {
         if (!supabase()) return Promise.resolve([]);
@@ -233,7 +234,7 @@
         prom.then(function(r) {
             if (r.error) throw r.error;
             closeModalCosto();
-            loadCostos().then(function() { renderCostos(); updateAnalisis(); });
+            loadCostos().then(function() { renderCostos(); updateAnalisis(); renderSimAutoTable(); syncAutoGasDefault(); });
         }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
     function deleteModalCosto() {
@@ -243,7 +244,7 @@
         supabase().from('calculadora_costos').delete().eq('id', id).then(function(r) {
             if (r.error) throw r.error;
             closeModalCosto();
-            loadCostos().then(function() { renderCostos(); updateAnalisis(); });
+            loadCostos().then(function() { renderCostos(); updateAnalisis(); renderSimAutoTable(); syncAutoGasDefault(); });
         }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
     function closeModalCosto() {
@@ -416,6 +417,121 @@
         });
     }
 
+    function findCalculadoraNombre(substr) {
+        var s = (substr || '').toLowerCase();
+        for (var i = 0; i < calculadorasList.length; i++) {
+            if ((calculadorasList[i].nombre || '').toLowerCase().indexOf(s) !== -1) return calculadorasList[i];
+        }
+        return null;
+    }
+
+    function costosMapByCalculadoraId(calcId) {
+        var m = {};
+        for (var i = 0; i < costosList.length; i++) {
+            if (costosList[i].calculadora_id === calcId) m[costosList[i].concepto] = Number(costosList[i].costo);
+        }
+        return m;
+    }
+
+    function renderSimAutoTable() {
+        var tbody = document.getElementById('simAutoBody');
+        if (!tbody) return;
+        var calc = findCalculadoraNombre('automatiz');
+        if (!calc) {
+            tbody.innerHTML = '<tr><td colspan="3">Importa <code>formulas</code> o crea la calculadora <strong>Automatización</strong> en Supabase.</td></tr>';
+            simAutoTarifas = [];
+            return;
+        }
+        var tarifas = costosList.filter(function(co) {
+            return co.calculadora_id === calc.id && String(co.concepto || '').indexOf('Tarifa:') === 0;
+        });
+        tarifas.sort(function(a, b) { return (a.concepto || '').localeCompare(b.concepto || ''); });
+        simAutoTarifas = tarifas;
+        if (!tarifas.length) {
+            tbody.innerHTML = '<tr><td colspan="3">Sin filas <code>Tarifa: …</code>. Ejecuta <code>node import.mjs formulas --apply</code>.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = tarifas.map(function(t, idx) {
+            var label = String(t.concepto || '').replace(/^Tarifa:\s*/i, '');
+            var rate = t.costo != null ? Number(t.costo).toFixed(2) : '—';
+            return '<tr data-tarifa-i="' + idx + '"><td>' + esc(label) + '</td><td><input type="number" class="form-control sim-auto-hr" step="0.5" min="0" value="0" style="max-width:6rem"></td><td>' + rate + '</td></tr>';
+        }).join('');
+    }
+
+    function syncAutoGasDefault() {
+        var calc = findCalculadoraNombre('automatiz');
+        if (!calc) return;
+        var m = costosMapByCalculadoraId(calc.id);
+        var inp = document.getElementById('autoGasolina');
+        if (inp && m['auto:paramGasolina'] != null && String(inp.value).trim() === '') {
+            inp.placeholder = 'Defecto: ' + String(m['auto:paramGasolina']);
+        }
+    }
+
+    function runLaboratorioSim() {
+        var CE = window.CostosEngine;
+        if (!CE) { alert('Motor CostosEngine no cargado.'); return; }
+        var calc = findCalculadoraNombre('laboratorio');
+        if (!calc) { alert('No hay calculadora "Laboratorio (electrónica)". Importa formulas o créala.'); return; }
+        var m = costosMapByCalculadoraId(calc.id);
+        CE.applyConfig({
+            gasolina: m.gasolina != null ? m.gasolina : CE.CONFIG.gasolina,
+            rendimiento: m.rendimiento != null ? m.rendimiento : CE.CONFIG.rendimiento,
+            costoTecnico: m.costoTecnico != null ? m.costoTecnico : CE.CONFIG.costoTecnico,
+            gastosFijosHora: m.gastosFijosHora != null ? m.gastosFijosHora : CE.CONFIG.gastosFijosHora,
+            camionetaHora: m.camionetaHora != null ? m.camionetaHora : CE.CONFIG.camionetaHora,
+            utilidad: m.utilidad != null ? m.utilidad : CE.CONFIG.utilidad,
+            credito: m.credito != null ? m.credito : CE.CONFIG.credito,
+            iva: m.iva != null ? m.iva : CE.CONFIG.iva
+        });
+        var km = parseFloat(document.getElementById('labKm').value) || 0;
+        var hvIn = parseFloat(document.getElementById('labHorasViaje').value);
+        var horasViaje = !isNaN(hvIn) && hvIn > 0 ? hvIn : (km > 0 ? Math.ceil(km / 50) : 0);
+        var ht = parseFloat(document.getElementById('labHorasTaller').value) || 0;
+        var ref = parseFloat(document.getElementById('labRefacciones').value) || 0;
+        var r = CE.calcularPrecioFinal({ km: km, horasViaje: horasViaje, horasTaller: ht, costoRefacciones: ref });
+        var el = document.getElementById('labSimResult');
+        if (!el) return;
+        el.innerHTML = '<div class="calc-sim-breakdown"><p>Gasolina: <strong>' + r.gasolina.toFixed(2) + '</strong> · Traslado técn.: <strong>' + r.trasladoTecnico.toFixed(2) + '</strong> · MO: <strong>' + r.manoObra.toFixed(2) + '</strong> · G.fijos: <strong>' + r.gastosFijos.toFixed(2) + '</strong> · Camioneta: <strong>' + r.camioneta.toFixed(2) + '</strong> · Refacc.: <strong>' + r.refacciones.toFixed(2) + '</strong></p><p>Gastos generales: <strong>' + r.gastosGenerales.toFixed(2) + '</strong> · + Utilidad: <strong>' + r.precioConUtilidad.toFixed(2) + '</strong> · + Crédito (antes IVA): <strong>' + r.precioAntesIVA.toFixed(2) + '</strong> · IVA: <strong>' + r.iva.toFixed(2) + '</strong></p><p class="calc-sim-total">Total con IVA: <strong>' + r.total.toFixed(2) + '</strong></p></div>';
+    }
+
+    function runAutomatizacionSim() {
+        var calc = findCalculadoraNombre('automatiz');
+        if (!calc) { alert('No hay calculadora Automatización.'); return; }
+        var m = costosMapByCalculadoraId(calc.id);
+        var lines = 0;
+        document.querySelectorAll('#simAutoBody tr[data-tarifa-i]').forEach(function(tr) {
+            var idx = parseInt(tr.getAttribute('data-tarifa-i'), 10);
+            var t = simAutoTarifas[idx];
+            if (!t) return;
+            var hr = parseFloat(tr.querySelector('.sim-auto-hr') && tr.querySelector('.sim-auto-hr').value) || 0;
+            var rate = Number(t.costo);
+            if (hr > 0 && !isNaN(rate)) lines += hr * rate;
+        });
+        var tPlantaHr = parseFloat(document.getElementById('autoHrPlanta').value) || 0;
+        var tPlantaRate = m['auto:tarifaTiempoPlanta'];
+        if (tPlantaRate != null && tPlantaHr > 0) lines += tPlantaHr * tPlantaRate;
+        var mat = parseFloat(document.getElementById('autoMateriales').value) || 0;
+        var via = parseFloat(document.getElementById('autoViaticos').value) || 0;
+        var hrCam = parseFloat(document.getElementById('autoHrCamioneta').value) || 0;
+        var camH = m['auto:camionetaHora'] || 0;
+        var hrGG = parseFloat(document.getElementById('autoHrGastoGen').value) || 0;
+        var ggH = m['auto:horaGastoGeneral'] || 0;
+        var gasInp = document.getElementById('autoGasolina');
+        var gasVal = parseFloat(gasInp && gasInp.value);
+        var gas = !isNaN(gasVal) ? gasVal : (m['auto:paramGasolina'] != null ? m['auto:paramGasolina'] : 0);
+        var markupPct = m['auto:markupMaterialesPct'] != null ? m['auto:markupMaterialesPct'] : 0;
+        var markup = mat * (markupPct / 100);
+        var base = lines + markup + via + hrCam * camH + gas + hrGG * ggH;
+        var credPct = m['auto:creditoPct'] != null ? m['auto:creditoPct'] : 0;
+        var descPct = m['auto:descuentoPct'] != null ? m['auto:descuentoPct'] : 0;
+        var conCred = base * (1 + credPct / 100);
+        var final = conCred * (1 - descPct / 100);
+        var el = document.getElementById('autoSimResult');
+        if (!el) return;
+        el.innerHTML = '<div class="calc-sim-breakdown"><p>Servicios (líneas): <strong>' + lines.toFixed(2) + '</strong></p><p>Materiales + ' + markupPct + '%: <strong>' + (mat + markup).toFixed(2) + '</strong> · Viáticos: <strong>' + via.toFixed(2) + '</strong> · Camioneta: <strong>' + (hrCam * camH).toFixed(2) + '</strong> · Gas/trasl.: <strong>' + gas.toFixed(2) + '</strong> · G.gral: <strong>' + (hrGG * ggH).toFixed(2) + '</strong></p><p>Base: <strong>' + base.toFixed(2) + '</strong> · +Crédito ' + credPct + '%: <strong>' + conCred.toFixed(2) + '</strong> · −Desc. ' + descPct + '%: <strong>' + final.toFixed(2) + '</strong></p></div>';
+    }
+
     function validar() {
         var div = document.getElementById('validacionResultado');
         if (!div) return;
@@ -449,6 +565,11 @@
         if (btnValidar) btnValidar.addEventListener('click', validar);
         var toggle = document.getElementById('toggleMenu');
         if (toggle) toggle.addEventListener('click', function() { document.body.classList.toggle('sidebar-closed'); });
+
+        var bLab = document.getElementById('btnCalcLaboratorio');
+        if (bLab) bLab.addEventListener('click', runLaboratorioSim);
+        var bAuto = document.getElementById('btnCalcAutomatizacion');
+        if (bAuto) bAuto.addEventListener('click', runAutomatizacionSim);
 
         if (document.getElementById('btnNuevaCalculadora')) document.getElementById('btnNuevaCalculadora').addEventListener('click', function() { openModalCalculadora(null); });
         if (document.getElementById('btnNuevoCosto')) document.getElementById('btnNuevoCosto').addEventListener('click', function() { openModalCosto(null); });
@@ -484,6 +605,8 @@
             renderCostos();
             renderClientes();
             updateAnalisis();
+            renderSimAutoTable();
+            syncAutoGasDefault();
         } catch (e) {
             console.warn('[Calculadoras] init:', e);
             var tbody = document.getElementById('tablaFuncionesBody');

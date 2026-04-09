@@ -8,6 +8,7 @@
 
 import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
+import { CostosEngine } from '../core/costos-engine.js';
 
 const ServiciosModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -149,15 +150,82 @@ const ServiciosModule = (function() {
         try {
             await Promise.all([
                 _loadProjects(),
-                _loadInventory()
+                _loadInventory(),
+                _loadCalcCostsFromSupabase()
             ]);
             _populateIngenierosFilter();
+            _recalcCostosServicios();
         } catch (e) {
             console.warn('[Automatización] Error cargando datos iniciales:', e);
             projects = [];
             inventory = [];
             _applyFilters();
         }
+    }
+
+    async function _loadCalcCostsFromSupabase() {
+        const sb = _supabase();
+        if (!sb) return;
+        try {
+            const partial = {};
+            const ingest = (rows) => {
+                (rows || []).forEach(({ concepto, costo }) => {
+                    const k = String(concepto || '').toLowerCase().replace(/\s/g, '');
+                    const n = Number(costo);
+                    if (!Number.isFinite(n)) return;
+                    if (k === 'gasolina' || k.includes('paramgasolina')) partial.gasolina = n;
+                    if (k === 'rendimiento') partial.rendimiento = n;
+                    if (k === 'costotecnico') partial.costoTecnico = n;
+                    if (k.includes('auto:camioneta') || k === 'camionetahora') partial.camionetaHora = n;
+                });
+            };
+            const { data: lab } = await sb.from('calculadoras').select('id').ilike('nombre', '%Laboratorio%').limit(1).maybeSingle();
+            if (lab?.id) {
+                const { data } = await sb.from('calculadora_costos').select('concepto,costo').eq('calculadora_id', lab.id);
+                ingest(data);
+            }
+            const { data: aut } = await sb.from('calculadoras').select('id').ilike('nombre', '%Automatiz%').limit(1).maybeSingle();
+            if (aut?.id) {
+                const { data } = await sb.from('calculadora_costos').select('concepto,costo').eq('calculadora_id', aut.id);
+                ingest(data);
+            }
+            CostosEngine.applyConfig(partial);
+        } catch (e) {
+            console.warn('[Automatización] calculadora_costos:', e);
+        }
+    }
+
+    function _sumMaterialesCostoInventario() {
+        let sum = 0;
+        materiales.forEach((m) => {
+            const q = parseInt(m.cantidad, 10) || 0;
+            if (m.costo_unitario != null && Number(m.costo_unitario) >= 0) {
+                sum += Number(m.costo_unitario) * q;
+                return;
+            }
+            const sku = String(m.sku || '').trim();
+            if (!sku) return;
+            const p = inventory.find((x) => x.sku === sku);
+            if (p && p.costo != null) sum += Number(p.costo) * q;
+        });
+        return sum;
+    }
+
+    function _recalcCostosServicios() {
+        const el = document.getElementById('serviciosCostosResumen');
+        if (!el) return;
+        const km = Number(document.getElementById('autoCostoKm')?.value) || 0;
+        const hrsCam = Number(document.getElementById('autoCostoHrsCam')?.value) || 0;
+        const mat = _sumMaterialesCostoInventario();
+        const gas = CostosEngine.calcularCostoGasolina(km);
+        const cam = CostosEngine.calcularCostoCamioneta(hrsCam);
+        const sub = mat + gas + cam;
+        const fmt = (n) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(n) || 0);
+        el.innerHTML =
+            `<div><strong>Materiales (costo × cantidad, por SKU en inventario):</strong> ${fmt(mat)}</div>` +
+            `<div><strong>Gasolina estimada (${km} km):</strong> ${fmt(gas)}</div>` +
+            `<div><strong>Camioneta (${hrsCam} h):</strong> ${fmt(cam)}</div>` +
+            `<div style="margin-top:8px;font-weight:800;color:var(--c-automatizacion,#7c3aed);">Subtotal referencia: ${fmt(sub)}</div>`;
     }
 
     async function _loadProjects() {
@@ -184,10 +252,11 @@ const ServiciosModule = (function() {
         const select = document.getElementById('inventarioSelect');
         if (!select) return;
         select.innerHTML = '<option value="">Seleccionar producto</option>';
-        inventory.forEach(p => {
+        inventory.forEach((p) => {
             const opt = document.createElement('option');
             opt.value = p.sku;
-            opt.textContent = `${p.sku} - ${p.nombre}`;
+            const costoTxt = p.costo != null && Number(p.costo) > 0 ? ` · $${Number(p.costo).toFixed(2)}` : '';
+            opt.textContent = `${p.sku} - ${p.nombre}${costoTxt}`;
             select.appendChild(opt);
         });
     }
@@ -577,29 +646,51 @@ const ServiciosModule = (function() {
         const tbody = document.getElementById('materialesBody');
         if (!tbody) return;
         if (materiales.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay materiales</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No hay materiales</td></tr>';
             return;
         }
-        tbody.innerHTML = materiales.map((mat, idx) => `
+        tbody.innerHTML = materiales.map((mat, idx) => {
+            const cu = mat.costo_unitario != null ? Number(mat.costo_unitario) : 0;
+            const q = parseInt(mat.cantidad, 10) || 1;
+            const sub = (q * cu).toFixed(2);
+            return `
             <tr>
                 <td><input type="text" value="${mat.nombre}" onchange="serviciosModule._actualizarMaterial(${idx}, 'nombre', this.value)"></td>
                 <td><input type="text" value="${mat.descripcion}" onchange="serviciosModule._actualizarMaterial(${idx}, 'descripcion', this.value)"></td>
                 <td><input type="number" value="${mat.cantidad}" min="1" onchange="serviciosModule._actualizarMaterial(${idx}, 'cantidad', this.value)"></td>
                 <td><input type="text" value="${mat.sku}" onchange="serviciosModule._actualizarMaterial(${idx}, 'sku', this.value)"></td>
+                <td><input type="number" step="0.01" min="0" value="${cu}" onchange="serviciosModule._actualizarMaterial(${idx}, 'costo_unitario', this.value)"></td>
+                <td style="text-align:right;font-weight:600;">$${sub}</td>
                 <td><button class="btn-remove" onclick="serviciosModule._eliminarMaterial(${idx})">✖</button></td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
     }
 
     function _actualizarMaterial(idx, campo, valor) {
         if (materiales[idx]) {
-            materiales[idx][campo] = campo === 'cantidad' ? parseInt(valor) || 1 : valor;
+            if (campo === 'cantidad') {
+                materiales[idx].cantidad = parseInt(valor, 10) || 1;
+            } else if (campo === 'costo_unitario') {
+                materiales[idx].costo_unitario = parseFloat(valor) || 0;
+            } else {
+                materiales[idx][campo] = valor;
+            }
+            if (campo === 'sku') {
+                const p = inventory.find((x) => x.sku === String(valor || '').trim());
+                if (p && p.costo != null && (materiales[idx].costo_unitario == null || materiales[idx].costo_unitario === 0)) {
+                    materiales[idx].costo_unitario = Number(p.costo);
+                }
+            }
+            _renderMateriales();
+            _recalcCostosServicios();
         }
     }
 
     function _eliminarMaterial(idx) {
         materiales.splice(idx, 1);
         _renderMateriales();
+        _recalcCostosServicios();
     }
 
     function _agregarDesdeInventario() {
@@ -608,19 +699,23 @@ const ServiciosModule = (function() {
         if (!sku) return;
         const producto = inventory.find(p => p.sku === sku);
         if (producto) {
+            const cu = producto.costo != null ? Number(producto.costo) : 0;
             materiales.push({
                 nombre: producto.nombre,
                 descripcion: producto.descripcion || '',
                 cantidad: 1,
-                sku: producto.sku
+                sku: producto.sku,
+                costo_unitario: cu,
             });
             _renderMateriales();
+            _recalcCostosServicios();
         }
     }
 
     function _agregarMaterialManual() {
-        materiales.push({ nombre: '', descripcion: '', cantidad: 1, sku: '' });
+        materiales.push({ nombre: '', descripcion: '', cantidad: 1, sku: '', costo_unitario: 0 });
         _renderMateriales();
+        _recalcCostosServicios();
     }
 
     async function _guardarMateriales() {
@@ -1027,7 +1122,6 @@ const ServiciosModule = (function() {
     }
 
     // ==================== EVENTOS DOM ====================
-    // ==================== EVENTOS DOM ====================
     function _bindEvents() {
         const byId = id => document.getElementById(id);
         if (byId('toggleMenu')) byId('toggleMenu').addEventListener('click', _toggleMenu);
@@ -1053,6 +1147,11 @@ const ServiciosModule = (function() {
         if (byId('agregarDesdeInventario')) byId('agregarDesdeInventario').addEventListener('click', _agregarDesdeInventario);
         if (byId('agregarMaterialManual')) byId('agregarMaterialManual').addEventListener('click', _agregarMaterialManual);
         if (byId('guardarMateriales')) byId('guardarMateriales').addEventListener('click', _guardarMateriales);
+        if (byId('btnRecalcCostosServicios')) byId('btnRecalcCostosServicios').addEventListener('click', _recalcCostosServicios);
+        ['autoCostoKm', 'autoCostoHrsCam'].forEach((id) => {
+            const el = byId(id);
+            if (el) el.addEventListener('input', _recalcCostosServicios);
+        });
         const reqBtn = byId('generarRequerimientoCompraBtn');
         if (reqBtn) reqBtn.addEventListener('click', _generarRequerimientoCompra);
         if (byId('crearEpica')) byId('crearEpica').addEventListener('click', _crearEpica);

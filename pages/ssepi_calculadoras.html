@@ -16,6 +16,7 @@
     <script src="/js/core/theme-clock.js"></script>
     <script src="/js/core/user-menu.js"></script>
     <script src="/js/core/nav-by-role.js"></script>
+    <script type="module" src="/js/core/costos-engine.js"></script>
     <script type="module" src="/js/modules/calculadoras.js"></script>
 </head>
 <body class="page-calculadoras nav-loading">
@@ -68,6 +69,40 @@
     </nav>
 
     <main>
+        <div class="form-section calc-sim-wrap">
+            <h3 class="section-title-form"><i class="fas fa-flask"></i> Simulador · Laboratorio (electrónica)</h3>
+            <p class="form-hint">Constantes de la calculadora <strong>Laboratorio (electrónica)</strong> en la tabla de costos. Misma lógica que ventas/taller (CostosEngine).</p>
+            <div class="calc-sim-grid">
+                <div class="calc-sim-field"><label for="labKm">Km (traslado)</label><input type="number" id="labKm" class="form-control" step="0.1" value="226" min="0"></div>
+                <div class="calc-sim-field"><label for="labHorasViaje">Horas viaje (opcional)</label><input type="number" id="labHorasViaje" class="form-control" step="0.25" value="" min="0" placeholder="Si vacío: km/50"></div>
+                <div class="calc-sim-field"><label for="labHorasTaller">Horas taller</label><input type="number" id="labHorasTaller" class="form-control" step="0.25" value="16" min="0"></div>
+                <div class="calc-sim-field"><label for="labRefacciones">Refacciones ($)</label><input type="number" id="labRefacciones" class="form-control" step="0.01" value="0" min="0"></div>
+            </div>
+            <button type="button" class="btn-ssepi" id="btnCalcLaboratorio"><i class="fas fa-calculator"></i> Calcular cotización</button>
+            <div id="labSimResult" class="calc-sim-result" aria-live="polite"></div>
+        </div>
+
+        <div class="form-section calc-sim-wrap">
+            <h3 class="section-title-form"><i class="fas fa-robot"></i> Simulador · Automatización</h3>
+            <p class="form-hint">Filas <strong>Tarifa:</strong> y parámetros <strong>auto:</strong> desde la calculadora Automatización (hoja AUTOMATIZACIÓN del Excel).</p>
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaSimAuto">
+                    <thead><tr><th>Servicio</th><th>Horas</th><th>$/h</th></tr></thead>
+                    <tbody id="simAutoBody"></tbody>
+                </table>
+            </div>
+            <div class="calc-sim-grid calc-sim-grid--2">
+                <div class="calc-sim-field"><label for="autoMateriales">Materiales ($)</label><input type="number" id="autoMateriales" class="form-control" step="0.01" value="0" min="0"></div>
+                <div class="calc-sim-field"><label for="autoViaticos">Viáticos ($)</label><input type="number" id="autoViaticos" class="form-control" step="0.01" value="0" min="0"></div>
+                <div class="calc-sim-field"><label for="autoHrCamioneta">Hr camioneta</label><input type="number" id="autoHrCamioneta" class="form-control" step="0.25" value="0" min="0"></div>
+                <div class="calc-sim-field"><label for="autoHrGastoGen">Horas gasto general</label><input type="number" id="autoHrGastoGen" class="form-control" step="0.25" value="0" min="0"></div>
+                <div class="calc-sim-field"><label for="autoGasolina">Gasolina / traslado ($)</label><input type="number" id="autoGasolina" class="form-control" step="0.01" value="" min="0" placeholder="Vacío = parámetro Excel"></div>
+                <div class="calc-sim-field"><label for="autoHrPlanta">Horas tiempo planta</label><input type="number" id="autoHrPlanta" class="form-control" step="0.25" value="0" min="0"></div>
+            </div>
+            <button type="button" class="btn-ssepi" id="btnCalcAutomatizacion"><i class="fas fa-calculator"></i> Calcular total</button>
+            <div id="autoSimResult" class="calc-sim-result" aria-live="polite"></div>
+        </div>
+
         <div class="form-section">
             <h3 class="section-title-form"><i class="fas fa-function"></i> Funciones de calculadora</h3>
             <p class="form-hint">Configuración y funciones disponibles por calculadora.</p>
@@ -212,7 +247,12 @@
                 var profile = await window.authService.getCurrentProfile();
                 if (profile) {
                     var rol = profile.rol || '';
-                    if (rol !== 'admin' && rol !== 'superadmin') {
+                    var allowedRol = ['admin', 'superadmin', 'automatizacion', 'taller', 'contabilidad', 'ventas'].indexOf(rol) !== -1;
+                    var allowedPerm = false;
+                    try {
+                        allowedPerm = await window.authService.hasPermission('calculadoras', 'read');
+                    } catch (e) {}
+                    if (!allowedRol && !allowedPerm) {
                         window.location.href = '/panel.html';
                         return;
                     }

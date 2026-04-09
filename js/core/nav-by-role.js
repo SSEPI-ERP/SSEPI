@@ -14,8 +14,8 @@
         superadmin: null,
         ventas: ['compras', 'inventario', 'analisis_ventas', 'vacaciones'],
         ventas_sin_compras: ['compras', 'inventario', 'analisis_ventas', 'vacaciones'],
-        taller: ['ordenes_taller', 'inventario', 'vacaciones'],
-        automatizacion: ['proyectos_automatizacion', 'inventario', 'vacaciones'],
+        taller: ['ordenes_taller', 'inventario', 'vacaciones', 'calculadoras'],
+        automatizacion: ['proyectos_automatizacion', 'inventario', 'vacaciones', 'calculadoras'],
         motores: ['ordenes_motores', 'inventario', 'compras', 'ordenes_taller', 'vacaciones'],
         compras: ['compras', 'inventario', 'vacaciones'],
         facturacion: ['ventas', 'compras', 'facturas', 'vacaciones'],
@@ -202,9 +202,22 @@
 
     window.applyNavByRole = applyNavByRole;
 
+    function loadNavActivityBootstrap() {
+        try {
+            if (!document.getElementById('sidebar')) return;
+            if (document.getElementById('ssepiNavActivityBootstrap')) return;
+            var s = document.createElement('script');
+            s.id = 'ssepiNavActivityBootstrap';
+            s.type = 'module';
+            s.src = '/js/core/nav-activity-bootstrap.js';
+            document.head.appendChild(s);
+        } catch (e) {}
+    }
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { runWhenReady(); });
+        document.addEventListener('DOMContentLoaded', function () { runWhenReady(); loadNavActivityBootstrap(); });
     } else {
         runWhenReady();
+        loadNavActivityBootstrap();
     }
 })();
