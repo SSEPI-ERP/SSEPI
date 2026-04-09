@@ -28,6 +28,18 @@ const ContactosModule = (function() {
 
     function _supabase() { return window.supabase; }
 
+    /** Evita duplicar la misma persona al fusionar `clientes` con `contactos` (misma clave = una sola fila). */
+    function _claveDedupeContacto(c) {
+        const email = (c.email || '').toString().toLowerCase().trim();
+        if (email) return 'e:' + email;
+        const tel = (c.telefono || '').toString().replace(/\D/g, '');
+        if (tel.length >= 10) return 't:' + tel;
+        const nom = (c.nombre || '').toString().toLowerCase().trim();
+        const emp = (c.empresa || '').toString().toLowerCase().trim();
+        if (nom || emp) return 'n:' + nom + '|' + emp;
+        return 'id:' + (c.id || '');
+    }
+
     // Suscripciones
     let subscriptions = [];
 
@@ -196,12 +208,28 @@ const ContactosModule = (function() {
                         color: '#0277bd',
                         _fromClientes: true
                     }));
-                    contactos = [...(contactos || []), ...fromClientes];
+                    const keys = new Set((contactos || []).map(_claveDedupeContacto));
+                    const extra = [];
+                    for (const fc of fromClientes) {
+                        const k = _claveDedupeContacto(fc);
+                        if (keys.has(k)) continue;
+                        keys.add(k);
+                        extra.push(fc);
+                    }
+                    contactos = [...(contactos || []), ...extra];
                 }
             }
         } catch (e) {
             console.warn('[Contactos] Tabla clientes no disponible o error RLS:', e?.message || e);
         }
+        const emailVisto = new Set();
+        contactos = (contactos || []).filter(c => {
+            const k = _claveDedupeContacto(c);
+            if (!k.startsWith('e:')) return true;
+            if (emailVisto.has(k)) return false;
+            emailVisto.add(k);
+            return true;
+        });
         if (!skipPriorityEnsure && !_ensuringPrioritySuppliers) {
             _ensuringPrioritySuppliers = true;
             try {

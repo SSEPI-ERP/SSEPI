@@ -86,6 +86,11 @@
             '      <button type="button" class="config-modal-btn config-modal-save" id="usersModalAdd"><i class="fas fa-user-plus"></i> Nuevo usuario</button>' +
             '      <p class="users-integration-note">Correo y WhatsApp: para enviar correos o mensajes desde la app se puede conectar Gmail API o Resend/SendGrid (vía Supabase Edge Functions) y WhatsApp Business API. Configurable en una siguiente fase.</p>' +
             '    </div>' +
+            '    <div class="users-pending-wrap" id="usersPendingWrap" style="display:none;">' +
+            '      <h3 class="users-pending-title">Cambios de perfil pendientes</h3>' +
+            '      <p class="users-integration-note">Los usuarios (no admin) envían aquí nombre, teléfono y correo; al aprobar se actualiza la tabla usuarios/users. El correo en Authentication debe alinearse en Supabase si cambia el email.</p>' +
+            '      <div class="users-list-wrap"><table class="users-list-table"><thead><tr><th>Solicitante</th><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Fecha</th><th></th></tr></thead><tbody id="usersPendingBody"></tbody></table></div>' +
+            '    </div>' +
             '    <div class="users-list-wrap">' +
             '      <table class="users-list-table"><thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Acciones</th></tr></thead><tbody id="usersListBody"></tbody></table>' +
             '    </div>' +
@@ -131,7 +136,74 @@
         if (!usersModal) createUsersModal();
         document.getElementById('usersAddForm').style.display = 'none';
         usersModal.classList.add('config-modal-visible');
-        loadUsersList();
+        var auth = getAuth();
+        if (!auth) {
+            loadUsersList();
+            return;
+        }
+        auth.getCurrentProfile().then(function (p) {
+            isAdmin = p && (p.rol === 'admin' || p.rol === 'superadmin');
+            loadPendingProfileRequests();
+            loadUsersList();
+        }).catch(function () {
+            loadUsersList();
+        });
+    }
+
+    function loadPendingProfileRequests() {
+        var wrap = document.getElementById('usersPendingWrap');
+        var tbody = document.getElementById('usersPendingBody');
+        if (!wrap || !tbody) return;
+        var auth = getAuth();
+        if (!auth || !isAdmin) {
+            wrap.style.display = 'none';
+            return;
+        }
+        wrap.style.display = 'block';
+        tbody.innerHTML = '<tr><td colspan="6">Cargando…</td></tr>';
+        auth.listPendingProfileChanges().then(function (rows) {
+            tbody.innerHTML = '';
+            if (!rows || rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">No hay solicitudes pendientes.</td></tr>';
+                return;
+            }
+            rows.forEach(function (r) {
+                var tr = document.createElement('tr');
+                var uid = (r.auth_user_id || '').substring(0, 8) + '…';
+                var dt = r.created_at ? new Date(r.created_at).toLocaleString() : '—';
+                tr.innerHTML =
+                    '<td><code>' + uid + '</code></td>' +
+                    '<td>' + (r.nombre || '—') + '</td>' +
+                    '<td>' + (r.telefono || '—') + '</td>' +
+                    '<td>' + (r.email || '—') + '</td>' +
+                    '<td>' + dt + '</td>' +
+                    '<td class="users-actions">' +
+                    '<button type="button" class="user-action-btn approve-pend" title="Aprobar"><i class="fas fa-check"></i></button> ' +
+                    '<button type="button" class="user-action-btn reject-pend" title="Rechazar"><i class="fas fa-times"></i></button>' +
+                    '</td>';
+                tr.querySelector('.approve-pend').addEventListener('click', function () {
+                    auth.approveProfileChange(r.id).then(function () {
+                        loadPendingProfileRequests();
+                        loadUsersList();
+                        alert('Cambio aplicado.');
+                    }).catch(function (err) {
+                        alert('Error: ' + (err.message || err));
+                    });
+                });
+                tr.querySelector('.reject-pend').addEventListener('click', function () {
+                    var m = window.prompt('Motivo del rechazo (opcional):') || '';
+                    auth.rejectProfileChange(r.id, m).then(function () {
+                        loadPendingProfileRequests();
+                        alert('Solicitud rechazada.');
+                    }).catch(function (err) {
+                        alert('Error: ' + (err.message || err));
+                    });
+                });
+                tbody.appendChild(tr);
+            });
+        }).catch(function () {
+            wrap.style.display = 'none';
+        });
     }
 
     var inboundModal = null;
@@ -456,17 +528,29 @@
         }
 
         var promise = auth.updateProfile({ nombre: nombre.trim() || undefined, telefono: telefono.trim() || undefined, email: correo.trim() || undefined });
-        promise.then(function () {
-            if (passNueva && passActual) {
-                return auth.changePassword(passActual, passNueva);
+        promise.then(function (result) {
+            if (result && result.pendingApproval) {
+                var chain = Promise.resolve();
+                if (passNueva && passActual) {
+                    chain = auth.changePassword(passActual, passNueva);
+                }
+                return chain.then(function () {
+                    closeConfigModal();
+                    alert((result.message || 'Solicitud enviada al administrador.') + (passNueva ? ' Contraseña actualizada.' : ''));
+                });
             }
-        }).then(function () {
-            closeConfigModal();
-            var userName = document.getElementById('userName');
-            var userAvatar = document.getElementById('userAvatar');
-            if (userName) userName.textContent = (nombre.trim() || 'Admin').split(' ')[0] || 'Admin';
-            if (userAvatar) userAvatar.textContent = (nombre.trim() || 'A').charAt(0).toUpperCase();
-            alert('Perfil actualizado correctamente.');
+            var after = Promise.resolve();
+            if (passNueva && passActual) {
+                after = auth.changePassword(passActual, passNueva);
+            }
+            return after.then(function () {
+                closeConfigModal();
+                var userName = document.getElementById('userName');
+                var userAvatar = document.getElementById('userAvatar');
+                if (userName) userName.textContent = (nombre.trim() || 'Admin').split(' ')[0] || 'Admin';
+                if (userAvatar) userAvatar.textContent = (nombre.trim() || 'A').charAt(0).toUpperCase();
+                alert('Perfil actualizado correctamente.');
+            });
         }).catch(function (err) {
             alert('Error: ' + (err.message || err));
         });
@@ -509,4 +593,9 @@
     } else {
         init();
     }
+
+    window.ssepiOpenUserConfig = function () {
+        if (!configModal) createConfigModal();
+        openConfigModal();
+    };
 })();

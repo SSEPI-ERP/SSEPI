@@ -46,6 +46,18 @@
                 }
             } catch (_) {}
         })();
+        (function redirectRecoveryToReset() {
+            try {
+                var h = window.location.hash || '';
+                var search = window.location.search || '';
+                if (h.indexOf('type=recovery') !== -1 || search.indexOf('type=recovery') !== -1) {
+                    window.location.replace('/reset-password.html' + search + h);
+                    return true;
+                }
+            } catch (e) {}
+            return false;
+        })();
+
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btnLogin');

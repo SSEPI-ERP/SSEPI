@@ -119,7 +119,7 @@ export class AuthService {
   /** Solicitar al usuario que cambie su contraseña: envía correo desde Supabase al email indicado. */
   async requestPasswordResetForUser(email) {
     const { error } = await this.supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: window.location.origin + '/'
+      redirectTo: `${window.location.origin}/reset-password.html`
     });
     if (error) throw error;
   }
@@ -263,6 +263,34 @@ export class AuthService {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) throw new Error('No hay sesión');
 
+    const profile = await this.getCurrentProfile();
+    const isAdmin = profile && (profile.rol === 'admin' || profile.rol === 'superadmin');
+
+    if (!isAdmin) {
+      const hasChange =
+        (nombre !== undefined && nombre !== profile?.nombre) ||
+        (telefono !== undefined && telefono !== (profile?.telefono ?? '')) ||
+        (email !== undefined && email !== (profile?.email ?? user.email ?? ''));
+      if (!hasChange) return await this.getCurrentProfile();
+      const { error } = await this.supabase.from('perfil_cambios_pendientes').insert({
+        auth_user_id: user.id,
+        nombre: nombre !== undefined ? nombre : null,
+        telefono: telefono !== undefined ? telefono : null,
+        email: email !== undefined ? email : null,
+        estado: 'pendiente'
+      });
+      if (error) {
+        if (error.code === '42P01' || (error.message && error.message.includes('does not exist'))) {
+          throw new Error('Ejecuta en Supabase la migración scripts/migrations/calculadoras-hoja-excel-perfil-pendientes.sql (tabla perfil_cambios_pendientes).');
+        }
+        throw error;
+      }
+      return {
+        pendingApproval: true,
+        message: 'Solicitud enviada. Un administrador revisará y aplicará los cambios en el configurador de usuarios.'
+      };
+    }
+
     const updates = {};
     if (nombre !== undefined) updates.nombre = nombre;
     if (telefono !== undefined) updates.telefono = telefono ?? null;
@@ -274,7 +302,6 @@ export class AuthService {
 
     if (Object.keys(updates).length === 0) return await this.getCurrentProfile();
 
-    // Actualizar en la tabla real (usuarios/users/profiles)
     const attempts = [
       { table: 'usuarios', col: 'auth_user_id' },
       { table: 'users', col: 'auth_user_id' },
@@ -297,6 +324,83 @@ export class AuthService {
     }
     if (lastErr) throw lastErr;
     return await this.getCurrentProfile();
+  }
+
+  async listPendingProfileChanges() {
+    const { data, error } = await this.supabase
+      .from('perfil_cambios_pendientes')
+      .select('*')
+      .eq('estado', 'pendiente')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async approveProfileChange(requestId) {
+    const me = await this.getCurrentProfile();
+    if (!me || (me.rol !== 'admin' && me.rol !== 'superadmin')) throw new Error('Solo administradores pueden aprobar.');
+
+    const { data: row, error: fErr } = await this.supabase
+      .from('perfil_cambios_pendientes')
+      .select('*')
+      .eq('id', requestId)
+      .maybeSingle();
+    if (fErr) throw fErr;
+    if (!row || row.estado !== 'pendiente') throw new Error('Solicitud no encontrada o ya procesada.');
+
+    const updates = {};
+    if (row.nombre != null && String(row.nombre).trim() !== '') updates.nombre = row.nombre.trim();
+    if (row.telefono !== undefined) updates.telefono = row.telefono;
+    if (row.email != null && String(row.email).trim() !== '') updates.email = row.email.trim();
+
+    const attempts = [
+      { table: 'usuarios', col: 'auth_user_id' },
+      { table: 'users', col: 'auth_user_id' },
+      { table: 'profiles', col: 'id' },
+    ];
+    let applied = false;
+    for (const a of attempts) {
+      const { error: uErr } = await this.supabase
+        .from(a.table)
+        .update(updates)
+        .eq(a.col, row.auth_user_id);
+      if (!uErr) {
+        applied = true;
+        break;
+      }
+    }
+    if (!applied) throw new Error('No se pudo actualizar usuarios/users. Comprueba RLS y que exista el perfil.');
+
+    const { data: { user: authUser } } = await this.supabase.auth.getUser();
+    const { error: cErr } = await this.supabase
+      .from('perfil_cambios_pendientes')
+      .update({
+        estado: 'aprobado',
+        revisado_por: authUser?.id ?? null,
+        revisado_at: new Date().toISOString()
+      })
+      .eq('id', requestId);
+    if (cErr) throw cErr;
+    return true;
+  }
+
+  async rejectProfileChange(requestId, motivo) {
+    const me = await this.getCurrentProfile();
+    if (!me || (me.rol !== 'admin' && me.rol !== 'superadmin')) throw new Error('Solo administradores.');
+
+    const { data: { user: authUser } } = await this.supabase.auth.getUser();
+    const { error } = await this.supabase
+      .from('perfil_cambios_pendientes')
+      .update({
+        estado: 'rechazado',
+        revisado_por: authUser?.id ?? null,
+        revisado_at: new Date().toISOString(),
+        motivo_rechazo: motivo || null
+      })
+      .eq('id', requestId)
+      .eq('estado', 'pendiente');
+    if (error) throw error;
+    return true;
   }
 
   // ==================== VERIFICAR PERMISO ====================
