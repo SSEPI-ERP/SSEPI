@@ -129,8 +129,8 @@ body.page-contabilidad { --module-accent: var(--c-contabilidad); }
 body.page-analisis { --module-accent: var(--c-analisis); }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: var(--bg-body);
@@ -141,6 +141,12 @@ body.page-analisis { --module-accent: var(--c-analisis); }
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--primary-dark);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--module-accent, var(--primary)) var(--bg-body);
 }
 
 /* ========== HEADER ========== */
