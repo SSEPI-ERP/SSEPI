@@ -68,6 +68,12 @@ const TallerModule = (function() {
 
     function _supabase() { return window.supabase; }
 
+    function _escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s == null ? '' : String(s);
+        return d.innerHTML;
+    }
+
     // Suscripciones para cleanup
     let subscriptions = [];
 
@@ -644,6 +650,7 @@ const TallerModule = (function() {
         _cargarDatosEnModal(orden);
         document.getElementById('wsModal').classList.add('active');
         _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
+        _initWsChatterUI(orden);
     }
 
     function _abrirNuevaOrden() {
@@ -750,6 +757,149 @@ const TallerModule = (function() {
                 infoCompra.style.display = 'block';
             }
         }
+    }
+
+    function _initWsChatterUI(orden) {
+        const folio = orden?.folio || '';
+        const folioEl = document.getElementById('wsChatterFolio');
+        if (folioEl) folioEl.textContent = folio ? `Orden ${folio}` : '—';
+        _bindWsChatterTabs();
+        _renderWsNotesFromOrden(orden);
+        _loadWsActividad(orden).catch(() => {});
+    }
+
+    function _bindWsChatterTabs() {
+        const tabs = document.querySelectorAll('.ws-chatter-tab');
+        if (!tabs || !tabs.length) return;
+        tabs.forEach(btn => {
+            btn.onclick = () => {
+                tabs.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const tab = btn.dataset.tab;
+                document.querySelectorAll('.ws-chatter-pane').forEach(p => p.classList.remove('active'));
+                const pane = document.querySelector(`.ws-chatter-pane[data-pane="${tab}"]`);
+                if (pane) pane.classList.add('active');
+            };
+        });
+        const addBtn = document.getElementById('wsAddNoteBtn');
+        if (addBtn && !addBtn.dataset.bound) {
+            addBtn.dataset.bound = '1';
+            addBtn.addEventListener('click', _wsAddNote);
+        }
+    }
+
+    function _splitNotes(text) {
+        const raw = String(text || '').trim();
+        if (!raw) return [];
+        return raw.split(/\n-{3,}\n/).map(s => s.trim()).filter(Boolean);
+    }
+
+    function _renderWsNotesFromOrden(orden) {
+        const list = document.getElementById('wsNotesList');
+        if (!list) return;
+        const chunks = _splitNotes(orden?.notas_internas || '');
+        if (!chunks.length) {
+            list.innerHTML = `<div class="ws-activity-item"><div class="ws-activity-body">Sin notas internas.</div></div>`;
+            return;
+        }
+        list.innerHTML = chunks.map((c) => {
+            const m = c.match(/^\[(.+?)\]\s*(.+?):\s*([\s\S]*)$/);
+            const when = m ? m[1] : '';
+            const who = m ? m[2] : 'Usuario';
+            const body = m ? m[3] : c;
+            return `
+              <div class="ws-note-item">
+                <div class="ws-note-meta"><span>${_escapeHtml(who)}</span><span>${_escapeHtml(when)}</span></div>
+                <div class="ws-note-body">${_escapeHtml(body)}</div>
+              </div>
+            `;
+        }).join('');
+    }
+
+    async function _wsAddNote() {
+        if (!orderId || !currentOrder) return;
+        const ta = document.getElementById('wsNoteText');
+        const txt = String(ta?.value || '').trim();
+        if (!txt) return;
+        const profile = await authService.getCurrentProfile();
+        const who = profile?.nombre || profile?.email || 'Usuario';
+        const when = new Date().toLocaleString('es-MX');
+        const block = `[${when}] ${who}: ${txt}`;
+        const next = (String(currentOrder.notas_internas || '').trim() ? (String(currentOrder.notas_internas).trim() + `\n---\n`) : '') + block;
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            await ordenesService.update(orderId, { notas_internas: next }, csrfToken);
+            currentOrder.notas_internas = next;
+            if (ta) ta.value = '';
+            _renderWsNotesFromOrden(currentOrder);
+            _addToFeed('📝', `Nota registrada en ${currentOrder.folio || 'orden'}`);
+        } catch (e) {
+            console.error(e);
+            alert('No se pudo registrar la nota: ' + String(e?.message || e));
+        }
+    }
+
+    async function _loadWsActividad(orden) {
+        const list = document.getElementById('wsActivityList');
+        if (!list) return;
+        list.innerHTML = `<div class="ws-activity-item"><div class="ws-activity-body">Cargando actividad…</div></div>`;
+        const supabase = _supabase();
+        const items = [];
+
+        // 1) Eventos derivados (fechas_etapas / estado)
+        const fe = orden?.fechas_etapas || {};
+        const push = (title, iso, body) => {
+            if (!iso) return;
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) return;
+            items.push({
+                when: d.toLocaleString('es-MX'),
+                title,
+                body: body || ''
+            });
+        };
+        push('Recepción', fe['1'], 'Equipo recibido');
+        push('Diagnóstico', fe['2'], 'Diagnóstico iniciado/terminado');
+        push('Espera/Reparación', fe['3'], 'En espera o en reparación');
+        push('Reparado', fe['4'], 'Reparación terminada');
+        push('Entregado', fe['5'], 'Entrega registrada');
+
+        // 2) audit_logs (si existe)
+        if (supabase && orden?.id) {
+            try {
+                const { data, error } = await supabase
+                    .from('audit_logs')
+                    .select('*')
+                    .eq('table_name', 'ordenes_taller')
+                    .eq('record_id', orden.id)
+                    .order('timestamp', { ascending: false })
+                    .limit(30);
+                if (!error && data && data.length) {
+                    data.forEach(l => {
+                        const d = l.timestamp ? new Date(l.timestamp) : null;
+                        items.push({
+                            when: d ? d.toLocaleString('es-MX') : '—',
+                            title: String(l.action || 'EVENTO'),
+                            body: String(l.table_name || 'ordenes_taller')
+                        });
+                    });
+                }
+            } catch (e) {
+                // silencio; audit_logs puede no existir
+            }
+        }
+
+        if (!items.length) {
+            list.innerHTML = `<div class="ws-activity-item"><div class="ws-activity-body">Sin actividad.</div></div>`;
+            return;
+        }
+        items.sort((a, b) => String(b.when).localeCompare(String(a.when)));
+        list.innerHTML = items.map(it => `
+          <div class="ws-activity-item">
+            <div class="ws-activity-meta"><span>${_escapeHtml(it.title)}</span><span>${_escapeHtml(it.when)}</span></div>
+            <div class="ws-activity-body">${_escapeHtml(it.body)}</div>
+          </div>
+        `).join('');
     }
 
     function _irPaso(paso) {

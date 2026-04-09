@@ -217,16 +217,17 @@
                 </div>
             </div>
             <div class="ws-steps">
-                <button class="ws-step-btn active" data-step="1">1. Recepción</button>
-                <button class="ws-step-btn" data-step="2">2. Diagnóstico</button>
-                <button class="ws-step-btn" data-step="3">3. En Espera</button>
-                <button class="ws-step-btn" data-step="4">4. Reparación</button>
-                <button class="ws-step-btn" data-step="5">5. Entrega</button>
+                <button class="ws-step-btn active" data-step="1">Nuevo</button>
+                <button class="ws-step-btn" data-step="2">Confirmado / Diagnóstico</button>
+                <button class="ws-step-btn" data-step="3">En espera / En reparación</button>
+                <button class="ws-step-btn" data-step="4">Reparado</button>
+                <button class="ws-step-btn" data-step="5">Entregado / Facturado</button>
             </div>
         </div>
 
         <div class="ws-body">
-            <div class="ws-content">
+            <div class="ws-layout">
+            <div class="ws-content ws-main">
                 <!-- PASO 1: RECEPCIÓN -->
                 <div id="step-1" class="step-content active">
                     <div class="form-section">
@@ -417,6 +418,34 @@
                     </div>
                 </div>
             </div>
+            </div>
+
+            <!-- PANEL DERECHO (CHATTER / NOTAS / ACTIVIDAD) -->
+            <aside class="ws-chatter">
+                <div class="ws-chatter-header">
+                    <div class="ws-chatter-title">Actividad</div>
+                    <div class="ws-chatter-sub" id="wsChatterFolio">—</div>
+                </div>
+                <div class="ws-chatter-tabs">
+                    <button type="button" class="ws-chatter-tab active" data-tab="notas"><i class="fas fa-message"></i> Notas</button>
+                    <button type="button" class="ws-chatter-tab" data-tab="actividad"><i class="fas fa-list"></i> Actividad</button>
+                </div>
+
+                <div class="ws-chatter-body">
+                    <div class="ws-chatter-pane active" id="wsPaneNotas" data-pane="notas">
+                        <div class="ws-notes-list" id="wsNotesList"></div>
+                        <div class="ws-note-compose">
+                            <textarea id="wsNoteText" rows="3" placeholder="Escribe una nota interna..."></textarea>
+                            <div class="ws-note-actions">
+                                <button type="button" class="btn-ssepi btn-taller" id="wsAddNoteBtn"><i class="fas fa-paper-plane"></i> Registrar nota</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ws-chatter-pane" id="wsPaneActividad" data-pane="actividad">
+                        <div class="ws-activity-list" id="wsActivityList"></div>
+                    </div>
+                </div>
+            </aside>
         </div>
 
         <div class="ws-footer">

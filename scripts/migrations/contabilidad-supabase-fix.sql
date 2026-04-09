@@ -146,3 +146,46 @@ CREATE POLICY pagos_nomina_delete_contab
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.movimientos_banco TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.pagos_nomina TO authenticated;
+
+-- ==================== 5) FACTURAS (emitidas) ====================
+-- Nota: El frontend (Facturación/Contabilidad) usa la tabla public.facturas.
+CREATE TABLE IF NOT EXISTS public.facturas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  folio_factura TEXT,
+  cliente TEXT,
+  total NUMERIC(12,2) NOT NULL DEFAULT 0,
+  estatus TEXT DEFAULT 'emitida',
+  fecha_emision DATE NOT NULL DEFAULT CURRENT_DATE,
+  departamento TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID,
+  hash TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_facturas_fecha_emision ON public.facturas (fecha_emision DESC);
+CREATE INDEX IF NOT EXISTS idx_facturas_estatus ON public.facturas (estatus);
+
+ALTER TABLE public.facturas ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS facturas_select_auth ON public.facturas;
+CREATE POLICY facturas_select_auth
+  ON public.facturas FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS facturas_insert_auth ON public.facturas;
+CREATE POLICY facturas_insert_auth
+  ON public.facturas FOR INSERT TO authenticated
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS facturas_update_auth ON public.facturas;
+CREATE POLICY facturas_update_auth
+  ON public.facturas FOR UPDATE TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS facturas_delete_auth ON public.facturas;
+CREATE POLICY facturas_delete_auth
+  ON public.facturas FOR DELETE TO authenticated
+  USING (true);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.facturas TO authenticated;
