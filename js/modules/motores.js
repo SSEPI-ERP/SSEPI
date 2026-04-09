@@ -7,6 +7,9 @@
 
 import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
+import { getPrioritySuppliersForModule } from '../core/ssepi-runtime/priority-suppliers-catalog.js';
+import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
+import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
 
 const MotoresModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -22,6 +25,9 @@ const MotoresModule = (function() {
     let currentStep = 1;
     let fechaInicioOrden = null;
     let fechasEtapas = {};
+
+    let motoresDraftSessionKey = null;
+    let motoresAutosaveCtrl = null;
 
     // Listas específicas
     let diagnosticoEnlaces = [];
@@ -51,6 +57,154 @@ const MotoresModule = (function() {
     // Suscripciones para cleanup
     let subscriptions = [];
 
+    function _motoresRecordKey() {
+        if (orderId) return String(orderId);
+        const folio = (document.getElementById('inpFolio') && document.getElementById('inpFolio').value || '').trim();
+        if (folio) return 'new:' + folio;
+        if (!motoresDraftSessionKey) motoresDraftSessionKey = 'tmp:' + Date.now();
+        return motoresDraftSessionKey;
+    }
+
+    function _collectMotoresDraftPayload() {
+        const folioEl = document.getElementById('inpFolio');
+        return {
+            v: 1,
+            currentStep: currentStep,
+            isNewOrder: isNewOrder,
+            orderId: orderId,
+            folio: folioEl ? folioEl.value : '',
+            datos: _recolectarDatos(),
+            diagnosticoEnlaces: diagnosticoEnlaces,
+            diagnosticoInventario: diagnosticoInventario,
+            consumiblesUsados: consumiblesUsados,
+            componentesInventario: componentesInventario,
+            componentesCompra: componentesCompra,
+            fechaInicioOrden: fechaInicioOrden,
+            fechasEtapas: fechasEtapas,
+        };
+    }
+
+    function _applyMotoresDraft(w) {
+        if (!w || !w.payload) return;
+        const p = w.payload;
+        const d = p.datos || {};
+        const setv = (id, val, isCheck) => {
+            const el = document.getElementById(id);
+            if (!el || val === undefined) return;
+            if (isCheck) el.checked = !!val;
+            else el.value = val == null ? '' : val;
+        };
+        setv('selClient', d.cliente_nombre);
+        setv('inpClientRef', d.referencia);
+        setv('inpDateTime', d.fecha_ingreso);
+        setv('inpMotor', d.motor);
+        setv('inpBrand', d.marca);
+        setv('inpModel', d.modelo);
+        setv('inpSerial', d.serie);
+        setv('inpHp', d.hp);
+        setv('inpRpm', d.rpm);
+        setv('inpVoltaje', d.voltaje);
+        setv('inpFail', d.falla_reportada);
+        setv('inpCond', d.condiciones_fisicas);
+        setv('inpReceptionBy', d.encargado_recepcion);
+        setv('inpUnderWarranty', d.bajo_garantia, true);
+        setv('techSelect', d.tecnico_responsable);
+        setv('megger', d.megger);
+        setv('ip', d.ip);
+        setv('rU', d.rU);
+        setv('rV', d.rV);
+        setv('rW', d.rW);
+        setv('internalNotes', d.notas_internas);
+        setv('generalNotes', d.notas_generales);
+        setv('horasEstimadas', d.horas_estimadas);
+        setv('fechaEntrega', d.fecha_entrega);
+        setv('recibeNombre', d.recibe_nombre);
+        setv('recibeIdentificacion', d.recibe_identificacion);
+        setv('facturaNumero', d.factura_numero);
+        setv('entregaObs', d.entrega_obs);
+        setv('recibidoPor', d.recibido_por);
+        if (p.folio && document.getElementById('inpFolio')) document.getElementById('inpFolio').value = p.folio;
+        if (Array.isArray(p.diagnosticoEnlaces)) diagnosticoEnlaces = p.diagnosticoEnlaces.slice();
+        if (Array.isArray(p.diagnosticoInventario)) diagnosticoInventario = p.diagnosticoInventario.slice();
+        if (Array.isArray(p.consumiblesUsados)) consumiblesUsados = p.consumiblesUsados.slice();
+        if (Array.isArray(p.componentesInventario)) componentesInventario = p.componentesInventario.slice();
+        if (Array.isArray(p.componentesCompra)) componentesCompra = p.componentesCompra.slice();
+        if (p.fechaInicioOrden) fechaInicioOrden = p.fechaInicioOrden;
+        if (p.fechasEtapas && typeof p.fechasEtapas === 'object') fechasEtapas = { ...p.fechasEtapas };
+        _renderDiagnosticoEnlaces();
+        _renderDiagnosticoInventario();
+        _renderConsumibles();
+        _renderComponentesInventario();
+        _renderComponentesCompra();
+        if (p.currentStep) _irPaso(p.currentStep);
+    }
+
+    function _renderPrioritySupplierBarMotores() {
+        const host = document.getElementById('motoresPrioritySuppliers');
+        if (!host) return;
+        const list = getPrioritySuppliersForModule('motores');
+        const esc = (s) => {
+            const d = document.createElement('div');
+            d.textContent = s == null ? '' : String(s);
+            return d.innerHTML;
+        };
+        let chips = '';
+        list.forEach((s) => {
+            chips += '<button type="button" class="prio-chip" data-url="' + esc(s.url) + '" data-nombre="' + esc(s.nombre) + '" title="' + esc(s.ubicacion) + '">' + esc(s.etiqueta) + ' · ' + esc(s.nombre) + '</button>';
+        });
+        host.innerHTML = '<div class="priority-suppliers-wrap"><div class="priority-suppliers-label">Proveedores rápidos (prioridad por tiempo de entrega)</div><div class="priority-suppliers-chips">' + chips + '</div></div>';
+        host.querySelectorAll('.prio-chip').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                diagnosticoEnlaces.push({
+                    descripcion: (btn.getAttribute('data-nombre') || 'Proveedor') + ' (catálogo)',
+                    sku: '',
+                    cantidad: 1,
+                    link: btn.getAttribute('data-url') || '',
+                });
+                _renderDiagnosticoEnlaces();
+                if (motoresAutosaveCtrl) motoresAutosaveCtrl.schedule();
+            });
+        });
+    }
+
+    function _initMotoresAutosave() {
+        motoresAutosaveCtrl = createAutosaveController({
+            module: 'ordenes_motores',
+            getRecordKey: _motoresRecordKey,
+            collectPayload: _collectMotoresDraftPayload,
+            getLabel: () => {
+                const f = document.getElementById('inpFolio') && document.getElementById('inpFolio').value;
+                return 'Motores ' + (f || 'borrador');
+            },
+            debounceMs: 1600,
+        });
+        const modal = document.getElementById('wsModal');
+        if (modal) {
+            modal.addEventListener('input', () => { if (motoresAutosaveCtrl) motoresAutosaveCtrl.schedule(); }, true);
+            modal.addEventListener('change', () => { if (motoresAutosaveCtrl) motoresAutosaveCtrl.schedule(); }, true);
+        }
+    }
+
+    function _tryResumeMotoresDraft() {
+        const resume = new URLSearchParams(window.location.search).get('resume');
+        if (!resume) return;
+        const w = loadLocalDraft('ordenes_motores', resume);
+        if (!w || !w.payload) return;
+        if (!confirm('¿Recuperar borrador guardado en este equipo?')) {
+            history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
+        orderId = w.payload.orderId || null;
+        isNewOrder = !orderId;
+        motoresDraftSessionKey = null;
+        _resetForm();
+        _applyMotoresDraft(w);
+        if (document.getElementById('inpFolio') && w.payload.folio) document.getElementById('inpFolio').value = w.payload.folio;
+        document.getElementById('wsModal').classList.add('active');
+        _renderPrioritySupplierBarMotores();
+        history.replaceState({}, document.title, window.location.pathname);
+    }
+
     // ==================== INICIALIZACIÓN ====================
     async function init() {
         console.log('✅ [Motores] Conectado');
@@ -60,6 +214,9 @@ const MotoresModule = (function() {
         _startClock();
         _setupRealtime();
         _cargarNotificaciones();
+        _renderPrioritySupplierBarMotores();
+        _initMotoresAutosave();
+        _tryResumeMotoresDraft();
         console.log('✅ Módulo motores iniciado');
     }
 
@@ -430,9 +587,11 @@ const MotoresModule = (function() {
         _cargarDatosEnModal(orden);
         document.getElementById('wsModal').classList.add('active');
         _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
+        _renderPrioritySupplierBarMotores();
     }
 
     function _abrirNuevaOrden() {
+        motoresDraftSessionKey = null;
         isNewOrder = true;
         currentOrder = null;
         orderId = null;
@@ -449,6 +608,7 @@ const MotoresModule = (function() {
         _irPaso(1);
         document.getElementById('wsModal').classList.add('active');
         document.getElementById('fechaInicioDisplay').innerText = new Date().toLocaleString();
+        _renderPrioritySupplierBarMotores();
     }
 
     function _estadoToPaso(estado) {
@@ -729,10 +889,12 @@ const MotoresModule = (function() {
     // ==================== ACTUALIZACIÓN DE LISTAS (desde inputs) ====================
     function _actualizarEnlace(idx, campo, valor) {
         diagnosticoEnlaces[idx][campo] = campo === 'cantidad' ? parseInt(valor) || 1 : valor;
+        if (motoresAutosaveCtrl) motoresAutosaveCtrl.schedule();
     }
     function _eliminarEnlace(idx) {
         diagnosticoEnlaces.splice(idx, 1);
         _renderDiagnosticoEnlaces();
+        if (motoresAutosaveCtrl) motoresAutosaveCtrl.schedule();
     }
     function _actualizarInventarioSeleccion(idx, sku) {
         const producto = inventory.find(p => p.sku === sku);

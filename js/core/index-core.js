@@ -5,15 +5,27 @@
 
 import { authService } from './auth-service.js';
 import { createDataService } from './data-service.js';
+import { renderPendingHtmlList, formatPendingTitle } from './ssepi-runtime/pending-activity-view.js';
+import { ssepiOn, SSEPI_EVENTS } from './ssepi-runtime/ssepi-event-bus.js';
+import { listPendingEntries } from './ssepi-runtime/pending-drafts-registry.js';
 
 export const IndexCore = (function() {
     let subscriptions = [];
+
+    function _renderIndexPendingList() {
+        const host = document.getElementById('ssepiIndexPendingList');
+        if (!host) return;
+        host.innerHTML = renderPendingHtmlList();
+    }
 
     async function init() {
         console.log('✅ [Index] Conectado');
         _initUI();
         _bindEvents();
         _startClock();
+        ssepiOn(SSEPI_EVENTS.PENDING_UPDATED, () => { _renderIndexPendingList(); _loadFeed(); });
+        ssepiOn(SSEPI_EVENTS.DRAFT_SAVED, () => { _renderIndexPendingList(); _loadFeed(); });
+        _renderIndexPendingList();
         await _checkSupabaseConnection();
         _startRealtime();
         try {
@@ -243,6 +255,22 @@ export const IndexCore = (function() {
 
         const feedList = document.getElementById('feedList');
         feedList.innerHTML = '';
+        const pend = listPendingEntries().slice(0, 8);
+        pend.forEach((e) => {
+            const item = document.createElement('div');
+            item.className = 'feed-item';
+            item.innerHTML = `
+                <div class="feed-dot" style="border-color:#f59e0b;background:#f59e0b;"></div>
+                <div class="feed-meta">
+                    <span>PENDIENTE</span>
+                    <span>${new Date(e.updatedAt).toLocaleTimeString()}</span>
+                </div>
+                <div class="feed-body">
+                    <a href="${e.href}" style="color:inherit;font-weight:700;">${formatPendingTitle(e)}</a>
+                </div>
+            `;
+            feedList.appendChild(item);
+        });
         data.forEach(log => {
             const item = document.createElement('div');
             item.className = 'feed-item';
@@ -258,7 +286,8 @@ export const IndexCore = (function() {
             `;
             feedList.appendChild(item);
         });
-        document.getElementById('feedBadge').innerText = data.length;
+        const badge = document.getElementById('feedBadge');
+        if (badge) badge.innerText = String(pend.length + data.length);
     }
 
     return { init };

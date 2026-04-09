@@ -8,10 +8,15 @@
 import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
 import { ContactosFormulas } from '../core/contactos-formulas.js';
+import { PRIORITY_SUPPLIERS_BASE, normalizeUrl } from '../core/ssepi-runtime/priority-suppliers-catalog.js';
+import { mergePriorityProvidersFirst } from '../core/ssepi-runtime/priority-suppliers-merge.js';
 
 const ContactosModule = (function() {
     // ==================== ESTADO PRIVADO ====================
     let contactos = [];
+    /** Última lista mostrada (incluye fila sintética de catálogo si aplica). */
+    let ultimaVistaFiltrada = [];
+    let _ensuringPrioritySuppliers = false;
     let filtroTipo = 'all';
     let busqueda = '';
     let periodo = 'all';
@@ -167,7 +172,8 @@ const ContactosModule = (function() {
         _loadContactos();
     }
 
-    async function _loadContactos() {
+    async function _loadContactos(opts) {
+        const skipPriorityEnsure = opts && opts.skipPriorityEnsure;
         try {
             contactos = await contactosService.select({}, { orderBy: 'nombre', ascending: true });
         } catch (e) {
@@ -196,8 +202,50 @@ const ContactosModule = (function() {
         } catch (e) {
             console.warn('[Contactos] Tabla clientes no disponible o error RLS:', e?.message || e);
         }
+        if (!skipPriorityEnsure && !_ensuringPrioritySuppliers) {
+            _ensuringPrioritySuppliers = true;
+            try {
+                await _ensurePrioritySuppliers();
+            } catch (e) {
+                console.warn('[Contactos] Proveedores prioridad:', e?.message || e);
+            } finally {
+                _ensuringPrioritySuppliers = false;
+            }
+        }
         _renderView();
         _updateKPIs();
+    }
+
+    async function _ensurePrioritySuppliers() {
+        const base = contactos.filter(c => c.tipo === 'provider' && c.sitio_web && !c._fromClientes);
+        const have = new Set(base.map(c => normalizeUrl(c.sitio_web)));
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        let added = false;
+        for (let i = 0; i < PRIORITY_SUPPLIERS_BASE.length; i++) {
+            const p = PRIORITY_SUPPLIERS_BASE[i];
+            const u = normalizeUrl(p.url);
+            if (have.has(u)) continue;
+            const row = {
+                nombre: p.nombre,
+                empresa: p.nombre,
+                tipo: 'provider',
+                sitio_web: p.url,
+                puesto: p.etiqueta + ' · ' + p.ubicacion,
+                direccion: p.ubicacion,
+                avatar: (p.nombre || '?').charAt(0).toUpperCase(),
+                color: '#00a09d',
+            };
+            try {
+                await contactosService.insert(row, csrfToken);
+                have.add(u);
+                added = true;
+            } catch (e) {
+                console.warn('[Contactos] Alta proveedor catálogo', p.nombre, e?.message || e);
+            }
+        }
+        if (added) {
+            await _loadContactos({ skipPriorityEnsure: true });
+        }
     }
 
     // ==================== IMPORTACIÓN INICIAL (si está vacío) ====================
@@ -275,28 +323,36 @@ const ContactosModule = (function() {
     function _renderView() {
         let filtered = contactos;
 
-        if (filtroTipo !== 'all') {
+        if (filtroTipo === 'provider') {
+            filtered = mergePriorityProvidersFirst(contactos, 'taller');
+        } else if (filtroTipo !== 'all') {
             filtered = filtered.filter(c => c.tipo === filtroTipo);
         }
         if (busqueda) {
-            filtered = filtered.filter(c => 
-                (c.nombre && c.nombre.toLowerCase().includes(busqueda)) ||
-                (c.email && c.email.toLowerCase().includes(busqueda)) ||
-                (c.rfc && c.rfc.toLowerCase().includes(busqueda)) ||
-                (c.etiquetas && c.etiquetas?.toLowerCase().includes(busqueda)) ||
-                (c.empresa && c.empresa.toLowerCase().includes(busqueda))
+            const q = busqueda;
+            filtered = filtered.filter(c =>
+                (c.nombre && c.nombre.toLowerCase().includes(q)) ||
+                (c.email && c.email.toLowerCase().includes(q)) ||
+                (c.rfc && c.rfc.toLowerCase().includes(q)) ||
+                (c.etiquetas && c.etiquetas?.toLowerCase().includes(q)) ||
+                (c.empresa && c.empresa.toLowerCase().includes(q)) ||
+                (c.sitio_web && c.sitio_web.toLowerCase().includes(q)) ||
+                (c.puesto && c.puesto.toLowerCase().includes(q))
             );
         }
         if (periodo !== 'all') {
             const now = new Date();
             filtered = filtered.filter(c => {
-                if (!c.created_at) return false;
+                if (c._isCatalogPreset) return true;
+                if (!c.created_at) return filtroTipo === 'provider';
                 const fecha = new Date(c.created_at);
                 if (periodo === 'month') return fecha.getMonth() === now.getMonth() && fecha.getFullYear() === now.getFullYear();
                 if (periodo === 'year') return fecha.getFullYear() === now.getFullYear();
                 return true;
             });
         }
+
+        ultimaVistaFiltrada = filtered.slice();
 
         const totalEl = document.getElementById('totalCount');
         if (totalEl) totalEl.innerText = filtered.length;
@@ -389,7 +445,7 @@ const ContactosModule = (function() {
 
     // ==================== PANEL DE DETALLE ====================
     async function abrirDetalle(id) {
-        const contacto = contactos.find(c => c.id === id);
+        const contacto = ultimaVistaFiltrada.find(c => c.id === id) || contactos.find(c => c.id === id);
         if (!contacto) return;
         contactoSeleccionado = contacto;
         const backdrop = document.getElementById('backdrop');
@@ -421,7 +477,14 @@ const ContactosModule = (function() {
             // Podríamos mostrar esto en algún lado si se desea
         }
 
-        await _cargarTimeline(contacto.id);
+        if (String(contacto.id || '').indexOf('__prio_') === 0) {
+            const container = document.getElementById('timelineContainer');
+            if (container) {
+                container.innerHTML = '<div class="empty-timeline">Proveedor de catálogo (entrega). Use el sitio web o guarde como contacto para actividades.</div>';
+            }
+        } else {
+            await _cargarTimeline(contacto.id);
+        }
     }
 
     function _updateAvatarFromContact(contacto) {
@@ -452,6 +515,10 @@ const ContactosModule = (function() {
 
     async function _updateContactData() {
         const id = document.getElementById('panelId').value;
+        if (String(id).indexOf('__prio_') === 0) {
+            showNotification('Proveedor de catálogo: cree un contacto nuevo para guardar en la base.', 'error');
+            return;
+        }
         const updatedData = {
             puesto: document.getElementById('panelPuesto').value.trim() || '',
             telefono: document.getElementById('panelTelefono').value.trim() || '',

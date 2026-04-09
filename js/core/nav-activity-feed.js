@@ -4,6 +4,7 @@
  * Filtra por tablas según el enlace activo del menú (data-module).
  */
 import { initAuditFeed } from './audit-feed.js';
+import { mountNavPendingMini } from './ssepi-runtime/nav-pending-mini.js';
 
 /** Tablas de auditoría típicas por módulo del menú (data-module). */
 const MODULE_AUDIT_TABLES = {
@@ -38,11 +39,17 @@ export function mountNavActivityFeed() {
   wrap.className = 'ssepi-nav-activity';
   wrap.innerHTML =
     '<div class="ssepi-nav-activity-head">' +
+    '<span><i class="fas fa-hourglass-half"></i> Pendientes</span>' +
+    '</div>' +
+    '<div class="ssepi-nav-pending-mini" id="ssepiNavPendingMini"></div>' +
+    '<div class="ssepi-nav-activity-head">' +
     '<span><i class="fas fa-stream"></i> Actividad</span>' +
     '<span class="ssepi-nav-activity-count" id="ssepiNavFeedCount">0</span>' +
     '</div>' +
     '<div class="ssepi-nav-activity-list" id="ssepiNavFeedList"></div>';
   nav.appendChild(wrap);
+
+  mountNavPendingMini();
 
   initAuditFeed({
     tables,

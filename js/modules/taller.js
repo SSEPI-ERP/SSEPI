@@ -8,6 +8,9 @@
 
 import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
+import { getPrioritySuppliersForModule } from '../core/ssepi-runtime/priority-suppliers-catalog.js';
+import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
+import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
 
 const TallerModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -23,6 +26,9 @@ const TallerModule = (function() {
     let currentStep = 1;
     let fechaInicioOrden = null;
     let fechasEtapas = {};
+
+    let tallerDraftSessionKey = null;
+    let tallerAutosaveCtrl = null;
 
     // Listas específicas
     let diagnosticoEnlaces = [];
@@ -77,6 +83,150 @@ const TallerModule = (function() {
     // Suscripciones para cleanup
     let subscriptions = [];
 
+    function _tallerRecordKey() {
+        if (orderId) return String(orderId);
+        const folio = (document.getElementById('inpFolio') && document.getElementById('inpFolio').value || '').trim();
+        if (folio) return 'new:' + folio;
+        if (!tallerDraftSessionKey) tallerDraftSessionKey = 'tmp:' + Date.now();
+        return tallerDraftSessionKey;
+    }
+
+    function _collectTallerDraftPayload() {
+        const folioEl = document.getElementById('inpFolio');
+        return {
+            v: 1,
+            currentStep: currentStep,
+            isNewOrder: isNewOrder,
+            orderId: orderId,
+            folio: folioEl ? folioEl.value : '',
+            datos: _recolectarDatos(),
+            diagnosticoEnlaces: diagnosticoEnlaces,
+            diagnosticoInventario: diagnosticoInventario,
+            consumiblesUsados: consumiblesUsados,
+            componentesInventario: componentesInventario,
+            componentesCompra: componentesCompra,
+            fechaInicioOrden: fechaInicioOrden,
+            fechasEtapas: fechasEtapas,
+        };
+    }
+
+    function _applyTallerDraft(w) {
+        if (!w || !w.payload) return;
+        const p = w.payload;
+        const d = p.datos || {};
+        const setv = (id, val, isCheck) => {
+            const el = document.getElementById(id);
+            if (!el || val === undefined) return;
+            if (isCheck) el.checked = !!val;
+            else el.value = val == null ? '' : val;
+        };
+        setv('selClient', d.cliente_nombre);
+        setv('inpClientRef', d.referencia);
+        setv('inpDateTime', d.fecha_ingreso);
+        setv('inpEquip', d.equipo);
+        setv('inpBrand', d.marca);
+        setv('inpModel', d.modelo);
+        setv('inpSerial', d.serie);
+        setv('inpFail', d.falla_reportada);
+        setv('inpCond', d.condiciones_fisicas);
+        setv('inpReceptionBy', d.encargado_recepcion);
+        setv('inpUnderWarranty', d.bajo_garantia, true);
+        setv('techSelect', d.tecnico_responsable);
+        setv('internalNotes', d.notas_internas);
+        setv('generalNotes', d.notas_generales);
+        setv('horasEstimadas', d.horas_estimadas);
+        setv('fechaEntrega', d.fecha_entrega);
+        setv('recibeNombre', d.recibe_nombre);
+        setv('recibeIdentificacion', d.recibe_identificacion);
+        setv('facturaNumero', d.factura_numero);
+        setv('entregaObs', d.entrega_obs);
+        setv('recibidoPor', d.recibido_por);
+        if (p.folio && document.getElementById('inpFolio')) document.getElementById('inpFolio').value = p.folio;
+        if (Array.isArray(p.diagnosticoEnlaces)) diagnosticoEnlaces = p.diagnosticoEnlaces.slice();
+        if (Array.isArray(p.diagnosticoInventario)) diagnosticoInventario = p.diagnosticoInventario.slice();
+        if (Array.isArray(p.consumiblesUsados)) consumiblesUsados = p.consumiblesUsados.slice();
+        if (Array.isArray(p.componentesInventario)) componentesInventario = p.componentesInventario.slice();
+        if (Array.isArray(p.componentesCompra)) componentesCompra = p.componentesCompra.slice();
+        if (p.fechaInicioOrden) fechaInicioOrden = p.fechaInicioOrden;
+        if (p.fechasEtapas && typeof p.fechasEtapas === 'object') fechasEtapas = { ...p.fechasEtapas };
+        _renderDiagnosticoEnlaces();
+        _renderDiagnosticoInventario();
+        _renderConsumibles();
+        _renderComponentesInventario();
+        _renderComponentesCompra();
+        if (p.currentStep) _irPaso(p.currentStep);
+    }
+
+    function _renderPrioritySupplierBarTaller() {
+        const host = document.getElementById('tallerPrioritySuppliers');
+        if (!host) return;
+        const list = getPrioritySuppliersForModule('taller');
+        const esc = (s) => {
+            const d = document.createElement('div');
+            d.textContent = s == null ? '' : String(s);
+            return d.innerHTML;
+        };
+        let chips = '';
+        list.forEach((s) => {
+            chips += '<button type="button" class="prio-chip" data-url="' + esc(s.url) + '" data-nombre="' + esc(s.nombre) + '" title="' + esc(s.ubicacion) + '">' + esc(s.etiqueta) + ' · ' + esc(s.nombre) + '</button>';
+        });
+        host.innerHTML = '<div class="priority-suppliers-wrap"><div class="priority-suppliers-label">Proveedores rápidos (prioridad por tiempo de entrega)</div><div class="priority-suppliers-chips">' + chips + '</div></div>';
+        host.querySelectorAll('.prio-chip').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                _appendEnlaceProveedor(btn.getAttribute('data-url'), btn.getAttribute('data-nombre'));
+            });
+        });
+    }
+
+    function _appendEnlaceProveedor(url, nombre) {
+        diagnosticoEnlaces.push({
+            descripcion: (nombre || 'Proveedor') + ' (catálogo)',
+            sku: '',
+            cantidad: 1,
+            link: url || '',
+        });
+        _renderDiagnosticoEnlaces();
+        if (tallerAutosaveCtrl) tallerAutosaveCtrl.schedule();
+    }
+
+    function _initTallerAutosave() {
+        tallerAutosaveCtrl = createAutosaveController({
+            module: 'ordenes_taller',
+            getRecordKey: _tallerRecordKey,
+            collectPayload: _collectTallerDraftPayload,
+            getLabel: () => {
+                const f = document.getElementById('inpFolio') && document.getElementById('inpFolio').value;
+                return 'Laboratorio ' + (f || 'borrador');
+            },
+            debounceMs: 1600,
+        });
+        const modal = document.getElementById('wsModal');
+        if (modal) {
+            modal.addEventListener('input', () => { if (tallerAutosaveCtrl) tallerAutosaveCtrl.schedule(); }, true);
+            modal.addEventListener('change', () => { if (tallerAutosaveCtrl) tallerAutosaveCtrl.schedule(); }, true);
+        }
+    }
+
+    function _tryResumeTallerDraft() {
+        const resume = new URLSearchParams(window.location.search).get('resume');
+        if (!resume) return;
+        const w = loadLocalDraft('ordenes_taller', resume);
+        if (!w || !w.payload) return;
+        if (!confirm('¿Recuperar borrador guardado en este equipo?')) {
+            history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
+        orderId = w.payload.orderId || null;
+        isNewOrder = !orderId;
+        tallerDraftSessionKey = null;
+        _resetForm();
+        _applyTallerDraft(w);
+        if (document.getElementById('inpFolio') && w.payload.folio) document.getElementById('inpFolio').value = w.payload.folio;
+        document.getElementById('wsModal').classList.add('active');
+        _renderPrioritySupplierBarTaller();
+        history.replaceState({}, document.title, window.location.pathname);
+    }
+
     // ==================== INICIALIZACIÓN ====================
     async function init() {
         console.log('✅ [Taller] Conectado');
@@ -90,6 +240,9 @@ const TallerModule = (function() {
         _startClock();
         _setupRealtime();
         _cargarNotificaciones();
+        _renderPrioritySupplierBarTaller();
+        _initTallerAutosave();
+        _tryResumeTallerDraft();
     }
 
     async function _initUI() {
@@ -670,6 +823,7 @@ const TallerModule = (function() {
         document.getElementById('wsModal').classList.add('active');
         _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
         _initWsChatterUI(orden);
+        _renderPrioritySupplierBarTaller();
     }
 
     function _abrirNuevaOrden() {
@@ -680,6 +834,7 @@ const TallerModule = (function() {
             return;
         }
         try {
+            tallerDraftSessionKey = null;
             isNewOrder = true;
             currentOrder = null;
             orderId = null;
@@ -695,6 +850,7 @@ const TallerModule = (function() {
             _populateClientSelect();
             _irPaso(1);
             document.getElementById('fechaInicioDisplay').innerText = new Date().toLocaleString();
+            _renderPrioritySupplierBarTaller();
         } catch (e) {
             console.warn('[Taller] _abrirNuevaOrden preparación:', e);
         }
@@ -1124,10 +1280,12 @@ const TallerModule = (function() {
     // ==================== ACTUALIZACIÓN DE LISTAS (desde inputs) ====================
     function _actualizarEnlace(idx, campo, valor) {
         diagnosticoEnlaces[idx][campo] = campo === 'cantidad' ? parseInt(valor) || 1 : valor;
+        if (tallerAutosaveCtrl) tallerAutosaveCtrl.schedule();
     }
     function _eliminarEnlace(idx) {
         diagnosticoEnlaces.splice(idx, 1);
         _renderDiagnosticoEnlaces();
+        if (tallerAutosaveCtrl) tallerAutosaveCtrl.schedule();
     }
     function _actualizarInventarioSeleccion(idx, sku) {
         const producto = inventory.find(p => p.sku === sku);
@@ -1980,7 +2138,8 @@ ${printScript}
         _actualizarComponenteInventario,
         _eliminarComponenteInventario,
         _actualizarComponenteCompra,
-        _eliminarComponenteCompra
+        _eliminarComponenteCompra,
+        _appendEnlaceProveedor,
     };
 })();
 
