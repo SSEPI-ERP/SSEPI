@@ -12,6 +12,8 @@
     var costosList = [];
     var clientesList = [];
     var excelDataPreview = null;
+    /** @type {{ name: string, rows: any[][] }[]|null} */
+    var excelSheetsPreview = null;
     var simAutoTarifas = [];
     var hojaFilasList = [];
 
@@ -242,40 +244,94 @@
         tr.querySelector('.hoja-btn-del').addEventListener('click', function() { deleteHojaRowFromTr(tr); });
     }
 
-    function importExcelToHojaFilas(headers, rows) {
-        var concI = headers.findIndex(function(h) { return /concepto|descripcion|descripción|item|clave/i.test(String(h || '')); });
-        var formI = headers.findIndex(function(h) { return /fórmula|formula/i.test(String(h || '')); });
-        var valI = headers.findIndex(function(h) { return /^(valor|value|importe|monto)$/i.test(String(h || '').trim()); });
-        if (concI < 0 && formI < 0 && valI < 0) return Promise.resolve({ n: 0 });
-        var cid = document.getElementById('hojaCalcSelect') && document.getElementById('hojaCalcSelect').value;
-        if (!cid || !supabase()) return Promise.resolve({ n: 0 });
-        return supabase().from('calculadora_hoja_filas').select('fila_orden').eq('calculadora_id', cid).order('fila_orden', { ascending: false }).limit(1).maybeSingle().then(function(ordRes) {
+    function normHeaderCell(h) {
+        return String(h == null ? '' : h).toLowerCase().trim().replace(/\s+/g, ' ');
+    }
+
+    /** Detecta columnas tipo hoja Excel (concepto, fórmula, valor) con criterios flexibles. */
+    function detectHojaIndices(headers) {
+        function firstMatch(hdrs, predicates) {
+            for (var i = 0; i < hdrs.length; i++) {
+                var s = normHeaderCell(hdrs[i]);
+                for (var p = 0; p < predicates.length; p++) {
+                    if (predicates[p](s)) return i;
+                }
+            }
+            return -1;
+        }
+        var concI = firstMatch(headers, [
+            function(s) { return /^(concepto|descripción|descripcion|rubro|servicio|producto|ítem|item|clave)$/i.test(s); },
+            function(s) { return /\bconcepto\b/.test(s) && !/\bcosto\s+de\s+concepto\b/i.test(s); }
+        ]);
+        var formI = firstMatch(headers, [
+            function(s) { return /\bf[oó]rmula\b/.test(s) || /^expr/i.test(s) || /\breferencia\b/.test(s) || /^fmla$/i.test(s); }
+        ]);
+        var valI = firstMatch(headers, [
+            function(s) { return /^(valor|value|importe|monto|total)$/i.test(s); },
+            function(s) { return /\b(valor|importe|monto)\b/.test(s) && !/\bunitario\b/.test(s); },
+            function(s) { return /^(costo|precio)$/i.test(s); }
+        ]);
+        var ok = (concI >= 0 && (formI >= 0 || valI >= 0)) || (formI >= 0 && valI >= 0);
+        return { concI: concI, formI: formI, valI: valI, ok: ok };
+    }
+
+    /**
+     * Inserta filas de una o varias hojas en calculadora_hoja_filas (mismo calculadora_id, fila_orden continua).
+     * @returns {Promise<{ n: number, sheets: number }>}
+     */
+    function importHojasMultiSheets(sheetList, calculadoraId) {
+        if (!calculadoraId || !supabase()) return Promise.resolve({ n: 0, sheets: 0 });
+        var list = sheetList || [];
+        return supabase().from('calculadora_hoja_filas').select('fila_orden').eq('calculadora_id', calculadoraId).order('fila_orden', { ascending: false }).limit(1).maybeSingle().then(function(ordRes) {
             if (ordRes.error) throw ordRes.error;
             var orden = 1;
             if (ordRes.data && ordRes.data.fila_orden != null && !isNaN(parseInt(ordRes.data.fila_orden, 10))) {
                 orden = parseInt(ordRes.data.fila_orden, 10) + 1;
             }
             var inserts = [];
-            rows.forEach(function(row) {
-                var c = concI >= 0 && row[concI] != null ? String(row[concI]).trim() : '';
-                var f = formI >= 0 && row[formI] != null ? String(row[formI]).trim() : '';
-                var v = valI >= 0 && row[valI] != null && row[valI] !== '' ? parseFloat(row[valI]) : null;
-                if (!c && !f && (v == null || isNaN(v))) return;
-                inserts.push({
-                    calculadora_id: cid,
-                    fila_orden: orden++,
-                    concepto: c || null,
-                    formula_text: f || null,
-                    valor: v != null && !isNaN(v) ? v : null,
-                    solo_valor: false
+            var sheetsHit = 0;
+            list.forEach(function(sheet) {
+                if (!sheet || !sheet.rows || sheet.rows.length < 2) return;
+                var headers = sheet.rows[0] || [];
+                var idx = detectHojaIndices(headers);
+                if (!idx.ok) return;
+                sheetsHit++;
+                var body = sheet.rows.slice(1).filter(function(row) {
+                    return row.some(function(c) { return c != null && String(c).trim() !== ''; });
+                });
+                body.forEach(function(row) {
+                    var c = idx.concI >= 0 && row[idx.concI] != null ? String(row[idx.concI]).trim() : '';
+                    var f = idx.formI >= 0 && row[idx.formI] != null ? String(row[idx.formI]).trim() : '';
+                    var v = idx.valI >= 0 && row[idx.valI] != null && row[idx.valI] !== '' ? parseFloat(row[idx.valI]) : null;
+                    if (!c && !f && (v == null || isNaN(v))) return;
+                    inserts.push({
+                        calculadora_id: calculadoraId,
+                        fila_orden: orden++,
+                        concepto: c || null,
+                        formula_text: f || null,
+                        valor: v != null && !isNaN(v) ? v : null,
+                        solo_valor: false
+                    });
                 });
             });
-            if (!inserts.length) return { n: 0 };
+            if (!inserts.length) return { n: 0, sheets: sheetsHit };
             return supabase().from('calculadora_hoja_filas').insert(inserts).then(function(r) {
                 if (r.error) throw r.error;
-                return { n: inserts.length };
+                return { n: inserts.length, sheets: sheetsHit };
             });
         });
+    }
+
+    function renderImportPreviewHtml() {
+        var preview = document.getElementById('importPreview');
+        if (!preview || !excelDataPreview) return;
+        var rows = (excelDataPreview || []).slice(0, 6);
+        var html = '<p class="form-hint">Vista previa (primeras filas de la hoja seleccionada):</p><table class="lista-table"><tbody>';
+        rows.forEach(function(row) {
+            html += '<tr>' + (row.map(function(cell) { return '<td>' + (cell != null ? String(cell).substring(0, 50) : '') + '</td>'; }).join('')) + '</tr>';
+        });
+        html += '</tbody></table><p class="form-hint">Filas en esta hoja: ' + (excelDataPreview.length || 0) + '. Haz clic en «Agregar / Actualizar» para procesar.</p>';
+        preview.innerHTML = html;
     }
 
     // --- Modal Calculadora ---
@@ -519,21 +575,28 @@
                 var data = new Uint8Array(ev.target.result);
                 var workbook = XLSX.read(data, { type: 'array' });
                 var sheetNames = workbook.SheetNames || [];
-                var first = sheetNames[0] ? workbook.Sheets[sheetNames[0]] : null;
-                if (!first) {
+                if (!sheetNames.length) {
                     document.getElementById('importPreview').innerHTML = '<p class="form-hint">No se encontraron hojas en el archivo.</p>';
+                    excelSheetsPreview = null;
+                    excelDataPreview = null;
                     return;
                 }
-                var json = XLSX.utils.sheet_to_json(first, { header: 1, defval: '' });
-                excelDataPreview = json;
-                var preview = document.getElementById('importPreview');
-                var rows = (json || []).slice(0, 6);
-                var html = '<p class="form-hint">Vista previa (primeras filas):</p><table class="lista-table"><tbody>';
-                rows.forEach(function(row, i) {
-                    html += '<tr>' + (row.map(function(cell) { return '<td>' + (cell != null ? String(cell).substring(0, 50) : '') + '</td>'; }).join('')) + '</tr>';
+                excelSheetsPreview = sheetNames.map(function(name) {
+                    return {
+                        name: name,
+                        rows: XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: '' })
+                    };
                 });
-                html += '</tbody></table><p class="form-hint">Filas totales: ' + (json.length || 0) + '. Haz clic en "Agregar / Actualizar" para procesar.</p>';
-                preview.innerHTML = html;
+                var sel = document.getElementById('importSheetSelect');
+                if (sel) {
+                    sel.innerHTML = excelSheetsPreview.map(function(s, i) {
+                        return '<option value="' + i + '">' + esc(s.name) + '</option>';
+                    }).join('');
+                    sel.style.display = excelSheetsPreview.length > 1 ? 'inline-block' : 'none';
+                    sel.value = '0';
+                }
+                excelDataPreview = excelSheetsPreview[0].rows;
+                renderImportPreviewHtml();
                 document.getElementById('btnProcesarImport').style.display = 'inline-flex';
             } catch (err) {
                 console.error(err);
@@ -542,6 +605,15 @@
         };
         reader.readAsArrayBuffer(file);
         e.target.value = '';
+    }
+
+    function onImportSheetSelectChange() {
+        var sel = document.getElementById('importSheetSelect');
+        if (!sel || !excelSheetsPreview || !excelSheetsPreview.length) return;
+        var i = parseInt(sel.value, 10);
+        if (isNaN(i) || !excelSheetsPreview[i]) return;
+        excelDataPreview = excelSheetsPreview[i].rows;
+        renderImportPreviewHtml();
     }
 
     function procesarImportacion() {
@@ -580,16 +652,32 @@
                 activo: true
             }).then(function() { added++; });
         })).then(function() {
-            return importExcelToHojaFilas(headers, rows).then(function(hj) {
+            var cid = document.getElementById('hojaCalcSelect') && document.getElementById('hojaCalcSelect').value;
+            var allHojas = document.getElementById('importAllSheetsHoja') && document.getElementById('importAllSheetsHoja').checked;
+            var sheetList = (allHojas && excelSheetsPreview && excelSheetsPreview.length)
+                ? excelSheetsPreview.slice()
+                : [{ name: 'seleccionada', rows: excelDataPreview }];
+            return importHojasMultiSheets(sheetList, cid).then(function(hj) {
                 return { hj: hj };
             }).catch(function() {
-                return { hj: { n: 0 } };
+                return { hj: { n: 0, sheets: 0 } };
             });
         }).then(function(extra) {
             var hojaN = (extra && extra.hj && extra.hj.n) ? extra.hj.n : 0;
-            alert('Importación completada. Calculadoras — agregados: ' + added + ', actualizados: ' + updated +
-                (hojaN ? '. Filas en hoja Excel: ' + hojaN + '.' : ''));
+            var hojaS = (extra && extra.hj && extra.hj.sheets) ? extra.hj.sheets : 0;
+            var hojaMsg = '';
+            if (hojaN) {
+                hojaMsg = ' Filas en hoja Excel: ' + hojaN + '.';
+                if (hojaS) hojaMsg += ' Hojas con columnas detectadas: ' + hojaS + '.';
+            }
+            alert('Importación completada. Calculadoras — agregados: ' + added + ', actualizados: ' + updated + '.' + hojaMsg);
             excelDataPreview = null;
+            excelSheetsPreview = null;
+            var impSel = document.getElementById('importSheetSelect');
+            if (impSel) {
+                impSel.innerHTML = '';
+                impSel.style.display = 'none';
+            }
             document.getElementById('importPreview').innerHTML = '';
             document.getElementById('btnProcesarImport').style.display = 'none';
             document.getElementById('excelFileCalculadoras').value = '';
@@ -751,6 +839,8 @@
         }
         var btnProcesar = document.getElementById('btnProcesarImport');
         if (btnProcesar) btnProcesar.addEventListener('click', procesarImportacion);
+        var importSheetSel = document.getElementById('importSheetSelect');
+        if (importSheetSel) importSheetSel.addEventListener('change', onImportSheetSelectChange);
         var btnValidar = document.getElementById('btnValidar');
         if (btnValidar) btnValidar.addEventListener('click', validar);
         var toggle = document.getElementById('toggleMenu');
