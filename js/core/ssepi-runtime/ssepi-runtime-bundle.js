@@ -8,6 +8,7 @@ export * from './json-safe.js';
 export * from './ssepi-event-bus.js';
 export * from './module-routes.js';
 export * from './draft-local-store.js';
+export * from './draft-purge-keys.js';
 export * from './pending-drafts-registry.js';
 export * from './autosave-debounce.js';
 export * from './autosave-coordinator.js';

@@ -8,11 +8,14 @@
 import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
 import { notifyCompraIfEligible } from '../core/coi-sync-engine.js';
+import { mergePriorityProvidersFirst } from '../core/ssepi-runtime/priority-suppliers-merge.js';
 
 const ComprasModule = (function() {
     // ==================== ESTADO PRIVADO ====================
     let compras = [];
     let proveedores = [];
+    /** Proveedores para UI (select + tarjetas): catálogo prioridad + resto. */
+    let proveedoresVista = [];
     let contactos = [];
     let ordenesTaller = [];
     let ordenesMotores = [];
@@ -148,6 +151,7 @@ const ComprasModule = (function() {
             _loadMotores(),
             _loadProyectos()
         ]);
+        _rebuildProveedoresVista();
         _populateProveedoresSelect();
         _renderProveedores();
         _renderSolicitudesTaller();
@@ -166,6 +170,10 @@ const ComprasModule = (function() {
         contactos = await contactosService.select({});
     }
 
+    function _rebuildProveedoresVista() {
+        proveedoresVista = mergePriorityProvidersFirst(contactos && contactos.length ? contactos : proveedores, 'taller');
+    }
+
     async function _loadTaller() {
         ordenesTaller = await tallerService.select({ estado: ['Diagnóstico', 'En Espera'] });
     }
@@ -181,35 +189,53 @@ const ComprasModule = (function() {
     function _populateProveedoresSelect() {
         const select = document.getElementById('proveedorSelect');
         if (!select) return;
+        const prev = select.value;
         select.innerHTML = '<option value="">Seleccionar proveedor</option>';
-        proveedores.forEach(p => {
+        proveedoresVista.forEach(p => {
+            const label = (p.nombre || p.empresa || '').trim();
+            if (!label) return;
             const opt = document.createElement('option');
-            opt.value = p.nombre || p.empresa;
-            opt.textContent = p.nombre || p.empresa;
+            opt.value = label;
+            const hint = p.puesto ? ' · ' + p.puesto : '';
+            opt.textContent = label + hint;
             select.appendChild(opt);
         });
+        if (prev && [...select.options].some(o => o.value === prev)) select.value = prev;
     }
 
     function _renderProveedores() {
         const container = document.getElementById('proveedoresContainer');
         if (!container) return;
-        if (proveedores.length === 0) {
+        if (proveedoresVista.length === 0) {
             container.innerHTML = '<div style="text-align:center; padding:20px;">No hay proveedores registrados</div>';
             return;
         }
-        container.innerHTML = proveedores.slice(0, 6).map(p => `
+        const esc = (s) => {
+            const d = document.createElement('div');
+            d.textContent = s == null ? '' : String(s);
+            return d.innerHTML;
+        };
+        const top = proveedoresVista.slice(0, 6);
+        container.innerHTML = top.map(p => {
+            const idRaw = p.id != null ? String(p.id) : '';
+            const idAttr = esc(idRaw);
+            return `
             <div class="proveedor-card">
                 <div class="proveedor-header">
-                    <span class="proveedor-nombre">${p.nombre || p.empresa}</span>
-                    <span class="proveedor-rfc">${p.rfc || ''}</span>
+                    <span class="proveedor-nombre">${esc(p.nombre || p.empresa)}</span>
+                    <span class="proveedor-rfc">${esc(p.rfc || '')}</span>
                 </div>
-                <div class="proveedor-contacto">${p.contacto || p.puesto || ''}</div>
-                <div class="proveedor-email">${p.email || ''}</div>
+                <div class="proveedor-contacto">${esc(p.contacto || p.puesto || '')}</div>
+                <div class="proveedor-email">${esc(p.email || '')}</div>
                 <div class="proveedor-acciones">
-                    <button class="btn btn-sm btn-secondary" onclick="comprasModule._verProveedor('${p.id}')">Ver</button>
+                    <button type="button" class="btn btn-sm btn-secondary" data-prov-id="${idAttr}">Ver</button>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
+        container.querySelectorAll('[data-prov-id]').forEach(btn => {
+            btn.addEventListener('click', () => _verProveedor(btn.getAttribute('data-prov-id')));
+        });
     }
 
     function _renderSolicitudesTaller() {
@@ -257,8 +283,11 @@ const ComprasModule = (function() {
 
         const subProveedores = supabase
             .channel('contactos_proveedores')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'contactos' }, payload => {
-                _loadProveedores();
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'contactos' }, async () => {
+                await _loadProveedores();
+                await _loadContactos();
+                _rebuildProveedoresVista();
+                _populateProveedoresSelect();
                 _renderProveedores();
             })
             .subscribe();
@@ -741,7 +770,13 @@ const ComprasModule = (function() {
     }
 
     function _verProveedor(id) {
-        alert('Ver proveedor ' + id);
+        const p = proveedoresVista.find(x => String(x.id) === String(id))
+            || contactos.find(c => String(c.id) === String(id));
+        if (p && p.sitio_web) {
+            window.open(p.sitio_web, '_blank', 'noopener,noreferrer');
+            return;
+        }
+        alert(p ? (p.nombre || p.empresa || 'Proveedor') : ('Proveedor ' + id));
     }
 
     // ==================== FEED ====================
