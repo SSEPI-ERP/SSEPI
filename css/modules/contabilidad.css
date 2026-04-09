@@ -1,47 +1,101 @@
 /* Módulo Contabilidad — panel SSEPI COI (escritorio + motor local) */
+/* Tres columnas en el body: nav | contenido | bitácora (el aside es hijo de body, no de main). */
+@media (min-width: 901px) {
+    body.page-contabilidad {
+        grid-template-columns: var(--sidebar-w) minmax(0, 1fr) minmax(260px, 320px);
+    }
+    body.page-contabilidad.sidebar-closed {
+        grid-template-columns: 70px minmax(0, 1fr) minmax(260px, 320px);
+    }
+    body.page-contabilidad > nav.sidebar-left {
+        grid-column: 1;
+        grid-row: 2;
+    }
+    body.page-contabilidad > main {
+        grid-column: 2;
+        grid-row: 2;
+        max-width: none;
+        margin: 0;
+        width: 100%;
+        min-width: 0;
+    }
+    body.page-contabilidad > aside.sidebar-right {
+        grid-column: 3;
+        grid-row: 2;
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - var(--header-h, 70px));
+        max-height: calc(100vh - var(--header-h, 70px));
+        border-left: 2px solid rgba(185, 28, 28, 0.22);
+        position: relative;
+        top: 0;
+        overflow: hidden;
+    }
+    body.page-contabilidad > aside.sidebar-right .feed-list {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+    }
+}
+
+/* La bitácora no debe ocultarse en Contabilidad al mismo breakpoint que el resto del ERP */
+@media (max-width: 1200px) {
+    body.page-contabilidad > aside.sidebar-right {
+        display: flex !important;
+    }
+}
+
 .page-contabilidad main {
-    max-width: 1480px;
-    margin: 0 auto;
-    padding: 0 1.5rem 3rem;
+    padding: 0 1.25rem 2.5rem;
 }
 
 .page-contabilidad .coi-panel {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 420px;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
     gap: 1.25rem;
     align-items: start;
 }
 
-.page-contabilidad .coi-panel > .coi-card {
-    grid-column: 1 / 2;
-}
-
-.page-contabilidad .sidebar-right {
-    position: sticky;
-    top: calc(var(--header-h, 70px) + 16px);
-    align-self: start;
-    height: calc(100vh - var(--header-h, 70px) - 40px);
-    max-height: calc(100vh - var(--header-h, 70px) - 40px);
-    overflow: hidden;
-}
-
-.page-contabilidad .sidebar-right .feed-list {
-    height: calc(100% - 44px);
-    overflow: auto;
-}
-
 .page-contabilidad .contab-lede-card {
-    grid-column: 1 / 2;
+    grid-column: 1;
+    min-width: 0;
+}
+
+.page-contabilidad .contab-inv-card {
+    grid-column: 2;
+    min-width: 0;
+}
+
+.page-contabilidad .feed-dot {
+    border-color: var(--c-contabilidad, #b91c1c);
+    background: var(--c-contabilidad, #b91c1c);
 }
 
 @media (max-width: 1100px) {
     .page-contabilidad .coi-panel {
         grid-template-columns: 1fr;
     }
-    .page-contabilidad .sidebar-right {
-        position: relative;
-        height: auto;
-        max-height: none;
+    .page-contabilidad .contab-inv-card {
+        grid-column: 1;
+    }
+}
+
+@media (max-width: 900px) {
+    body.page-contabilidad {
+        grid-template-columns: var(--sidebar-w) 1fr;
+    }
+    body.page-contabilidad.sidebar-closed {
+        grid-template-columns: 70px 1fr;
+    }
+    body.page-contabilidad > aside.sidebar-right {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        max-height: 42vh;
+        border-left: none;
+        border-top: 2px solid rgba(185, 28, 28, 0.22);
+    }
+    body.page-contabilidad > main {
+        grid-column: 2;
     }
 }
 
@@ -54,8 +108,8 @@
 
 .contab-lede-card {
     border-radius: 16px;
-    background: linear-gradient(165deg, rgba(13, 148, 136, 0.06) 0%, var(--bg-panel, #fff) 42%);
-    border-color: rgba(13, 148, 136, 0.2);
+    background: linear-gradient(165deg, rgba(185, 28, 28, 0.06) 0%, var(--bg-panel, #fff) 42%);
+    border-color: rgba(185, 28, 28, 0.2);
 }
 
 .contab-toolbar {
@@ -117,8 +171,8 @@
 }
 
 .contab-mod-card:hover {
-    border-color: rgba(13, 148, 136, 0.45);
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.12);
+    border-color: rgba(185, 28, 28, 0.45);
+    box-shadow: 0 4px 14px rgba(185, 28, 28, 0.12);
     transform: translateY(-1px);
 }
 
@@ -129,8 +183,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(13, 148, 136, 0.12);
-    color: var(--c-contabilidad, #0d9488);
+    background: rgba(185, 28, 28, 0.12);
+    color: var(--c-contabilidad, #b91c1c);
     flex-shrink: 0;
 }
 
@@ -162,7 +216,7 @@
 }
 
 .contab-mod-card:hover .contab-mod-go {
-    color: var(--c-contabilidad, #0d9488);
+    color: var(--c-contabilidad, #b91c1c);
     opacity: 1;
 }
 
@@ -184,13 +238,13 @@
 }
 
 .contab-pill.btn-ssepi:hover {
-    border-color: rgba(13, 148, 136, 0.4);
-    color: var(--c-contabilidad, #0d9488);
+    border-color: rgba(185, 28, 28, 0.4);
+    color: var(--c-contabilidad, #b91c1c);
 }
 
 .contab-pill.btn-ssepi.active {
-    background: var(--c-contabilidad, #0d9488);
-    border-color: var(--c-contabilidad, #0d9488);
+    background: var(--c-contabilidad, #b91c1c);
+    border-color: var(--c-contabilidad, #b91c1c);
     color: #fff;
 }
 
@@ -202,8 +256,8 @@
 }
 
 body[data-theme="dark"] .contab-lede-card {
-    background: linear-gradient(165deg, rgba(13, 148, 136, 0.12) 0%, var(--bg-panel, #1e293b) 45%);
-    border-color: rgba(13, 148, 136, 0.28);
+    background: linear-gradient(165deg, rgba(185, 28, 28, 0.12) 0%, var(--bg-panel, #1e293b) 45%);
+    border-color: rgba(185, 28, 28, 0.28);
 }
 
 body[data-theme="dark"] .contab-mod-card {
@@ -237,7 +291,7 @@ body[data-theme="dark"] .contab-mod-card:hover {
 
 .coi-card h2 i {
     margin-right: 0.35rem;
-    color: var(--c-contabilidad, #0d9488);
+    color: var(--c-contabilidad, #b91c1c);
 }
 
 .coi-muted {
@@ -307,8 +361,8 @@ body[data-theme="dark"] .contab-mod-card:hover {
 }
 
 .coi-card-accent {
-    border-color: rgba(13, 148, 136, 0.35);
-    background: rgba(13, 148, 136, 0.04);
+    border-color: rgba(185, 28, 28, 0.35);
+    background: rgba(185, 28, 28, 0.04);
 }
 
 body[data-theme="dark"] .coi-card {
@@ -388,7 +442,7 @@ body[data-theme="dark"] .coi-code {
     width: 1.5rem;
     height: 1.5rem;
     border-radius: 50%;
-    background: var(--c-contabilidad, #0d9488);
+    background: var(--c-contabilidad, #b91c1c);
     color: #fff;
     font-size: 0.75rem;
     font-weight: 800;
@@ -402,8 +456,8 @@ body[data-theme="dark"] .coi-code {
 }
 
 .coi-card-highlight {
-    border-color: rgba(13, 148, 136, 0.45);
-    background: linear-gradient(135deg, rgba(13, 148, 136, 0.06) 0%, var(--bg-panel, #fff) 40%);
+    border-color: rgba(185, 28, 28, 0.45);
+    background: linear-gradient(135deg, rgba(185, 28, 28, 0.06) 0%, var(--bg-panel, #fff) 40%);
 }
 
 .coi-hint-banner {
@@ -443,7 +497,7 @@ body[data-theme="dark"] .coi-code {
 }
 
 .coi-log-table tbody tr:hover {
-    background: rgba(13, 148, 136, 0.04);
+    background: rgba(185, 28, 28, 0.04);
 }
 
 .coi-log-loading,
@@ -463,7 +517,7 @@ body[data-theme="dark"] .coi-code {
 .coi-src {
     font-weight: 700;
     font-size: 0.75rem;
-    color: var(--c-contabilidad, #0d9488);
+    color: var(--c-contabilidad, #b91c1c);
 }
 
 .coi-badge {
@@ -497,6 +551,43 @@ body[data-theme="dark"] .coi-code {
 .coi-badge-err {
     background: rgba(239, 68, 68, 0.18);
     color: #b91c1c;
+}
+
+.contab-kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.65rem;
+    margin-bottom: 1.1rem;
+}
+
+.contab-kpi-chip {
+    border-radius: 12px;
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--bg-panel, #fff);
+    padding: 0.65rem 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.contab-kpi-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted, #94a3b8);
+}
+
+.contab-kpi-chip strong {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--c-contabilidad, #b91c1c);
+    letter-spacing: -0.02em;
+}
+
+body[data-theme="dark"] .contab-kpi-chip {
+    background: rgba(0, 0, 0, 0.2);
 }
 
 @media (max-width: 768px) {

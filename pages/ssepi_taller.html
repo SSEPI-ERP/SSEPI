@@ -209,19 +209,30 @@
     <!-- MODAL WORKSTATION (5 PASOS) -->
     <div class="workstation-modal" id="wsModal">
         <div class="ws-header">
-            <div class="ws-title-group">
-                <button class="btn-secondary" id="closeWsBtn"><i class="fas fa-arrow-left"></i> Volver</button>
-                <div>
-                    <div class="ws-title">LABORATORIO - 5 ETAPAS</div>
-                    <div class="ws-folio"><input type="text" id="inpFolio" class="ws-folio-input" readonly></div>
+            <div class="ws-header-top">
+                <div class="ws-title-group">
+                    <button class="btn-secondary" id="closeWsBtn"><i class="fas fa-arrow-left"></i> Volver</button>
+                    <div>
+                        <div class="ws-title">Laboratorio · Orden de reparación</div>
+                        <div class="ws-folio"><input type="text" id="inpFolio" class="ws-folio-input" readonly placeholder="Folio"></div>
+                    </div>
+                </div>
+                <div class="ws-header-actions">
+                <a href="/assets/ejemplo-orden-reparacion-SP-E0687.pdf" class="btn-secondary ws-print-btn" target="_blank" rel="noopener" title="Formato de referencia (SP-E0687)"><i class="fas fa-file-pdf"></i> Ejemplo PDF</a>
+                <button type="button" class="btn-secondary ws-print-btn" id="btnVistaPreviaOrdenTaller" title="Abre vista previa; desde el navegador Imprimir → Guardar como PDF">
+                    <i class="fas fa-eye"></i> Vista previa
+                </button>
+                <button type="button" class="btn-secondary ws-print-btn" id="btnImprimirOrdenTaller" title="Abre e inicia el cuadro de impresión (PDF)">
+                    <i class="fas fa-print"></i> Imprimir / PDF
+                </button>
                 </div>
             </div>
-            <div class="ws-steps">
-                <button class="ws-step-btn active" data-step="1">Nuevo</button>
-                <button class="ws-step-btn" data-step="2">Confirmado / Diagnóstico</button>
-                <button class="ws-step-btn" data-step="3">En espera / En reparación</button>
-                <button class="ws-step-btn" data-step="4">Reparado</button>
-                <button class="ws-step-btn" data-step="5">Entregado / Facturado</button>
+            <div class="ws-steps" role="tablist" aria-label="Etapas de la orden">
+                <button type="button" class="ws-step-btn active" data-step="1">Nuevo</button>
+                <button type="button" class="ws-step-btn" data-step="2">Confirmado / Diagnóstico</button>
+                <button type="button" class="ws-step-btn" data-step="3">En espera / En reparación</button>
+                <button type="button" class="ws-step-btn" data-step="4">Reparado</button>
+                <button type="button" class="ws-step-btn" data-step="5">Entregado / Facturado</button>
             </div>
         </div>
 
@@ -418,17 +429,15 @@
                     </div>
                 </div>
             </div>
-            </div>
 
-            <!-- PANEL DERECHO (CHATTER / NOTAS / ACTIVIDAD) -->
-            <aside class="ws-chatter">
+            <aside class="ws-chatter" aria-label="Notas y actividad">
                 <div class="ws-chatter-header">
                     <div class="ws-chatter-title">Actividad</div>
                     <div class="ws-chatter-sub" id="wsChatterFolio">—</div>
                 </div>
                 <div class="ws-chatter-tabs">
                     <button type="button" class="ws-chatter-tab active" data-tab="notas"><i class="fas fa-message"></i> Notas</button>
-                    <button type="button" class="ws-chatter-tab" data-tab="actividad"><i class="fas fa-list"></i> Actividad</button>
+                    <button type="button" class="ws-chatter-tab" data-tab="actividad"><i class="fas fa-list"></i> Registro</button>
                 </div>
 
                 <div class="ws-chatter-body">
@@ -446,6 +455,7 @@
                     </div>
                 </div>
             </aside>
+            </div>
         </div>
 
         <div class="ws-footer">

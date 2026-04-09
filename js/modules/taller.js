@@ -1642,6 +1642,181 @@ const TallerModule = (function() {
         setTimeout(() => alertDiv.remove(), 4000);
     }
 
+    function _formVal(id) {
+        const el = document.getElementById(id);
+        if (!el) return '';
+        if (el.tagName === 'SELECT') {
+            const opt = el.options[el.selectedIndex];
+            return opt ? String(opt.text || '').trim() : '';
+        }
+        return String(el.value || '').trim();
+    }
+
+    function _tableRowsFromList(list, cols) {
+        if (!list || !list.length) return '<tr><td colspan="' + cols.length + '">—</td></tr>';
+        return list.map((row) => '<tr>' + cols.map((c) => '<td>' + _escapeHtmlReport(row[c] != null ? row[c] : '') + '</td>').join('') + '</tr>').join('');
+    }
+
+    function _escapeHtmlReport(s) {
+        const d = document.createElement('div');
+        d.textContent = s == null ? '' : String(s);
+        return d.innerHTML;
+    }
+
+    /**
+     * Informe tipo orden de reparación (formato alineado a SP-E0687: bloques + tablas).
+     * PDF: Imprimir → Guardar como PDF en el navegador.
+     */
+    function _openOrdenReportHtml(autoPrint) {
+        const folio = _formVal('inpFolio') || (currentOrder && currentOrder.folio) || 'BORRADOR';
+        const cliente = _formVal('selClient') || (currentOrder && currentOrder.cliente_nombre) || '—';
+        const ingreso = _formVal('inpDateTime') || '—';
+        const equipo = _formVal('inpEquip') || '—';
+        const marca = _formVal('inpBrand') || '—';
+        const modelo = _formVal('inpModel') || '—';
+        const serie = _formVal('inpSerial') || '—';
+        const falla = _formVal('inpFail') || '—';
+        const cond = _formVal('inpCond') || '—';
+        const refCli = _formVal('inpClientRef') || '—';
+        const recep = _formVal('inpReceptionBy') || '—';
+        const recVend = _formVal('recibidoPor') || '—';
+        const tecnico = _formVal('techSelect') || (currentOrder && currentOrder.tecnico_responsable) || '—';
+        const horasEst = _formVal('horasEstimadas') || '—';
+        const estado = (currentOrder && currentOrder.estado) ? String(currentOrder.estado) : '—';
+        const notasInt = _formVal('internalNotes') || '—';
+        const notasCli = _formVal('generalNotes') || '—';
+        const repNotas = _formVal('reparacionNotas') || '—';
+        const entRecibe = _formVal('recibeNombre') || '—';
+        const entFecha = _formVal('fechaEntrega') || '—';
+        const entObs = _formVal('entregaObs') || '—';
+        const firmaCli = _formVal('firmaClienteNombre') || '';
+        const firmaTec = _formVal('firmaTecnicoNombre') || '';
+
+        const esc = _escapeHtmlReport;
+
+        const tblEnlaces = '<table class="tbl"><thead><tr><th>Refacción (enlace)</th><th>SKU</th><th>Cant.</th><th>Link</th></tr></thead><tbody>' +
+            _tableRowsFromList(diagnosticoEnlaces, ['descripcion', 'sku', 'cantidad', 'link']) + '</tbody></table>';
+        const tblInv = '<table class="tbl"><thead><tr><th>SKU</th><th>Descripción</th><th>Cant.</th></tr></thead><tbody>' +
+            _tableRowsFromList(diagnosticoInventario, ['sku', 'descripcion', 'cantidad']) + '</tbody></table>';
+        const compInvRows = diagnosticoInventario.map((solicitado) => {
+            const existente = componentesInventario.find((c) => c.sku === solicitado.sku);
+            return {
+                sku: solicitado.sku,
+                descripcion: solicitado.descripcion,
+                cantidad_usada: existente ? existente.cantidad_usada : solicitado.cantidad,
+            };
+        });
+        const tblCompI = '<table class="tbl"><thead><tr><th>SKU</th><th>Descripción</th><th>Usado</th></tr></thead><tbody>' +
+            _tableRowsFromList(compInvRows, ['sku', 'descripcion', 'cantidad_usada']) + '</tbody></table>';
+        let compCompraRows = [];
+        if (orderId && comprasVinculadas[orderId] && comprasVinculadas[orderId].items) {
+            compCompraRows = comprasVinculadas[orderId].items.map((item, idx) => ({
+                descripcion: item.desc || '',
+                sku: item.sku || '',
+                cantidad_usada:
+                    componentesCompra[idx] && componentesCompra[idx].cantidad_usada != null
+                        ? componentesCompra[idx].cantidad_usada
+                        : item.qty || 0,
+            }));
+        }
+        const tblCompC = '<table class="tbl"><thead><tr><th>Descripción</th><th>SKU</th><th>Usado</th></tr></thead><tbody>' +
+            _tableRowsFromList(compCompraRows, ['descripcion', 'sku', 'cantidad_usada']) + '</tbody></table>';
+        const tblCons = '<table class="tbl"><thead><tr><th>SKU</th><th>Descripción</th><th>Cant.</th></tr></thead><tbody>' +
+            _tableRowsFromList(consumiblesUsados, ['sku', 'descripcion', 'cantidad']) + '</tbody></table>';
+
+        const toolbar = !autoPrint
+            ? `<div class="no-print" style="position:sticky;top:0;background:#0d47a1;color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;z-index:9;font-family:system-ui,sans-serif;">
+<button type="button" onclick="window.print()" style="padding:8px 14px;font-weight:700;cursor:pointer;border-radius:6px;border:none;">Imprimir / Guardar PDF</button>
+<span style="font-size:12px;opacity:.95">Usa “Guardar como PDF” como destino de impresión.</span>
+</div>`
+            : '';
+
+        const printScript = autoPrint ? '<script>window.onload=function(){window.print();}<\/script>' : '';
+
+        const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Orden de reparación ${esc(folio)}</title>
+<style>
+@page { size: A4; margin: 12mm; }
+body { font-family: Inter, Segoe UI, sans-serif; color: #111; font-size: 10.5pt; line-height: 1.35; margin: 0; }
+.no-print { }
+@media print { .no-print { display: none !important; } }
+h1 { font-size: 15pt; margin: 12px 0 2px; color: #0d47a1; letter-spacing: .03em; text-transform: uppercase; }
+.brand { font-size: 9pt; color: #555; margin-bottom: 14px; }
+.meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; font-size: 10pt; }
+.meta strong { color: #333; }
+.sec { margin-top: 14px; }
+.sec h2 { font-size: 10pt; text-transform: uppercase; letter-spacing: .06em; color: #0d47a1; border-bottom: 2px solid #0d47a1; padding-bottom: 4px; margin: 0 0 8px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+.box { border: 1px solid #bbb; border-radius: 4px; padding: 8px 10px; }
+.label { font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+.val { font-weight: 600; white-space: pre-wrap; word-break: break-word; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: 9pt; margin-top: 6px; }
+table.tbl th, table.tbl td { border: 1px solid #ccc; padding: 5px 7px; text-align: left; }
+table.tbl th { background: #f0f4f8; font-weight: 700; }
+.firmas { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 28px; padding-top: 16px; border-top: 1px solid #999; }
+.firma-line { border-bottom: 1px solid #333; min-height: 36px; margin-top: 28px; }
+.footer { margin-top: 16px; font-size: 8pt; color: #666; }
+</style></head><body>
+${toolbar}
+<h1>Orden de reparación</h1>
+<div class="brand">SSEPI · Laboratorio de electrónica</div>
+<div class="meta"><span><strong>Folio:</strong> ${esc(folio)}</span><span><strong>Estado:</strong> ${esc(estado)}</span><span><strong>Ingreso:</strong> ${esc(ingreso)}</span></div>
+<div class="grid">
+<div class="box"><div class="label">Cliente</div><div class="val">${esc(cliente)}</div></div>
+<div class="box"><div class="label">Referencia cliente</div><div class="val">${esc(refCli)}</div></div>
+</div>
+<div class="box" style="margin-top:8px;"><div class="label">Equipo</div><div class="val">${esc(equipo)}</div></div>
+<div class="grid" style="margin-top:8px;">
+<div class="box"><div class="label">Marca</div><div class="val">${esc(marca)}</div></div>
+<div class="box"><div class="label">Modelo</div><div class="val">${esc(modelo)}</div></div>
+<div class="box"><div class="label">Serie</div><div class="val">${esc(serie)}</div></div>
+<div class="box"><div class="label">Recepción / Vendedor</div><div class="val">${esc(recep)} / ${esc(recVend)}</div></div>
+</div>
+<div class="box" style="margin-top:8px;"><div class="label">Falla reportada</div><div class="val">${esc(falla)}</div></div>
+<div class="box" style="margin-top:8px;"><div class="label">Condiciones físicas</div><div class="val">${esc(cond)}</div></div>
+<div class="sec"><h2>Diagnóstico</h2>
+<div class="grid"><div class="box"><div class="label">Técnico</div><div class="val">${esc(tecnico)}</div></div><div class="box"><div class="label">Horas estimadas</div><div class="val">${esc(horasEst)}</div></div></div>
+<p class="label" style="margin-top:8px;">Refacciones (enlace)</p>${tblEnlaces}
+<p class="label" style="margin-top:8px;">Refacciones (inventario)</p>${tblInv}
+</div>
+<div class="sec"><h2>Reparación</h2>
+<p class="label">Notas de reparación</p><div class="box"><div class="val">${esc(repNotas)}</div></div>
+<p class="label" style="margin-top:8px;">Componentes inventario</p>${tblCompI}
+<p class="label" style="margin-top:8px;">Componentes compra</p>${tblCompC}
+<p class="label" style="margin-top:8px;">Consumibles</p>${tblCons}
+</div>
+<div class="sec"><h2>Notas</h2>
+<div class="box" style="margin-bottom:8px;"><div class="label">Internas</div><div class="val">${esc(notasInt)}</div></div>
+<div class="box"><div class="label">Cliente</div><div class="val">${esc(notasCli)}</div></div>
+</div>
+<div class="sec"><h2>Entrega</h2>
+<div class="grid"><div class="box"><div class="label">Recibe</div><div class="val">${esc(entRecibe)}</div></div><div class="box"><div class="label">Fecha entrega</div><div class="val">${esc(entFecha)}</div></div></div>
+<div class="box" style="margin-top:8px;"><div class="label">Observaciones</div><div class="val">${esc(entObs)}</div></div>
+<div class="firmas">
+<div><div class="label">Firma cliente</div><div class="firma-line"></div><div style="font-size:9pt;margin-top:4px;">${esc(firmaCli || 'Nombre y fecha')}</div></div>
+<div><div class="label">Firma técnico</div><div class="firma-line"></div><div style="font-size:9pt;margin-top:4px;">${esc(firmaTec || 'Nombre y fecha')}</div></div>
+</div>
+</div>
+<div class="footer">Generado ${esc(new Date().toLocaleString('es-MX'))} · Documento de trabajo; conservar firmado en expediente.</div>
+${printScript}
+</body></html>`;
+
+        const w = window.open('', '_blank', 'noopener,noreferrer');
+        if (!w) {
+            alert('Permite ventanas emergentes para la vista previa o impresión.');
+            return;
+        }
+        w.document.write(html);
+        w.document.close();
+    }
+
+    function _imprimirOrdenReparacion() {
+        _openOrdenReportHtml(true);
+    }
+
+    function _vistaPreviaOrdenReparacion() {
+        _openOrdenReportHtml(false);
+    }
+
     // ==================== EVENTOS DOM ====================
     function _bindEvents() {
         document.getElementById('toggleMenu').addEventListener('click', _toggleMenu);
@@ -1655,6 +1830,10 @@ const TallerModule = (function() {
         }
         document.getElementById('closeWsBtn').addEventListener('click', _cerrarModal);
         document.getElementById('cancelWsBtn').addEventListener('click', _cerrarModal);
+        const printOrdenBtn = document.getElementById('btnImprimirOrdenTaller');
+        if (printOrdenBtn) printOrdenBtn.addEventListener('click', () => _imprimirOrdenReparacion());
+        const prevOrdenBtn = document.getElementById('btnVistaPreviaOrdenTaller');
+        if (prevOrdenBtn) prevOrdenBtn.addEventListener('click', () => _vistaPreviaOrdenReparacion());
         document.querySelectorAll('.ws-step-btn').forEach(btn => {
             btn.addEventListener('click', (e) => _irPaso(parseInt(e.target.dataset.step)));
         });

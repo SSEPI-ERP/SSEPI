@@ -232,13 +232,23 @@
                 <div id="step-3" class="step-content">
                     <div class="form-section">
                         <div class="section-title-form"><i class="fas fa-boxes"></i> Materiales</div>
+                        <div class="form-section" style="margin-bottom:1rem;padding:0;border:none;">
+                            <div class="section-title-form" style="font-size:0.95rem;"><i class="fas fa-calculator"></i> Referencia de costos</div>
+                            <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 10px;">Suma de costo por línea (costo unitario editable o costo del SKU en inventario; carga con <code>node import.mjs inventario --apply</code> y el Excel <strong>inventario electronica ssepi</strong>) más traslado (km / camioneta) con parámetros de calculadoras en Supabase.</p>
+                            <div class="form-grid">
+                                <div class="input-group"><label>Km visita</label><input type="number" id="autoCostoKm" min="0" step="1" value="0"></div>
+                                <div class="input-group"><label>Horas camioneta</label><input type="number" id="autoCostoHrsCam" min="0" step="0.5" value="0"></div>
+                            </div>
+                            <button type="button" class="btn-ssepi btn-automatizacion" id="btnRecalcCostosServicios" style="margin-top:8px;"><i class="fas fa-sync-alt"></i> Actualizar estimación</button>
+                            <div id="serviciosCostosResumen" style="margin-top:12px;font-size:0.9rem;line-height:1.5;"></div>
+                        </div>
                         <div class="inventario-selector">
                             <select id="inventarioSelect"><option value="">Seleccionar producto</option></select>
                             <button class="btn-secondary" id="agregarDesdeInventario">Agregar</button>
                         </div>
                         <button class="btn-add-row" id="agregarMaterialManual"><i class="fas fa-plus"></i> Agregar Manual</button>
                         <table class="materiales-table">
-                            <thead><tr><th>Nombre</th><th>Descripción</th><th>Cantidad</th><th>SKU</th><th></th></tr></thead>
+                            <thead><tr><th>Nombre</th><th>Descripción</th><th>Cantidad</th><th>SKU</th><th>Costo u.</th><th>Subtotal</th><th></th></tr></thead>
                             <tbody id="materialesBody"></tbody>
                         </table>
                         <div style="display:flex; justify-content:flex-end; margin-top:20px;">

@@ -14,6 +14,8 @@
  *   node import.mjs orders --dry-run | --apply
  *   node import.mjs inventario --dry-run | --apply
  *   node import.mjs bom --dry-run | --apply
+ *   node import.mjs formulas --dry-run | --apply
+ *       — FORMULAS DE COTIZACIÓN.xlsx en fuente/ → calculadoras + calculadora_costos
  *
  * No commitear claves. --dry-run escribe CSV en scripts/imports/out/
  */
@@ -384,6 +386,37 @@ async function cmdOrders(argv) {
   console.log('Órdenes upsert:', ok, '/', out.length);
 }
 
+/** Filas del formato "inventario electronica ssepi*.xlsx" (hoja con encabezado CÓDIGO MARKING). */
+function readInventarioElectronicaRows(filePath) {
+  const wb = XLSX.readFile(filePath, { cellDates: true });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+  let headerIdx = -1;
+  for (let i = 0; i < matrix.length; i++) {
+    const c0 = String(matrix[i][0] || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    if (c0.includes('marking') || c0.includes('codigo') && c0.includes('mark')) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx < 0) return [];
+  const hdr = matrix[headerIdx];
+  const out = [];
+  for (let r = headerIdx + 1; r < matrix.length; r++) {
+    const row = matrix[r];
+    const o = {};
+    hdr.forEach((h, j) => {
+      const k = normHeader(h);
+      if (k) o[k] = row[j];
+    });
+    out.push(normalizeRowKeys(o));
+  }
+  return out;
+}
+
 function guessCategoria(row, sourceHint) {
   const h = (sourceHint || '').toLowerCase();
   if (h.includes('automat')) return 'almacenable';
@@ -403,7 +436,11 @@ async function cmdInventario(argv) {
   const isTablaCostos = (fp) => fp.toLowerCase().includes('tabla_costos_inventario') || fp.toLowerCase().includes('costos');
 
   const ingestFile = (fp, hint) => {
-    let rows = readSheetRows(fp);
+    const base = path.basename(fp).toLowerCase();
+    let rows =
+      base.includes('inventario electronica') || base.includes('inventario electr')
+        ? readInventarioElectronicaRows(fp)
+        : readSheetRows(fp);
     // Si el archivo es plantilla y no trae headers útiles, intentar detectar fila de encabezados.
     // Criterio: buscar una fila que contenga algo que parezca "SKU" / "CÓDIGO" / "MARKING".
     if (rows.length && Object.keys(rows[0]).every(k => k.startsWith('__empty') || k.length < 3)) {
@@ -412,10 +449,19 @@ async function cmdInventario(argv) {
     for (const r of rows) {
       const sku = String(pick(r, [
         'sku', 'codigo', 'código', 'default_code', 'referencia', 'clave',
-        'codigo_marking', 'cdigo_marking', 'numero_de_parte', 'nmero_de_parte'
+        'codigo_marking', 'cdigo_marking', 'numero_de_parte', 'nmero_de_parte',
       ]) || '').trim();
       if (!sku) continue;
-      const nombre = String(pick(r, ['nombre', 'name', 'descripcion', 'product', 'producto']) || sku).trim();
+      const nombre = String(
+        pick(r, [
+          'nombre',
+          'name',
+          'descripcion',
+          'descripcion_del_producto',
+          'product',
+          'producto',
+        ]) || sku
+      ).trim();
       const stock = toNum(pick(r, ['stock', 'cantidad', 'qty', 'existencia', 'on_hand', 'existencia'],), 0);
       const costo = toNum(pick(r, ['costo', 'standard_price', 'cost', 'precio_costo', 'costo_unitario_mxn', 'cost_unit']), 0);
       const precio = toNum(pick(r, ['precio_venta', 'list_price', 'precio', 'price']), 0);
@@ -440,6 +486,7 @@ async function cmdInventario(argv) {
     const low = f.toLowerCase();
     if (!low.match(/\.(xlsx|xls|csv)$/)) continue;
     if (low.includes('contacto') || low.includes('repar') || low.includes('bom')) continue;
+    if (low.includes('formula')) continue;
     ingestFile(path.join(FUENTE, f), f);
   }
 
@@ -484,6 +531,223 @@ async function cmdInventario(argv) {
   console.log('Inventario upsert:', ok, '/', out.length);
 }
 
+function findFormulasWorkbook() {
+  if (!fs.existsSync(FUENTE)) return null;
+  const files = fs.readdirSync(FUENTE);
+  const hit = files.find((f) => {
+    if (f.startsWith('.')) return false;
+    const low = f.toLowerCase();
+    return low.endsWith('.xlsx') && low.includes('formula');
+  });
+  return hit ? path.join(FUENTE, hit) : null;
+}
+
+function sheetToMatrix(wb, sheetName) {
+  const sh = wb.Sheets[sheetName];
+  if (!sh) return [];
+  return XLSX.utils.sheet_to_json(sh, { header: 1, defval: '' });
+}
+
+function pctFromLabel(label) {
+  const m = String(label || '').match(/(\d+(?:\.\d+)?)\s*%/);
+  return m ? parseFloat(m[1]) : null;
+}
+
+async function upsertCalculadoraByNombre(supabase, { nombre, tipo, funciones }) {
+  const q = await supabase.from('calculadoras').select('id').eq('nombre', nombre).maybeSingle();
+  if (q.error) throw q.error;
+  if (q.data?.id) {
+    const u = await supabase
+      .from('calculadoras')
+      .update({
+        tipo: tipo || null,
+        funciones: funciones || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', q.data.id);
+    if (u.error) throw u.error;
+    return q.data.id;
+  }
+  const ins = await supabase
+    .from('calculadoras')
+    .insert({
+      nombre,
+      tipo: tipo || null,
+      funciones: funciones || null,
+      config_json: {},
+      activo: true,
+    })
+    .select('id')
+    .single();
+  if (ins.error) throw ins.error;
+  return ins.data.id;
+}
+
+async function replaceCostosForCalculadora(supabase, calculadoraId, rows) {
+  const del = await supabase.from('calculadora_costos').delete().eq('calculadora_id', calculadoraId);
+  if (del.error) throw del.error;
+  if (!rows.length) return;
+  const batch = rows.map((r) => ({
+    calculadora_id: calculadoraId,
+    concepto: r.concepto,
+    costo: r.costo,
+    moneda: r.moneda || 'MXN',
+  }));
+  const ins = await supabase.from('calculadora_costos').insert(batch);
+  if (ins.error) throw ins.error;
+}
+
+async function cmdFormulas(argv) {
+  const apply = argv.includes('--apply');
+  const fp = findFormulasWorkbook();
+  if (!fp) {
+    console.error('No se encontró xlsx en fuente/ con "formula" en el nombre (ej. FORMULAS DE COTIZACIÓN.xlsx)');
+    process.exit(1);
+  }
+  const wb = XLSX.readFile(fp, { cellDates: true });
+  const hoja1 = sheetToMatrix(wb, 'Hoja1');
+  const lab = sheetToMatrix(wb, 'LABORATORIO');
+  const autoName = wb.SheetNames.find((n) => n.toUpperCase().includes('AUTOMATIZ'));
+  const auto = autoName ? sheetToMatrix(wb, autoName) : [];
+
+  const labCostos = [];
+  const autoCostos = [];
+
+  // --- Hoja1 → Laboratorio (motor CostosEngine) ---
+  if (hoja1.length >= 2) {
+    const hdr = hoja1[0].map((c) => String(c || '').trim());
+    const row = hoja1[1];
+    const idx = (pred) => hdr.findIndex((h, i) => pred(String(h).toLowerCase(), i));
+    const iKm = idx((h) => h.includes('km'));
+    const iLit = idx((h) => h.includes('litros'));
+    const iGasL = idx((h) => h.includes('gasolina') && !h.includes('gasolina2'));
+    const iHrDani = idx((h) => h.includes('hr dani') || h.includes('dani'));
+    const km = iKm >= 0 ? toNum(row[iKm], 0) : 0;
+    const litros = iLit >= 0 ? toNum(row[iLit], 0) : 0;
+    const gasolina = iGasL >= 0 ? toNum(row[iGasL], 24.5) : 24.5;
+    const costoTecnico = iHrDani >= 0 ? toNum(row[iHrDani], 104.16) : 104.16;
+    const rendimiento = km > 0 && litros > 0 ? km / litros : 9.5;
+
+    labCostos.push(
+      { concepto: 'gasolina', costo: gasolina },
+      { concepto: 'rendimiento', costo: rendimiento },
+      { concepto: 'costoTecnico', costo: costoTecnico }
+    );
+  }
+
+  // --- LABORATORIO hoja: gastos fijos / camioneta / % ---
+  if (lab.length >= 2) {
+    const meta = lab[0];
+    const headers = lab[1].map((c) => String(c || '').trim());
+    const iGf = headers.findIndex((h) => h.toUpperCase().includes('GASTOS FIJOS'));
+    const iCam = headers.findIndex((h) => h.toUpperCase().includes('CAMIONETA'));
+    if (iGf >= 0 && meta[iGf] !== '' && meta[iGf] != null)
+      labCostos.push({ concepto: 'gastosFijosHora', costo: toNum(meta[iGf], 0) });
+    if (iCam >= 0 && meta[iCam] !== '' && meta[iCam] != null)
+      labCostos.push({ concepto: 'camionetaHora', costo: toNum(meta[iCam], 0) });
+    const utilH = headers.find((h) => String(h).toUpperCase().includes('UTLIDAD'));
+    const credH = headers.find((h) => String(h).toUpperCase().includes('CREDITO'));
+    const u = utilH != null ? pctFromLabel(utilH) : null;
+    const c = credH != null ? pctFromLabel(credH) : null;
+    if (u != null) labCostos.push({ concepto: 'utilidad', costo: u });
+    if (c != null) labCostos.push({ concepto: 'credito', costo: c });
+  }
+  labCostos.push({ concepto: 'iva', costo: 16 });
+
+  // --- AUTOMATIZACIÓN: fila 0 = valores / tarifas; fila 1 = encabezados (plantilla Excel) ---
+  if (auto.length >= 2) {
+    const r0 = auto[0];
+    const r1 = auto[1];
+    const maxCol = Math.max(r0.length, r1.length);
+    for (let j = 1; j < maxCol; j++) {
+      const head = String(r1[j] || '').trim();
+      if (!head || /^empresa$/i.test(head)) continue;
+      const val = r0[j];
+      const n = typeof val === 'number' ? val : toNum(val, NaN);
+      const pct = pctFromLabel(head);
+
+      if (/^total$/i.test(head) || /^total\s*$/i.test(head)) continue;
+      if (/^materiales$/i.test(head) || /^vi[aá]ticos$/i.test(head)) continue;
+      if (/total\s*venta/i.test(head)) continue;
+
+      if (j >= 1 && j <= 8 && Number.isFinite(n) && n > 0) {
+        autoCostos.push({ concepto: `Tarifa: ${head}`, costo: n });
+        continue;
+      }
+      if (/tiempo planta/i.test(head) && Number.isFinite(n) && n > 0) {
+        autoCostos.push({ concepto: 'auto:tarifaTiempoPlanta', costo: n });
+        continue;
+      }
+      if (/hr camioneta/i.test(head) && Number.isFinite(n)) {
+        autoCostos.push({ concepto: 'auto:camionetaHora', costo: n });
+        continue;
+      }
+      if (/^gasolina/i.test(head) && Number.isFinite(n)) {
+        autoCostos.push({ concepto: 'auto:paramGasolina', costo: n });
+        continue;
+      }
+      if (/gastos generales/i.test(head) && Number.isFinite(n) && n > 0) {
+        autoCostos.push({ concepto: 'auto:horaGastoGeneral', costo: n });
+        continue;
+      }
+      if (/total\s*30\s*%/i.test(head) && pct != null) {
+        autoCostos.push({ concepto: 'auto:markupMaterialesPct', costo: pct });
+        continue;
+      }
+      if (/cr[eé]dito/i.test(head) && pct != null) {
+        autoCostos.push({ concepto: 'auto:creditoPct', costo: pct });
+        continue;
+      }
+      if (/descuento/i.test(head) && pct != null) {
+        autoCostos.push({ concepto: 'auto:descuentoPct', costo: pct });
+        continue;
+      }
+    }
+  }
+
+  const plan = {
+    archivo: path.basename(fp),
+    laboratorio: {
+      nombre: 'Laboratorio (electrónica)',
+      tipo: 'electronica',
+      funciones: 'Cotización tipo taller: km, traslado, mano de obra, gastos fijos, refacciones, camioneta (CostosEngine). Constantes en calculadora_costos.',
+      costos: labCostos,
+    },
+    automatizacion: {
+      nombre: 'Automatización',
+      tipo: 'automatizacion',
+      funciones:
+        'Cotización por líneas de servicio (tarifas $/h del Excel) + materiales, viáticos, camioneta, investigación, crédito y descuento. Valores en calculadora_costos.',
+      costos: autoCostos,
+    },
+  };
+
+  writeCsv(
+    'formulas_laboratorio_costos.csv',
+    labCostos.map((c) => ({ concepto: c.concepto, costo: c.costo })),
+    ['concepto', 'costo']
+  );
+  writeCsv(
+    'formulas_automatizacion_costos.csv',
+    autoCostos.map((c) => ({ concepto: c.concepto, costo: c.costo })),
+    ['concepto', 'costo']
+  );
+  console.log('Archivo:', plan.archivo);
+  console.log('Laboratorio costos:', labCostos.length, '| Automatización costos:', autoCostos.length);
+
+  if (!apply) {
+    console.log('--dry-run: revisa scripts/imports/out/formulas_*.csv ; ejecuta con --apply para subir a Supabase.');
+    return;
+  }
+
+  const supabase = getSupabase(true);
+  const idLab = await upsertCalculadoraByNombre(supabase, plan.laboratorio);
+  const idAuto = await upsertCalculadoraByNombre(supabase, plan.automatizacion);
+  await replaceCostosForCalculadora(supabase, idLab, plan.laboratorio.costos);
+  await replaceCostosForCalculadora(supabase, idAuto, plan.automatizacion.costos);
+  console.log('OK: calculadoras actualizadas (ids laboratorio / auto) y costos reemplazados por calculadora.');
+}
+
 async function cmdBom(argv) {
   const apply = argv.includes('--apply');
   const files = findFuente(['bom', 'bom_ssepi', 'lista', 'materiales']);
@@ -523,15 +787,17 @@ const cmds = {
   orders: cmdOrders,
   inventario: cmdInventario,
   bom: cmdBom,
+  formulas: cmdFormulas,
 };
 
 if (!cmd || !cmds[cmd]) {
-  console.log(`Uso: node import.mjs <inspect|contacts|orders|inventario|bom> [--dry-run|--apply]
+  console.log(`Uso: node import.mjs <inspect|contacts|orders|inventario|bom|formulas> [--dry-run|--apply]
   inspect     — muestra columnas de archivos en fuente/
   contacts    — res.partner / contactos (logo desde /clintes)
   orders      — repair.order → ordenes_taller (requiere migración estados Odoo)
   inventario  — fusiona todos los xlsx/csv de fuente/ excepto contactos/reparaciones
-  bom         — BOM_*.csv → bom_lineas`);
+  bom         — BOM_*.csv → bom_lineas
+  formulas    — FORMULAS*COTIZACION*.xlsx → calculadoras + calculadora_costos`);
   process.exit(cmd ? 1 : 0);
 }
 

@@ -11,7 +11,7 @@ Copia tus archivos a `scripts/imports/fuente/` con nombres que el script reconoz
 | Contactos | `contacto`, `res.partner` |
 | Reparaciones | `reparación`, `repair.order`, `repair` |
 | BOM | `bom` |
-| Inventario / costos / herramientas | Cualquier otro `.xlsx` / `.csv` (se fusionan por SKU; se excluyen contactos, reparaciones y BOM) |
+| Inventario / costos / herramientas | Cualquier otro `.xlsx` / `.csv` (se fusionan por SKU; se excluyen contactos, reparaciones y BOM). Los archivos con nombre **`inventario electronica`** usan la fila **CÓDIGO MARKING** como encabezado. |
 
 Los logos de clientes deben estar en la carpeta del repo `clintes/`; el script asigna `logo_url` por coincidencia aproximada de nombre/empresa.
 
@@ -39,7 +39,15 @@ node import.mjs contacts --dry-run
 node import.mjs orders --dry-run
 node import.mjs inventario --dry-run
 node import.mjs bom --dry-run
+node import.mjs formulas --dry-run
 ```
+
+### Cotizaciones (FORMULAS DE COTIZACIÓN.xlsx)
+
+Coloca el libro en `fuente/` con un nombre que contenga `formula`. Crea o actualiza **Laboratorio (electrónica)** y **Automatización** y reemplaza `calculadora_costos` desde las hojas Hoja1, LABORATORIO y AUTOMATIZACIÓN.
+
+1. SQL: `calculadoras-modulo.sql` y `calculadoras-rls-acceso-equipo.sql`.
+2. `node import.mjs formulas --apply` (mismas variables Supabase que contactos).
 
 ## 5. Carga directa a Supabase (`--apply`)
 

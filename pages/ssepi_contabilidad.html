@@ -76,11 +76,18 @@
     <main>
         <div class="welcome-header contab-hero">
             <h1>Contabilidad</h1>
-            <p class="contab-hero-sub">Resumen y movimientos del periodo.</p>
+            <p class="contab-hero-sub">Periodo seleccionado: facturación, compras, banco y nómina en un solo panel.</p>
+            <p class="coi-muted" style="margin-top:0.5rem;max-width:52rem;">La <strong>nómina</strong> se integra aquí (pestaña Nómina). El menú lateral «Nómina» abre la vista detallada de pagos cuando haga falta operar fuera de este resumen.</p>
         </div>
 
         <section class="coi-panel">
             <div class="coi-card contab-lede-card">
+                <div class="contab-kpi-strip" id="contabKpiStrip" aria-label="Resumen del periodo">
+                    <div class="contab-kpi-chip"><span class="contab-kpi-label">Facturado</span><strong id="contabKpiFacturado">—</strong></div>
+                    <div class="contab-kpi-chip"><span class="contab-kpi-label">Compras</span><strong id="contabKpiCompras">—</strong></div>
+                    <div class="contab-kpi-chip"><span class="contab-kpi-label">Cobros (banco)</span><strong id="contabKpiCobros">—</strong></div>
+                    <div class="contab-kpi-chip"><span class="contab-kpi-label">Nómina</span><strong id="contabKpiNomina">—</strong></div>
+                </div>
                 <div class="contab-toolbar">
                     <div class="contab-field">
                         <label for="contabDesde">Desde</label>
@@ -137,11 +144,11 @@
                         </span>
                         <i class="fas fa-external-link-alt contab-mod-go"></i>
                     </a>
-                    <a id="contabLinkNomina" class="contab-mod-card" href="/pages/ssepi_nomina.html">
+                    <a id="contabLinkNomina" class="contab-mod-card" href="/pages/ssepi_contabilidad.html?tab=nomina">
                         <span class="contab-mod-icon"><i class="fas fa-users"></i></span>
                         <span class="contab-mod-body">
                             <span class="contab-mod-title">Nómina</span>
-                            <span class="contab-mod-sub">Pagos (esta vista)</span>
+                            <span class="contab-mod-sub">Pagos en esta misma página</span>
                         </span>
                         <i class="fas fa-chevron-right contab-mod-go"></i>
                     </a>

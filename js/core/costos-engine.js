@@ -101,9 +101,16 @@ export const CostosEngine = (function() {
         };
     }
 
+    /** Sobreescribe constantes desde BD / calculadora_costos (sin persistir en código). */
+    function applyConfig(partial) {
+        if (!partial || typeof partial !== 'object') return;
+        Object.assign(CONFIG, partial);
+    }
+
     // ==================== API PÚBLICA ====================
     return {
         CONFIG,
+        applyConfig,
         calcularLitros,
         calcularCostoGasolina,
         calcularCostoTrasladoTecnico,
