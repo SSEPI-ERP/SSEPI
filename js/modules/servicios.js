@@ -12,6 +12,7 @@ import { CostosEngine } from '../core/costos-engine.js';
 import { getPrioritySuppliersForModule } from '../core/ssepi-runtime/priority-suppliers-catalog.js';
 import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
 import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
+import { purgeDraftRecordKeys } from '../core/ssepi-runtime/draft-purge-keys.js';
 
 const ServiciosModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -86,6 +87,20 @@ const ServiciosModule = (function() {
         if (folio) return 'new:' + folio;
         if (!serviciosDraftSessionKey) serviciosDraftSessionKey = 'tmp:' + Date.now();
         return serviciosDraftSessionKey;
+    }
+
+    function _serviciosDraftKeysToPurge() {
+        const keys = [];
+        if (projectId) keys.push(String(projectId));
+        const folio = (document.getElementById('inpFolio') && document.getElementById('inpFolio').value || '').trim();
+        if (folio) keys.push('new:' + folio);
+        if (serviciosDraftSessionKey) keys.push(serviciosDraftSessionKey);
+        return keys;
+    }
+
+    function _afterServiciosPersistOk() {
+        purgeDraftRecordKeys('proyectos_automatizacion', _serviciosDraftKeysToPurge());
+        serviciosDraftSessionKey = null;
     }
 
     function _collectServiciosDraftPayload() {
@@ -1073,6 +1088,7 @@ const ServiciosModule = (function() {
                 await proyectosService.update(projectId, data, csrfToken);
                 alert('✅ Proyecto actualizado');
             }
+            _afterServiciosPersistOk();
             _addToFeed('💾', `Proyecto ${data.folio} guardado`);
             _cerrarModal();
         } catch (error) {
@@ -1197,6 +1213,7 @@ const ServiciosModule = (function() {
         projectId = inserted.id;
         isNewProject = false;
         document.getElementById('inpFolio').value = inserted.folio || data.folio;
+        _afterServiciosPersistOk();
         _addToFeed('💾', `Proyecto ${data.folio} guardado (auto)`);
         return projectId;
     }

@@ -11,6 +11,7 @@ import { createDataService } from '../core/data-service.js';
 import { getPrioritySuppliersForModule } from '../core/ssepi-runtime/priority-suppliers-catalog.js';
 import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
 import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
+import { purgeDraftRecordKeys } from '../core/ssepi-runtime/draft-purge-keys.js';
 
 const TallerModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -89,6 +90,20 @@ const TallerModule = (function() {
         if (folio) return 'new:' + folio;
         if (!tallerDraftSessionKey) tallerDraftSessionKey = 'tmp:' + Date.now();
         return tallerDraftSessionKey;
+    }
+
+    function _tallerDraftKeysToPurge() {
+        const keys = [];
+        if (orderId) keys.push(String(orderId));
+        const folio = (document.getElementById('inpFolio') && document.getElementById('inpFolio').value || '').trim();
+        if (folio) keys.push('new:' + folio);
+        if (tallerDraftSessionKey) keys.push(tallerDraftSessionKey);
+        return keys;
+    }
+
+    function _afterTallerPersistOk() {
+        purgeDraftRecordKeys('ordenes_taller', _tallerDraftKeysToPurge());
+        tallerDraftSessionKey = null;
     }
 
     function _collectTallerDraftPayload() {
@@ -1370,6 +1385,7 @@ const TallerModule = (function() {
                 fecha: new Date().toISOString()
             }, csrfToken);
 
+            _afterTallerPersistOk();
             _cerrarModal();
             _addToFeed('⚠️', `Orden marcada sin reparación`);
         } catch (error) {
@@ -1462,6 +1478,7 @@ const TallerModule = (function() {
 
             _showSuccessAlert('✅ Solicitud de compra generada. La orden pasó a estado "En Espera".');
             _addToFeed('🛒', `Solicitud de compra creada para ${folioTaller}`);
+            _afterTallerPersistOk();
             _cerrarModal();
 
         } catch (error) {
@@ -1523,6 +1540,7 @@ const TallerModule = (function() {
             }, csrfToken);
 
             _irPaso(4);
+            _afterTallerPersistOk();
             alert('✅ Reparación finalizada');
             _addToFeed('✅', `Reparación completada para ${data.folio}`);
         } catch (error) {
@@ -1591,6 +1609,7 @@ const TallerModule = (function() {
                 await ordenesService.update(orderId, data, csrfToken);
                 if (!silencioso) alert('✅ Orden actualizada correctamente');
             }
+            _afterTallerPersistOk();
             _addToFeed('💾', `Orden ${data.folio} guardada`);
         } catch (error) {
             console.error(error);
@@ -1658,6 +1677,7 @@ const TallerModule = (function() {
                 fecha: new Date().toISOString()
             }, csrfToken);
 
+            _afterTallerPersistOk();
             _cerrarModal();
             alert('✅ Orden entregada a ventas');
         } catch (error) {

@@ -10,6 +10,7 @@ import { createDataService } from '../core/data-service.js';
 import { getPrioritySuppliersForModule } from '../core/ssepi-runtime/priority-suppliers-catalog.js';
 import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
 import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
+import { purgeDraftRecordKeys } from '../core/ssepi-runtime/draft-purge-keys.js';
 
 const MotoresModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -63,6 +64,20 @@ const MotoresModule = (function() {
         if (folio) return 'new:' + folio;
         if (!motoresDraftSessionKey) motoresDraftSessionKey = 'tmp:' + Date.now();
         return motoresDraftSessionKey;
+    }
+
+    function _motoresDraftKeysToPurge() {
+        const keys = [];
+        if (orderId) keys.push(String(orderId));
+        const folio = (document.getElementById('inpFolio') && document.getElementById('inpFolio').value || '').trim();
+        if (folio) keys.push('new:' + folio);
+        if (motoresDraftSessionKey) keys.push(motoresDraftSessionKey);
+        return keys;
+    }
+
+    function _afterMotoresPersistOk() {
+        purgeDraftRecordKeys('ordenes_motores', _motoresDraftKeysToPurge());
+        motoresDraftSessionKey = null;
     }
 
     function _collectMotoresDraftPayload() {
@@ -979,6 +994,7 @@ const MotoresModule = (function() {
                 fecha: new Date().toISOString()
             }, csrfToken);
 
+            _afterMotoresPersistOk();
             _cerrarModal();
             _addToFeed('⚠️', `Orden marcada sin reparación`);
         } catch (error) {
@@ -1071,6 +1087,7 @@ const MotoresModule = (function() {
 
             _showSuccessAlert('✅ Solicitud de compra generada. La orden pasó a estado "En Espera".');
             _addToFeed('🛒', `Solicitud de compra creada para ${folioTaller}`);
+            _afterMotoresPersistOk();
             _cerrarModal();
 
         } catch (error) {
@@ -1132,6 +1149,7 @@ const MotoresModule = (function() {
             }, csrfToken);
 
             _irPaso(4);
+            _afterMotoresPersistOk();
             alert('✅ Reparación finalizada');
             _addToFeed('✅', `Reparación completada para ${data.folio}`);
         } catch (error) {
@@ -1185,6 +1203,7 @@ const MotoresModule = (function() {
                 await ordenesService.update(orderId, data, csrfToken);
                 if (!silencioso) alert('✅ Orden actualizada correctamente');
             }
+            _afterMotoresPersistOk();
             _addToFeed('💾', `Orden ${data.folio} guardada`);
         } catch (error) {
             console.error(error);
@@ -1260,6 +1279,7 @@ const MotoresModule = (function() {
                 fecha: new Date().toISOString()
             }, csrfToken);
 
+            _afterMotoresPersistOk();
             _cerrarModal();
             alert('✅ Orden entregada a ventas');
         } catch (error) {
