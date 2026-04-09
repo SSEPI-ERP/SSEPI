@@ -37,8 +37,27 @@ const TallerModule = (function() {
     let filtroTecnico = 'todos';
     let filtroEstado = 'todos';
     let filtroBuscar = '';
+    let filtroEquipo = 'todos';
     let vistaActual = 'kanban';
+    let graficaModo = 'estados';
     let chartInstance = null;
+
+    const LIST_COL_STORAGE = 'ssepi_taller_list_cols';
+
+    const KANBAN_STAGES = [
+        { label: 'Nuevo', match: s => s === 'Nuevo' },
+        { label: 'Confirmado / Diagnóstico', match: s => ['Confirmado', 'Diagnóstico'].includes(s) },
+        { label: 'En espera / En reparación', match: s => s === 'En Espera' || s === 'En reparación' },
+        { label: 'Reparado', match: s => s === 'Reparado' },
+        { label: 'Entregado / Facturado', match: s => s === 'Entregado' || s === 'Facturado' },
+        { label: 'Cancelado', match: s => s === 'Cancelado' },
+    ];
+
+    function _kanbanStageLabel(estado) {
+        const s = estado || 'Nuevo';
+        const st = KANBAN_STAGES.find(x => x.match(s));
+        return st ? st.label : 'Nuevo';
+    }
 
     // Servicios de datos
     const ordenesService = createDataService('ordenes_taller');
@@ -125,6 +144,8 @@ const TallerModule = (function() {
         ]);
         _populateClientSelect();
         _populateTecnicosFilter();
+        _populateEquipoFilter();
+        _buildListaColChecks();
     }
 
     async function _loadOrders() {
@@ -173,13 +194,102 @@ const TallerModule = (function() {
     function _populateTecnicosFilter() {
         const select = document.getElementById('filtroTecnico');
         if (!select) return;
+        const cur = select.value;
         const tecnicos = new Set();
         orders.forEach(o => { if (o.tecnico_responsable) tecnicos.add(o.tecnico_responsable); });
+        select.innerHTML = '<option value="todos">Todos</option>';
         tecnicos.forEach(t => {
             const opt = document.createElement('option');
             opt.value = t;
             opt.textContent = t;
             select.appendChild(opt);
+        });
+        if (cur && [...select.options].some(o => o.value === cur)) select.value = cur;
+    }
+
+    function _populateEquipoFilter() {
+        const select = document.getElementById('filtroEquipo');
+        if (!select) return;
+        const cur = select.value;
+        const equipos = new Set();
+        orders.forEach(o => {
+            const e = (o.equipo || '').trim();
+            if (e) equipos.add(e);
+        });
+        select.innerHTML = '<option value="todos">Todos</option>';
+        [...equipos].sort((a, b) => a.localeCompare(b, 'es')).forEach(eq => {
+            const opt = document.createElement('option');
+            opt.value = eq;
+            opt.textContent = eq.length > 42 ? eq.slice(0, 40) + '…' : eq;
+            select.appendChild(opt);
+        });
+        if (cur && [...select.options].some(o => o.value === cur)) select.value = cur;
+    }
+
+    function _applyQuickRangeFromSelect() {
+        const el = document.getElementById('filtroRapido');
+        if (!el || el.value === 'todos') return;
+        const now = new Date();
+        let start; let end;
+        if (el.value === 'mes_actual') {
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        } else if (el.value === 'trimestre') {
+            const q = Math.floor(now.getMonth() / 3);
+            start = new Date(now.getFullYear(), q * 3, 1);
+            end = new Date(now.getFullYear(), q * 3 + 3, 0);
+        } else if (el.value === 'anio') {
+            start = new Date(now.getFullYear(), 0, 1);
+            end = new Date(now.getFullYear(), 11, 31);
+        }
+        const fi = document.getElementById('filtroFechaInicio');
+        const ff = document.getElementById('filtroFechaFin');
+        if (start && fi) fi.valueAsDate = start;
+        if (end && ff) ff.valueAsDate = end;
+    }
+
+    function _getListaVisibleCols() {
+        try {
+            const raw = localStorage.getItem(LIST_COL_STORAGE);
+            if (raw) {
+                const o = JSON.parse(raw);
+                if (o && typeof o === 'object') return o;
+            }
+        } catch (_) { /* ignore */ }
+        return {
+            folio: true, cliente: true, equipo: true, tecnico: true, estado: true,
+            ingreso: true, reparacion: true, recibido: true,
+        };
+    }
+
+    function _setListaVisibleCols(map) {
+        localStorage.setItem(LIST_COL_STORAGE, JSON.stringify(map));
+    }
+
+    function _buildListaColChecks() {
+        const wrap = document.getElementById('listaColChecks');
+        if (!wrap) return;
+        const vis = _getListaVisibleCols();
+        const defs = [
+            { id: 'folio', label: 'Folio' },
+            { id: 'cliente', label: 'Cliente' },
+            { id: 'equipo', label: 'Equipo' },
+            { id: 'tecnico', label: 'Técnico' },
+            { id: 'estado', label: 'Estado' },
+            { id: 'ingreso', label: 'Ingreso' },
+            { id: 'reparacion', label: 'Reparación' },
+            { id: 'recibido', label: 'Recibido por' },
+        ];
+        wrap.innerHTML = defs.map(d => `
+            <label class="taller-col-label"><input type="checkbox" data-col="${d.id}" ${vis[d.id] !== false ? 'checked' : ''}/> ${d.label}</label>
+        `).join('');
+        wrap.querySelectorAll('input[data-col]').forEach(inp => {
+            inp.addEventListener('change', () => {
+                const m = _getListaVisibleCols();
+                m[inp.dataset.col] = inp.checked;
+                _setListaVisibleCols(m);
+                if (vistaActual === 'lista') _applyFilters();
+            });
         });
     }
 
@@ -294,6 +404,9 @@ const TallerModule = (function() {
         if (filtroEstado !== 'todos') {
             filtered = filtered.filter(o => o.estado === filtroEstado);
         }
+        if (filtroEquipo !== 'todos') {
+            filtered = filtered.filter(o => (o.equipo || '').trim() === filtroEquipo);
+        }
         if (filtroBuscar) {
             const term = filtroBuscar.toLowerCase();
             filtered = filtered.filter(o => 
@@ -313,14 +426,13 @@ const TallerModule = (function() {
     function _renderKanban(ordenes) {
         const container = document.getElementById('kanbanContainer');
         if (!container) return;
-        const etapas = ['Nuevo', 'Diagnóstico', 'En Espera', 'Reparado', 'Entregado'];
         let html = '';
-        etapas.forEach(etapa => {
-            const ordenesFiltradas = ordenes.filter(o => (o.estado || 'Nuevo') === etapa);
+        KANBAN_STAGES.forEach(stage => {
+            const ordenesFiltradas = ordenes.filter(o => _kanbanStageLabel(o.estado) === stage.label);
             html += `
                 <div class="kanban-column">
                     <div class="kanban-header">
-                        <span>${etapa}</span>
+                        <span>${stage.label}</span>
                         <span class="badge">${ordenesFiltradas.length}</span>
                     </div>
                     <div class="kanban-cards">
@@ -369,30 +481,39 @@ const TallerModule = (function() {
     function _renderLista(ordenes) {
         const container = document.getElementById('listaContainer');
         if (!container) return;
-        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Cliente</th><th>Equipo</th><th>Técnico</th><th>Estado</th><th>Ingreso</th><th>Reparación</th><th>Recibido por</th></tr></thead><tbody>';
+        const vis = _getListaVisibleCols();
+        const th = (id, text) => (vis[id] !== false ? `<th>${text}</th>` : '');
+        const heads = th('folio', 'Folio') + th('cliente', 'Cliente') + th('equipo', 'Equipo') + th('tecnico', 'Técnico') +
+            th('estado', 'Estado') + th('ingreso', 'Ingreso') + th('reparacion', 'Reparación') + th('recibido', 'Recibido por');
+        let html = `<table class="lista-table"><thead><tr>${heads}</tr></thead><tbody>`;
         ordenes.forEach(o => {
             const compraInfo = comprasVinculadas[o.id];
             const recibidoPor = o.recibido_por || '—';
-            html += `<tr onclick="tallerModule._abrirOrden('${o.id}')">
-                <td>${o.folio || o.id.slice(-6)} ${compraInfo ? '🛒' : ''}</td>
-                <td>${o.cliente_nombre || ''}</td>
-                <td>${o.equipo || ''}</td>
-                <td>${o.tecnico_responsable || ''}</td>
-                <td>${o.estado || 'Nuevo'}</td>
-                <td>${o.fecha_ingreso ? new Date(o.fecha_ingreso).toLocaleDateString() : ''}</td>
-                <td>${o.fecha_reparacion ? new Date(o.fecha_reparacion).toLocaleDateString() : ''}</td>
-                <td>${recibidoPor}</td>
-            </tr>`;
+            const cells = [];
+            if (vis.folio !== false) cells.push(`<td>${o.folio || o.id.slice(-6)} ${compraInfo ? '🛒' : ''}</td>`);
+            if (vis.cliente !== false) cells.push(`<td>${o.cliente_nombre || ''}</td>`);
+            if (vis.equipo !== false) cells.push(`<td>${o.equipo || ''}</td>`);
+            if (vis.tecnico !== false) cells.push(`<td>${o.tecnico_responsable || ''}</td>`);
+            if (vis.estado !== false) cells.push(`<td>${o.estado || 'Nuevo'}</td>`);
+            if (vis.ingreso !== false) cells.push(`<td>${o.fecha_ingreso ? new Date(o.fecha_ingreso).toLocaleDateString() : ''}</td>`);
+            if (vis.reparacion !== false) cells.push(`<td>${o.fecha_reparacion ? new Date(o.fecha_reparacion).toLocaleDateString() : ''}</td>`);
+            if (vis.recibido !== false) cells.push(`<td>${recibidoPor}</td>`);
+            html += `<tr onclick="tallerModule._abrirOrden('${o.id}')">${cells.join('')}</tr>`;
         });
         html += '</tbody></table>';
         container.innerHTML = html;
     }
 
     function _renderGrafica(ordenes) {
+        if (graficaModo === 'evolucion') {
+            _renderGraficaEvolucion(ordenes);
+            return;
+        }
         const ctx = document.getElementById('graficaCanvas').getContext('2d');
         if (chartInstance) chartInstance.destroy();
-        const estados = ['Nuevo', 'Diagnóstico', 'En Espera', 'Reparado', 'Entregado'];
-        const counts = estados.map(e => ordenes.filter(o => o.estado === e).length);
+        const estados = ['Nuevo', 'Confirmado', 'Diagnóstico', 'En Espera', 'En reparación', 'Reparado', 'Entregado', 'Facturado', 'Cancelado'];
+        const counts = estados.map(e => ordenes.filter(o => (o.estado || 'Nuevo') === e).length);
+        const colors = ['#1976d2', '#5c6bc0', '#ff9800', '#9c27b0', '#7e57c2', '#4caf50', '#607d8b', '#00838f', '#e53935'];
         chartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -400,19 +521,103 @@ const TallerModule = (function() {
                 datasets: [{
                     label: 'Órdenes por estado',
                     data: counts,
-                    backgroundColor: ['#1976d2', '#ff9800', '#9c27b0', '#4caf50', '#607d8b']
+                    backgroundColor: colors
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
         });
     }
 
+    function _renderGraficaEvolucion(ordenes) {
+        const ctx = document.getElementById('graficaCanvas');
+        if (!ctx) return;
+        const c2d = ctx.getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+        const TOP_N = 8;
+        const monthKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const counts = {};
+        const monthTotals = {};
+        ordenes.forEach(o => {
+            if (!o.fecha_ingreso) return;
+            const d = new Date(o.fecha_ingreso);
+            if (Number.isNaN(d.getTime())) return;
+            const mk = monthKey(d);
+            const eq = ((o.equipo || '').trim() || 'Sin dato');
+            if (!counts[mk]) counts[mk] = {};
+            counts[mk][eq] = (counts[mk][eq] || 0) + 1;
+            monthTotals[mk] = (monthTotals[mk] || 0) + 1;
+        });
+        const months = Object.keys(counts).sort();
+        if (!months.length) {
+            chartInstance = new Chart(c2d, {
+                type: 'bar',
+                data: { labels: ['Sin datos'], datasets: [{ label: 'Órdenes', data: [0] }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+            return;
+        }
+        const equiposCount = {};
+        ordenes.forEach(o => {
+            const eq = ((o.equipo || '').trim() || 'Sin dato');
+            equiposCount[eq] = (equiposCount[eq] || 0) + 1;
+        });
+        const topEquipos = Object.entries(equiposCount).sort((a, b) => b[1] - a[1]).slice(0, TOP_N).map(x => x[0]);
+        const palette = ['#1976d2', '#7b1fa2', '#00897b', '#f4511e', '#6a1b9a', '#0277bd', '#c2185b', '#5d4037'];
+        const datasets = topEquipos.map((eq, i) => ({
+            type: 'bar',
+            label: eq.length > 24 ? eq.slice(0, 22) + '…' : eq,
+            stack: 's',
+            backgroundColor: palette[i % palette.length],
+            data: months.map(m => counts[m][eq] || 0)
+        }));
+        const otros = months.map(m => {
+            let t = 0;
+            const row = counts[m] || {};
+            Object.keys(row).forEach(k => {
+                if (!topEquipos.includes(k)) t += row[k];
+            });
+            return t;
+        });
+        if (otros.some(x => x > 0)) {
+            datasets.push({
+                type: 'bar',
+                label: 'Otros',
+                stack: 's',
+                backgroundColor: '#78909c',
+                data: otros
+            });
+        }
+        datasets.push({
+            type: 'line',
+            label: 'Total mensual',
+            data: months.map(m => monthTotals[m] || 0),
+            borderColor: '#eceff1',
+            backgroundColor: 'rgba(236, 239, 241, 0.2)',
+            tension: 0.25,
+            fill: false,
+            order: 10,
+            yAxisID: 'y'
+        });
+        chartInstance = new Chart(c2d, {
+            type: 'bar',
+            data: { labels: months, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true }
+                }
+            }
+        });
+    }
+
     function _updateKPIs(ordenes) {
-        const nuevo = ordenes.filter(o => o.estado === 'Nuevo').length;
-        const diagnostico = ordenes.filter(o => o.estado === 'Diagnóstico').length;
-        const espera = ordenes.filter(o => o.estado === 'En Espera').length;
+        const nuevo = ordenes.filter(o => (o.estado || 'Nuevo') === 'Nuevo').length;
+        const diagnostico = ordenes.filter(o => o.estado === 'Diagnóstico' || o.estado === 'Confirmado').length;
+        const espera = ordenes.filter(o => o.estado === 'En Espera' || o.estado === 'En reparación').length;
         const reparado = ordenes.filter(o => o.estado === 'Reparado').length;
-        const entregado = ordenes.filter(o => o.estado === 'Entregado').length;
+        const entregado = ordenes.filter(o => o.estado === 'Entregado' || o.estado === 'Facturado').length;
         const conCompra = Object.keys(comprasVinculadas).filter(id => {
             const orden = ordenes.find(o => o.id === id);
             return orden && comprasVinculadas[id].estado < 5;
@@ -471,7 +676,17 @@ const TallerModule = (function() {
     }
 
     function _estadoToPaso(estado) {
-        const mapa = { 'Nuevo': 1, 'Diagnóstico': 2, 'En Espera': 3, 'Reparado': 4, 'Entregado': 5 };
+        const mapa = {
+            'Nuevo': 1,
+            'Confirmado': 2,
+            'Diagnóstico': 2,
+            'En Espera': 3,
+            'En reparación': 3,
+            'Reparado': 4,
+            'Entregado': 5,
+            'Facturado': 5,
+            'Cancelado': 1,
+        };
         return mapa[estado] || 1;
     }
 
@@ -1301,12 +1516,34 @@ const TallerModule = (function() {
         });
 
         document.getElementById('aplicarFiltrosBtn').addEventListener('click', () => {
+            _applyQuickRangeFromSelect();
             filtroFechaInicio = document.getElementById('filtroFechaInicio').valueAsDate;
             filtroFechaFin = document.getElementById('filtroFechaFin').valueAsDate;
             filtroTecnico = document.getElementById('filtroTecnico').value;
             filtroEstado = document.getElementById('filtroEstado').value;
+            const fe = document.getElementById('filtroEquipo');
+            filtroEquipo = fe ? fe.value : 'todos';
             filtroBuscar = document.getElementById('filtroBuscar').value.trim();
             _applyFilters();
+        });
+
+        const filtroRapidoEl = document.getElementById('filtroRapido');
+        if (filtroRapidoEl) {
+            filtroRapidoEl.addEventListener('change', () => {
+                _applyQuickRangeFromSelect();
+                filtroFechaInicio = document.getElementById('filtroFechaInicio').valueAsDate;
+                filtroFechaFin = document.getElementById('filtroFechaFin').valueAsDate;
+                _applyFilters();
+            });
+        }
+
+        document.querySelectorAll('.grafica-modo-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                graficaModo = btn.dataset.modo === 'evolucion' ? 'evolucion' : 'estados';
+                document.querySelectorAll('.grafica-modo-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (vistaActual === 'grafica') _applyFilters();
+            });
         });
 
         document.getElementById('vistaKanban').addEventListener('click', () => {
@@ -1331,7 +1568,7 @@ const TallerModule = (function() {
             vistaActual = 'grafica';
             document.getElementById('kanbanContainer').style.display = 'none';
             document.getElementById('listaContainer').style.display = 'none';
-            document.getElementById('graficaContainer').style.display = 'block';
+            document.getElementById('graficaContainer').style.display = 'flex';
             document.querySelectorAll('.vistas button').forEach(b => b.classList.remove('active'));
             document.getElementById('vistaGrafica').classList.add('active');
             _applyFilters();

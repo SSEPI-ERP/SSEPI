@@ -27,6 +27,7 @@ const FacturacionModule = (function() {
     let filtroFechaInicio = null;
     let filtroFechaFin = null;
     let filtroEstado = 'todos';
+    let filtroArea = 'todos';
     let filtroBuscar = '';
     let vistaActual = 'kanban';
 
@@ -84,12 +85,21 @@ const FacturacionModule = (function() {
         return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
     }
 
-    /** Desde Contabilidad: ?desde=&hasta=&estado=pendiente|emitida|todos */
+    function _departamentoToFiltroArea(dep) {
+        if (!dep) return 'todos';
+        const d = String(dep).trim();
+        if (d === 'Taller Electrónica') return 'taller_electronica';
+        if (d === 'Taller Motores') return 'taller_motores';
+        return 'todos';
+    }
+
+    /** Desde Contabilidad: ?desde=&hasta=&estado=&departamento= */
     function _applyUrlQueryFilters() {
         const p = new URLSearchParams(window.location.search);
         const desde = p.get('desde');
         const hasta = p.get('hasta');
         const estado = p.get('estado');
+        const departamento = p.get('departamento');
         if (desde) {
             const d = _parseYmdLocal(desde);
             if (d) {
@@ -110,6 +120,11 @@ const FacturacionModule = (function() {
             filtroEstado = estado;
             const sel = document.getElementById('filtroEstado');
             if (sel) sel.value = estado;
+        }
+        if (departamento) {
+            filtroArea = _departamentoToFiltroArea(departamento);
+            const selA = document.getElementById('filtroArea');
+            if (selA) selA.value = filtroArea;
         }
     }
 
@@ -248,7 +263,11 @@ const FacturacionModule = (function() {
 
     // ==================== FILTROS Y VISTAS ====================
     function _aplicarFiltros() {
-        let pendientes = [...ordenesTaller, ...ordenesMotores];
+        let tOrd = [...ordenesTaller];
+        let mOrd = [...ordenesMotores];
+        if (filtroArea === 'taller_electronica') mOrd = [];
+        else if (filtroArea === 'taller_motores') tOrd = [];
+        let pendientes = [...tOrd, ...mOrd];
         let emitidas = facturas;
 
         // Filtrar por fecha
@@ -443,8 +462,16 @@ const FacturacionModule = (function() {
         });
     }
 
+    function _pendientesCountForKpis() {
+        let t = ordenesTaller.length;
+        let m = ordenesMotores.length;
+        if (filtroArea === 'taller_electronica') m = 0;
+        else if (filtroArea === 'taller_motores') t = 0;
+        return t + m;
+    }
+
     function _updateKPIs() {
-        const pendientes = ordenesTaller.length + ordenesMotores.length;
+        const pendientes = _pendientesCountForKpis();
 
         const now = new Date();
         const mesActual = now.getMonth();
@@ -779,6 +806,8 @@ const FacturacionModule = (function() {
             filtroFechaInicio = document.getElementById('filtroFechaInicio').valueAsDate;
             filtroFechaFin = document.getElementById('filtroFechaFin').valueAsDate;
             filtroEstado = document.getElementById('filtroEstado').value;
+            const fa = document.getElementById('filtroArea');
+            filtroArea = fa ? fa.value : 'todos';
             filtroBuscar = document.getElementById('filtroBuscar').value.trim();
             _aplicarFiltros();
         });

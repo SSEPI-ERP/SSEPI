@@ -1,0 +1,18 @@
+{
+  "name": "ssepi-imports",
+  "private": true,
+  "type": "module",
+  "description": "Importación masiva SSEPI (contactos, órdenes taller, inventario, BOM). No subir claves al repo.",
+  "scripts": {
+    "inspect": "node import.mjs inspect",
+    "dry:contacts": "node import.mjs contacts --dry-run",
+    "dry:orders": "node import.mjs orders --dry-run",
+    "dry:inventario": "node import.mjs inventario --dry-run",
+    "dry:bom": "node import.mjs bom --dry-run"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "csv-parse": "^5.6.0",
+    "xlsx": "^0.18.5"
+  }
+}

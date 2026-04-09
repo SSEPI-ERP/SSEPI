@@ -655,9 +655,18 @@ main {
     border-radius: var(--border-radius);
     border: 1px solid var(--border);
     padding: 20px;
-    height: 400px;
+    min-height: 440px;
+    height: auto;
     display: none;
+    flex-direction: column;
+    gap: 0.75rem;
     box-shadow: none;
+}
+
+#graficaCanvas {
+    flex: 1;
+    min-height: 320px;
+    max-height: 400px;
 }
 
 /* ========== MODAL WORKSTATION ========== */
@@ -1151,6 +1160,81 @@ main {
 }
 .mb-20 {
     margin-bottom: 20px;
+}
+
+.grafica-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0 0.25rem;
+}
+
+.grafica-toolbar-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-right: 0.35rem;
+}
+
+.grafica-modo-btn {
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.grafica-modo-btn:hover {
+    border-color: var(--c-taller);
+    color: var(--c-taller);
+}
+
+.grafica-modo-btn.active {
+    background: var(--c-taller);
+    border-color: var(--c-taller);
+    color: #fff;
+}
+
+.taller-col-picker {
+    align-self: flex-end;
+    min-width: 140px;
+}
+
+.taller-col-summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--c-taller);
+    list-style: none;
+}
+
+.taller-col-summary::-webkit-details-marker {
+    display: none;
+}
+
+.taller-col-checks {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.5rem 0 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.taller-col-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    cursor: pointer;
 }
 
 @media (max-width: 1200px) {

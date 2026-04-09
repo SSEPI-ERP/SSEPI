@@ -59,19 +59,30 @@ CREATE POLICY movimientos_banco_delete_auth
   USING (true);
 
 -- ==================== 3) Rol real desde tablas (JWT no trae "rol" por defecto) ====================
+-- plpgsql: evita error 42P01 si public.profiles no existe en el proyecto.
 CREATE OR REPLACE FUNCTION public.ssepi_current_rol()
 RETURNS TEXT
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT COALESCE(
-    (SELECT u.rol FROM public.usuarios u WHERE u.auth_user_id = auth.uid() LIMIT 1),
-    (SELECT u.rol FROM public.users u WHERE u.auth_user_id = auth.uid() LIMIT 1),
-    (SELECT p.rol FROM public.profiles p WHERE p.id = auth.uid() LIMIT 1),
-    ''
-  );
+DECLARE
+  r text;
+BEGIN
+  SELECT u.rol INTO r FROM public.usuarios u WHERE u.auth_user_id = auth.uid() LIMIT 1;
+  IF r IS NOT NULL AND btrim(r) <> '' THEN RETURN r; END IF;
+
+  SELECT u.rol INTO r FROM public.users u WHERE u.auth_user_id = auth.uid() LIMIT 1;
+  IF r IS NOT NULL AND btrim(r) <> '' THEN RETURN r; END IF;
+
+  IF to_regclass('public.profiles') IS NOT NULL THEN
+    EXECUTE 'SELECT p.rol FROM public.profiles p WHERE p.id = $1 LIMIT 1' INTO r USING auth.uid();
+    IF r IS NOT NULL AND btrim(r) <> '' THEN RETURN r; END IF;
+  END IF;
+
+  RETURN COALESCE(r, '');
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.ssepi_puede_contabilidad_nomina()
