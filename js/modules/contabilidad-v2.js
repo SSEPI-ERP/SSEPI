@@ -157,7 +157,7 @@ async function _renderVentasFacturas() {
         const rows = await _selectFacturasRows();
         let list = (rows || []).filter(f => _inDateRange(f.fecha_emision, desde, hasta));
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">Sin facturas en el rango. Si la tabla aún no existe, ejecuta <code>contabilidad-supabase-fix.sql</code> en Supabase.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">Sin facturas en el rango.</td></tr>';
             return;
         }
         list = list.slice(0, 200);
@@ -177,7 +177,7 @@ async function _renderVentasFacturas() {
     } catch (e) {
         const msg = String(e?.message || e);
         if (msg.includes('facturacion') && (msg.includes('does not exist') || msg.includes('schema cache'))) {
-            tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">Crea <code>public.facturas</code> con <code>scripts/migrations/contabilidad-supabase-fix.sql</code>.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">No hay datos de facturas disponibles.</td></tr>';
             return;
         }
         tbody.innerHTML = `<tr><td colspan="6" class="coi-log-empty">Error: ${_escape(msg)}</td></tr>`;
@@ -219,7 +219,7 @@ async function _renderCompras() {
     } catch (e) {
         const msg = String(e?.message || e);
         if (msg.includes('fecha_creacion') || msg.includes('created_at')) {
-            tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">Ejecuta en Supabase <code>scripts/migrations/contabilidad-supabase-fix.sql</code> (columna <code>fecha_creacion</code> en <code>compras</code>).</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">Sin compras en el rango o esquema de compras incompleto.</td></tr>';
             return;
         }
         tbody.innerHTML = `<tr><td colspan="6" class="coi-log-empty">Error: ${_escape(msg)}</td></tr>`;
@@ -252,7 +252,7 @@ async function _renderCobranza() {
     } catch (e) {
         const msg = String(e?.message || e);
         if (msg.includes('movimientos_banco') && (msg.includes('schema cache') || msg.includes('does not exist'))) {
-            tbody.innerHTML = '<tr><td colspan="5" class="coi-log-empty">Crea la tabla con <code>scripts/migrations/contabilidad-supabase-fix.sql</code> en Supabase.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="coi-log-empty">Sin movimientos de banco registrados.</td></tr>';
             return;
         }
         tbody.innerHTML = `<tr><td colspan="5" class="coi-log-empty">Error: ${_escape(msg)}</td></tr>`;
@@ -284,11 +284,11 @@ async function _renderNomina() {
     } catch (e) {
         const msg = String(e?.message || e);
         if (msg.includes('pagos_nomina') && (msg.includes('schema cache') || msg.includes('does not exist'))) {
-            tbody.innerHTML = '<tr><td colspan="5" class="coi-log-empty">Ejecuta <code>scripts/migrations/contabilidad-supabase-fix.sql</code> en Supabase.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="coi-log-empty">Sin registros de nómina.</td></tr>';
             return;
         }
         if (msg.includes('permission denied') || msg.includes('42501')) {
-            tbody.innerHTML = '<tr><td colspan="5" class="coi-log-empty">Permiso RLS: vuelve a ejecutar <code>contabilidad-supabase-fix.sql</code> (políticas <code>pagos_nomina</code>).</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="coi-log-empty">Sin permiso para ver nómina.</td></tr>';
             return;
         }
         tbody.innerHTML = `<tr><td colspan="5" class="coi-log-empty">Error: ${_escape(msg)}</td></tr>`;

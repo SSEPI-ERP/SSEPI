@@ -71,14 +71,30 @@
     </nav>
 
     <main>
-        <div class="welcome-header contab-hero">
+        <div class="welcome-header contab-hero nom-hero">
             <h1>Nómina</h1>
-            <p class="contab-hero-sub">Historial de pagos registrados en el sistema.</p>
-            <p class="coi-hint-banner" style="margin-top:12px;max-width:720px;">El <strong>resumen financiero</strong> y la pestaña Nómina viven en <a href="/pages/ssepi_contabilidad.html?tab=nomina">Contabilidad</a> (flujo tipo Odoo). Esta pantalla sirve para operación detallada de pagos.</p>
+            <p class="contab-hero-sub">Pagos por periodo y registro de nuevos movimientos.</p>
         </div>
-        <section class="coi-panel">
-            <div class="coi-card contab-lede-card">
-                <div class="contab-toolbar">
+        <section class="nom-section">
+            <div class="nom-kpi-grid" aria-label="Resumen del periodo">
+                <div class="nom-kpi-card">
+                    <span class="nom-kpi-label">Pagos en rango</span>
+                    <strong id="nomKpiCount">0</strong>
+                    <span class="nom-kpi-hint">Registros listados</span>
+                </div>
+                <div class="nom-kpi-card nom-kpi-card--accent">
+                    <span class="nom-kpi-label">Total pagado</span>
+                    <strong id="nomKpiTotal">$0.00</strong>
+                    <span class="nom-kpi-hint">Suma de totales</span>
+                </div>
+                <div class="nom-kpi-card">
+                    <span class="nom-kpi-label">Promedio</span>
+                    <strong id="nomKpiAvg">$0.00</strong>
+                    <span class="nom-kpi-hint">Por pago</span>
+                </div>
+            </div>
+            <div class="coi-card nom-card">
+                <div class="contab-toolbar nom-toolbar">
                     <div class="contab-field">
                         <label for="nomDesde">Desde</label>
                         <input type="date" id="nomDesde" class="coi-input contab-input-date">
@@ -89,9 +105,10 @@
                     </div>
                     <button type="button" class="btn-ssepi contab-apply-btn" id="nomAplicarBtn"><i class="fas fa-filter"></i> Aplicar</button>
                     <button type="button" class="btn-ssepi contab-apply-btn" id="nomRefreshBtn"><i class="fas fa-sync-alt"></i> Actualizar</button>
+                    <button type="button" class="btn-ssepi nom-btn-primary" id="nomCrearBtn"><i class="fas fa-plus"></i> Crear nómina</button>
                 </div>
                 <div class="coi-table-wrap">
-                    <table class="coi-log-table">
+                    <table class="coi-log-table nom-table">
                         <thead>
                             <tr>
                                 <th>Fecha pago</th>
@@ -99,6 +116,7 @@
                                 <th>Período</th>
                                 <th>Total</th>
                                 <th>Estado</th>
+                                <th>Método</th>
                             </tr>
                         </thead>
                         <tbody id="nominaBody"></tbody>
@@ -107,6 +125,75 @@
             </div>
         </section>
     </main>
+
+    <div id="nomModalBackdrop" class="nom-modal-backdrop" aria-hidden="true">
+        <div class="nom-modal" role="dialog" aria-labelledby="nomModalTitle">
+            <div class="nom-modal-header">
+                <h2 id="nomModalTitle">Registrar pago de nómina</h2>
+                <button type="button" class="nom-modal-close" id="nomModalClose" aria-label="Cerrar"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="nom-modal-body">
+                <div class="nom-form-grid">
+                    <div class="nom-field nom-field--full">
+                        <label for="nomInpEmpleado">Empleado</label>
+                        <input type="text" id="nomInpEmpleado" class="coi-input" placeholder="Nombre completo" autocomplete="name">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpDesde">Período desde</label>
+                        <input type="date" id="nomInpDesde" class="coi-input contab-input-date">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpHasta">Período hasta</label>
+                        <input type="date" id="nomInpHasta" class="coi-input contab-input-date">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpDias">Días trabajados</label>
+                        <input type="number" id="nomInpDias" class="coi-input" min="0" step="1" placeholder="0">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpFechaPago">Fecha de pago</label>
+                        <input type="date" id="nomInpFechaPago" class="coi-input contab-input-date">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpSueldo">Sueldo base</label>
+                        <input type="number" id="nomInpSueldo" class="coi-input" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpExtras">Horas extras ($)</label>
+                        <input type="number" id="nomInpExtras" class="coi-input" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpBonos">Bonos</label>
+                        <input type="number" id="nomInpBonos" class="coi-input" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpDed">Deducciones</label>
+                        <input type="number" id="nomInpDed" class="coi-input" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpTotal">Total a pagar</label>
+                        <input type="number" id="nomInpTotal" class="coi-input nom-input-total" min="0" step="0.01" readonly>
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpEstado">Estado</label>
+                        <select id="nomInpEstado" class="coi-input">
+                            <option value="pagado">Pagado</option>
+                            <option value="borrador">Borrador</option>
+                            <option value="programado">Programado</option>
+                        </select>
+                    </div>
+                    <div class="nom-field nom-field--full">
+                        <label for="nomInpMetodo">Método de pago</label>
+                        <input type="text" id="nomInpMetodo" class="coi-input" placeholder="Transferencia, efectivo…" value="transferencia">
+                    </div>
+                </div>
+            </div>
+            <div class="nom-modal-footer">
+                <button type="button" class="btn-ssepi btn-secondary" id="nomModalCancel">Cancelar</button>
+                <button type="button" class="btn-ssepi nom-btn-primary" id="nomModalGuardar"><i class="fas fa-save"></i> Guardar</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         window.addEventListener('load', () => {

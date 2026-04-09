@@ -595,3 +595,219 @@ body[data-theme="dark"] .contab-kpi-chip {
         display: none;
     }
 }
+
+/* ========== Nómina (página dedicada) ========== */
+.page-nomina main {
+    padding: 0 1.25rem 2.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.nom-hero {
+    margin-bottom: 1rem;
+}
+
+.nom-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.nom-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+}
+
+.nom-kpi-card {
+    border-radius: 14px;
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--bg-panel, #fff);
+    padding: 1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.nom-kpi-card--accent {
+    border-color: rgba(185, 28, 28, 0.35);
+    background: linear-gradient(145deg, rgba(185, 28, 28, 0.06), var(--bg-panel, #fff));
+}
+
+.nom-kpi-label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted, #94a3b8);
+}
+
+.nom-kpi-card strong {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text-primary, #0f172a);
+    letter-spacing: -0.03em;
+}
+
+.nom-kpi-card--accent strong {
+    color: var(--c-contabilidad, #b91c1c);
+}
+
+.nom-kpi-hint {
+    font-size: 0.72rem;
+    color: var(--text-muted, #94a3b8);
+}
+
+.nom-card {
+    border-radius: 16px;
+}
+
+.nom-toolbar {
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    align-items: flex-end;
+}
+
+.nom-btn-primary {
+    background: var(--c-contabilidad, #b91c1c) !important;
+    border-color: var(--c-contabilidad, #b91c1c) !important;
+    color: #fff !important;
+    margin-left: auto;
+}
+
+.nom-table th,
+.nom-table td {
+    vertical-align: middle;
+}
+
+.nom-estado {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: rgba(34, 197, 94, 0.15);
+    color: #15803d;
+}
+
+.nom-estado--borrador {
+    background: rgba(148, 163, 184, 0.25);
+    color: #475569;
+}
+
+.nom-estado--programado {
+    background: rgba(59, 130, 246, 0.18);
+    color: #1d4ed8;
+}
+
+.nom-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: rgba(15, 23, 42, 0.45);
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.nom-modal-backdrop.nom-modal-visible {
+    display: flex;
+}
+
+.nom-modal {
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    background: var(--bg-panel, #fff);
+    border: 1px solid var(--border, #e2e8f0);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+}
+
+.nom-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.15rem;
+    border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.nom-modal-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.nom-modal-close {
+    border: none;
+    background: transparent;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: var(--text-muted, #64748b);
+    line-height: 1;
+}
+
+.nom-modal-body {
+    padding: 1rem 1.15rem;
+    overflow-y: auto;
+}
+
+.nom-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem 1rem;
+}
+
+.nom-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.nom-field label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted, #64748b);
+}
+
+.nom-field--full {
+    grid-column: 1 / -1;
+}
+
+.nom-input-total {
+    font-weight: 800;
+    background: var(--bg-hover, #f1f5f9) !important;
+}
+
+.nom-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    padding: 1rem 1.15rem;
+    border-top: 1px solid var(--border, #e2e8f0);
+}
+
+@media (max-width: 560px) {
+    .nom-form-grid {
+        grid-template-columns: 1fr;
+    }
+    .nom-btn-primary {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+body[data-theme="dark"] .nom-kpi-card,
+body[data-theme="dark"] .nom-modal {
+    background: rgba(0, 0, 0, 0.25);
+}

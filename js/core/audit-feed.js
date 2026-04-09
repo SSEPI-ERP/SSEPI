@@ -19,6 +19,13 @@ export function initAuditFeed({
   const tableFilter = (tables || []).map((t) => String(t).trim()).filter(Boolean);
   if (!listEl || !countEl || !supabase) return { refresh: async () => {}, cleanup: () => {} };
 
+  function tableFromLog(log) {
+    if (!log) return '';
+    if (log.table_name) return String(log.table_name);
+    if (log.metadata && typeof log.metadata === 'object' && log.metadata.table) return String(log.metadata.table);
+    return '';
+  }
+
   const render = (rows) => {
     listEl.innerHTML = '';
     rows.forEach((log) => {
@@ -26,7 +33,8 @@ export function initAuditFeed({
       item.className = 'feed-item';
       const when = log.timestamp ? new Date(log.timestamp) : null;
       const time = when ? when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
-      const table = (log.table_name || '').toUpperCase() || 'SISTEMA';
+      const tbl = tableFromLog(log);
+      const table = (tbl || '').toUpperCase() || 'SISTEMA';
       const action = (log.action || '').toUpperCase() || 'EVENTO';
       const rid = (log.record_id || '').toString();
       const who = (log.user_email || log.user_role || '').toString();
@@ -44,19 +52,34 @@ export function initAuditFeed({
     countEl.innerText = String(rows.length);
   };
 
-  const buildQuery = () => {
-    let q = supabase.from('audit_logs').select('*').order('timestamp', { ascending: false }).limit(limit);
-    if (tableFilter.length) q = q.in('table_name', tableFilter);
-    return q;
-  };
+  const AUDIT_SELECT_FULL =
+    'id,timestamp,action,record_id,user_email,user_role,table_name,old_data,new_data,metadata,severity,hash';
+  const AUDIT_SELECT_SAFE = 'id,timestamp,action,record_id,user_email,user_role,old_data,new_data,metadata,severity,hash';
 
   const refresh = async () => {
+    const take = Math.min(200, Math.max(limit * 4, limit));
     try {
-      const { data, error } = await buildQuery();
+      let { data, error } = await supabase
+        .from('audit_logs')
+        .select(AUDIT_SELECT_FULL)
+        .order('timestamp', { ascending: false })
+        .limit(take);
+      if (error && String(error.message || '').includes('table_name')) {
+        ({ data, error } = await supabase
+          .from('audit_logs')
+          .select(AUDIT_SELECT_SAFE)
+          .order('timestamp', { ascending: false })
+          .limit(take));
+      }
       if (error) throw error;
-      render(data || []);
+      let rows = data || [];
+      if (tableFilter.length) {
+        rows = rows.filter((log) => tableFilter.includes(tableFromLog(log)));
+      }
+      rows = rows.slice(0, limit);
+      render(rows);
     } catch (e) {
-      listEl.innerHTML = `<div class="feed-item"><div class="feed-dot"></div><div class="feed-body">No se pudo cargar bitácora: ${String(e?.message || e)}</div></div>`;
+      listEl.innerHTML = `<div class="feed-item"><div class="feed-dot"></div><div class="feed-body">Bitácora no disponible.</div></div>`;
       countEl.innerText = '0';
     }
   };
