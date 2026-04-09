@@ -255,10 +255,10 @@ async function cmdContacts(argv) {
   const rows = readSheetRows(files[0]);
   const out = [];
   for (const r of rows) {
-    const nombre = String(pick(r, ['name', 'nombre', 'display_name', 'contacto']) || 'SIN NOMBRE').trim();
+    const nombre = String(pick(r, ['name', 'nombre', 'display_name', 'contacto', 'nombre_completo']) || 'SIN NOMBRE').trim();
     const empresa = String(pick(r, ['empresa', 'company', 'parent_id', 'razon_social', 'razón social']) || '').trim();
-    const email = String(pick(r, ['email', 'correo', 'e-mail']) || '').trim();
-    const telefono = String(pick(r, ['phone', 'telefono', 'teléfono', 'mobile', 'movil']) || '').trim();
+    const email = String(pick(r, ['email', 'correo', 'e-mail', 'correo_electronico', 'correo_electrnico']) || '').trim();
+    const telefono = String(pick(r, ['phone', 'telefono', 'teléfono', 'mobile', 'movil', 'telefono', 'telfono']) || '').trim();
     const rfc = String(pick(r, ['vat', 'rfc', 'tax_id']) || '').trim();
     const street = String(pick(r, ['street', 'calle', 'direccion', 'dirección']) || '').trim();
     const isSupplier = toNum(pick(r, ['supplier_rank', 'proveedor']), 0) > 0;
@@ -344,15 +344,15 @@ async function cmdOrders(argv) {
   const rows = readSheetRows(files[0]);
   const out = [];
   for (const r of rows) {
-    const folio = String(pick(r, ['name', 'folio', 'referencia', 'order']) || '').trim();
+    const folio = String(pick(r, ['name', 'folio', 'referencia', 'order', 'referencia_de_reparacion', 'referencia_de_reparacin']) || '').trim();
     if (!folio) continue;
     const cliente = String(
       pick(r, ['partner_id', 'cliente', 'customer', 'cliente_nombre', 'partner']) || 'CLIENTE'
     ).trim();
-    const equipo = String(pick(r, ['product_id', 'equipo', 'producto', 'product', 'equipment']) || 'Equipo').trim();
+    const equipo = String(pick(r, ['product_id', 'equipo', 'producto', 'product', 'equipment', 'producto_a_reparar']) || 'Equipo').trim();
     const modelo = String(pick(r, ['modelo', 'lot_id', 'lot']) || '').trim();
     const estado = mapEstado(pick(r, ['state', 'estado', 'status']));
-    const fecha = toIsoDate(pick(r, ['fecha_ingreso', 'create_date', 'scheduled_date', 'fecha']));
+    const fecha = toIsoDate(pick(r, ['fecha_ingreso', 'create_date', 'scheduled_date', 'fecha', 'fecha_programada']));
     const tecnico = String(pick(r, ['user_id', 'tecnico', 'encargado', 'technician']) || '').trim();
     out.push({
       folio,
@@ -481,7 +481,7 @@ async function cmdInventario(argv) {
 
 async function cmdBom(argv) {
   const apply = argv.includes('--apply');
-  const files = findFuente(['bom']);
+  const files = findFuente(['bom', 'bom_ssepi', 'lista', 'materiales']);
   if (!files.length) {
     console.error('No se encontró CSV/xlsx en fuente/ con "bom" en el nombre');
     process.exit(1);
