@@ -755,9 +755,160 @@ main {
     background: var(--bg-body);
 }
 
-.ws-content {
-    max-width: 1200px;
+.ws-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 18px;
+    align-items: start;
+    max-width: 1480px;
     margin: 0 auto;
+}
+
+.ws-content.ws-main {
+    max-width: none;
+    margin: 0;
+}
+
+.ws-chatter {
+    position: sticky;
+    top: 18px;
+    align-self: start;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    min-height: 520px;
+    max-height: calc(100vh - var(--header-h) - 120px);
+    display: flex;
+    flex-direction: column;
+}
+
+.ws-chatter-header {
+    padding: 14px 14px 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.ws-chatter-title {
+    font-weight: 800;
+    color: var(--text-primary);
+    font-size: 13px;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+}
+.ws-chatter-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.ws-chatter-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+}
+.ws-chatter-tab {
+    flex: 1;
+    border: 1px solid var(--border);
+    background: var(--bg-hover);
+    border-radius: 10px;
+    padding: 10px 10px;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+}
+.ws-chatter-tab.active {
+    background: var(--c-taller);
+    color: #fff;
+    border-color: var(--c-taller);
+}
+
+.ws-chatter-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+.ws-chatter-pane {
+    display: none;
+    flex: 1;
+    min-height: 0;
+}
+.ws-chatter-pane.active {
+    display: flex;
+    flex-direction: column;
+}
+
+.ws-notes-list,
+.ws-activity-list {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--bg-body);
+}
+
+.ws-note-item,
+.ws-activity-item {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 10px;
+    background: var(--bg-panel);
+}
+.ws-note-meta,
+.ws-activity-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+.ws-note-body,
+.ws-activity-body {
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.35;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.ws-note-compose {
+    border-top: 1px solid var(--border);
+    padding: 12px;
+    background: var(--bg-panel);
+}
+.ws-note-compose textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    resize: vertical;
+}
+.ws-note-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+@media (max-width: 1100px) {
+    .ws-layout { grid-template-columns: 1fr; }
+    .ws-chatter { position: relative; top: 0; max-height: none; }
 }
 
 .ws-footer {

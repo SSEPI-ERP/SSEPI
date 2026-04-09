@@ -1,8 +1,48 @@
 /* Módulo Contabilidad — panel SSEPI COI (escritorio + motor local) */
 .page-contabilidad main {
-    max-width: 1100px;
+    max-width: 1480px;
     margin: 0 auto;
-    padding: 0 1.25rem 3rem;
+    padding: 0 1.5rem 3rem;
+}
+
+.page-contabilidad .coi-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 420px;
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.page-contabilidad .coi-panel > .coi-card {
+    grid-column: 1 / 2;
+}
+
+.page-contabilidad .sidebar-right {
+    position: sticky;
+    top: calc(var(--header-h, 70px) + 16px);
+    align-self: start;
+    height: calc(100vh - var(--header-h, 70px) - 40px);
+    max-height: calc(100vh - var(--header-h, 70px) - 40px);
+    overflow: hidden;
+}
+
+.page-contabilidad .sidebar-right .feed-list {
+    height: calc(100% - 44px);
+    overflow: auto;
+}
+
+.page-contabilidad .contab-lede-card {
+    grid-column: 1 / 2;
+}
+
+@media (max-width: 1100px) {
+    .page-contabilidad .coi-panel {
+        grid-template-columns: 1fr;
+    }
+    .page-contabilidad .sidebar-right {
+        position: relative;
+        height: auto;
+        max-height: none;
+    }
 }
 
 .contab-hero-sub {
