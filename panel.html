@@ -221,6 +221,12 @@
                     document.body.classList.remove('nav-loading');
                     document.body.classList.add('nav-ready');
                     if (window.indexCore) window.indexCore.init();
+                    try {
+                        var qs = new URLSearchParams(window.location.search);
+                        if (qs.get('abrir') === 'config' && typeof window.ssepiOpenUserConfig === 'function') {
+                            setTimeout(function () { window.ssepiOpenUserConfig(); }, 450);
+                        }
+                    } catch (e) {}
                 }
             })();
         });

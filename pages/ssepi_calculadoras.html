@@ -152,6 +152,25 @@
         </div>
 
         <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-table"></i> Hoja tipo Excel (por calculadora)</h3>
+            <p class="form-hint">Filas con <strong>concepto</strong>, texto de <strong>fórmula</strong> (referencia / Excel) y <strong>valor</strong> numérico. «Solo valor» ignora la fórmula a efectos de lectura en pantalla. Importa desde Excel si la hoja incluye columnas concepto, fórmula/formula y valor.</p>
+            <div class="filtros-bar" style="margin-bottom:10px;flex-wrap:wrap;gap:8px">
+                <label for="hojaCalcSelect" class="form-hint" style="margin:0;align-self:center">Calculadora:</label>
+                <select id="hojaCalcSelect" class="form-control" style="max-width:280px"></select>
+                <button type="button" class="btn-ssepi" id="btnHojaNuevaFila"><i class="fas fa-plus"></i> Nueva fila</button>
+                <button type="button" class="btn-ssepi btn-secondary" id="btnHojaRecargar"><i class="fas fa-sync"></i> Recargar</button>
+            </div>
+            <div class="resumen-table-wrap" style="overflow-x:auto">
+                <table class="lista-table" id="tablaHojaExcel">
+                    <thead>
+                        <tr><th>#</th><th>Concepto</th><th>Fórmula (texto)</th><th>Valor</th><th>Solo valor</th><th>Acciones</th></tr>
+                    </thead>
+                    <tbody id="tablaHojaExcelBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-section">
             <h3 class="section-title-form"><i class="fas fa-file-excel"></i> Importar desde plantilla</h3>
             <p class="form-hint">Usa la plantilla <strong>Plantilla de cotización (sale.order.template).xlsx</strong> desde la carpeta excel del proyecto. Selecciona el archivo para cargar datos.</p>
             <div class="filtros-bar">

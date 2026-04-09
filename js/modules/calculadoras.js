@@ -13,6 +13,7 @@
     var clientesList = [];
     var excelDataPreview = null;
     var simAutoTarifas = [];
+    var hojaFilasList = [];
 
     function loadCalculadoras() {
         if (!supabase()) return Promise.resolve([]);
@@ -96,6 +97,185 @@
         sel.innerHTML = calculadorasList.map(function(c) {
             return '<option value="' + esc(c.id) + '"' + (selectedId === c.id ? ' selected' : '') + '>' + esc(c.nombre) + '</option>';
         }).join('');
+    }
+
+    function fillHojaCalcSelect() {
+        var sel = document.getElementById('hojaCalcSelect');
+        if (!sel) return;
+        var prev = sel.value;
+        sel.innerHTML = calculadorasList.map(function(c) {
+            return '<option value="' + esc(c.id) + '">' + esc(c.nombre) + '</option>';
+        }).join('');
+        if (prev && calculadorasList.some(function(c) { return c.id === prev; })) sel.value = prev;
+    }
+
+    function loadHojaFilas() {
+        var cid = document.getElementById('hojaCalcSelect') && document.getElementById('hojaCalcSelect').value;
+        if (!cid || !supabase()) {
+            hojaFilasList = [];
+            renderHojaTable();
+            return Promise.resolve();
+        }
+        return supabase().from('calculadora_hoja_filas').select('*').eq('calculadora_id', cid).order('fila_orden', { ascending: true }).then(function(r) {
+            if (r.error) {
+                if (r.error.code === '42P01' || (r.error.message && r.error.message.indexOf('does not exist') !== -1)) {
+                    hojaFilasList = [];
+                    renderHojaTable();
+                    var tbody = document.getElementById('tablaHojaExcelBody');
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="6">Ejecuta la migración <code>calculadoras-hoja-excel-perfil-pendientes.sql</code> en Supabase.</td></tr>';
+                    return;
+                }
+                throw r.error;
+            }
+            hojaFilasList = r.data || [];
+            renderHojaTable();
+        });
+    }
+
+    function renderHojaTable() {
+        var tbody = document.getElementById('tablaHojaExcelBody');
+        if (!tbody) return;
+        if (!calculadorasList.length) {
+            tbody.innerHTML = '<tr><td colspan="6">Crea primero una calculadora.</td></tr>';
+            return;
+        }
+        if (!hojaFilasList.length) {
+            tbody.innerHTML = '<tr><td colspan="6">Sin filas. Pulsa «Nueva fila» o importa un Excel con columnas concepto / fórmula / valor.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = hojaFilasList.map(function(row, i) {
+            var vid = esc(row.id);
+            var vconc = esc(row.concepto || '');
+            var vform = esc(row.formula_text || '');
+            var vval = row.valor != null && row.valor !== '' ? esc(String(row.valor)) : '';
+            var chk = row.solo_valor ? ' checked' : '';
+            return '<tr data-hoja-id="' + vid + '"><td>' + (i + 1) + '</td><td><input type="text" class="form-control hoja-inp-conc" value="' + vconc + '"></td>' +
+                '<td><input type="text" class="form-control hoja-inp-form" value="' + vform + '"></td>' +
+                '<td><input type="number" step="any" class="form-control hoja-inp-val" value="' + vval + '"></td>' +
+                '<td style="text-align:center"><input type="checkbox" class="hoja-inp-solo"' + chk + '></td>' +
+                '<td><button type="button" class="btn-ssepi btn-edit hoja-btn-save"><i class="fas fa-save"></i></button> ' +
+                '<button type="button" class="btn-ssepi btn-danger hoja-btn-del"><i class="fas fa-trash"></i></button></td></tr>';
+        }).join('');
+        tbody.querySelectorAll('.hoja-btn-save').forEach(function(btn) {
+            btn.addEventListener('click', function() { saveHojaRowFromTr(btn.closest('tr')); });
+        });
+        tbody.querySelectorAll('.hoja-btn-del').forEach(function(btn) {
+            btn.addEventListener('click', function() { deleteHojaRowFromTr(btn.closest('tr')); });
+        });
+    }
+
+    function nextHojaOrden() {
+        var m = 0;
+        hojaFilasList.forEach(function(r) {
+            var o = parseInt(r.fila_orden, 10);
+            if (!isNaN(o) && o > m) m = o;
+        });
+        return m + 1;
+    }
+
+    function saveHojaRowFromTr(tr) {
+        if (!tr || !supabase()) return;
+        var id = tr.getAttribute('data-hoja-id');
+        var cid = document.getElementById('hojaCalcSelect').value;
+        var conc = tr.querySelector('.hoja-inp-conc') && tr.querySelector('.hoja-inp-conc').value.trim();
+        var form = tr.querySelector('.hoja-inp-form') && tr.querySelector('.hoja-inp-form').value.trim();
+        var valInp = tr.querySelector('.hoja-inp-val');
+        var valRaw = valInp && valInp.value !== '' ? parseFloat(valInp.value) : null;
+        var solo = tr.querySelector('.hoja-inp-solo') && tr.querySelector('.hoja-inp-solo').checked;
+        var payload = {
+            calculadora_id: cid,
+            concepto: conc || null,
+            formula_text: form || null,
+            valor: valRaw != null && !isNaN(valRaw) ? valRaw : null,
+            solo_valor: solo,
+            updated_at: new Date().toISOString()
+        };
+        var prom;
+        if (id && id !== 'new') {
+            prom = supabase().from('calculadora_hoja_filas').update(payload).eq('id', id);
+        } else {
+            payload.fila_orden = nextHojaOrden();
+            delete payload.updated_at;
+            prom = supabase().from('calculadora_hoja_filas').insert(payload);
+        }
+        prom.then(function(r) {
+            if (r.error) throw r.error;
+            return loadHojaFilas();
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+    }
+
+    function deleteHojaRowFromTr(tr) {
+        if (!tr || !supabase()) return;
+        var id = tr.getAttribute('data-hoja-id');
+        if (!id || id === 'new') {
+            tr.remove();
+            var tbody = document.getElementById('tablaHojaExcelBody');
+            if (tbody && !tbody.querySelector('tr')) loadHojaFilas();
+            return;
+        }
+        if (!confirm('¿Eliminar esta fila?')) return;
+        supabase().from('calculadora_hoja_filas').delete().eq('id', id).then(function(r) {
+            if (r.error) throw r.error;
+            return loadHojaFilas();
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+    }
+
+    function appendEmptyHojaRow() {
+        var tbody = document.getElementById('tablaHojaExcelBody');
+        if (!tbody) return;
+        var first = tbody.querySelector('tr[data-hoja-id]');
+        if (first && first.getAttribute('data-hoja-id') === 'new') {
+            alert('Ya hay una fila nueva sin guardar.');
+            return;
+        }
+        if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+        var tr = document.createElement('tr');
+        tr.setAttribute('data-hoja-id', 'new');
+        tr.innerHTML = '<td>—</td><td><input type="text" class="form-control hoja-inp-conc"></td>' +
+            '<td><input type="text" class="form-control hoja-inp-form"></td>' +
+            '<td><input type="number" step="any" class="form-control hoja-inp-val"></td>' +
+            '<td style="text-align:center"><input type="checkbox" class="hoja-inp-solo"></td>' +
+            '<td><button type="button" class="btn-ssepi btn-edit hoja-btn-save"><i class="fas fa-save"></i></button> ' +
+            '<button type="button" class="btn-ssepi btn-danger hoja-btn-del"><i class="fas fa-trash"></i></button></td>';
+        tbody.appendChild(tr);
+        tr.querySelector('.hoja-btn-save').addEventListener('click', function() { saveHojaRowFromTr(tr); });
+        tr.querySelector('.hoja-btn-del').addEventListener('click', function() { deleteHojaRowFromTr(tr); });
+    }
+
+    function importExcelToHojaFilas(headers, rows) {
+        var concI = headers.findIndex(function(h) { return /concepto|descripcion|descripción|item|clave/i.test(String(h || '')); });
+        var formI = headers.findIndex(function(h) { return /fórmula|formula/i.test(String(h || '')); });
+        var valI = headers.findIndex(function(h) { return /^(valor|value|importe|monto)$/i.test(String(h || '').trim()); });
+        if (concI < 0 && formI < 0 && valI < 0) return Promise.resolve({ n: 0 });
+        var cid = document.getElementById('hojaCalcSelect') && document.getElementById('hojaCalcSelect').value;
+        if (!cid || !supabase()) return Promise.resolve({ n: 0 });
+        return supabase().from('calculadora_hoja_filas').select('fila_orden').eq('calculadora_id', cid).order('fila_orden', { ascending: false }).limit(1).maybeSingle().then(function(ordRes) {
+            if (ordRes.error) throw ordRes.error;
+            var orden = 1;
+            if (ordRes.data && ordRes.data.fila_orden != null && !isNaN(parseInt(ordRes.data.fila_orden, 10))) {
+                orden = parseInt(ordRes.data.fila_orden, 10) + 1;
+            }
+            var inserts = [];
+            rows.forEach(function(row) {
+                var c = concI >= 0 && row[concI] != null ? String(row[concI]).trim() : '';
+                var f = formI >= 0 && row[formI] != null ? String(row[formI]).trim() : '';
+                var v = valI >= 0 && row[valI] != null && row[valI] !== '' ? parseFloat(row[valI]) : null;
+                if (!c && !f && (v == null || isNaN(v))) return;
+                inserts.push({
+                    calculadora_id: cid,
+                    fila_orden: orden++,
+                    concepto: c || null,
+                    formula_text: f || null,
+                    valor: v != null && !isNaN(v) ? v : null,
+                    solo_valor: false
+                });
+            });
+            if (!inserts.length) return { n: 0 };
+            return supabase().from('calculadora_hoja_filas').insert(inserts).then(function(r) {
+                if (r.error) throw r.error;
+                return { n: inserts.length };
+            });
+        });
     }
 
     // --- Modal Calculadora ---
@@ -400,7 +580,15 @@
                 activo: true
             }).then(function() { added++; });
         })).then(function() {
-            alert('Importación completada. Agregados: ' + added + ', Actualizados: ' + updated);
+            return importExcelToHojaFilas(headers, rows).then(function(hj) {
+                return { hj: hj };
+            }).catch(function() {
+                return { hj: { n: 0 } };
+            });
+        }).then(function(extra) {
+            var hojaN = (extra && extra.hj && extra.hj.n) ? extra.hj.n : 0;
+            alert('Importación completada. Calculadoras — agregados: ' + added + ', actualizados: ' + updated +
+                (hojaN ? '. Filas en hoja Excel: ' + hojaN + '.' : ''));
             excelDataPreview = null;
             document.getElementById('importPreview').innerHTML = '';
             document.getElementById('btnProcesarImport').style.display = 'none';
@@ -410,7 +598,9 @@
             renderFunciones();
             fillSelectCalculadoras('modalCostoCalculadora');
             fillSelectCalculadoras('modalClienteCalculadora');
+            fillHojaCalcSelect();
             updateAnalisis();
+            return loadHojaFilas();
         }).catch(function(err) {
             console.error(err);
             alert('Error al importar: ' + (err.message || err));
@@ -575,6 +765,11 @@
         if (document.getElementById('btnNuevoCosto')) document.getElementById('btnNuevoCosto').addEventListener('click', function() { openModalCosto(null); });
         if (document.getElementById('btnNuevoCliente')) document.getElementById('btnNuevoCliente').addEventListener('click', function() { openModalCliente(null); });
 
+        var hojaSel = document.getElementById('hojaCalcSelect');
+        if (hojaSel) hojaSel.addEventListener('change', function() { loadHojaFilas(); });
+        if (document.getElementById('btnHojaNuevaFila')) document.getElementById('btnHojaNuevaFila').addEventListener('click', appendEmptyHojaRow);
+        if (document.getElementById('btnHojaRecargar')) document.getElementById('btnHojaRecargar').addEventListener('click', function() { loadHojaFilas(); });
+
         document.getElementById('modalCalcClose') && document.getElementById('modalCalcClose').addEventListener('click', closeModalCalculadora);
         document.getElementById('modalCalcGuardar') && document.getElementById('modalCalcGuardar').addEventListener('click', saveModalCalculadora);
         document.getElementById('modalCalcEliminar') && document.getElementById('modalCalcEliminar').addEventListener('click', deleteModalCalculadora);
@@ -604,6 +799,8 @@
             renderFunciones();
             renderCostos();
             renderClientes();
+            fillHojaCalcSelect();
+            await loadHojaFilas();
             updateAnalisis();
             renderSimAutoTable();
             syncAutoGasDefault();
