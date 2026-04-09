@@ -172,10 +172,15 @@
 
         <div class="form-section">
             <h3 class="section-title-form"><i class="fas fa-file-excel"></i> Importar desde plantilla</h3>
-            <p class="form-hint">Usa la plantilla <strong>Plantilla de cotización (sale.order.template).xlsx</strong> desde la carpeta excel del proyecto. Selecciona el archivo para cargar datos.</p>
-            <div class="filtros-bar">
+            <p class="form-hint">Usa la plantilla <strong>Plantilla de cotización (sale.order.template).xlsx</strong> desde la carpeta excel del proyecto. La hoja elegida importa <strong>calculadoras</strong> (columnas nombre/producto, etc.). Opcional: importar filas tipo Excel (concepto / fórmula / valor) desde una o todas las hojas hacia la calculadora seleccionada arriba en «Hoja tipo Excel».</p>
+            <div class="filtros-bar" style="flex-wrap:wrap;gap:10px;align-items:center">
                 <input type="file" id="excelFileCalculadoras" accept=".xlsx,.xls" style="display:none">
                 <button type="button" class="btn-ssepi" id="btnSeleccionarExcel"><i class="fas fa-upload"></i> Seleccionar archivo Excel</button>
+                <label for="importSheetSelect" class="form-hint" style="margin:0">Hoja (calculadoras):</label>
+                <select id="importSheetSelect" class="form-control" style="max-width:220px;display:none" aria-label="Hoja del Excel para vista previa e importación de calculadoras"></select>
+                <label class="form-hint" style="margin:0;display:flex;align-items:center;gap:6px;cursor:pointer">
+                    <input type="checkbox" id="importAllSheetsHoja"> Filas Excel en <strong>todas</strong> las hojas detectadas
+                </label>
                 <button type="button" class="btn-ssepi" id="btnProcesarImport" style="display:none"><i class="fas fa-check"></i> Agregar / Actualizar</button>
             </div>
             <div id="importPreview" class="import-preview"></div>

@@ -23,9 +23,31 @@ COMMENT ON TABLE public.calculadora_hoja_filas IS 'Filas estilo Excel por calcul
 
 CREATE INDEX IF NOT EXISTS idx_calculadora_hoja_calc ON public.calculadora_hoja_filas(calculadora_id);
 
+-- -----------------------------------------------------------------------------
+-- Helper RLS (idempotente). Si ya existe por calculadoras-rls-acceso-equipo.sql,
+-- CREATE OR REPLACE no rompe nada. Así esta migración corre sola sin error 42883.
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.ssepi_calculadoras_editor()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users u
+    WHERE u.auth_user_id = auth.uid()
+      AND u.rol IN ('admin', 'superadmin', 'automatizacion', 'taller', 'contabilidad')
+  )
+  OR EXISTS (
+    SELECT 1 FROM public.usuarios u
+    WHERE u.auth_user_id = auth.uid()
+      AND u.rol IN ('admin', 'superadmin', 'automatizacion', 'taller', 'contabilidad')
+  );
+$$;
+
 ALTER TABLE public.calculadora_hoja_filas ENABLE ROW LEVEL SECURITY;
 
--- Misma convención que calculadoras-rls-acceso-equipo.sql (ejecutar esa migración antes).
 DROP POLICY IF EXISTS calculadora_hoja_select_auth ON public.calculadora_hoja_filas;
 CREATE POLICY calculadora_hoja_select_auth ON public.calculadora_hoja_filas FOR SELECT TO authenticated USING (true);
 
