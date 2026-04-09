@@ -113,13 +113,14 @@ const TallerModule = (function() {
         } catch (e) {
             console.warn('[Taller] _initUI:', e);
         }
-        _setFiltroMesActual();
+        _setFiltroRangoPorDefecto();
     }
 
-    function _setFiltroMesActual() {
+    /** Rango amplio por defecto para no ocultar órdenes importadas (históricas) al abrir el módulo. */
+    function _setFiltroRangoPorDefecto() {
         const now = new Date();
-        filtroFechaInicio = new Date(now.getFullYear(), now.getMonth(), 1);
-        filtroFechaFin = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        filtroFechaInicio = new Date(now.getFullYear() - 2, 0, 1);
+        filtroFechaFin = new Date(now.getFullYear() + 1, 11, 31);
         const filtroInicio = document.getElementById('filtroFechaInicio');
         const filtroFin = document.getElementById('filtroFechaFin');
         if (filtroInicio) filtroInicio.valueAsDate = filtroFechaInicio;
@@ -142,12 +143,18 @@ const TallerModule = (function() {
 
     // ==================== CARGA DE DATOS INICIAL ====================
     async function _loadInitialData() {
-        await Promise.all([
+        const results = await Promise.allSettled([
             _loadOrders(),
             _loadClients(),
             _loadInventory(),
             _loadComprasVinculadas()
         ]);
+        results.forEach((r, i) => {
+            if (r.status === 'rejected') {
+                const name = ['órdenes', 'clientes', 'inventario', 'compras'][i];
+                console.warn('[Taller] No se cargó ' + name + ':', r.reason);
+            }
+        });
         _populateClientSelect();
         _populateTecnicosFilter();
         _populateEquipoFilter();
@@ -155,7 +162,13 @@ const TallerModule = (function() {
     }
 
     async function _loadOrders() {
-        orders = await ordenesService.select({}, { orderBy: 'fecha_ingreso', ascending: false });
+        try {
+            orders = await ordenesService.select({}, { orderBy: 'fecha_ingreso', ascending: false });
+        } catch (e) {
+            console.error('[Taller] Error cargando ordenes_taller:', e);
+            orders = [];
+            throw e;
+        }
         _applyFilters();
     }
 
@@ -399,9 +412,15 @@ const TallerModule = (function() {
         let filtered = orders;
 
         if (filtroFechaInicio && filtroFechaFin) {
+            const start = new Date(filtroFechaInicio);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(filtroFechaFin);
+            end.setHours(23, 59, 59, 999);
             filtered = filtered.filter(o => {
+                if (o.fecha_ingreso == null || o.fecha_ingreso === '') return true;
                 const f = new Date(o.fecha_ingreso);
-                return f >= filtroFechaInicio && f <= filtroFechaFin;
+                if (Number.isNaN(f.getTime())) return true;
+                return f >= start && f <= end;
             });
         }
         if (filtroTecnico !== 'todos') {

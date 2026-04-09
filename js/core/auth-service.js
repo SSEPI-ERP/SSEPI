@@ -301,6 +301,13 @@ export class AuthService {
 
   // ==================== VERIFICAR PERMISO ====================
   async hasPermission(module, action) {
+    // Lectura: cualquier sesión válida puede consultar; el control fino lo hace RLS en Supabase.
+    // Sin esto, roles sin filas en role_permissions (p. ej. Automatización) veían listas vacías aunque hubiera datos.
+    if (action === 'read') {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      return !!user;
+    }
+
     const profile = await this.getCurrentProfile();
     if (!profile) return false;
     if (profile.rol === 'admin' || profile.rol === 'superadmin') return true;
