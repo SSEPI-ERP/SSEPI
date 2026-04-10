@@ -61,7 +61,8 @@ const InventarioModule = (function() {
     }
     function _buscarFilaEncabezados(rows) {
         if (!rows || !rows.length) return null;
-        for (let r = 0; r < Math.min(rows.length, 15); r++) {
+        // Algunos Excel traen filas de título/encabezado combinado arriba.
+        for (let r = 0; r < Math.min(rows.length, 45); r++) {
             const map = _detectarColumnas(rows[r]);
             if (map) return { headerRowIndex: r, columnMap: map };
         }

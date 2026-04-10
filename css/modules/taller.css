@@ -1339,6 +1339,17 @@ main {
     gap: 10px;
     margin-bottom: 15px;
 }
+
+.reporte-section .reporte-actions .btn-ssepi {
+    flex: 1 1 260px;
+    justify-content: center;
+}
+
+@media (max-width: 540px) {
+    .reporte-section .reporte-actions .btn-ssepi {
+        flex: 1 1 100%;
+    }
+}
 .reporte-section .btn-download {
     border-color: var(--c-success);
     color: var(--c-success);
