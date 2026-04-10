@@ -8,6 +8,8 @@ const SUPABASE_URL = 'https://knzmdwjmrhcoytmebdwa.supabase.co';
 const SUPABASE_ANON_KEY = '***ANON_REMOVED***';
 
 if (!window.__SUPABASE_INITIALIZED__) {
+    // Exponer URL para que otros módulos (p. ej. CSP) puedan ajustarse sin hardcode.
+    window.SSEPI_SUPABASE_URL = SUPABASE_URL;
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: {
             autoRefreshToken: true,

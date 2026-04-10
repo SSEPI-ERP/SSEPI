@@ -31,13 +31,58 @@ const ContactosModule = (function() {
     /** Evita duplicar la misma persona al fusionar `clientes` con `contactos` (misma clave = una sola fila). */
     function _claveDedupeContacto(c) {
         const email = (c.email || '').toString().toLowerCase().trim();
-        if (email) return 'e:' + email;
-        const tel = (c.telefono || '').toString().replace(/\D/g, '');
-        if (tel.length >= 10) return 't:' + tel;
         const nom = (c.nombre || '').toString().toLowerCase().trim();
         const emp = (c.empresa || '').toString().toLowerCase().trim();
+        // Correo compartido (administración, ventas) ≠ una sola persona.
+        if (email) return 'e:' + email + '|' + nom + '|' + emp;
+        const tel = (c.telefono || '').toString().replace(/\D/g, '');
+        // Mismo teléfono de central ≠ misma persona: incluir nombre y empresa en la clave.
+        if (tel.length >= 10) return 't:' + tel + '|' + nom + '|' + emp;
         if (nom || emp) return 'n:' + nom + '|' + emp;
         return 'id:' + (c.id || '');
+    }
+
+    /** Export Odoo (res.partner): "Empresa legal, S.A. de C.V., Nombre persona" → persona + empresa. */
+    function _splitOdooNombreCompleto(fullRaw) {
+        const full = String(fullRaw || '').trim();
+        if (!full) return { nombre: '', empresa: '' };
+        const lastComma = full.lastIndexOf(',');
+        if (lastComma <= 0) return { nombre: full.toUpperCase(), empresa: '' };
+        const left = full.slice(0, lastComma).trim();
+        const right = full.slice(lastComma + 1).trim();
+        const legalEntity = /\b(s\.?\s*a\.?\s*de\s*c\.?\s*v\.?|s\.?\s*a\.?|inc\.?|llc|corp\.?|c\.?\s*v\.?)\b/i;
+        if (right && (legalEntity.test(left) || left.length > 3) && !legalEntity.test(right)) {
+            return { nombre: right.toUpperCase(), empresa: left.toUpperCase() };
+        }
+        return { nombre: full.toUpperCase(), empresa: '' };
+    }
+
+    function _rowFromOdooExport(obj) {
+        const full = obj['Nombre completo'] ?? obj['nombre completo'] ?? '';
+        const email = String(obj['Correo electrónico'] ?? obj['correo electrónico'] ?? obj['email'] ?? '').trim();
+        const telefono = String(obj['Teléfono'] ?? obj['telefono'] ?? '').trim();
+        const { nombre, empresa } = _splitOdooNombreCompleto(full);
+        if (!nombre && !empresa) return null;
+        const displayNombre = nombre || empresa;
+        return {
+            nombre: displayNombre,
+            empresa: nombre ? empresa : '',
+            email,
+            telefono,
+            rfc: '',
+            tipo: 'client',
+            avatar: displayNombre.charAt(0).toUpperCase(),
+            color: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+    }
+
+    function _isOdooPartnerSheet(rows) {
+        if (!rows || !rows.length) return false;
+        const keys = Object.keys(rows[0] || {});
+        const joined = keys.join('\u0000').toLowerCase();
+        return joined.includes('nombre completo') && (joined.includes('correo') || joined.includes('teléfono') || joined.includes('telefono'));
     }
 
     // Suscripciones
@@ -720,38 +765,75 @@ const ContactosModule = (function() {
                     const data = new Uint8Array(ev.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                    const lines = json.filter(fila => fila.some(c => c != null && c !== ''));
                     const csrfToken = sessionStorage.getItem('csrfToken');
                     let imported = 0;
-                    for (let i = 0; i < lines.length; i++) {
-                        if (i === 0 && String(lines[i][0] || '').toLowerCase().includes('nombre')) continue;
-                        const cols = (lines[i] || []).map(c => (c != null ? String(c) : '').trim());
-                        const nombre = cols[0] || '';
-                        if (!nombre) continue;
-                        const row = {
-                            nombre: nombre.toUpperCase(),
-                            email: cols[1] || '',
-                            telefono: cols[2] || '',
-                            empresa: cols[3] || '',
-                            rfc: cols[4] || '',
-                            tipo: (cols[5] || '').toLowerCase() === 'provider' ? 'provider' : 'client',
-                            avatar: nombre.charAt(0).toUpperCase(),
-                            color: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString()
-                        };
+                    let skipped = 0;
+                    const keySeen = new Set();
+                    let existingKeys = new Set();
+                    try {
+                        const exist = await contactosService.select({}, { orderBy: 'nombre', ascending: true });
+                        existingKeys = new Set((exist || []).map(_claveDedupeContacto));
+                    } catch (err) {
+                        console.warn('[Contactos] No se pudieron leer contactos existentes para omitir duplicados:', err);
+                    }
+
+                    const tryInsert = async (row) => {
+                        const k = _claveDedupeContacto(row);
+                        if (!k || k === 'id:') return;
+                        if (keySeen.has(k) || existingKeys.has(k)) {
+                            skipped++;
+                            return;
+                        }
                         try {
                             await contactosService.insert(row, csrfToken);
+                            keySeen.add(k);
+                            existingKeys.add(k);
                             imported++;
-                        } catch (err) { console.error('Error importando fila:', err); }
+                        } catch (err) {
+                            console.error('Error importando fila:', err);
+                        }
+                    };
+
+                    const objectRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                    if (_isOdooPartnerSheet(objectRows)) {
+                        for (const obj of objectRows) {
+                            const row = _rowFromOdooExport(obj);
+                            if (!row) continue;
+                            await tryInsert(row);
+                        }
+                    } else {
+                        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                        const lines = json.filter(fila => fila.some(c => c != null && c !== ''));
+                        for (let i = 0; i < lines.length; i++) {
+                            if (i === 0 && String(lines[i][0] || '').toLowerCase().includes('nombre')) continue;
+                            const cols = (lines[i] || []).map(c => (c != null ? String(c) : '').trim());
+                            const nombre = cols[0] || '';
+                            if (!nombre) continue;
+                            const row = {
+                                nombre: nombre.toUpperCase(),
+                                email: cols[1] || '',
+                                telefono: cols[2] || '',
+                                empresa: (cols[3] || '').toUpperCase(),
+                                rfc: cols[4] || '',
+                                tipo: (cols[5] || '').toLowerCase() === 'provider' ? 'provider' : 'client',
+                                avatar: nombre.charAt(0).toUpperCase(),
+                                color: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString()
+                            };
+                            await tryInsert(row);
+                        }
                     }
-                    showNotification(`✅ ${imported} contactos importados desde Excel`, 'success');
+                    const msg = skipped
+                        ? `✅ ${imported} importados · ${skipped} omitidos (ya en BD o repetidos en el archivo)`
+                        : `✅ ${imported} contactos importados desde Excel`;
+                    showNotification(msg, 'success');
                 } catch (ex) {
                     console.error(ex);
                     showNotification('Error al leer el archivo Excel', 'error');
                 }
                 e.target.value = '';
+                _loadContactos();
             };
             reader.readAsArrayBuffer(file);
             return;

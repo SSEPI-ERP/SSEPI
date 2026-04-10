@@ -62,10 +62,10 @@
         <a href="/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
         <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
         <div class="menu-category">ADMINISTRACIÓN</div>
-        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
         <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
         <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
         <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
         <a href="/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
         <a href="/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
         <a href="/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
@@ -225,6 +225,13 @@
                 <button type="button" class="btn-secondary ws-print-btn" id="btnImprimirOrdenTaller" title="Abre e inicia el cuadro de impresión (PDF)">
                     <i class="fas fa-print"></i> Imprimir / PDF
                 </button>
+                </div>
+                <div class="ws-gnrl" id="wsGnrlBox" aria-label="General (Odoo) y acciones ERP">
+                    <div class="ws-gnrl-head">
+                        <span class="ws-gnrl-label">GNRL (Odoo)</span>
+                        <button type="button" class="ws-gnrl-edit" id="wsGoGeneralBtn" title="Ir a Notas generales">Editar</button>
+                    </div>
+                    <div class="ws-gnrl-text" id="wsGnrlText">—</div>
                 </div>
             </div>
             <div class="ws-steps" role="tablist" aria-label="Etapas de la orden">
