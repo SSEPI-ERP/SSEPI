@@ -16,13 +16,16 @@ export function applyCSP() {
   })();
   meta.content = `
     default-src 'self';
-    script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com 'unsafe-inline' 'unsafe-eval';
+    script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline';
     style-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline';
     font-src 'self' https://fonts.gstatic.com data:;
     img-src 'self' data: https://images.unsplash.com;
     connect-src 'self' https://*.supabase.co wss://*.supabase.co ${supabaseHost ? `https://${supabaseHost} wss://${supabaseHost}` : ''} https://cdn.jsdelivr.net https://api.ipify.org;
     base-uri 'self';
     form-action 'self';
+    frame-ancestors 'none';
+    object-src 'none';
+    upgrade-insecure-requests;
   `.replace(/\s+/g, ' ').trim();
   document.head.appendChild(meta);
 }
