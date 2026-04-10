@@ -1,0 +1,109 @@
+/* Visor de importación (Excel/CSV) + envío a Supabase */
+.page-import-viewer .iv-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding: 14px 18px;
+    background: var(--bg-panel, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 16px;
+}
+.page-import-viewer .iv-toolbar label.btn-ssepi {
+    cursor: pointer;
+    margin: 0;
+}
+.page-import-viewer .iv-toolbar input[type="file"] {
+    display: none;
+}
+.page-import-viewer .iv-hint {
+    font-size: 0.85rem;
+    color: var(--text-muted, #6b7280);
+    max-width: 720px;
+    line-height: 1.45;
+}
+.page-import-viewer .iv-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.page-import-viewer .iv-tab {
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border, #e5e7eb);
+    background: var(--bg-hover, #f3f4f6);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.page-import-viewer .iv-tab.active {
+    border-color: var(--accent-blue, #0052cc);
+    background: rgba(0, 82, 204, 0.08);
+    color: var(--accent-blue, #0052cc);
+}
+.page-import-viewer .iv-panel {
+    display: none;
+}
+.page-import-viewer .iv-panel.active {
+    display: block;
+}
+.page-import-viewer .iv-table-wrap {
+    overflow: auto;
+    max-height: min(62vh, 640px);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 12px;
+}
+.page-import-viewer .iv-table-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+.page-import-viewer .iv-table-wrap th,
+.page-import-viewer .iv-table-wrap td {
+    border-bottom: 1px solid var(--border, #eee);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+.page-import-viewer .iv-table-wrap th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-panel, #f9fafb);
+    z-index: 1;
+    font-weight: 700;
+}
+.page-import-viewer .iv-log {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: var(--bg-hover, #f3f4f6);
+    font-family: ui-monospace, monospace;
+    font-size: 0.78rem;
+    white-space: pre-wrap;
+    max-height: 160px;
+    overflow-y: auto;
+}
+.page-import-viewer .iv-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted, #6b7280);
+}
+.page-import-viewer .iv-toolbar-inv {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+.page-import-viewer .iv-inline-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary, #6b7280);
+}
+.page-import-viewer #ivInvCategoria {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border, #e5e7eb);
+    background: var(--bg-panel, #fff);
+    font-size: 0.85rem;
+}
