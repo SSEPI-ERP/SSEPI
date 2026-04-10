@@ -26,11 +26,34 @@ const MIME = {
 };
 
 const SECURITY_HEADERS = {
+  // Nota: en localhost HSTS no aplica en la práctica, pero se deja para producción/proxy.
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+  // Clickjacking
   'X-Frame-Options': 'DENY',
+  // Reemplaza X-Frame-Options en navegadores modernos
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    // Se mantiene unsafe-inline por scripts inline existentes; evitar unsafe-eval.
+    "script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'",
+    "style-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: https://images.unsplash.com",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://api.ipify.org",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    'upgrade-insecure-requests'
+  ].join('; '),
   'X-Content-Type-Options': 'nosniff',
-  'X-XSS-Protection': '1; mode=block',
-  'Referrer-Policy': 'strict-origin-when-cross-origin'
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  // Hardening extra
+  'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+  // Aislación de origen para mitigar ataques de cross-origin
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  // Evita leaks a otros sitios; requiere HTTPS en producción para ser efectivo al 100%
+  'Cross-Origin-Embedder-Policy': 'credentialless'
 };
 
 const server = http.createServer((req, res) => {
