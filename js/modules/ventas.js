@@ -392,19 +392,30 @@ const VentasModule = (function() {
 
     // ==================== CARGA DE DATOS INICIAL ====================
     async function _loadInitialData() {
+        // Fase 1: lo necesario para listas/KPI y wizard (cotización + cliente + inventario)
         await Promise.all([
             _loadVentas(),
             _loadCotizaciones(),
             _loadInventario(),
-            _loadContactos(),
+            _loadContactos()
+        ]);
+        _populateVendedoresFilter();
+        _applyFilters();
+        _renderSolicitudesTaller();
+        _renderPendientesAutorizacion();
+
+        // Fase 2: vínculos a taller/motores/proyectos/compras — no bloquea el primer pintado
+        Promise.all([
             _loadProyectos(),
             _loadTaller(),
             _loadMotores(),
             _loadCompras()
-        ]);
-        _populateVendedoresFilter();
-        _renderSolicitudesTaller();
-        _renderPendientesAutorizacion();
+        ])
+            .then(() => {
+                _renderSolicitudesTaller();
+                _renderPendientesAutorizacion();
+            })
+            .catch((e) => console.warn('[Ventas] carga secundaria:', e));
     }
 
     async function _loadVentas() {
@@ -414,7 +425,6 @@ const VentasModule = (function() {
             console.warn('[Ventas] Error cargando ventas:', e);
             ventas = [];
         }
-        _applyFilters();
     }
 
     async function _loadCotizaciones() {
@@ -476,11 +486,13 @@ const VentasModule = (function() {
         const subVentas = supabase
             .channel('ventas_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ventas' }, payload => {
-                _loadVentas();
-                _addToFeed('📊', 'Datos de ventas actualizados');
-                if (payload.new && payload.eventType !== 'DELETE') {
-                    notifyVentaIfEligible(payload.new, payload.old);
-                }
+                _loadVentas().then(() => {
+                    _applyFilters();
+                    _addToFeed('📊', 'Datos de ventas actualizados');
+                    if (payload.new && payload.eventType !== 'DELETE') {
+                        notifyVentaIfEligible(payload.new, payload.old);
+                    }
+                });
             })
             .subscribe();
         subscriptions.push(subVentas);
@@ -488,8 +500,10 @@ const VentasModule = (function() {
         const subCotizaciones = supabase
             .channel('cotizaciones_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'cotizaciones' }, payload => {
-                _loadCotizaciones();
-                _renderPendientesAutorizacion();
+                _loadCotizaciones().then(() => {
+                    _renderPendientesAutorizacion();
+                    _applyFilters();
+                });
             })
             .subscribe();
         subscriptions.push(subCotizaciones);
