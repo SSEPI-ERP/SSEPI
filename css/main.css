@@ -4,6 +4,10 @@
    ESTILO: Unificado con paleta neutra (azul corporativo)
    ================================================ */
 
+html {
+  font-size: 17px;
+}
+
 :root {
   --primary: #0052cc;
   --primary-light: #e0e7ff;
@@ -534,7 +538,7 @@ tr.inbound-unread td { font-weight: 500; }
 }
 
 .menu-category {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-muted);
   margin: 20px 0 10px 15px;
@@ -553,7 +557,7 @@ tr.inbound-unread td { font-weight: 500; }
   border-radius: 8px;
   transition: 0.2s;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 15px;
   border: 1px solid transparent;
   position: relative;
 }

@@ -8,6 +8,7 @@
     "import-calculadoras": "node scripts/import-excel-calculadoras.js",
     "audit": "npm audit --audit-level=moderate",
     "sbom": "node -e \"const fs=require('fs'); const p=require('./package.json'); fs.writeFileSync('sbom.json', JSON.stringify({bomVersion:1,specVersion:'1.4',metadata:{timestamp:new Date().toISOString()},components:[{type:'application',name:p.name,version:p.version}]},null,2)); console.log('sbom.json written');\"",
+    "analyze-contactos-excel": "node scripts/analyze-contactos-excel.js",
     "serve": "node scripts/serve-with-headers.js",
     "lint": "echo 'Add ESLint and eslint-plugin-security for SAST; run: npx eslint js/ --ext .js'"
   },

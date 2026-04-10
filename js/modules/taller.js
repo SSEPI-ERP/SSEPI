@@ -908,6 +908,7 @@ const TallerModule = (function() {
         document.getElementById('techSelect').value = orden.tecnico_responsable || '';
         document.getElementById('internalNotes').value = orden.notas_internas || '';
         document.getElementById('generalNotes').value = orden.notas_generales || '';
+        _setWsGnrlText(orden.notas_generales || '');
         document.getElementById('horasEstimadas').value = orden.horas_estimadas || 0;
         document.getElementById('recibidoPor').value = orden.recibido_por || '';
 
@@ -1756,6 +1757,7 @@ const TallerModule = (function() {
         document.getElementById('techSelect').value = '';
         document.getElementById('internalNotes').value = '';
         document.getElementById('generalNotes').value = '';
+        _setWsGnrlText('—');
         document.getElementById('horasEstimadas').value = 0;
         document.getElementById('fechaEntrega').value = new Date().toISOString().slice(0,16);
         document.getElementById('recibeNombre').value = '';
@@ -1775,6 +1777,13 @@ const TallerModule = (function() {
         _renderConsumibles();
         _renderComponentesInventario();
         _renderComponentesCompra();
+    }
+
+    function _setWsGnrlText(text) {
+        const el = document.getElementById('wsGnrlText');
+        if (!el) return;
+        const s = (text || '').toString().trim();
+        el.textContent = s ? s : '—';
     }
 
     function _previewImage() {
@@ -2022,6 +2031,17 @@ ${printScript}
             console.log('✅ [Taller] Nueva Orden botón vinculado');
         } else {
             console.warn('[Taller] No se encontró #newOrderBtn');
+        }
+        const goGnrlBtn = document.getElementById('wsGoGeneralBtn');
+        if (goGnrlBtn) {
+            goGnrlBtn.addEventListener('click', function () {
+                _irPaso(2);
+                const t = document.getElementById('generalNotes');
+                if (t) {
+                    t.focus();
+                    try { t.setSelectionRange(t.value.length, t.value.length); } catch (e) {}
+                }
+            });
         }
         document.getElementById('closeWsBtn').addEventListener('click', _cerrarModal);
         document.getElementById('cancelWsBtn').addEventListener('click', _cerrarModal);

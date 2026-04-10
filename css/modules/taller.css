@@ -724,6 +724,59 @@ main {
     justify-content: flex-end;
 }
 
+.ws-gnrl {
+    min-width: 260px;
+    max-width: 520px;
+    flex: 1 1 320px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--c-taller);
+    border-radius: 12px;
+    padding: 10px 12px;
+    color: var(--text-primary);
+}
+
+.ws-gnrl-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.ws-gnrl-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.9px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.ws-gnrl-edit {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--c-taller);
+    font-weight: 700;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+.ws-gnrl-edit:hover {
+    background: var(--c-taller);
+    color: #fff;
+    border-color: var(--c-taller);
+}
+
+.ws-gnrl-text {
+    font-size: 13px;
+    line-height: 1.25rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .ws-title-group {
     display: flex;
     align-items: center;

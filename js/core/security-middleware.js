@@ -10,13 +10,17 @@
 export function applyCSP() {
   const meta = document.createElement('meta');
   meta.httpEquiv = 'Content-Security-Policy';
+  const supabaseUrl = (window.SSEPI_SUPABASE_URL || '').trim();
+  const supabaseHost = (() => {
+    try { return supabaseUrl ? new URL(supabaseUrl).host : ''; } catch (e) { return ''; }
+  })();
   meta.content = `
     default-src 'self';
     script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com 'unsafe-inline' 'unsafe-eval';
     style-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline';
     font-src 'self' https://fonts.gstatic.com data:;
     img-src 'self' data: https://images.unsplash.com;
-    connect-src 'self' https://knzmdwjmrhcoytmebdwa.supabase.co wss://knzmdwjmrhcoytmebdwa.supabase.co https://cdn.jsdelivr.net https://api.ipify.org;
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co ${supabaseHost ? `https://${supabaseHost} wss://${supabaseHost}` : ''} https://cdn.jsdelivr.net https://api.ipify.org;
     base-uri 'self';
     form-action 'self';
   `.replace(/\s+/g, ' ').trim();
