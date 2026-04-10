@@ -61,6 +61,18 @@ const VentasModule = (function() {
         return ventasWizardCerebro && typeof ventasWizardCerebro === 'object' ? { ...ventasWizardCerebro } : {};
     }
 
+    function _wizardSetPaso1Error(msg) {
+        const el = document.getElementById('wizardPaso1Error');
+        if (!el) return;
+        if (msg) {
+            el.textContent = msg;
+            el.style.display = 'block';
+        } else {
+            el.textContent = '';
+            el.style.display = 'none';
+        }
+    }
+
     function _wizardActualizarAyudaFolio() {
         const dept = document.getElementById('wizardDepartamentoSelect')?.value || '';
         const el = document.getElementById('wizardFolioAyuda');
@@ -79,7 +91,10 @@ const VentasModule = (function() {
         const deptEl = document.getElementById('wizardDepartamentoSelect');
         if (deptEl && !deptEl._ssepiBound) {
             deptEl._ssepiBound = true;
-            deptEl.addEventListener('change', () => _wizardActualizarAyudaFolio());
+            deptEl.addEventListener('change', () => {
+                _wizardSetPaso1Error('');
+                _wizardActualizarAyudaFolio();
+            });
         }
         _wizardActualizarAyudaFolio();
     }
@@ -88,10 +103,8 @@ const VentasModule = (function() {
         const fechaIso = fechaStr
             ? new Date(fechaStr + 'T12:00:00.000Z').toISOString()
             : new Date().toISOString();
-        const profile = await authService.getCurrentProfile();
-        const userName = profile?.nombre || 'Ventas';
-        const hist = () => [{ fecha: new Date().toISOString(), usuario: userName, accion: 'Alta desde Ventas (cerebro)' }];
         const prioLine = 'Prioridad (Ventas): ' + (prioridad || 'Normal');
+        const notasAlta = [prioLine, 'Alta desde Ventas (cerebro).'].join('\n');
 
         if (dept === 'Taller Electrónica') {
             const folioFn = window.folioFormats && window.folioFormats.getNextFolioLaboratorio;
@@ -103,8 +116,7 @@ const VentasModule = (function() {
                 falla_reportada: falla,
                 fecha_ingreso: fechaIso,
                 estado: 'Nuevo',
-                notas_generales: prioLine,
-                historial: hist()
+                notas_generales: notasAlta
             };
             const inserted = await tallerService.insert(row, csrfToken);
             if (inserted && taller && !taller.some((o) => o.id === inserted.id)) taller.unshift(inserted);
@@ -126,8 +138,7 @@ const VentasModule = (function() {
                 fecha_ingreso: fechaIso,
                 falla_reportada: falla,
                 estado: 'Nuevo',
-                notas_generales: prioLine,
-                historial: hist()
+                notas_generales: notasAlta
             };
             const inserted = await motoresService.insert(row, csrfToken);
             if (inserted && motores && !motores.some((o) => o.id === inserted.id)) motores.unshift(inserted);
@@ -140,6 +151,8 @@ const VentasModule = (function() {
         }
 
         if (dept === 'Automatización' || dept === 'Proyectos') {
+            const profile = await authService.getCurrentProfile();
+            const userName = profile?.nombre || 'Ventas';
             const folioFn = window.folioFormats && window.folioFormats.getNextFolioAutomatizacion;
             const folio = folioFn
                 ? await folioFn()
@@ -1262,6 +1275,7 @@ const VentasModule = (function() {
         return `
             <div class="calculadora-section">
                 <div class="calculadora-titulo"><i class="fas fa-clipboard-list"></i> Paso 1: Registro de datos</div>
+                <p id="wizardPaso1Error" style="display:none; font-size:13px; color:#c62828; margin:0 0 12px 0;" role="alert"></p>
                 <div class="editor-item" style="margin-bottom:14px;">
                     <p id="wizardFolioAyuda" style="font-size:13px; color:var(--text-secondary); margin:0;">Elige departamento.</p>
                 </div>
@@ -1388,16 +1402,17 @@ const VentasModule = (function() {
 
     async function _wizardSiguiente() {
         if (wizardPaso === 1) {
+            _wizardSetPaso1Error('');
             const clienteSelect = document.getElementById('wizardClienteSelect');
             const fechaIn = document.getElementById('wizardFechaIngreso');
             const falla = document.getElementById('wizardFallaReportada')?.value?.trim() || '';
             const prioridad = document.getElementById('wizardPrioridadSelect')?.value || 'Normal';
             const dept = document.getElementById('wizardDepartamentoSelect')?.value || '';
             const clienteId = clienteSelect?.value;
-            if (!clienteId) { alert('Selecciona un cliente'); return; }
-            if (!fechaIn?.value) { alert('Indica la fecha de ingreso'); return; }
-            if (!falla) { alert('Describe la falla reportada'); return; }
-            if (!dept) { alert('Selecciona el departamento que recibe el caso'); return; }
+            if (!clienteId) { _wizardSetPaso1Error('Selecciona un cliente.'); return; }
+            if (!fechaIn?.value) { _wizardSetPaso1Error('Indica la fecha de ingreso.'); return; }
+            if (!falla) { _wizardSetPaso1Error('Describe la falla o el requerimiento.'); return; }
+            if (!dept) { _wizardSetPaso1Error('Selecciona el departamento que recibe el caso.'); return; }
 
             const contacto = contactos.find(c => c.id === clienteId);
             const clienteNombre = contacto
@@ -1434,8 +1449,8 @@ const VentasModule = (function() {
                     if (nextBtn) nextBtn.disabled = true;
                     creado = await _ventasCrearOrdenOperativa(dept, clienteNombre, falla, fechaIn.value, prioridad, csrfToken);
                 } catch (e) {
-                    console.error(e);
-                    alert('No se pudo crear la orden: ' + (e?.message || e) + '. Si persiste, aplica en Supabase la migración scripts/migrations/ventas-cerebro-insert-ordenes.sql.');
+                    console.error('[Ventas] alta orden cerebro', e);
+                    _wizardSetPaso1Error('No se pudo guardar el registro. Intenta de nuevo en unos segundos.');
                     if (nextBtn) nextBtn.disabled = false;
                     return;
                 } finally {
@@ -1475,8 +1490,10 @@ const VentasModule = (function() {
         if (wizardNext) {
             wizardNext.onclick = function () {
                 _wizardSiguiente().catch(function (err) {
-                    console.error(err);
-                    alert(err?.message || String(err));
+                    console.error('[Ventas] wizard siguiente', err);
+                    if (wizardPaso === 1) {
+                        _wizardSetPaso1Error('No se pudo continuar. Intenta de nuevo.');
+                    }
                 });
             };
         }
