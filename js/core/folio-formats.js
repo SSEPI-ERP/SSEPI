@@ -30,6 +30,26 @@
     }
 
     /**
+     * Motores: SP-M[AÑO][MES][XXX]. Misma lógica secuencial que electrónica, tabla ordenes_motores.
+     */
+    function getNextFolioMotores() {
+        var now = new Date();
+        var yy = now.getFullYear().toString().slice(-2);
+        var mm = (now.getMonth() + 1).toString().padStart(2, '0');
+        var prefix = 'SP-M' + yy + mm;
+        var sb = supabase();
+        if (!sb) return prefix + '001';
+        return sb.from('ordenes_motores').select('folio').ilike('folio', prefix + '%').order('folio', { ascending: false }).limit(1)
+            .then(function (r) {
+                if (r.error || !r.data || !r.data.length) return prefix + '001';
+                var s = (r.data[0].folio || '').replace(prefix, '');
+                var n = (parseInt(s, 10) || 0) + 1;
+                return prefix + n.toString().padStart(3, '0');
+            })
+            .catch(function () { return prefix + '001'; });
+    }
+
+    /**
      * Electrónica (laboratorio): SP-E[AÑO][MES][XXX]. Ej: SP-E2601653 (secuencial histórico).
      */
     function getNextFolioLaboratorio() {
@@ -92,6 +112,7 @@
 
     window.folioFormats = {
         getNextFolioAutomatizacion: getNextFolioAutomatizacion,
+        getNextFolioMotores: getNextFolioMotores,
         getNextFolioLaboratorio: getNextFolioLaboratorio,
         getNextFolioSuministro: getNextFolioSuministro,
         getNextFolioOrdenCompra: getNextFolioOrdenCompra
