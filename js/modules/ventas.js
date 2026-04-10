@@ -61,85 +61,111 @@ const VentasModule = (function() {
         return ventasWizardCerebro && typeof ventasWizardCerebro === 'object' ? { ...ventasWizardCerebro } : {};
     }
 
-    function _wizardRefrescarOrdenesPorDepartamento() {
-        const deptEl = document.getElementById('wizardDepartamentoSelect');
-        const ordenEl = document.getElementById('wizardOrdenSelect');
-        const clienteEl = document.getElementById('wizardClienteSelect');
-        const hintEl = document.getElementById('wizardOrdenHint');
-        if (!deptEl || !ordenEl) return;
-        const dept = deptEl.value;
-        const contacto = contactos.find((c) => c.id === clienteEl?.value);
-        const clienteNom = contacto ? (contacto.nombre || contacto.empresa || '') : '';
-        let list = [];
-        let options = '<option value="">-- Selecciona orden vinculada --</option>';
-
-        if (dept === 'Taller Electrónica') {
-            list = (taller || []).filter((o) => {
-                const st = (o.estado || '').toString().toLowerCase();
-                if (st === 'cerrado' || st === 'entregado' || st === 'cancelado') return false;
-                if (!clienteNom) return true;
-                const oc = _normStr(o.cliente || o.cliente_nombre || o.nombre_cliente || '');
-                const c = _normStr(clienteNom);
-                return !c || oc.includes(c) || c.includes(oc);
-            });
-            options += list.map((o) =>
-                '<option value="' + o.id + '" data-tipo="taller">' + (o.folio || (o.id && o.id.slice(-6))) + ' — ' + (o.cliente || 'Cliente') + '</option>'
-            ).join('');
-        } else if (dept === 'Taller Motores') {
-            list = (motores || []).filter((m) => (m.estado || '').toString().toLowerCase() !== 'cerrado');
-            if (clienteNom) {
-                list = list.filter((m) => {
-                    const cn = _normStr(m.cliente_nombre || '');
-                    const c = _normStr(clienteNom);
-                    return !c || cn.includes(c) || c.includes(cn);
-                });
-            }
-            options += list.map((m) =>
-                '<option value="' + m.id + '" data-tipo="motor">' + (m.folio || (m.id && m.id.slice(-6))) + ' — ' + (m.cliente_nombre || 'Cliente') + '</option>'
-            ).join('');
-        } else if (dept === 'Automatización' || dept === 'Proyectos') {
-            list = proyectos || [];
-            if (clienteNom) {
-                list = list.filter((p) => {
-                    const cn = _normStr(p.cliente || '');
-                    const c = _normStr(clienteNom);
-                    return !c || cn.includes(c) || c.includes(cn);
-                });
-            }
-            options += list.map((p) =>
-                '<option value="' + p.id + '" data-tipo="proyecto">' + (p.folio || p.nombre || p.id) + ' — ' + (p.cliente || 'Cliente') + '</option>'
-            ).join('');
-        } else if (dept === 'Administración') {
-            options = '<option value="">Sin orden de taller (administración)</option>';
-            list = [];
-        }
-
-        ordenEl.innerHTML = options;
-        if (list.length >= 1) {
-            ordenEl.selectedIndex = 1;
-            if (hintEl) hintEl.textContent = 'Orden sugerida según departamento y cliente (puedes cambiarla).';
-        } else if (dept && dept !== 'Administración') {
-            if (hintEl) hintEl.textContent = clienteNom
-                ? 'No hay órdenes abiertas que coincidan con este cliente en este departamento.'
-                : 'Selecciona cliente para filtrar órdenes, o elige otra área.';
-        } else if (hintEl) hintEl.textContent = '';
-
-        const wrap = document.getElementById('wizardOrdenContainer');
-        if (wrap) wrap.style.display = dept ? 'block' : 'none';
+    function _wizardActualizarAyudaFolio() {
+        const dept = document.getElementById('wizardDepartamentoSelect')?.value || '';
+        const el = document.getElementById('wizardFolioAyuda');
+        if (!el) return;
+        const map = {
+            'Taller Electrónica': 'Al continuar se crea la orden con folio SP-E…',
+            'Taller Motores': 'Al continuar se crea la orden con folio SP-M…',
+            'Automatización': 'Al continuar se crea el registro con folio SP-A…',
+            'Proyectos': 'Al continuar se crea el registro con folio SP-A…',
+            'Administración': 'Sin orden de área; la cotización queda directa.'
+        };
+        el.textContent = map[dept] || 'Elige departamento.';
     }
 
     function _attachWizardPaso1() {
         const deptEl = document.getElementById('wizardDepartamentoSelect');
-        const clienteEl = document.getElementById('wizardClienteSelect');
         if (deptEl && !deptEl._ssepiBound) {
             deptEl._ssepiBound = true;
-            deptEl.addEventListener('change', () => _wizardRefrescarOrdenesPorDepartamento());
+            deptEl.addEventListener('change', () => _wizardActualizarAyudaFolio());
         }
-        if (clienteEl && !clienteEl._ssepiBound) {
-            clienteEl._ssepiBound = true;
-            clienteEl.addEventListener('change', () => _wizardRefrescarOrdenesPorDepartamento());
+        _wizardActualizarAyudaFolio();
+    }
+
+    async function _ventasCrearOrdenOperativa(dept, clienteNombre, falla, fechaStr, prioridad, csrfToken) {
+        const fechaIso = fechaStr
+            ? new Date(fechaStr + 'T12:00:00.000Z').toISOString()
+            : new Date().toISOString();
+        const profile = await authService.getCurrentProfile();
+        const userName = profile?.nombre || 'Ventas';
+        const hist = () => [{ fecha: new Date().toISOString(), usuario: userName, accion: 'Alta desde Ventas (cerebro)' }];
+        const prioLine = 'Prioridad (Ventas): ' + (prioridad || 'Normal');
+
+        if (dept === 'Taller Electrónica') {
+            const folioFn = window.folioFormats && window.folioFormats.getNextFolioLaboratorio;
+            const folio = folioFn ? await folioFn() : 'SP-E' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '001';
+            const row = {
+                folio,
+                cliente_nombre: clienteNombre,
+                equipo: '—',
+                falla_reportada: falla,
+                fecha_ingreso: fechaIso,
+                estado: 'Nuevo',
+                notas_generales: prioLine,
+                historial: hist()
+            };
+            const inserted = await tallerService.insert(row, csrfToken);
+            if (inserted && taller && !taller.some((o) => o.id === inserted.id)) taller.unshift(inserted);
+            compraActual = {
+                id: inserted.id,
+                vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'taller', folio_taller: folio },
+                _origen: 'taller'
+            };
+            return { folio, ordenId: inserted.id, tipo: 'taller' };
         }
-        _wizardRefrescarOrdenesPorDepartamento();
+
+        if (dept === 'Taller Motores') {
+            const folioFn = window.folioFormats && window.folioFormats.getNextFolioMotores;
+            const folio = folioFn ? await folioFn() : 'SP-M' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '001';
+            const row = {
+                folio,
+                cliente_nombre: clienteNombre,
+                motor: '—',
+                fecha_ingreso: fechaIso,
+                falla_reportada: falla,
+                estado: 'Nuevo',
+                notas_generales: prioLine,
+                historial: hist()
+            };
+            const inserted = await motoresService.insert(row, csrfToken);
+            if (inserted && motores && !motores.some((o) => o.id === inserted.id)) motores.unshift(inserted);
+            compraActual = {
+                id: inserted.id,
+                vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'motor' },
+                _origen: 'motores'
+            };
+            return { folio, ordenId: inserted.id, tipo: 'motor' };
+        }
+
+        if (dept === 'Automatización' || dept === 'Proyectos') {
+            const folioFn = window.folioFormats && window.folioFormats.getNextFolioAutomatizacion;
+            const folio = folioFn
+                ? await folioFn()
+                : 'SP-A' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '/1';
+            const nombre = dept === 'Proyectos' ? 'Proyecto (Ventas)' : 'Automatización (Ventas)';
+            const row = {
+                folio,
+                nombre,
+                cliente: clienteNombre,
+                fecha: (fechaStr || new Date().toISOString().split('T')[0]),
+                vendedor: userName,
+                notas_generales: [falla, prioLine].filter(Boolean).join('\n\n'),
+                estado: 'pendiente'
+            };
+            const inserted = await proyectosService.insert(row, csrfToken);
+            if (inserted && proyectos && !proyectos.some((p) => p.id === inserted.id)) proyectos.unshift(inserted);
+            const origen = dept === 'Automatización' ? 'automatizacion' : 'proyecto';
+            compraActual = {
+                id: inserted.id,
+                vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'proyecto' },
+                _origen: origen
+            };
+            return { folio, ordenId: inserted.id, tipo: 'proyecto' };
+        }
+
+        throw new Error('Departamento no soportado para alta de orden');
     }
 
     function _itemsToComponentesFolio(items) {
@@ -1186,7 +1212,16 @@ const VentasModule = (function() {
         if (paso === 1) {
             body.innerHTML = _renderWizardPaso1();
             _attachWizardPaso1();
-        } else if (paso === 2) body.innerHTML = _generarHTMLCalculadora(compraActual || {}, compraActual ? (taller.find(o => o.id === compraActual.vinculacion?.id)?.horas_estimadas || 0) : 0);
+        } else if (paso === 2) {
+            let horasEst = 0;
+            const vid = compraActual?.vinculacion?.id;
+            if (vid) {
+                horasEst = Number(taller.find((o) => o.id === vid)?.horas_estimadas)
+                    || Number(motores.find((o) => o.id === vid)?.horas_estimadas)
+                    || 0;
+            }
+            body.innerHTML = _generarHTMLCalculadora(compraActual || {}, horasEst);
+        }
         else if (paso === 3) body.innerHTML = _renderWizardPaso3();
         else if (paso === 4) body.innerHTML = _renderWizardPaso4();
 
@@ -1227,7 +1262,9 @@ const VentasModule = (function() {
         return `
             <div class="calculadora-section">
                 <div class="calculadora-titulo"><i class="fas fa-clipboard-list"></i> Paso 1: Registro de datos</div>
-                <p style="color:var(--text-secondary); margin-bottom:16px;">Cliente, fecha de ingreso, falla reportada y prioridad. Luego el <strong>departamento</strong> que atenderá el caso: la lista de órdenes se llena sola y se sugiere la primera coherente con el cliente.</p>
+                <div class="editor-item" style="margin-bottom:14px;">
+                    <p id="wizardFolioAyuda" style="font-size:13px; color:var(--text-secondary); margin:0;">Elige departamento.</p>
+                </div>
                 <div class="editor-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                     <div class="editor-item">
                         <label>Cliente</label>
@@ -1266,13 +1303,6 @@ const VentasModule = (function() {
                             <option value="Administración">Administración</option>
                         </select>
                     </div>
-                </div>
-                <div id="wizardOrdenContainer" style="display:none; margin-top:16px;">
-                    <label>Orden vinculada (precargada según departamento y cliente)</label>
-                    <select id="wizardOrdenSelect" style="width:100%; padding:10px;">
-                        <option value="">-- Selecciona departamento primero --</option>
-                    </select>
-                    <p id="wizardOrdenHint" style="font-size:12px; color:var(--text-secondary); margin-top:8px;"></p>
                 </div>
             </div>
         `;
@@ -1356,10 +1386,9 @@ const VentasModule = (function() {
         if (inpCredito) inpCredito.addEventListener('input', () => { _recalcular(); if (document.getElementById('lblCreditoPct')) document.getElementById('lblCreditoPct').textContent = inpCredito.value; });
     }
 
-    function _wizardSiguiente() {
+    async function _wizardSiguiente() {
         if (wizardPaso === 1) {
             const clienteSelect = document.getElementById('wizardClienteSelect');
-            const ordenSelect = document.getElementById('wizardOrdenSelect');
             const fechaIn = document.getElementById('wizardFechaIngreso');
             const falla = document.getElementById('wizardFallaReportada')?.value?.trim() || '';
             const prioridad = document.getElementById('wizardPrioridadSelect')?.value || 'Normal';
@@ -1371,12 +1400,15 @@ const VentasModule = (function() {
             if (!dept) { alert('Selecciona el departamento que recibe el caso'); return; }
 
             const contacto = contactos.find(c => c.id === clienteId);
+            const clienteNombre = contacto
+                ? (contacto.nombre || contacto.empresa || contacto.email || 'Cliente')
+                : '';
             if (contacto) {
                 const opt = clienteSelect?.options[clienteSelect.selectedIndex];
                 const km = parseInt(opt?.dataset?.km, 10) || 0;
                 const clienteTabulador = tabuladorTaller.clientes.find(c => c.nombre === (contacto.nombre || contacto.empresa));
                 calculadoraClienteActual = {
-                    nombre: contacto.nombre || contacto.empresa || contacto.email || 'Cliente',
+                    nombre: clienteNombre,
                     km: clienteTabulador?.km || km || 0,
                     horas: clienteTabulador?.horas || 0,
                     email: contacto.email,
@@ -1385,45 +1417,30 @@ const VentasModule = (function() {
                 };
             }
 
-            const ordenId = ordenSelect?.value || '';
-            const tipoOrden = ordenSelect?.options[ordenSelect?.selectedIndex]?.dataset?.tipo || '';
-
-            if (dept !== 'Administración' && !ordenId) {
-                alert('No hay orden vinculada. Revisa departamento y cliente, o crea la orden en el área correspondiente.');
-                return;
-            }
-
             let origenCot = 'directo';
             if (dept === 'Taller Electrónica') origenCot = 'taller';
             else if (dept === 'Taller Motores') origenCot = 'motores';
             else if (dept === 'Automatización') origenCot = 'automatizacion';
             else if (dept === 'Proyectos') origenCot = 'proyecto';
 
+            const csrfToken = sessionStorage.getItem('csrfToken');
+            const nextBtn = document.getElementById('wizardNextBtn');
+            let creado = { folio: null, ordenId: null, tipo: null };
+
             if (dept === 'Administración') {
                 compraActual = { id: null, vinculacion: null, _origen: 'directo' };
-            } else if (dept === 'Taller Electrónica' && ordenId) {
-                const o = taller.find(x => x.id === ordenId);
-                compraActual = {
-                    id: ordenId,
-                    vinculacion: { id: ordenId, nombre: o?.cliente || calculadoraClienteActual?.nombre, tipo: 'taller', folio_taller: o?.folio },
-                    _origen: 'taller'
-                };
-            } else if (dept === 'Taller Motores' && ordenId) {
-                const m = motores.find(x => x.id === ordenId);
-                compraActual = {
-                    id: ordenId,
-                    vinculacion: { id: ordenId, nombre: m?.cliente_nombre || calculadoraClienteActual?.nombre, tipo: 'motor' },
-                    _origen: 'motores'
-                };
-            } else if ((dept === 'Automatización' || dept === 'Proyectos') && ordenId) {
-                const proy = proyectos.find(p => p.id === ordenId);
-                compraActual = {
-                    id: ordenId,
-                    vinculacion: { nombre: proy?.cliente || calculadoraClienteActual?.nombre },
-                    _origen: dept === 'Automatización' ? 'automatizacion' : 'proyecto'
-                };
             } else {
-                compraActual = null;
+                try {
+                    if (nextBtn) nextBtn.disabled = true;
+                    creado = await _ventasCrearOrdenOperativa(dept, clienteNombre, falla, fechaIn.value, prioridad, csrfToken);
+                } catch (e) {
+                    console.error(e);
+                    alert('No se pudo crear la orden: ' + (e?.message || e) + '. Si persiste, aplica en Supabase la migración scripts/migrations/ventas-cerebro-insert-ordenes.sql.');
+                    if (nextBtn) nextBtn.disabled = false;
+                    return;
+                } finally {
+                    if (nextBtn) nextBtn.disabled = false;
+                }
             }
 
             ventasWizardCerebro = {
@@ -1431,8 +1448,9 @@ const VentasModule = (function() {
                 falla_reportada: falla,
                 prioridad,
                 departamento: dept,
-                orden_id: ordenId || null,
-                tipo_vinculo: tipoOrden || null,
+                orden_id: creado.ordenId || null,
+                folio_operativo: creado.folio || null,
+                tipo_vinculo: creado.tipo || null,
                 origen_cotizacion: origenCot
             };
         }
@@ -1454,7 +1472,14 @@ const VentasModule = (function() {
         var wizardPrev = document.getElementById('wizardPrevBtn');
         if (wizardPrev) wizardPrev.onclick = _wizardAnterior;
         var wizardNext = document.getElementById('wizardNextBtn');
-        if (wizardNext) wizardNext.onclick = _wizardSiguiente;
+        if (wizardNext) {
+            wizardNext.onclick = function () {
+                _wizardSiguiente().catch(function (err) {
+                    console.error(err);
+                    alert(err?.message || String(err));
+                });
+            };
+        }
         var guardarWizard = document.getElementById('guardarCotizacionWizardBtn');
         if (guardarWizard) guardarWizard.onclick = _guardarCotizacionDesdeWizard;
         var descargarWizard = document.getElementById('descargarPDFWizardBtn');
