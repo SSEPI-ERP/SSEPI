@@ -609,10 +609,54 @@ body[data-theme="dark"] .contab-kpi-chip {
 }
 
 /* ========== Nómina (página dedicada) ========== */
+.page-nomina .feed-dot {
+    border-color: var(--c-contabilidad, #b91c1c);
+    background: var(--c-contabilidad, #b91c1c);
+}
+
+/* Layout 3 columnas: nav | contenido | bitácora (igual que Contabilidad) */
+@media (min-width: 901px) {
+    body.page-nomina {
+        grid-template-columns: var(--sidebar-w) minmax(0, 1fr) minmax(260px, 320px);
+    }
+    body.page-nomina.sidebar-closed {
+        grid-template-columns: 70px minmax(0, 1fr) minmax(260px, 320px);
+    }
+    body.page-nomina > nav.sidebar-left {
+        grid-column: 1;
+        grid-row: 2;
+    }
+    body.page-nomina > main {
+        grid-column: 2;
+        grid-row: 2;
+        max-width: none;
+        margin: 0;
+        width: 100%;
+        min-width: 0;
+    }
+    body.page-nomina > aside.sidebar-right {
+        grid-column: 3;
+        grid-row: 2;
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - var(--header-h, 70px));
+        max-height: calc(100vh - var(--header-h, 70px));
+        border-left: 2px solid rgba(185, 28, 28, 0.22);
+        position: relative;
+        top: 0;
+        overflow: hidden;
+    }
+    body.page-nomina > aside.sidebar-right .feed-list {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+    }
+}
+
 .page-nomina main {
     padding: 0 1rem 1.5rem;
-    max-width: 1200px;
-    margin: 0 auto;
+    max-width: none;
+    margin: 0;
 }
 
 .nom-hero {

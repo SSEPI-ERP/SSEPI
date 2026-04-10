@@ -6,6 +6,8 @@ import { enqueueCoiJob } from '../core/coi-queue.js';
 
 const nominaService = createDataService('pagos_nomina');
 
+let _feed = [];
+
 function _fmtMoney(n) {
     if (n == null || Number.isNaN(Number(n))) return '—';
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(n));
@@ -106,6 +108,30 @@ function _closeNomModal() {
     back.setAttribute('aria-hidden', 'true');
 }
 
+function _addToFeed(icon, msg, level) {
+    const host = document.getElementById('feedList');
+    const badge = document.getElementById('feedCount');
+    const now = new Date();
+    _feed.unshift({
+        t: now.toLocaleTimeString('es-MX'),
+        icon: icon || '🧾',
+        msg: msg || '',
+        level: level || 'info'
+    });
+    _feed = _feed.slice(0, 20);
+    if (badge) badge.textContent = String(_feed.length);
+    if (!host) return;
+    host.innerHTML = _feed.map(function (e) {
+        return `
+          <div class="feed-item">
+            <div class="feed-dot"></div>
+            <div class="feed-meta"><span style="color:var(--c-contabilidad);">NÓMINA</span><span>${_escape(e.t)}</span></div>
+            <div class="feed-body">${_escape(e.icon)} ${_escape(e.msg)}</div>
+          </div>
+        `;
+    }).join('');
+}
+
 async function _saveNomModal() {
     const nombre = (document.getElementById('nomInpEmpleado')?.value || '').trim();
     const pi = document.getElementById('nomInpDesde')?.value;
@@ -143,6 +169,7 @@ async function _saveNomModal() {
     const csrfToken = sessionStorage.getItem('csrfToken');
     try {
         const inserted = await nominaService.insert(pagoData, csrfToken);
+        _addToFeed('💾', 'Pago guardado: ' + nombre + ' · ' + _fmtMoney(total), 'ok');
         enqueueCoiJob({
             erp_source: 'nomina',
             erp_id: String(inserted?.id || ref),
@@ -156,6 +183,7 @@ async function _saveNomModal() {
         await refreshList();
         alert('Pago de nómina guardado.');
     } catch (e) {
+        _addToFeed('❌', 'Error guardando: ' + (e?.message || e), 'error');
         alert('Error: ' + (e?.message || e));
     }
 }
@@ -170,6 +198,7 @@ async function refreshList() {
         const rows = await nominaService.select({}, { orderBy: 'fecha_pago', ascending: false, limit: 400 });
         let list = (rows || []).filter(n => _inDateRange(n.fecha_pago, desde, hasta));
         _updateKpis(list);
+        _addToFeed('📥', 'Cargados ' + list.length + ' pagos en rango', 'ok');
         if (!list.length) {
             tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">Sin registros en el rango.</td></tr>';
             return;
@@ -189,6 +218,7 @@ async function refreshList() {
         const msg = String(e?.message || e);
         tbody.innerHTML = `<tr><td colspan="6" class="coi-log-empty">No se pudo cargar el historial.</td></tr>`;
         _updateKpis([]);
+        _addToFeed('⚠️', 'No se pudo cargar: ' + msg, 'warn');
         console.error('[Nómina]', msg);
     }
 }
@@ -211,6 +241,7 @@ async function init() {
     if (back) {
         back.addEventListener('click', (ev) => { if (ev.target === back) _closeNomModal(); });
     }
+    _addToFeed('✅', 'Módulo iniciado', 'info');
     await refreshList();
 }
 
