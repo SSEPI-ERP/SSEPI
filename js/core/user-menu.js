@@ -40,7 +40,7 @@
         wrap.innerHTML =
             '<div id="configModal" class="config-modal" role="dialog" aria-labelledby="configModalTitle">' +
             '  <div class="config-modal-header">' +
-            '    <h2 id="configModalTitle">Configuración de perfil</h2>' +
+            '    <h2 id="configModalTitle">Configuración (Admin)</h2>' +
             '    <button type="button" class="config-modal-close" id="configModalClose" aria-label="Cerrar"><i class="fas fa-times"></i></button>' +
             '  </div>' +
             '  <div class="config-modal-body">' +
@@ -51,6 +51,13 @@
             '      <input type="email" id="configCorreo" name="correo" placeholder="correo@ejemplo.com" autocomplete="email">' +
             '      <label>Teléfono</label>' +
             '      <input type="tel" id="configTelefono" name="telefono" placeholder="Teléfono" autocomplete="tel">' +
+            '      <hr class="config-modal-hr">' +
+            '      <label>Carpeta de respaldo</label>' +
+            '      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">' +
+            '        <input type="text" id="configBackupFolder" readonly placeholder="Sin carpeta seleccionada" style="flex:1; min-width:240px;">' +
+            '        <button type="button" class="config-modal-btn config-modal-save" id="configBackupPick"><i class="fas fa-folder-open"></i> Elegir carpeta</button>' +
+            '      </div>' +
+            '      <p class="users-integration-note" style="margin-top:8px;">El navegador guardará el permiso para escribir respaldos en esta carpeta (si tu navegador lo soporta).</p>' +
             '      <hr class="config-modal-hr">' +
             '      <label>Cambiar contraseña (opcional)</label>' +
             '      <input type="password" id="configPassActual" name="passActual" placeholder="Contraseña actual" autocomplete="current-password">' +
@@ -66,6 +73,69 @@
         document.body.appendChild(wrap);
         configModal = wrap;
         bindConfigModal();
+    }
+
+    // ==================== CFG: carpeta de respaldo (File System Access API) ====================
+    function _idbOpen() {
+        return new Promise(function (resolve, reject) {
+            var req = indexedDB.open('ssepi_cfg', 1);
+            req.onupgradeneeded = function () {
+                var db = req.result;
+                if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+            };
+            req.onsuccess = function () { resolve(req.result); };
+            req.onerror = function () { reject(req.error); };
+        });
+    }
+
+    async function _idbGet(key) {
+        var db = await _idbOpen();
+        return new Promise(function (resolve, reject) {
+            var tx = db.transaction('kv', 'readonly');
+            var st = tx.objectStore('kv');
+            var req = st.get(key);
+            req.onsuccess = function () { resolve(req.result); };
+            req.onerror = function () { reject(req.error); };
+        });
+    }
+
+    async function _idbPut(key, val) {
+        var db = await _idbOpen();
+        return new Promise(function (resolve, reject) {
+            var tx = db.transaction('kv', 'readwrite');
+            var st = tx.objectStore('kv');
+            var req = st.put(val, key);
+            req.onsuccess = function () { resolve(true); };
+            req.onerror = function () { reject(req.error); };
+        });
+    }
+
+    async function _loadBackupFolderLabel() {
+        var inp = document.getElementById('configBackupFolder');
+        if (!inp) return;
+        try {
+            var h = await _idbGet('backupDir');
+            inp.value = h && h.name ? h.name : '';
+            inp.placeholder = h && h.name ? h.name : 'Sin carpeta seleccionada';
+        } catch (e) {
+            inp.placeholder = 'Sin carpeta seleccionada';
+        }
+    }
+
+    async function _pickBackupFolder() {
+        if (!window.showDirectoryPicker) {
+            alert('Este navegador no soporta seleccionar carpeta. Usa Chrome/Edge actualizado.');
+            return;
+        }
+        try {
+            var handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+            await _idbPut('backupDir', handle);
+            await _loadBackupFolderLabel();
+            alert('Carpeta guardada: ' + (handle && handle.name ? handle.name : 'seleccionada'));
+        } catch (e) {
+            if (e && e.name === 'AbortError') return;
+            alert('No se pudo seleccionar carpeta: ' + (e.message || e));
+        }
     }
 
     var usersModal = null;
@@ -459,6 +529,7 @@
         document.getElementById('configPassNueva').value = '';
         document.getElementById('configPassRepetir').value = '';
         configModal.classList.add('config-modal-visible');
+        _loadBackupFolderLabel();
         auth.getCurrentProfile().then(function (p) {
             if (p) {
                 document.getElementById('configNombre').value = p.nombre || '';
@@ -561,10 +632,12 @@
         var closeBtn = document.getElementById('configModalClose');
         var cancelBtn = document.getElementById('configModalCancel');
         var saveBtn = document.getElementById('configModalSave');
+        var pickBtn = document.getElementById('configBackupPick');
         if (back) back.addEventListener('click', function (e) { if (e.target === back) closeConfigModal(); });
         if (closeBtn) closeBtn.addEventListener('click', closeConfigModal);
         if (cancelBtn) cancelBtn.addEventListener('click', closeConfigModal);
         if (saveBtn) saveBtn.addEventListener('click', saveConfig);
+        if (pickBtn) pickBtn.addEventListener('click', function () { _pickBackupFolder(); });
     }
 
     function init() {
