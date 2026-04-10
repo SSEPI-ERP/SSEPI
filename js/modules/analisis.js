@@ -8,6 +8,7 @@ const AnalisisModule = (function() {
     let ventas = [], compras = [], inventario = [], proyectos = [], taller = [], motores = [], contactos = [], ingresosContabilidad = [], facturas = [], movimientosInv = [];
     let dateRange = { start: moment().startOf('week').toDate(), end: moment().endOf('week').toDate() };
     let charts = { balance: null, gastos: null, radar: null };
+    let _subAnalisisInited = { compras: false, motores: false, auto: false, proyectos: false };
 
     function _supabase() { return window.supabase; }
     let subscriptions = [];
@@ -20,6 +21,7 @@ const AnalisisModule = (function() {
             await _loadInitialData();
             _startClock();
             _setupRealtime();
+            _initSubAnalisisUI();
         } catch (e) {
             console.error('[Análisis] init error:', e);
         }
@@ -130,6 +132,45 @@ const AnalisisModule = (function() {
         if (byId('applyFilterBtn')) byId('applyFilterBtn').addEventListener('click', _aplicarFiltro);
         if (byId('simularBtn')) byId('simularBtn').addEventListener('click', _simularEscenario);
         if (byId('exportPDFBtn')) byId('exportPDFBtn').addEventListener('click', _exportarPDF);
+    }
+
+    function _initSubAnalisisUI() {
+        const switcher = document.getElementById('subanalisisSwitcher');
+        if (!switcher) return;
+
+        const buttons = Array.from(switcher.querySelectorAll('.btn-subanalisis'));
+        const panels = Array.from(document.querySelectorAll('.subanalisis-panel'));
+
+        function activate(panelId) {
+            buttons.forEach(b => b.classList.toggle('active', b.dataset.panel === panelId));
+            panels.forEach(p => p.classList.toggle('active', p.id === panelId));
+
+            if (panelId === 'subanalisis-compras' && !_subAnalisisInited.compras) {
+                _subAnalisisInited.compras = true;
+                window.analisisCompras?.init?.();
+            }
+            if (panelId === 'subanalisis-motores' && !_subAnalisisInited.motores) {
+                _subAnalisisInited.motores = true;
+                window.analisisMotores?.init?.();
+            }
+            if (panelId === 'subanalisis-auto' && !_subAnalisisInited.auto) {
+                _subAnalisisInited.auto = true;
+                window.analisisAutomatizacion?.init?.();
+            }
+            if (panelId === 'subanalisis-proyectos' && !_subAnalisisInited.proyectos) {
+                _subAnalisisInited.proyectos = true;
+                window.analisisProyectos?.init?.();
+            }
+        }
+
+        switcher.addEventListener('click', (e) => {
+            const btn = e.target?.closest?.('.btn-subanalisis');
+            if (!btn || !btn.dataset?.panel) return;
+            activate(btn.dataset.panel);
+        });
+
+        // Inicial: Compras
+        activate('subanalisis-compras');
     }
 
     function _toggleMenu() {

@@ -105,6 +105,44 @@
     padding: 22px;
     box-shadow: none;
 }
+
+/* Sub-análisis dentro de Análisis */
+.subanalisis-switcher {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.btn-subanalisis {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+    transition: 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-subanalisis:hover {
+    transform: translateY(-1px);
+    border-color: var(--c-analisis);
+}
+.btn-subanalisis.active {
+    background: #ffffff;
+    color: var(--c-analisis);
+    border-color: var(--c-analisis);
+}
+[data-theme="dark"] .btn-subanalisis.active {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+.subanalisis-panel { display: none; }
+.subanalisis-panel.active { display: block; }
 .chart-header {
     display: flex;
     justify-content: space-between;
