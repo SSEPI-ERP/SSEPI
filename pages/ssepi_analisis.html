@@ -23,6 +23,11 @@
     <script src="/js/core/theme-clock.js"></script>
     <script src="/js/core/user-menu.js"></script>
     <script src="/js/core/nav-by-role.js"></script>
+    <!-- Sub-análisis dentro de Análisis (sin saturar menú) -->
+    <script type="module" src="/js/modules/analisis-compras.js"></script>
+    <script type="module" src="/js/modules/analisis-motores.js"></script>
+    <script type="module" src="/js/modules/analisis-automatizacion.js"></script>
+    <script type="module" src="/js/modules/analisis-proyectos.js"></script>
     <script type="module" src="/js/modules/analisis.js"></script>
 </head>
 <body class="page-analisis nav-loading">
@@ -192,6 +197,96 @@
                     <i class="fas fa-file-pdf"></i> EXPORTAR REPORTE EJECUTIVO
                 </button>
             </div>
+        </div>
+
+        <!-- Sub-análisis (módulos) -->
+        <div class="chart-card" style="margin-bottom: 26px;">
+            <div class="chart-header">
+                <span><i class="fas fa-layer-group"></i> ANÁLISIS POR MÓDULO</span>
+                <span class="badge-gold">sin saturar el menú</span>
+            </div>
+            <div class="subanalisis-switcher" id="subanalisisSwitcher">
+                <button class="btn-subanalisis active" data-panel="subanalisis-compras"><i class="fas fa-shopping-cart"></i> Compras</button>
+                <button class="btn-subanalisis" data-panel="subanalisis-motores"><i class="fas fa-industry"></i> Motores</button>
+                <button class="btn-subanalisis" data-panel="subanalisis-auto"><i class="fas fa-robot"></i> Automatización</button>
+                <button class="btn-subanalisis" data-panel="subanalisis-proyectos"><i class="fas fa-tools"></i> Proyectos</button>
+            </div>
+
+            <section class="subanalisis-panel active" id="subanalisis-compras">
+                <div class="welcome-header" style="margin-top: 6px;">
+                    <h2 style="margin:0;">Compras</h2>
+                    <p class="welcome-subtitle" style="margin-top:4px;">Resumen por estado y evolución mensual</p>
+                </div>
+                <div class="kpi-grid">
+                    <div class="kpi-card"><div class="kpi-title">Total</div><div class="kpi-value" id="kpiComprasTotal">—</div><div class="kpi-sub">Registros</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Pendientes</div><div class="kpi-value" id="kpiComprasPend">—</div><div class="kpi-sub">Estado 1-2</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Confirmadas</div><div class="kpi-value" id="kpiComprasConf">—</div><div class="kpi-sub">Estado 3</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Recibidas</div><div class="kpi-value" id="kpiComprasRec">—</div><div class="kpi-sub">Estado 4-5</div></div>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartComprasEstados"></canvas>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartComprasMes"></canvas>
+                </div>
+            </section>
+
+            <section class="subanalisis-panel" id="subanalisis-motores">
+                <div class="welcome-header" style="margin-top: 6px;">
+                    <h2 style="margin:0;">Motores</h2>
+                    <p class="welcome-subtitle" style="margin-top:4px;">Estados y evolución mensual</p>
+                </div>
+                <div class="kpi-grid">
+                    <div class="kpi-card"><div class="kpi-title">Total</div><div class="kpi-value" id="kpiMotoresTotal">—</div><div class="kpi-sub">Órdenes</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Pendientes</div><div class="kpi-value" id="kpiMotoresPend">—</div><div class="kpi-sub">Diag / espera</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Reparadas</div><div class="kpi-value" id="kpiMotoresRep">—</div><div class="kpi-sub">Listas</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Entregadas</div><div class="kpi-value" id="kpiMotoresEnt">—</div><div class="kpi-sub">Cerradas</div></div>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartMotoresEstados"></canvas>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartMotoresMes"></canvas>
+                </div>
+            </section>
+
+            <section class="subanalisis-panel" id="subanalisis-auto">
+                <div class="welcome-header" style="margin-top: 6px;">
+                    <h2 style="margin:0;">Automatización</h2>
+                    <p class="welcome-subtitle" style="margin-top:4px;">Pendientes / progreso / completados</p>
+                </div>
+                <div class="kpi-grid">
+                    <div class="kpi-card"><div class="kpi-title">Total</div><div class="kpi-value" id="kpiAutoTotal">—</div><div class="kpi-sub">Proyectos</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Pendientes</div><div class="kpi-value" id="kpiAutoPend">—</div><div class="kpi-sub">Backlog</div></div>
+                    <div class="kpi-card"><div class="kpi-title">En progreso</div><div class="kpi-value" id="kpiAutoProg">—</div><div class="kpi-sub">Ejecución</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Completados</div><div class="kpi-value" id="kpiAutoComp">—</div><div class="kpi-sub">Cerrados</div></div>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartAutoEstados"></canvas>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartAutoMes"></canvas>
+                </div>
+            </section>
+
+            <section class="subanalisis-panel" id="subanalisis-proyectos">
+                <div class="welcome-header" style="margin-top: 6px;">
+                    <h2 style="margin:0;">Proyectos / Soporte en planta</h2>
+                    <p class="welcome-subtitle" style="margin-top:4px;">Visitas y conversión a proyecto</p>
+                </div>
+                <div class="kpi-grid">
+                    <div class="kpi-card"><div class="kpi-title">Visitas</div><div class="kpi-value" id="kpiVisitas">—</div><div class="kpi-sub">Total</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Pendientes</div><div class="kpi-value" id="kpiVisPend">—</div><div class="kpi-sub">Agenda</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Convertidas</div><div class="kpi-value" id="kpiVisConv">—</div><div class="kpi-sub">A proyecto</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Completadas</div><div class="kpi-value" id="kpiVisComp">—</div><div class="kpi-sub">Cerradas</div></div>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartVisitasEstados"></canvas>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartVisitasMes"></canvas>
+                </div>
+            </section>
         </div>
 
         <div class="sync-footer">
