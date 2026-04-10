@@ -51,18 +51,16 @@
 
 .page-contabilidad .coi-panel {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
-    gap: 1.25rem;
+    grid-template-columns: 1fr;
+    gap: 1rem;
     align-items: start;
 }
 
 .page-contabilidad .contab-lede-card {
-    grid-column: 1;
     min-width: 0;
 }
 
 .page-contabilidad .contab-inv-card {
-    grid-column: 2;
     min-width: 0;
 }
 
@@ -322,6 +320,14 @@ body[data-theme="dark"] .contab-mod-card:hover {
     flex-wrap: wrap;
     gap: 0.75rem;
     margin-bottom: 1rem;
+}
+
+/* Botones de acciones: ocupar el ancho disponible y evitar huecos */
+.coi-actions .btn-ssepi,
+.coi-actions a.btn-ssepi,
+.coi-actions button.btn-ssepi {
+    flex: 1 1 220px;
+    justify-content: center;
 }
 
 .coi-status-line {

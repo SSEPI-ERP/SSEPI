@@ -13,8 +13,16 @@ export const IndexCore = (function() {
     let subscriptions = [];
 
     function _renderIndexPendingList() {
+        const block = document.getElementById('ssepiIndexPendingBlock');
         const host = document.getElementById('ssepiIndexPendingList');
         if (!host) return;
+        const pend = listPendingEntries();
+        if (!pend || pend.length === 0) {
+            if (block) block.style.display = 'none';
+            host.innerHTML = '';
+            return;
+        }
+        if (block) block.style.display = '';
         host.innerHTML = renderPendingHtmlList();
     }
 
