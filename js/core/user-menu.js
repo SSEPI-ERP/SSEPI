@@ -168,7 +168,7 @@
             '      <h3>Añadir usuario</h3>' +
             '      <label>Correo</label><input type="email" id="newUserEmail" placeholder="correo@ejemplo.com">' +
             '      <label>Nombre</label><input type="text" id="newUserName" placeholder="Nombre completo">' +
-            '      <label>Rol</label><select id="newUserRol"><option value="ventas">Ventas</option><option value="ventas_sin_compras">Ventas (sin compras)</option><option value="compras">Compras</option><option value="taller">Taller</option><option value="motores">Motores</option><option value="facturacion">Facturación</option><option value="contabilidad">Contabilidad</option><option value="automatizacion">Automatización</option><option value="admin">Admin</option></select>' +
+            '      <label>Rol</label><select id="newUserRol"><option value="ventas">Ventas</option><option value="ventas_sin_compras">Ventas (sin compras)</option><option value="administracion">Administración</option><option value="compras">Compras</option><option value="taller">Taller</option><option value="motores">Motores</option><option value="facturacion">Facturación</option><option value="contabilidad">Contabilidad</option><option value="automatizacion">Automatización</option><option value="admin">Admin</option></select>' +
             '      <label>ID (UUID) en Auth <em>— opcional, si ya creaste el usuario en Dashboard</em></label><input type="text" id="newUserId" placeholder="ej. 550e8400-e29b-41d4-a716-446655440000">' +
             '      <p class="users-add-hint">Crea el usuario en Supabase Dashboard (Authentication → Add user) y copia aquí su UUID para añadir el perfil.</p>' +
             '      <div class="config-modal-footer">' +
