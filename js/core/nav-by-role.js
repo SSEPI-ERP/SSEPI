@@ -4,22 +4,56 @@
  * data-module="X": mostrar solo si tiene permiso X.
  * data-module-any="X,Y": mostrar si tiene permiso X o Y.
  * Si hay rol en sessionStorage (guardado al login), aplica visibilidad al instante con mapa estático (sin esperar DB).
+ *
+ * ─── MODELO DE ROLES ───
+ *
+ * Roles BÁSICOS (solo ven sus módulos asignados; NO ven análisis ni módulos ajenos):
+ *   ventas, administracion, taller, motores, automatizacion
+ *
+ * Rol ADMINISTRADOR DEL SISTEMA (admin / superadmin):
+ *   Ve TODOS los módulos operativos + análisis + administración.
+ *
+ * Perfil con MODO DUAL (Normal ↔ Admin):
+ *   Usuarios identificados en DUAL_MODE_USERS pueden alternar entre modo Normal
+ *   (comportamiento acotado como su rol base) y modo Admin (ven todo).
+ *   Controlado por: sessionStorage.ssepi_mode = 'normal' | 'admin'
+ *   Rol base: sessionStorage.ssepi_rol_normal y DUAL_MODE_USERS[email].
+ *   Futuro: campo users.modo_dual (boolean) y users.rol_normal (text) en BD.
+ *
+ * Variantes heredadas (compatibilidad):
+ *   ventas_sin_compras, compras, facturacion, contabilidad (null = ve todo, RLS limita escritura)
  */
 (function () {
     'use strict';
 
-    /** Mapa rol -> módulos permitidos (read). null = mostrar todo (admin/superadmin/contabilidad). */
+    /**
+     * Mapa rol -> módulos permitidos (read). null = mostrar todo (admin/superadmin/contabilidad).
+     *
+     * Reglas:
+     *   - Los 5 roles básicos SOLO ven sus módulos operativos, sin analisis_* ni módulos ajenos.
+     *   - admin/superadmin ven todo (incluidos análisis).
+     *   - ventas_sin_compras = variante de ventas sin Compras (no es admin lite).
+     *   - contabilidad ve todo en solo lectura (RLS limita escritura).
+     */
     var ROLE_MODULES = {
+        // ─── Roles con acceso global (operativo + análisis + administración) ───
         admin: null,
         superadmin: null,
-        ventas: ['compras', 'inventario', 'analisis_ventas', 'vacaciones'],
-        ventas_sin_compras: ['compras', 'inventario', 'analisis_ventas', 'vacaciones'],
-        taller: ['ordenes_taller', 'inventario', 'vacaciones', 'calculadoras'],
-        automatizacion: ['proyectos_automatizacion', 'inventario', 'vacaciones', 'calculadoras'],
-        motores: ['ordenes_motores', 'inventario', 'compras', 'ordenes_taller', 'vacaciones'],
-        compras: ['compras', 'inventario', 'vacaciones'],
-        facturacion: ['ventas', 'compras', 'facturas', 'vacaciones'],
-        contabilidad: null
+
+        // ─── 5 roles básicos (solo sus módulos, sin análisis ni módulos ajenos) ───
+        ventas:              ['ventas', 'inventario', 'contactos', 'vacaciones'],
+        administracion:      ['compras', 'facturas', 'contabilidad', 'pagos_nomina', 'inventario', 'contactos', 'vacaciones'],
+        taller:              ['ordenes_taller', 'inventario', 'vacaciones', 'calculadoras'],
+        motores:             ['ordenes_motores', 'inventario', 'vacaciones', 'calculadoras'],
+        automatizacion:      ['proyectos_automatizacion', 'inventario', 'vacaciones', 'calculadoras'],
+
+        // ─── Variante de ventas (sin módulo Compras; nav idéntico a ventas) ───
+        ventas_sin_compras:  ['ventas', 'inventario', 'contactos', 'vacaciones'],
+
+        // ─── Roles de soporte (compatibilidad hacia atrás) ───
+        compras:             ['compras', 'inventario', 'vacaciones'],
+        facturacion:         ['ventas', 'compras', 'facturas', 'vacaciones'],
+        contabilidad:        null
     };
 
     function allowedForModule(rol, moduleName, moduleAny) {
@@ -54,16 +88,33 @@
         });
     }
 
-    /** Email del perfil con modo dual admin/empleado (mismo que Ivan - automatizacion). Ocultar botón admin; solo icono junto a Panel Principal. */
-    var NORBERTO_EMAIL = 'norbertomoro4@gmail.com';
+    /**
+     * Usuarios con modo dual Normal ↔ Admin.
+     * Clave: email del usuario. Valor: rol base cuando está en modo Normal.
+     * Futuro: migrar a campos users.modo_dual (boolean) y users.rol_normal (text) en BD.
+     */
+    var DUAL_MODE_USERS = {
+        'norbertomoro4@gmail.com': 'automatizacion'
+        // Agregar más usuarios con modo dual aquí: 'email@ejemplo.com': 'rol_base'
+    };
 
-    function isNorberto(profile) {
-        return profile && (profile.email === NORBERTO_EMAIL || (profile.nombre && profile.nombre.toLowerCase().indexOf('norberto moreno') !== -1));
+    function isDualModeUser(profile) {
+        if (!profile || profile.rol !== 'admin') return false;
+        // Futuro: return profile.modo_dual === true;
+        return DUAL_MODE_USERS.hasOwnProperty(profile.email);
+    }
+
+    function getBaseRolForDualMode(profile) {
+        if (!profile) return null;
+        // Futuro: return profile.rol_normal;
+        return DUAL_MODE_USERS[profile.email] || null;
     }
 
     function getEffectiveRol(profile) {
         try {
-            if (profile && profile.rol === 'admin' && sessionStorage.getItem('ssepi_norberto_empleado') === 'true') return 'automatizacion';
+            if (isDualModeUser(profile) && sessionStorage.getItem('ssepi_mode') === 'normal') {
+                return getBaseRolForDualMode(profile);
+            }
         } catch (e) {}
         return profile ? profile.rol : null;
     }
@@ -101,7 +152,8 @@
 
     async function applyNavByRole(profile) {
         if (!profile || !window.authService) return;
-        if (profile.rol === 'admin' || profile.rol === 'superadmin') return;
+        var effectiveRol = getEffectiveRol(profile);
+        if (effectiveRol === 'admin' || profile.rol === 'superadmin') return;
 
         var auth = window.authService;
 
@@ -137,7 +189,18 @@
         hideEmptyCategories();
     }
 
+    /** Migrar clave legacy ssepi_norberto_empleado → ssepi_mode para compatibilidad hacia atrás. */
+    function migrateLegacyModeKeys() {
+        try {
+            if (sessionStorage.getItem('ssepi_norberto_empleado') && !sessionStorage.getItem('ssepi_mode')) {
+                var isEmpleado = sessionStorage.getItem('ssepi_norberto_empleado') === 'true';
+                sessionStorage.setItem('ssepi_mode', isEmpleado ? 'normal' : 'admin');
+            }
+        } catch (e) {}
+    }
+
     async function runWhenReady() {
+        migrateLegacyModeKeys();
         var deadline = Date.now() + 8000;
         while (!window.authService) {
             if (Date.now() > deadline) return;
@@ -159,9 +222,9 @@
                 try { sessionStorage.setItem('ssepi_rol', effectiveRol || profile.rol); } catch (e) {}
                 if (document.body) document.body.dataset.rol = effectiveRol || profile.rol;
                 applyNavByRoleFromCache(effectiveRol || profile.rol);
-                if (isNorberto(profile)) {
-                    injectNorbertoToggle(profile);
-                    if (sessionStorage.getItem('ssepi_norberto_empleado') !== 'true') await applyNavByRole(profile);
+                if (isDualModeUser(profile)) {
+                    injectDualModeToggle(profile);
+                    if (sessionStorage.getItem('ssepi_mode') !== 'normal') await applyNavByRole(profile);
                 } else {
                     await applyNavByRole(profile);
                 }
@@ -173,29 +236,40 @@
         }
     }
 
-    function injectNorbertoToggle(profile) {
+    /**
+     * Inyecta el botón de toggle Normal ↔ Admin para usuarios con modo dual.
+     * El botón aparece junto a "Panel Principal" en la barra lateral.
+     * Estado: sessionStorage.ssepi_mode = 'normal' | 'admin' (default: 'admin').
+     */
+    function injectDualModeToggle(profile) {
         var homeLink = document.querySelector('.home-link');
-        if (!homeLink || document.getElementById('ssepiNorbertoToggle')) return;
-        var isEmpleado = sessionStorage.getItem('ssepi_norberto_empleado') === 'true';
+        if (!homeLink || document.getElementById('ssepiDualModeToggle')) return;
+        var baseRol = getBaseRolForDualMode(profile);
+        if (!baseRol) return;
+        var isNormal = sessionStorage.getItem('ssepi_mode') === 'normal';
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.id = 'ssepiNorbertoToggle';
-        btn.className = 'norberto-mode-toggle';
-        btn.setAttribute('aria-label', isEmpleado ? 'Cambiar a modo admin' : 'Cambiar a modo empleado');
-        btn.title = isEmpleado ? 'Modo empleado (clic para modo admin)' : 'Modo admin (clic para modo empleado)';
-        btn.innerHTML = isEmpleado ? '<i class="fas fa-user"></i>' : '<i class="fas fa-user-shield"></i>';
+        btn.id = 'ssepiDualModeToggle';
+        btn.className = 'dual-mode-toggle';
+        btn.setAttribute('aria-label', isNormal ? 'Cambiar a modo admin' : 'Cambiar a modo normal');
+        btn.title = isNormal ? 'Modo normal: ' + baseRol + ' (clic para modo admin)' : 'Modo admin (clic para modo normal: ' + baseRol + ')';
+        btn.innerHTML = isNormal ? '<i class="fas fa-user"></i>' : '<i class="fas fa-user-shield"></i>';
         btn.style.cssText = 'margin-left:8px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-color,#e2e8f0);background:var(--card-bg,#fff);cursor:pointer;font-size:0.9rem;';
         btn.addEventListener('click', function() {
-            var nowEmpleado = sessionStorage.getItem('ssepi_norberto_empleado') === 'true';
+            var currentlyNormal = sessionStorage.getItem('ssepi_mode') === 'normal';
+            var newMode = currentlyNormal ? 'admin' : 'normal';
+            var newRol = currentlyNormal ? 'admin' : baseRol;
             try {
-                sessionStorage.setItem('ssepi_norberto_empleado', nowEmpleado ? 'false' : 'true');
-                sessionStorage.setItem('ssepi_rol', nowEmpleado ? 'admin' : 'automatizacion');
+                sessionStorage.setItem('ssepi_mode', newMode);
+                sessionStorage.setItem('ssepi_rol', newRol);
+                if (currentlyNormal) sessionStorage.removeItem('ssepi_norberto_empleado');
+                else sessionStorage.setItem('ssepi_norberto_empleado', 'true');
             } catch (e) {}
-            document.body.dataset.rol = nowEmpleado ? 'admin' : 'automatizacion';
-            applyNavByRoleFromCache(nowEmpleado ? 'admin' : 'automatizacion');
-            btn.title = nowEmpleado ? 'Modo admin (clic para modo empleado)' : 'Modo empleado (clic para modo admin)';
-            btn.innerHTML = nowEmpleado ? '<i class="fas fa-user-shield"></i>' : '<i class="fas fa-user"></i>';
-            btn.setAttribute('aria-label', nowEmpleado ? 'Cambiar a modo empleado' : 'Cambiar a modo admin');
+            document.body.dataset.rol = newRol;
+            applyNavByRoleFromCache(newRol);
+            btn.title = currentlyNormal ? 'Modo admin (clic para modo normal: ' + baseRol + ')' : 'Modo normal: ' + baseRol + ' (clic para modo admin)';
+            btn.innerHTML = currentlyNormal ? '<i class="fas fa-user-shield"></i>' : '<i class="fas fa-user"></i>';
+            btn.setAttribute('aria-label', currentlyNormal ? 'Cambiar a modo normal' : 'Cambiar a modo admin');
         });
         homeLink.parentNode.insertBefore(btn, homeLink.nextSibling);
     }
