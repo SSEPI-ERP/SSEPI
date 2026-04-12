@@ -77,7 +77,10 @@ WITH new_rows (rol, module, action) AS (
     ('ventas', 'cotizaciones', 'read'),
     ('ventas', 'cotizaciones', 'create'),
     ('ventas', 'cotizaciones', 'update'),
-    ('ventas', 'clientes',     'read')
+    ('ventas', 'clientes',     'read'),
+    ('ventas', 'ordenes_taller',          'create'),
+    ('ventas', 'ordenes_motores',         'create'),
+    ('ventas', 'proyectos_automatizacion','create')
 )
 INSERT INTO public.role_permissions (rol, module, action)
 SELECT nr.rol, nr.module, nr.action
