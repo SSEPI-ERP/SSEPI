@@ -14,11 +14,13 @@ SET LOCAL search_path TO ssepi_import, public;
 
 `;
 
-// Índice NO parcial: PG no infiere índice parcial para ON CONFLICT (col) sin el mismo WHERE.
-// En PostgreSQL, varias filas con numero_de_parte NULL siguen permitidas en UNIQUE.
+// Índice único NO parcial (coincide con ON CONFLICT (numero_de_parte)).
+// Si ya existía ux_bom_materiales_numero_parte como índice PARCIAL, IF NOT EXISTS
+// no lo reemplaza y el INSERT sigue fallando con 42P10: hay que DROP primero.
 const idx = `
-CREATE UNIQUE INDEX IF NOT EXISTS ux_bom_materiales_numero_parte
-  ON bom_materiales (numero_de_parte);
+DROP INDEX IF EXISTS ssepi_import.ux_bom_materiales_numero_parte;
+CREATE UNIQUE INDEX ux_bom_materiales_numero_parte
+  ON ssepi_import.bom_materiales (numero_de_parte);
 `;
 
 s = s.replace(
