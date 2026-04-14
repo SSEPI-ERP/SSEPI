@@ -140,13 +140,21 @@ export class DataService {
     return true;
   }
 
-  // ==================== SELECCIONAR CON FILTROS ====================
+  // ==================== SELECCIONAR CON FILTROS Y PAGINACIÓN ====================
   async select(query = {}, options = {}) {
     if (!await authService.hasPermission(this.tableName, 'read')) {
       throw new Error('Permiso denegado');
     }
 
-    let supabaseQuery = this.supabase.from(this.tableName).select(options.select || '*');
+    // Paginación: page (desde 0) y pageSize (default 100, max 500)
+    const page = options.page || 0;
+    const pageSize = Math.min(options.pageSize || 100, 500);
+    const rangeStart = page * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
+
+    // Select con columnas específicas o '*' por defecto
+    const columns = options.select || '*';
+    let supabaseQuery = this.supabase.from(this.tableName).select(columns, { count: options.count ? 'exact' : undefined });
 
     // Aplicar filtros
     Object.entries(query).forEach(([key, value]) => {
@@ -205,11 +213,59 @@ export class DataService {
       supabaseQuery = supabaseQuery.limit(options.limit);
     }
 
+    // Aplicar paginación con range
+    supabaseQuery = supabaseQuery.range(rangeStart, rangeEnd);
+
     const { data, error } = await supabaseQuery;
 
     if (error) throw error;
 
+    // Retornar datos con info de paginación si se solicitó count
+    if (options.count) {
+      return { data, count: error?.details?.count || data?.length };
+    }
+
     return data;
+  }
+
+  // ==================== CONTAR REGISTROS ====================
+  async count(query = {}) {
+    if (!await authService.hasPermission(this.tableName, 'read')) {
+      throw new Error('Permiso denegado');
+    }
+
+    let supabaseQuery = this.supabase.from(this.tableName).select('*', { count: 'exact', head: true });
+
+    Object.entries(query).forEach(([key, value]) => {
+      if (value === undefined) return;
+      if (value === null) {
+        supabaseQuery = supabaseQuery.is(key, null);
+        return;
+      }
+      if (Array.isArray(value)) {
+        supabaseQuery = supabaseQuery.in(key, value);
+        return;
+      }
+      if (typeof value === 'object') {
+        Object.entries(value).forEach(([op, opVal]) => {
+          if (opVal === undefined) return;
+          switch (op) {
+            case 'gte': supabaseQuery = supabaseQuery.gte(key, opVal); break;
+            case 'lte': supabaseQuery = supabaseQuery.lte(key, opVal); break;
+            case 'gt': supabaseQuery = supabaseQuery.gt(key, opVal); break;
+            case 'lt': supabaseQuery = supabaseQuery.lt(key, opVal); break;
+            case 'neq': supabaseQuery = supabaseQuery.neq(key, opVal); break;
+            case 'eq': supabaseQuery = supabaseQuery.eq(key, opVal); break;
+          }
+        });
+        return;
+      }
+      supabaseQuery = supabaseQuery.eq(key, value);
+    });
+
+    const { count, error } = await supabaseQuery;
+    if (error) throw error;
+    return count || 0;
   }
 
   // ==================== OBTENER POR ID ====================

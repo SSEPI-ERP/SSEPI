@@ -168,7 +168,6 @@ function addSchemaToInsert(insertSql) {
 
 const conflictMap = {
   'bom_materiales': 'ON CONFLICT (numero_de_parte) DO NOTHING;',
-  'contactos': 'ON CONFLICT (correo_electronico) DO NOTHING;',
   'inventario_automatizacion': 'ON CONFLICT (num_parte, fecha) DO NOTHING;',
   'inventario_electronica': 'ON CONFLICT (codigo_marking, ubicacion) DO NOTHING;',
   'ordenes_compra': 'ON CONFLICT (referencia_de_la_orden) DO NOTHING;',
@@ -181,10 +180,58 @@ function fixOnConflict(insertSql) {
   const tableMatch = insertSql.match(/INSERT INTO ssepi_import\.(\w+)/);
   if (!tableMatch) return insertSql;
   const tableName = tableMatch[1];
+
+  // CASO ESPECIAL: contactos - requiere manejo separado por email vs nombre+tel
+  if (tableName === 'contactos') {
+    // Verificar columna correo_electronico en el INSERT
+    const columnsMatch = insertSql.match(/INSERT INTO ssepi_import\.contactos\s*\(([^)]+)\)/);
+    if (columnsMatch) {
+      const columns = columnsMatch[1].split(',').map(c => c.trim());
+      const emailIndex = columns.indexOf('correo_electronico');
+
+      if (emailIndex !== -1) {
+        // Extraer VALUES y verificar primer registro
+        const valuesMatch = insertSql.match(/VALUES\s*((?:\([^)]+\)\s*,?\s*)+)/s);
+        if (valuesMatch) {
+          const firstValue = valuesMatch[1];
+          // Contar emails válidos vs NULLs
+          const emailValues = firstValue.match(/\([^)]+\)/g) || [];
+          let validEmails = 0;
+          let nullEmails = 0;
+
+          for (const val of emailValues.slice(0, 10)) {
+            const parts = val.split(',');
+            if (parts.length > emailIndex) {
+              const emailPart = parts[emailIndex].trim();
+              if (emailPart === 'NULL' || emailPart === "''") {
+                nullEmails++;
+              } else if (emailPart.includes('@')) {
+                validEmails++;
+              }
+            }
+          }
+
+          // Si mayoría tiene email válido → usar email, si no → usar nombre+tel
+          if (validEmails >= nullEmails && validEmails > 0) {
+            return insertSql.replace(
+              /ON CONFLICT DO NOTHING;/g,
+              'ON CONFLICT (correo_electronico) WHERE correo_electronico IS NOT NULL AND correo_electronico != \'\' DO NOTHING;'
+            );
+          } else {
+            return insertSql.replace(
+              /ON CONFLICT DO NOTHING;/g,
+              'ON CONFLICT (nombre_completo, telefono) WHERE nombre_completo IS NOT NULL AND telefono IS NOT NULL DO NOTHING;'
+            );
+          }
+        }
+      }
+    }
+    return insertSql;
+  }
+
   const conflictClause = conflictMap[tableName];
   if (!conflictClause) return insertSql;
 
-  // Reemplazar ON CONFLICT DO NOTHING; por el específico
   return insertSql.replace(
     /ON CONFLICT DO NOTHING;/g,
     conflictClause
