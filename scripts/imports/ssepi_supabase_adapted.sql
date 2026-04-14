@@ -55,8 +55,9 @@ CREATE TABLE IF NOT EXISTS bom_materiales (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE bom_materiales ENABLE ROW LEVEL SECURITY;
-CREATE UNIQUE INDEX IF NOT EXISTS ux_bom_materiales_numero_parte
-  ON bom_materiales (numero_de_parte);
+DROP INDEX IF EXISTS ssepi_import.ux_bom_materiales_numero_parte;
+CREATE UNIQUE INDEX ux_bom_materiales_numero_parte
+  ON ssepi_import.bom_materiales (numero_de_parte);
 
 CREATE INDEX IF NOT EXISTS idx_bom_materiales_categoria ON bom_materiales(categoria);
 CREATE INDEX IF NOT EXISTS idx_bom_materiales_estado ON bom_materiales(estado);
