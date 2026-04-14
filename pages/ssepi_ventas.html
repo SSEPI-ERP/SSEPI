@@ -361,6 +361,22 @@
         </div>
     </div>
 
+    <!-- MODAL: HISTORIAL DE ORDEN/COTIZACIÓN -->
+    <div class="modal-backdrop" id="historialModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-history"></i> Historial de la Orden</h3>
+                <button class="modal-close" onclick="document.getElementById('historialModal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body" id="historialBody">
+                <!-- Contenido dinámico -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="document.getElementById('historialModal').classList.remove('active')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         window.addEventListener('load', function () {
             (async function () {

@@ -1,71 +1,117 @@
 /* ================================================
    ARCHIVO: ventas.css
-   DESCRIPCIÓN: Estilos específicos para el módulo de Ventas
-   ESTILO: Basado en el diseño original, con paleta neutra (azul corporativo)
+   DESCRIPCIÓN: Estilos para módulo de Ventas - Estilo Odoo
+   ESTILO: Limpio, profesional, jerarquía visual clara
    ================================================ */
 
 :root {
-    --c-ventas: #ff6d00;
-    --c-ventas-light: #fff3e0;
-    --c-ventas-dark: #e65100;
-    --accent: var(--c-ventas);
+    /* Paleta Odoo-inspired para Ventas */
+    --c-ventas: #714B67;        /* Morado Odoo (primary) */
+    --c-ventas-light: #F9F9F9;  /* Fondo suave */
+    --c-ventas-dark: #5A3C52;   /* Hover */
+    --c-ventas-accent: #00A09D; /* Teal para acentos */
+    --c-ventas-bg: #FFFFFF;
+
+    /* Estados */
+    --status-success-bg: #E8F5E9;
+    --status-success-text: #2E7D32;
+    --status-warning-bg: #FFF8E1;
+    --status-warning-text: #F57C00;
+    --status-danger-bg: #FFEBEE;
+    --status-danger-text: #C62828;
+    --status-info-bg: #E3F2FD;
+    --status-info-text: #1565C0;
+
+    /* Sombras sutiles estilo Odoo */
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-hover: 0 4px 12px rgba(0,0,0,0.12);
+    --shadow-header: 0 1px 4px rgba(0,0,0,0.06);
 }
 
 /* ========== FILTROS SUPERIORES ========== */
 .filtros-superiores {
     background: var(--bg-panel);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 20px 25px;
-    margin-bottom: 25px;
-    box-shadow: none;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-header);
     display: flex;
     flex-wrap: wrap;
-    gap: 20px;
+    gap: 12px;
     align-items: center;
 }
 
 .filtro-grupo {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--bg-body);
-    padding: 4px;
-    border-radius: 8px;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .filtro-grupo label {
     font-weight: 600;
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .filtro-grupo input,
 .filtro-grupo select {
     padding: 8px 12px;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 4px;
     background: var(--bg-panel);
     color: var(--text-primary);
     font-size: 13px;
+    min-width: 140px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filtro-grupo input:focus,
+.filtro-grupo select:focus {
+    outline: none;
+    border-color: var(--c-ventas);
+    box-shadow: 0 0 0 2px rgba(113, 75, 103, 0.1);
 }
 
 .btn-filtro {
-    background: var(--bg-hover);
-    color: var(--text-secondary);
+    background: var(--c-ventas);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 13px;
+    cursor: pointer;
+    transition: 0.2s;
+    align-self: flex-end;
+}
+
+.btn-filtro:hover {
+    background: var(--c-ventas-dark);
+    box-shadow: var(--shadow-card);
+}
+
+.vistas {
+    display: flex;
+    gap: 4px;
+    align-self: flex-end;
+}
+
+.vistas button {
+    background: transparent;
     border: 1px solid var(--border);
-    padding: 8px 20px;
-    border-radius: 30px;
-    font-weight: 600;
-    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 13px;
     cursor: pointer;
     transition: 0.2s;
 }
 
-.btn-filtro:hover {
-    background: var(--c-ventas);
-    color: white;
-    border-color: var(--c-ventas);
+.vistas button:hover {
+    background: var(--bg-hover);
 }
 
 .vistas button.active {
@@ -77,26 +123,69 @@
 /* ========== KPIs ========== */
 .kpi-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 25px;
-    margin-bottom: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
 }
-.kpi-grid .kpi-card {
-    border-left: 4px solid var(--c-ventas);
-}
+
 .kpi-card {
     background: var(--bg-panel);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 25px;
-    box-shadow: none;
-    border-top: 5px solid var(--c-ventas);
-    border-left: 4px solid var(--c-ventas);
+    border-radius: 6px;
+    padding: 20px;
+    box-shadow: var(--shadow-card);
     transition: 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--c-ventas), var(--c-ventas-accent));
 }
 
 .kpi-card:hover {
-    transform: translateY(-3px);
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+}
+
+.kpi-grid .kpi-card .kpi-icon,
+.kpi-grid .kpi-card .kpi-title i {
+    color: var(--c-ventas);
+}
+
+.kpi-icon {
+    font-size: 24px;
+    color: var(--c-ventas);
+    margin-bottom: 12px;
+    opacity: 0.9;
+}
+
+.kpi-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.kpi-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.kpi-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
 }
 
 .kpi-grid .kpi-card .kpi-icon,
@@ -132,24 +221,28 @@
 /* Chips de filtro rápido */
 .filtro-chips {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
     flex-wrap: wrap;
 }
 
 .chip-filtro {
-    padding: 6px 14px;
-    border-radius: 20px;
+    padding: 6px 12px;
+    border-radius: 4px;
     border: 1px solid var(--border);
-    background: var(--bg-body);
+    background: var(--bg-panel);
     color: var(--text-secondary);
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     transition: 0.2s;
 }
 
-.chip-filtro:hover,
+.chip-filtro:hover {
+    background: var(--bg-hover);
+    border-color: var(--c-ventas);
+}
+
 .chip-filtro.active {
     background: var(--c-ventas);
     color: #fff;
@@ -177,20 +270,24 @@
 .panel {
     background: var(--bg-panel);
     border: 1px solid var(--border);
-    border-radius: 24px;
-    padding: 25px;
-    margin-bottom: 30px;
-    box-shadow: none;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-card);
 }
 
 .panel h2 {
-    font-size: 18px;
-    font-weight: 800;
+    font-size: 15px;
+    font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+}
+
+.panel h2 i {
+    color: var(--c-ventas);
 }
 
 /* ========== TARJETAS DE SOLICITUDES ========== */
@@ -252,75 +349,105 @@
 }
 
 /* ========== BOTONES ========== */
-.btn {
-    padding: 12px 24px;
-    border-radius: 40px;
-    font-weight: 800;
-    font-size: 14px;
-    border: 1.5px solid var(--c-ventas);
+.btn-ssepi {
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 13px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    transition: 0.15s;
-    box-shadow: none;
-    min-width: 120px;
+    transition: 0.2s;
+    border: none;
+    min-width: 110px;
     justify-content: center;
 }
 
-.btn-sm {
-    padding: 8px 16px;
+.btn-ssepi.btn-sm {
+    padding: 6px 12px;
     font-size: 12px;
-    min-width: 80px;
+    min-width: auto;
 }
 
-.btn-primary {
-    background: #ffffff;
-    color: var(--c-ventas);
-}
-
-.btn-primary:hover {
+.btn-ssepi.btn-ventas {
     background: var(--c-ventas);
-    color: #ffffff;
-}
-
-.btn-secondary {
-    background: #ffffff;
-    border: 1.5px solid var(--c-ventas);
-    color: var(--c-ventas);
-}
-
-.btn-secondary:hover {
-    background: var(--c-ventas);
-    color: #ffffff;
-}
-
-.btn-success {
-    background: #2e7d32;
     color: white;
 }
 
-.btn-success:hover {
-    background: #1b5e20;
+.btn-ssepi.btn-ventas:hover {
+    background: var(--c-ventas-dark);
+    box-shadow: var(--shadow-card);
 }
 
-.btn-danger {
-    background: #d32f2f;
+.btn-ssepi.btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.btn-ssepi.btn-secondary:hover {
+    background: var(--bg-hover);
+    border-color: var(--c-ventas);
+    color: var(--c-ventas);
+}
+
+.btn-ssepi.btn-success {
+    background: var(--status-success-text);
     color: white;
 }
 
-.btn-danger:hover {
-    background: #b71c1c;
+.btn-ssepi.btn-success:hover {
+    background: #1B5E20;
+}
+
+.btn-ssepi.btn-info {
+    background: var(--status-info-text);
+    color: white;
+}
+
+.btn-ssepi.btn-info:hover {
+    background: #0D47A1;
+}
+
+.btn-ssepi.btn-danger {
+    background: var(--status-danger-text);
+    color: white;
+}
+
+.btn-ssepi.btn-danger:hover {
+    background: #B71C1C;
+}
+
+/* Botón de acción en header */
+.actions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-title i {
+    color: var(--c-ventas);
 }
 
 /* ========== TABLA DE VENTAS ========== */
 .lista-container {
     background: var(--bg-panel);
-    border-radius: 16px;
+    border-radius: 6px;
     border: 1px solid var(--border);
     overflow-x: auto;
     display: none;
-    box-shadow: none;
+    box-shadow: var(--shadow-card);
 }
 
 .lista-table {
@@ -330,13 +457,13 @@
 
 .lista-table th {
     background: var(--bg-hover);
-    padding: 12px 14px;
+    padding: 12px 16px;
     text-align: left;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.5px;
     border-bottom: 2px solid var(--c-ventas);
     white-space: nowrap;
 }
@@ -355,37 +482,53 @@
 }
 
 .lista-table tbody tr:hover {
-    background: var(--c-ventas-light);
+    background: var(--bg-hover);
 }
 
+.lista-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Status badges estilo Odoo */
 .status-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 4px;
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 600;
     text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
-.status-pagado {
-    background: rgba(46,125,50,0.15);
-    color: #2e7d32;
+.status-pagado,
+.status-success {
+    background: var(--status-success-bg);
+    color: var(--status-success-text);
 }
 
-.status-pendiente {
-    background: rgba(255,152,0,0.15);
-    color: #e65100;
+.status-pendiente,
+.status-warning {
+    background: var(--status-warning-bg);
+    color: var(--status-warning-text);
 }
 
-.status-cotizacion {
-    background: rgba(117,117,117,0.15);
-    color: #424242;
+.status-cotizacion,
+.status-info {
+    background: var(--status-info-bg);
+    color: var(--status-info-text);
+}
+
+.status-rechazado,
+.status-danger {
+    background: var(--status-danger-bg);
+    color: var(--status-danger-text);
 }
 
 /* ========== KANBAN ========== */
 .kanban-container {
     display: flex;
-    gap: 20px;
+    gap: 16px;
     overflow-x: auto;
     padding: 10px 0 20px;
 }
@@ -393,53 +536,60 @@
 .kanban-column {
     background: var(--bg-panel);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: 6px;
     min-width: 300px;
     max-width: 300px;
     display: flex;
     flex-direction: column;
-    box-shadow: none;
+    box-shadow: var(--shadow-card);
 }
 
 .kanban-header {
-    padding: 16px;
+    padding: 14px 16px;
     border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-weight: 600;
+    font-size: 13px;
+    background: var(--bg-hover);
+    border-radius: 6px 6px 0 0;
 }
 
 .kanban-header .badge {
     color: white;
-    padding: 4px 10px;
-    border-radius: 20px;
+    padding: 2px 8px;
+    border-radius: 4px;
     font-size: 11px;
+    font-weight: 600;
 }
+
+.kanban-header .badge.bg-pendiente { background: var(--status-warning-text); }
+.kanban-header .badge.bg-autorizado { background: var(--status-success-text); }
+.kanban-header .badge.bg-rechazado { background: var(--status-danger-text); }
 
 .kanban-cards {
     flex: 1;
-    padding: 16px;
+    padding: 12px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     min-height: 400px;
 }
 
 .kanban-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px;
+    border-radius: 6px;
+    padding: 14px;
     cursor: pointer;
     transition: 0.2s;
-    box-shadow: none;
-    border-left: 3px solid var(--c-ventas);
+    box-shadow: var(--shadow-card);
 }
 
 .kanban-card:hover {
-    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
     border-color: var(--c-ventas);
 }
 
@@ -447,13 +597,16 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
 }
 
 .folio {
-    font-weight: 700;
-    font-size: 13px;
+    font-weight: 600;
+    font-size: 12px;
     color: var(--c-ventas);
+    background: var(--c-ventas-light);
+    padding: 2px 8px;
+    border-radius: 4px;
 }
 
 .card-body {
@@ -463,12 +616,20 @@
 .cliente {
     font-weight: 600;
     font-size: 14px;
-    margin-bottom: 4px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.producto {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
 }
 
 .total {
     font-weight: 700;
     color: var(--text-primary);
+    font-size: 15px;
 }
 
 .card-footer {
@@ -476,19 +637,44 @@
     color: var(--text-muted);
     display: flex;
     justify-content: space-between;
-    border-top: 1px dashed var(--border);
-    padding-top: 8px;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    margin-top: 10px;
+}
+
+.card-footer .fecha {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 /* ========== GRÁFICA ========== */
 .grafica-container {
     background: var(--bg-panel);
-    border-radius: 16px;
+    border-radius: 6px;
     border: 1px solid var(--border);
     padding: 20px;
     height: 400px;
     display: none;
-    box-shadow: none;
+    box-shadow: var(--shadow-card);
+}
+
+.grafica-container .grafica-header {
+    margin-bottom: 20px;
+}
+
+.grafica-container .grafica-header h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+}
+
+.grafica-container .grafica-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0;
 }
 
 /* ========== MODALES ========== */
@@ -498,13 +684,13 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.6);
     z-index: 1000;
     display: none;
     align-items: center;
     justify-content: center;
     padding: 20px;
-    backdrop-filter: blur(5px);
+    backdrop-filter: blur(4px);
 }
 
 .modal-backdrop.active {
@@ -513,22 +699,23 @@
 
 .modal {
     background: var(--bg-panel);
-    border-radius: 24px;
+    border-radius: 8px;
     width: 100%;
-    max-width: 1300px;
+    max-width: 1200px;
     max-height: 90vh;
     display: flex;
     flex-direction: column;
-    border: 2px solid var(--c-ventas);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     animation: slideUp 0.3s;
     overflow: hidden;
 }
 
 .modal-header {
-    padding: 20px 30px;
+    padding: 16px 24px;
     border-bottom: 1px solid var(--border);
-    background: linear-gradient(135deg, var(--c-ventas) 0%, var(--c-ventas-dark) 100%);
-    color: white;
+    background: var(--bg-panel);
+    color: var(--text-primary);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -537,72 +724,86 @@
 }
 
 .wizard-steps {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
-    opacity: 0.95;
-    margin-left: auto;
-    margin-right: 10px;
+    color: var(--text-muted);
+    background: var(--bg-hover);
+    padding: 4px 12px;
+    border-radius: 4px;
 }
 
 .modal-title {
-    font-size: 20px;
-    font-weight: 900;
+    font-size: 16px;
+    font-weight: 600;
     margin: 0;
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
+.modal-title i {
+    color: var(--c-ventas);
+}
+
 .modal-close {
-    background: rgba(255,255,255,0.2);
+    background: transparent;
     border: none;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    color: white;
-    font-size: 18px;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-size: 20px;
     cursor: pointer;
     transition: 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .modal-close:hover {
-    background: rgba(255,255,255,0.3);
-    transform: rotate(90deg);
+    background: var(--bg-hover);
+    color: var(--text-primary);
 }
 
 .modal-body {
-    padding: 30px;
+    padding: 24px;
     overflow-y: auto;
+    background: var(--bg-panel);
 }
 
 .modal-footer {
-    padding: 20px 30px;
+    padding: 16px 24px;
     border-top: 1px solid var(--border);
     display: flex;
     justify-content: flex-end;
-    gap: 15px;
-    background: rgba(0,82,204,0.02);
+    gap: 10px;
+    background: var(--bg-hover);
 }
 
 /* ========== CALCULADORA DE COSTOS ========== */
 .calculadora-section {
-    background: var(--bg-card);
+    background: var(--bg-panel);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 25px;
-    margin-bottom: 25px;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-card);
 }
 
 .calculadora-titulo {
-    font-size: 16px;
-    font-weight: 800;
-    color: var(--c-ventas);
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid rgba(0,82,204,0.2);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--c-ventas);
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.calculadora-titulo i {
+    color: var(--c-ventas);
 }
 
 .info-logistica {
@@ -645,102 +846,142 @@
 }
 
 .costo-item {
-    background: var(--bg-body);
-    padding: 15px;
-    border-radius: 8px;
+    background: var(--bg-panel);
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
 }
 
 .costo-label {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-muted);
-    margin-bottom: 5px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .costo-value {
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
     color: var(--text-primary);
 }
 
 .costo-value input {
     width: 100%;
-    padding: 8px;
+    padding: 8px 10px;
     border: 1px solid var(--border);
     border-radius: 4px;
     background: var(--bg-panel);
     color: var(--text-primary);
-    font-size: 14px;
+    font-size: 13px;
+    transition: border-color 0.2s;
+}
+
+.costo-value input:focus {
+    outline: none;
+    border-color: var(--c-ventas);
 }
 
 .total-box {
-    background: #263238;
+    background: linear-gradient(135deg, var(--c-ventas) 0%, var(--c-ventas-dark) 100%);
     color: white;
-    padding: 25px;
-    border-radius: 12px;
+    padding: 20px;
+    border-radius: 6px;
     text-align: right;
     margin-top: 20px;
 }
 
 .total-box .label {
-    font-size: 14px;
-    opacity: 0.8;
-    margin-bottom: 5px;
+    font-size: 12px;
+    opacity: 0.9;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .total-box .value {
-    font-size: 36px;
-    font-weight: 900;
-    color: #00e676;
+    font-size: 32px;
+    font-weight: 700;
 }
 
 /* ========== EDITOR DE COTIZACIÓN ========== */
 .editor-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
 }
 
 .editor-item {
-    background: var(--bg-body);
-    padding: 15px;
-    border-radius: 8px;
+    background: var(--bg-panel);
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+}
+
+.editor-item-full {
+    grid-column: 1 / -1;
 }
 
 .editor-item label {
     display: block;
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-muted);
-    margin-bottom: 5px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.editor-item input {
+.editor-item input,
+.editor-item select {
     width: 100%;
-    padding: 10px;
+    padding: 8px 10px;
     border: 1px solid var(--border);
     border-radius: 4px;
     background: var(--bg-panel);
     color: var(--text-primary);
+    font-size: 13px;
+    transition: border-color 0.2s;
+}
+
+.editor-item input:focus,
+.editor-item select:focus {
+    outline: none;
+    border-color: var(--c-ventas);
 }
 
 .editor-item input[readonly] {
-    background: rgba(0,82,204,0.05);
-    font-weight: 700;
+    background: var(--bg-hover);
+    font-weight: 600;
+    cursor: default;
+}
+
+.edit-enviar-a {
+    cursor: pointer;
 }
 
 /* ========== UTILIDADES ========== */
+.c-danger { color: var(--status-danger-text); }
+.bg-danger { background: var(--status-danger-bg); color: var(--status-danger-text); }
+.c-success { color: var(--status-success-text); }
+.c-warning { color: var(--status-warning-text); }
+.c-info { color: var(--status-info-text); }
+.text-muted { color: var(--text-muted); }
+.text-primary { color: var(--text-primary); }
+
 .btn-remove {
     background: none;
     border: none;
-    color: var(--c-danger);
+    color: var(--status-danger-text);
     cursor: pointer;
     font-size: 16px;
     padding: 4px;
+    border-radius: 4px;
+    transition: 0.2s;
 }
 
 .btn-remove:hover {
-    background: var(--c-danger);
-    color: white;
-    border-radius: 4px;
+    background: var(--status-danger-bg);
+    color: var(--status-danger-text);
 }
 
 @media (max-width: 1200px) {

@@ -99,86 +99,165 @@ const VentasModule = (function() {
         _wizardActualizarAyudaFolio();
     }
 
+    /**
+     * Valida que el usuario tenga sesión activa y token válido antes de operaciones de escritura.
+     * Retorna { valid: boolean, error?: string, user?: object }
+     */
+    async function _validateAuthForWrite() {
+        try {
+            const { data: { user }, error } = await window.supabase.auth.getUser();
+            if (error || !user) {
+                return { valid: false, error: 'Sesión expirada o inválida. Por favor inicia sesión nuevamente.' };
+            }
+            // Verificar que la sesión no esté cerca de expirar
+            const session = window.supabase.auth.getSession();
+            if (session?.expires_at && session.expires_at < Date.now() / 1000 + 60) {
+                return { valid: false, error: 'Sesión por expirar. Por favor inicia sesión nuevamente.' };
+            }
+            return { valid: true, user };
+        } catch (e) {
+            console.error('[Ventas] validateAuthForWrite:', e);
+            return { valid: false, error: 'Error de conexión con el servidor de autenticación.' };
+        }
+    }
+
+    /**
+     * Clasifica un error de Supabase para dar mensaje útil al usuario.
+     */
+    function _classifyError(error) {
+        if (!error) return { type: 'unknown', message: 'Error desconocido.' };
+
+        const code = error.code || '';
+        const msg = (error.message || '').toLowerCase();
+
+        // Errores de autenticación/autorización
+        if (code === 'PGRST301' || msg.includes('jwt') || msg.includes('token') || msg.includes('auth')) {
+            return { type: 'auth', message: 'Tu sesión expiró o no es válida. Por favor inicia sesión nuevamente.' };
+        }
+        if (code === 'PGRST101' || msg.includes('permission') || msg.includes('rls') || msg.includes('denied')) {
+            return { type: 'permission', message: 'No tienes permisos para realizar esta acción. Contacta al administrador.' };
+        }
+        // Errores de red/conexión
+        if (msg.includes('fetch') || msg.includes('network') || msg.includes('timeout') || msg.includes('connection')) {
+            return { type: 'network', message: 'Error de conexión. Verifica tu internet e intenta de nuevo.' };
+        }
+        // Errores de validación
+        if (code === '23505') {
+            return { type: 'duplicate', message: 'Ya existe un registro con estos datos.' };
+        }
+        if (code.startsWith('23')) {
+            return { type: 'validation', message: 'Datos inválidos. Verifica la información capturada.' };
+        }
+        return { type: 'unknown', message: 'Error: ' + (error.message || 'Intenta de nuevo.') };
+    }
+
     async function _ventasCrearOrdenOperativa(dept, clienteNombre, falla, fechaStr, prioridad, csrfToken) {
+        // VALIDACIÓN DE AUTENTICACIÓN ANTES DE ESCRIBIR
+        const authCheck = await _validateAuthForWrite();
+        if (!authCheck.valid) {
+            const err = new Error(authCheck.error);
+            err._ssepiAuthFailure = true;
+            throw err;
+        }
+
         const fechaIso = fechaStr
             ? new Date(fechaStr + 'T12:00:00.000Z').toISOString()
             : new Date().toISOString();
         const prioLine = 'Prioridad (Ventas): ' + (prioridad || 'Normal');
         const notasAlta = [prioLine, 'Alta desde Ventas (cerebro).'].join('\n');
 
-        if (dept === 'Taller Electrónica') {
-            const folioFn = window.folioFormats && window.folioFormats.getNextFolioLaboratorio;
-            const folio = folioFn ? await folioFn() : 'SP-E' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '001';
-            const row = {
-                folio,
-                cliente_nombre: clienteNombre,
-                equipo: '—',
-                falla_reportada: falla,
-                fecha_ingreso: fechaIso,
-                estado: 'Nuevo',
-                notas_generales: notasAlta
-            };
-            const inserted = await tallerService.insert(row, csrfToken);
-            if (inserted && taller && !taller.some((o) => o.id === inserted.id)) taller.unshift(inserted);
-            compraActual = {
-                id: inserted.id,
-                vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'taller', folio_taller: folio },
-                _origen: 'taller'
-            };
-            return { folio, ordenId: inserted.id, tipo: 'taller' };
-        }
+        try {
+            if (dept === 'Taller Electrónica') {
+                const folioFn = window.folioFormats && window.folioFormats.getNextFolioLaboratorio;
+                const folio = folioFn ? await folioFn() : 'SP-E' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '001';
+                const row = {
+                    folio,
+                    cliente_nombre: clienteNombre,
+                    equipo: '—',
+                    falla_reportada: falla,
+                    fecha_ingreso: fechaIso,
+                    estado: 'Nuevo',
+                    notas_generales: notasAlta
+                };
+                const inserted = await tallerService.insert(row, csrfToken);
+                if (!inserted) {
+                    throw new Error('No se recibió confirmación del servidor al crear la orden de Taller.');
+                }
+                if (inserted && taller && !taller.some((o) => o.id === inserted.id)) taller.unshift(inserted);
+                compraActual = {
+                    id: inserted.id,
+                    vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'taller', folio_taller: folio },
+                    _origen: 'taller'
+                };
+                return { folio, ordenId: inserted.id, tipo: 'taller' };
+            }
 
-        if (dept === 'Taller Motores') {
-            const folioFn = window.folioFormats && window.folioFormats.getNextFolioMotores;
-            const folio = folioFn ? await folioFn() : 'SP-M' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '001';
-            const row = {
-                folio,
-                cliente_nombre: clienteNombre,
-                motor: '—',
-                fecha_ingreso: fechaIso,
-                falla_reportada: falla,
-                estado: 'Nuevo',
-                notas_generales: notasAlta
-            };
-            const inserted = await motoresService.insert(row, csrfToken);
-            if (inserted && motores && !motores.some((o) => o.id === inserted.id)) motores.unshift(inserted);
-            compraActual = {
-                id: inserted.id,
-                vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'motor' },
-                _origen: 'motores'
-            };
-            return { folio, ordenId: inserted.id, tipo: 'motor' };
-        }
+            if (dept === 'Taller Motores') {
+                const folioFn = window.folioFormats && window.folioFormats.getNextFolioMotores;
+                const folio = folioFn ? await folioFn() : 'SP-M' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '001';
+                const row = {
+                    folio,
+                    cliente_nombre: clienteNombre,
+                    motor: '—',
+                    fecha_ingreso: fechaIso,
+                    falla_reportada: falla,
+                    estado: 'Nuevo',
+                    notas_generales: notasAlta
+                };
+                const inserted = await motoresService.insert(row, csrfToken);
+                if (!inserted) {
+                    throw new Error('No se recibió confirmación del servidor al crear la orden de Motores.');
+                }
+                if (inserted && motores && !motores.some((o) => o.id === inserted.id)) motores.unshift(inserted);
+                compraActual = {
+                    id: inserted.id,
+                    vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'motor' },
+                    _origen: 'motores'
+                };
+                return { folio, ordenId: inserted.id, tipo: 'motor' };
+            }
 
-        if (dept === 'Automatización' || dept === 'Proyectos') {
-            const profile = await authService.getCurrentProfile();
-            const userName = profile?.nombre || 'Ventas';
-            const folioFn = window.folioFormats && window.folioFormats.getNextFolioAutomatizacion;
-            const folio = folioFn
-                ? await folioFn()
-                : 'SP-A' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '/1';
-            const nombre = dept === 'Proyectos' ? 'Proyecto (Ventas)' : 'Automatización (Ventas)';
-            const row = {
-                folio,
-                nombre,
-                cliente: clienteNombre,
-                fecha: (fechaStr || new Date().toISOString().split('T')[0]),
-                vendedor: userName,
-                notas_generales: [falla, prioLine].filter(Boolean).join('\n\n'),
-                estado: 'pendiente'
-            };
-            const inserted = await proyectosService.insert(row, csrfToken);
-            if (inserted && proyectos && !proyectos.some((p) => p.id === inserted.id)) proyectos.unshift(inserted);
-            const origen = dept === 'Automatización' ? 'automatizacion' : 'proyecto';
-            compraActual = {
-                id: inserted.id,
-                vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'proyecto' },
-                _origen: origen
-            };
-            return { folio, ordenId: inserted.id, tipo: 'proyecto' };
-        }
+            if (dept === 'Automatización' || dept === 'Proyectos') {
+                const profile = await authService.getCurrentProfile();
+                const userName = profile?.nombre || 'Ventas';
+                const folioFn = window.folioFormats && window.folioFormats.getNextFolioAutomatizacion;
+                const folio = folioFn
+                    ? await folioFn()
+                    : 'SP-A' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '/1';
+                const nombre = dept === 'Proyectos' ? 'Proyecto (Ventas)' : 'Automatización (Ventas)';
+                const row = {
+                    folio,
+                    nombre,
+                    cliente: clienteNombre,
+                    fecha: (fechaStr || new Date().toISOString().split('T')[0]),
+                    vendedor: userName,
+                    notas_generales: [falla, prioLine].filter(Boolean).join('\n\n'),
+                    estado: 'pendiente'
+                };
+                const inserted = await proyectosService.insert(row, csrfToken);
+                if (!inserted) {
+                    throw new Error('No se recibió confirmación del servidor al crear el registro de Automatización/Proyectos.');
+                }
+                if (inserted && proyectos && !proyectos.some((p) => p.id === inserted.id)) proyectos.unshift(inserted);
+                const origen = dept === 'Automatización' ? 'automatizacion' : 'proyecto';
+                compraActual = {
+                    id: inserted.id,
+                    vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'proyecto' },
+                    _origen: origen
+                };
+                return { folio, ordenId: inserted.id, tipo: 'proyecto' };
+            }
 
-        throw new Error('Departamento no soportado para alta de orden');
+            throw new Error('Departamento no soportado para alta de orden');
+        } catch (error) {
+            // Re-lanzar con información clasificada para UI
+            if (error._ssepiAuthFailure) throw error;
+            const classified = _classifyError(error);
+            const wrapped = new Error(classified.message);
+            wrapped._ssepiErrorType = classified.type;
+            wrapped._originalError = error;
+            throw wrapped;
+        }
     }
 
     function _itemsToComponentesFolio(items) {
@@ -655,11 +734,14 @@ const VentasModule = (function() {
                     <td><span class="status-badge ${estatusClass}">${estatus}</span></td>
                     <td>$${total.toFixed(2)}</td>
                     <td>
-                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); ventasModule._editarVenta('${item.id}', '${item.tipo || 'venta'}')">
+                        <button class="btn btn-sm btn-info" style="background:#0077b6;color:#fff;" onclick="event.stopPropagation(); ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')" title="Ver historial">
+                            <i class="fas fa-history"></i>
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); ventasModule._editarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Editar">
                             <i class="fas fa-edit"></i>
                         </button>
                         ${item.tipo === 'cotizacion' ? `
-                            <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); ventasModule._reenviarCotizacion('${item.id}')">
+                            <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); ventasModule._reenviarCotizacion('${item.id}')" title="Reenviar">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
                         ` : ''}
@@ -1183,9 +1265,98 @@ const VentasModule = (function() {
     }
 
     // ==================== DETALLE Y EDICIÓN ====================
+
+    /**
+     * Carga y muestra el historial de una cotización/orden
+     */
+    async function _mostrarHistorial(id, tipo) {
+        const modal = document.getElementById('historialModal');
+        const body = document.getElementById('historialBody');
+        if (!modal || !body) {
+            alert('Error: No se encontró el modal de historial.');
+            return;
+        }
+
+        // Mapeo de tipo a columna de BD
+        const columnMap = {
+            'cotizacion': 'cotizacion_id',
+            'venta': 'cotizacion_id',
+            'taller': 'orden_taller_id',
+            'motor': 'orden_motor_id',
+            'proyecto': 'proyecto_id',
+            'automatizacion': 'proyecto_id'
+        };
+        const columnName = columnMap[tipo] || 'cotizacion_id';
+
+        try {
+            const { data, error } = await window.supabase
+                .from('orden_historial')
+                .select(`
+                    *,
+                    creado_por_usuario:usuarios (nombre, email)
+                `)
+                .eq(columnName, id)
+                .order('creado_en', { ascending: false });
+
+            if (error) throw error;
+
+            const events = data || [];
+
+            if (events.length === 0) {
+                body.innerHTML = `
+                    <div style="text-align:center; padding:40px; color:var(--text-secondary);">
+                        <i class="fas fa-history" style="font-size:48px; margin-bottom:16px; opacity:0.5;"></i>
+                        <p>No hay eventos registrados en el historial.</p>
+                    </div>
+                `;
+            } else {
+                body.innerHTML = `
+                    <div style="max-height:60vh; overflow-y:auto;">
+                        ${events.map(e => {
+                            const fecha = new Date(e.creado_en).toLocaleString('es-MX');
+                            const usuario = e.creado_por_usuario?.nombre || e.creado_por_usuario?.email?.split('@')[0] || 'Sistema';
+                            const iconMap = {
+                                'creacion': '🆕',
+                                'cotizacion_guardada': '💾',
+                                'cotizacion_enviada': '📧',
+                                'cotizacion_autorizada': '✅',
+                                'cotizacion_rechazada': '❌',
+                                'cambio_estado': '🔄',
+                                'costo_agregado': '💰',
+                                'compra_vinculada': '🔗',
+                                'folio_generado': '📄',
+                                'venta_cerrada': '💵'
+                            };
+                            const icon = iconMap[e.evento] || '📝';
+                            return `
+                                <div style="padding:12px 16px; border-bottom:1px solid var(--border); display:flex; gap:12px; align-items:flex-start;">
+                                    <span style="font-size:20px;">${icon}</span>
+                                    <div style="flex:1;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                                            <strong style="color:var(--c-ventas);">${e.evento.replace(/_/g, ' ').toUpperCase()}</strong>
+                                            <span style="font-size:12px; color:var(--text-secondary);">${fecha}</span>
+                                        </div>
+                                        <p style="margin:4px 0; color:var(--text-secondary);">${e.descripcion || ''}</p>
+                                        <span style="font-size:11px; color:var(--text-muted);">Por: ${usuario}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+
+            modal.classList.add('active');
+        } catch (error) {
+            console.error('[Ventas] mostrarHistorial:', error);
+            body.innerHTML = `<p style="color:#c62828;">Error al cargar historial: ${error.message}</p>`;
+            modal.classList.add('active');
+        }
+    }
+
     function _abrirDetalle(id, tipo) {
-        // Implementar vista de detalle (podría ser un modal)
-        alert(`Abrir detalle de ${tipo} con id ${id}`);
+        // Abrir historial directamente
+        _mostrarHistorial(id, tipo);
     }
 
     function _editarVenta(id, tipo) {
@@ -1295,19 +1466,24 @@ const VentasModule = (function() {
                 </div>
                 <div class="editor-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                     <div class="editor-item">
-                        <label>Cliente</label>
+                        <label>Cliente <span style="color:#c62828;">*</span></label>
                         <select id="wizardClienteSelect" style="width:100%; padding:10px;">
                             <option value="">-- Seleccionar cliente --</option>
                             ${clientesOptions}
                         </select>
                     </div>
                     <div class="editor-item">
-                        <label>Fecha de ingreso</label>
+                        <label>Fecha de ingreso <span style="color:#c62828;">*</span></label>
                         <input type="date" id="wizardFechaIngreso" value="${hoy}" style="width:100%; padding:10px;">
                     </div>
                 </div>
                 <div class="editor-item" style="margin-top:14px;">
-                    <label>Falla reportada</label>
+                    <label>Nombre del producto <span style="color:#c62828;">*</span></label>
+                    <input type="text" id="wizardNombreProducto" placeholder="Ej. Sistema de control, Motor trifásico, Tablero eléctrico..." style="width:100%; padding:10px;">
+                    <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Requerido para continuar con la cotización.</p>
+                </div>
+                <div class="editor-item" style="margin-top:14px;">
+                    <label>Falla reportada <span style="color:#c62828;">*</span></label>
                     <textarea id="wizardFallaReportada" rows="3" placeholder="Describe la falla o requerimiento..." style="width:100%; padding:10px; resize:vertical;"></textarea>
                 </div>
                 <div class="editor-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px;">
@@ -1321,7 +1497,7 @@ const VentasModule = (function() {
                         </select>
                     </div>
                     <div class="editor-item">
-                        <label>Departamento que recibe el caso</label>
+                        <label>Departamento que recibe el caso <span style="color:#c62828;">*</span></label>
                         <select id="wizardDepartamentoSelect" style="width:100%; padding:10px;">
                             <option value="">-- Seleccionar departamento --</option>
                             <option value="Taller Electrónica">Taller Electrónica</option>
@@ -1419,14 +1595,18 @@ const VentasModule = (function() {
             _wizardSetPaso1Error('');
             const clienteSelect = document.getElementById('wizardClienteSelect');
             const fechaIn = document.getElementById('wizardFechaIngreso');
+            const nombreProducto = document.getElementById('wizardNombreProducto')?.value?.trim() || '';
             const falla = document.getElementById('wizardFallaReportada')?.value?.trim() || '';
             const prioridad = document.getElementById('wizardPrioridadSelect')?.value || 'Normal';
             const dept = document.getElementById('wizardDepartamentoSelect')?.value || '';
             const clienteId = clienteSelect?.value;
-            if (!clienteId) { _wizardSetPaso1Error('Selecciona un cliente.'); return; }
-            if (!fechaIn?.value) { _wizardSetPaso1Error('Indica la fecha de ingreso.'); return; }
-            if (!falla) { _wizardSetPaso1Error('Describe la falla o el requerimiento.'); return; }
-            if (!dept) { _wizardSetPaso1Error('Selecciona el departamento que recibe el caso.'); return; }
+
+            // VALIDACIÓN DE CAMPOS REQUERIDOS
+            if (!clienteId) { _wizardSetPaso1Error('❌ Selecciona un cliente.'); return; }
+            if (!fechaIn?.value) { _wizardSetPaso1Error('❌ Indica la fecha de ingreso.'); return; }
+            if (!nombreProducto) { _wizardSetPaso1Error('❌ Ingresa el nombre del producto (requerido para continuar).'); return; }
+            if (!falla) { _wizardSetPaso1Error('❌ Describe la falla o el requerimiento.'); return; }
+            if (!dept) { _wizardSetPaso1Error('❌ Selecciona el departamento que recibe el caso.'); return; }
 
             const contacto = contactos.find(c => c.id === clienteId);
             const clienteNombre = contacto
@@ -1442,8 +1622,11 @@ const VentasModule = (function() {
                     horas: clienteTabulador?.horas || 0,
                     email: contacto.email,
                     telefono: contacto.telefono,
-                    rfc: contacto.rfc
+                    rfc: contacto.rfc,
+                    producto: nombreProducto
                 };
+            } else {
+                calculadoraClienteActual = { nombre: clienteNombre, km: 0, horas: 0, producto: nombreProducto };
             }
 
             let origenCot = 'directo';
@@ -1464,7 +1647,28 @@ const VentasModule = (function() {
                     creado = await _ventasCrearOrdenOperativa(dept, clienteNombre, falla, fechaIn.value, prioridad, csrfToken);
                 } catch (e) {
                     console.error('[Ventas] alta orden cerebro', e);
-                    _wizardSetPaso1Error('No se pudo guardar el registro. Intenta de nuevo en unos segundos.');
+
+                    // Manejo de errores mejorado con mensajes específicos
+                    const isAuthFailure = e._ssepiAuthFailure === true;
+                    const errorType = e._ssepiErrorType || 'unknown';
+
+                    if (isAuthFailure || errorType === 'auth') {
+                        _wizardSetPaso1Error('🔐 ' + e.message + ' Redirigiendo al login...');
+                        // Forzar logout y redireccionar
+                        setTimeout(async () => {
+                            try { await authService.logout(); } catch (_) {}
+                            window.location.href = '/';
+                        }, 2000);
+                    } else if (errorType === 'permission') {
+                        _wizardSetPaso1Error('⛔ ' + e.message);
+                    } else if (errorType === 'network') {
+                        _wizardSetPaso1Error('📡 ' + e.message);
+                    } else if (errorType === 'validation' || errorType === 'duplicate') {
+                        _wizardSetPaso1Error('⚠️ ' + e.message);
+                    } else {
+                        _wizardSetPaso1Error('❌ ' + (e.message || 'Error al crear la orden. Intenta de nuevo.'));
+                    }
+
                     if (nextBtn) nextBtn.disabled = false;
                     return;
                 } finally {
@@ -1480,7 +1684,8 @@ const VentasModule = (function() {
                 orden_id: creado.ordenId || null,
                 folio_operativo: creado.folio || null,
                 tipo_vinculo: creado.tipo || null,
-                origen_cotizacion: origenCot
+                origen_cotizacion: origenCot,
+                nombre_producto: nombreProducto
             };
         }
         if (wizardPaso === 4) return;
@@ -1880,7 +2085,8 @@ const VentasModule = (function() {
         _rechazarCotizacion,
         _editarVenta,
         _reenviarCotizacion,
-        _abrirDetalle
+        _abrirDetalle,
+        _mostrarHistorial
     };
 })();
 
