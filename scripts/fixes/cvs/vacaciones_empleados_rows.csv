@@ -1,0 +1,11 @@
+id,user_id,nombre,rol,email,color,orden,created_at
+24c7dc35-a83e-4830-b85c-922137282f4b,,Eduardo Amezcua,ventas,,#3b82f6,1,2026-03-03 16:31:53.510466+00
+39e63896-629a-49d0-a544-01c70bc24984,,Ivan Gutierrez,automatizacion,,#8b5cf6,2,2026-03-03 16:31:53.510466+00
+5f513ed8-4253-48b3-afb1-b5331ea012ca,,Arturo Moreno,automatizacion,,#06b6d4,6,2026-03-03 16:31:53.510466+00
+83978f91-7ee5-488f-a0c5-3ab985a430a5,,Norberto Moreno,admin,,#ef4444,9,2026-03-03 16:31:53.510466+00
+8b45b1c6-d729-4bbb-b3ba-066fb5f17a28,,Ana Moreno,administracion,anamoreno.ssepi@gmail.com,#ec4899,5,2026-03-03 16:31:53.510466+00
+aeffb092-0056-4bbf-8719-b5e4d99b826b,,Aaron Garcia,taller,,#22c55e,3,2026-03-03 16:31:53.510466+00
+cd05df53-6fbe-4918-8a03-117583adf1ea,,Misael Moreno,contabilidad,,#6366f1,7,2026-03-03 16:31:53.510466+00
+dc46ccd6-1330-4518-8607-21b4abb0b621,,Alejandro Becerra,motores,,#84cc16,10,2026-03-03 16:31:53.510466+00
+e01445a6-be3e-477c-bed5-64789a4ea726,,Daniel Zuniga,ventas,,#14b8a6,8,2026-03-03 16:31:53.510466+00
+ff16ca2e-8422-44b4-b8e0-6500c256a8eb,,Javier Cruz,taller,,#f59e0b,4,2026-03-03 16:31:53.510466+00
