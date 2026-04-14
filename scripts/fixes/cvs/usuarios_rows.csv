@@ -1,0 +1,9 @@
+id,auth_user_id,email,nombre,rol,departamento,telefono,mfa_enabled,activo,ultimo_acceso,creado_en,actualizado_en,sede,nivel_riesgo
+03b8c605-69b0-4f0a-bb48-abaed9b34e6b,625c0294-ad8c-4c44-a3c0-bd3ad868064f,administracion@ssepi.org,Administración,admin,,,false,true,,2026-03-03 13:53:24.599856+00,2026-03-03 13:53:24.599856+00,,
+11478e0a-cf0d-4371-bcf2-f046ef5657a6,85701246-f3a8-4760-96a5-155dd83abb1e,ventas1@ssepi.org,Ventas 1,ventas,,,false,true,,2026-03-03 13:53:26.721289+00,2026-03-03 13:53:26.721289+00,,
+2860c2f5-6632-401a-9c56-215a3a81b6b4,65a2920c-bb4a-4b64-9e31-ccd47545120d,norbertomoro4@gmail.com,Admin,admin,,,false,true,,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00,,
+655f21fa-84a1-4a0f-8dfe-0b71ed081f8d,b35ba451-f96a-4057-94b8-786feb17b8a9,ivang.ssepi@gmail.com,Ivan (Automatización),automatizacion,,,false,true,,2026-03-03 13:56:03.104251+00,2026-03-03 13:56:03.104251+00,,
+6a1105f2-2ccb-4a67-9330-97823106c367,deb817da-591f-498d-97fb-ab5b44eec630,electronica.ssepi@gmail.com,Electrónica SSEPI,ventas_sin_compras,,,false,true,,2026-03-03 13:53:25.814019+00,2026-03-03 13:53:25.814019+00,,
+7f4e71b6-620b-4c88-b053-5c04ac0cc6f0,3cac7945-bcde-46a0-90d5-7b94ace2b14a,electronica@ssepi.org,Electrónica Admin,admin,,,false,true,,2026-03-03 13:53:25.414723+00,2026-03-03 13:53:25.414723+00,,
+dfb54761-1563-437f-95ae-816281fb7775,f16da79f-8043-4c86-8659-7933eae55b0a,ventas@ssepi.org,Ventas Admin,admin,,,false,true,,2026-03-03 13:53:25.008517+00,2026-03-03 13:53:25.008517+00,,
+f1b8e266-ef35-426d-a4dc-99bd6e42a1a5,884ad1b6-5831-4619-9d5d-d3703f9e8691,automatizacion@ssepi.org,Automatización,admin,,,false,true,,2026-03-03 13:53:23.972223+00,2026-03-03 13:53:23.972223+00,,

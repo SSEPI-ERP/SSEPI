@@ -1,0 +1,18 @@
+id,area,servicio,descripcion,tipo,unidad,valor_agregado,horas_estimadas,activo,creado_en,actualizado_en
+21acd70b-a834-4334-b165-a1da6322859f,Control,Programación de variadores VFD,,O,por hora,677.82,0.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+26c0e398-0414-4c13-bb93-9e16b237cd59,Sistemas de visión,Lectura y validación de códigos QR,,O,por hora,770.25,0.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+2c2fca9e-576f-4684-ac6c-323e8ba97ace,Soporte,Optimización de tiempos de ciclo,,O,por hora,1111.00,0.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+3c665418-6c0d-4c88-9c03-613573eec85c,Eléctrica,Diseño de tablero eléctrico BT,,O,por hora,341.43,0.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+40a467e6-7737-4429-86e8-bb6a42b2b19a,Sistemas de visión,Integración de cámaras industriales,,O,por hora,770.25,0.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+67b5ff78-22d7-464e-b9e1-730cacf8f2c3,Soporte,Diagnóstico de fallas en sistemas,,P,por hora,1111.00,0.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+68bad672-313a-4706-b038-29aeadd8070c,Control,Creación de interfaz HMI,,O,por hora,647.01,0.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+7efc5d06-64f1-4a46-bb56-c949299503c1,Sistemas de visión,Trazabilidad y registro de producción,,P,por hora,770.25,0.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+9091b0e2-419e-45ee-a61e-814a7b3f88e9,Diseño mecánico,Modelado 3D de herramental,,O,por modelo,770.25,5.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+91a185d2-64a6-4b90-860c-1175ba06a015,Eléctrica,Instalación de cableado/sensores,,P,por hora,111.10,5.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+933e03da-19e4-4905-bb8a-f349caea957b,Eléctrica,Fabricación e instalación de tablero BT,,O,por hora,330.32,0.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+953cea8a-1e49-4415-a957-c780675d802c,Soporte,Respaldo y documentación,,O,por hora,333.30,0.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+a29db679-bb4b-44ab-8c43-47570f74ca3c,Control,Programación de rutinas en PLC,,O,por hora,647.01,0.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+c5f3ec07-6bd4-4d5d-99c2-82699ae7a743,Control,Configuración de servomotores,,O,por hora,708.63,0.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+e22e0ec8-3959-4918-a886-ab33dd7cc96f,Soporte,Capacitación a personal,,O,por hora,888.80,0.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+e6fa12c8-dc95-4a1a-bb70-e43e5ed9ed75,Diseño e ingeniería,Selección de equipos de control,,O,por hora,308.10,0.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
+f5aad5dc-200b-41ae-8c61-f573d517f4e7,Diseño e ingeniería,Diseño de arquitectura de control,,O,por hora,308.10,6.00,true,2026-02-26 15:04:03.371659+00,2026-02-26 15:04:03.371659+00
