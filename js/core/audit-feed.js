@@ -31,13 +31,14 @@ export function initAuditFeed({
     rows.forEach((log) => {
       const item = document.createElement('div');
       item.className = 'feed-item';
-      const when = log.timestamp ? new Date(log.timestamp) : null;
+      const ts = log.timestamp || log.created_at;
+      const when = ts ? new Date(ts) : null;
       const time = when ? when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
       const tbl = tableFromLog(log);
       const table = (tbl || '').toUpperCase() || 'SISTEMA';
-      const action = (log.action || '').toUpperCase() || 'EVENTO';
+      const action = (log.action || log.accion || '').toUpperCase() || 'EVENTO';
       const rid = (log.record_id || '').toString();
-      const who = (log.user_email || log.user_role || '').toString();
+      const who = (log.user_email || log.usuario || log.user_role || '').toString();
       const whoShort = who.length > 22 ? who.slice(0, 20) + '…' : who;
       item.innerHTML = `
         <div class="feed-dot"></div>
@@ -52,22 +53,19 @@ export function initAuditFeed({
     countEl.innerText = String(rows.length);
   };
 
-  const AUDIT_SELECT_FULL =
-    'id,timestamp,action,record_id,user_email,user_role,table_name,old_data,new_data,metadata,severity,hash';
-  const AUDIT_SELECT_SAFE = 'id,timestamp,action,record_id,user_email,user_role,old_data,new_data,metadata,severity,hash';
-
   const refresh = async () => {
     const take = Math.min(200, Math.max(limit * 4, limit));
     try {
+      // Esquema inglés (init) vs español (accion, usuario, created_at): usar * y orden por columna existente
       let { data, error } = await supabase
         .from('audit_logs')
-        .select(AUDIT_SELECT_FULL)
-        .order('timestamp', { ascending: false })
+        .select('*')
+        .order('created_at', { ascending: false })
         .limit(take);
-      if (error && String(error.message || '').includes('table_name')) {
+      if (error) {
         ({ data, error } = await supabase
           .from('audit_logs')
-          .select(AUDIT_SELECT_SAFE)
+          .select('*')
           .order('timestamp', { ascending: false })
           .limit(take));
       }

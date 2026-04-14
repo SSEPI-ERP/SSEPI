@@ -13,67 +13,24 @@
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
--- PASO 1: Crear/verificar función ssepi_current_rol()
+-- PASO 1: ssepi_current_rol() — SOLO auth.uid() + tablas usuarios/users
+-- No depender de auth.jwt()->>'email' (muchas sesiones Supabase no lo incluyen);
+-- si el rol queda mal, RLS devuelve 403 en ordenes_taller aunque usuarios.rol sea admin.
 -- -----------------------------------------------------------------------------
-
 CREATE OR REPLACE FUNCTION public.ssepi_current_rol()
-RETURNS TEXT AS $$
-DECLARE
-  v_rol TEXT;
-  v_email TEXT;
-  v_auth_user_id UUID;
-BEGIN
-  -- Obtener email del usuario autenticado
-  v_email := auth.jwt() ->> 'email';
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT COALESCE(
+    (SELECT u.rol FROM public.usuarios u WHERE u.auth_user_id = auth.uid() LIMIT 1),
+    (SELECT u.rol FROM public.users u WHERE u.auth_user_id = auth.uid() LIMIT 1),
+    ''
+  );
+$$;
 
-  -- Obtener auth_user_id
-  SELECT auth_user_id INTO v_auth_user_id
-  FROM public.usuarios
-  WHERE email = v_email
-  LIMIT 1;
-
-  -- Si no hay fila en usuarios, intentar con auth.users
-  IF v_auth_user_id IS NULL THEN
-    v_auth_user_id := auth.uid();
-  END IF;
-
-  -- Obtener rol de la tabla usuarios (prioridad 1)
-  SELECT rol INTO v_rol
-  FROM public.usuarios
-  WHERE auth_user_id = v_auth_user_id
-  LIMIT 1;
-
-  -- Si no hay rol en usuarios, intentar con users (prioridad 2)
-  IF v_rol IS NULL THEN
-    SELECT rol INTO v_rol
-    FROM public.users
-    WHERE auth_user_id = v_auth_user_id
-    LIMIT 1;
-  END IF;
-
-  -- Si no hay rol, intentar con profiles (prioridad 3)
-  IF v_rol IS NULL THEN
-    SELECT rol INTO v_rol
-    FROM public.profiles
-    WHERE id = v_auth_user_id
-    LIMIT 1;
-  END IF;
-
-  -- Fallback: intentar leer claim 'rol' del JWT (si existe)
-  IF v_rol IS NULL THEN
-    v_rol := auth.jwt() ->> 'rol';
-  END IF;
-
-  -- Default: 'ventas'
-  IF v_rol IS NULL THEN
-    v_rol := 'ventas';
-  END IF;
-
-  RETURN v_rol;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Grant execute a todos los autenticados
 GRANT EXECUTE ON FUNCTION public.ssepi_current_rol() TO authenticated;
 
 -- -----------------------------------------------------------------------------
@@ -99,7 +56,11 @@ SELECT * FROM (VALUES
   -- Ventas sin compras: mismo que ventas (sin acceso a módulo Compras)
   ('ventas_sin_compras', 'ordenes_taller', 'create'),
   ('ventas_sin_compras', 'ordenes_motores', 'create'),
-  ('ventas_sin_compras', 'proyectos_automatizacion', 'create')
+  ('ventas_sin_compras', 'proyectos_automatizacion', 'create'),
+  -- Modo dual Normal (rol base automatizacion) + cerebro Ventas paso 1
+  ('automatizacion', 'ordenes_taller', 'create'),
+  ('automatizacion', 'ordenes_motores', 'create'),
+  ('automatizacion', 'proyectos_automatizacion', 'create')
 ) AS v(rol, module, action)
 WHERE NOT EXISTS (
   SELECT 1 FROM public.role_permissions rp
@@ -116,6 +77,7 @@ BEGIN
 
   DROP POLICY IF EXISTS taller_ventas_insert ON public.ordenes_taller;
   DROP POLICY IF EXISTS taller_admin_insert ON public.ordenes_taller;
+  DROP POLICY IF EXISTS taller_automatizacion_insert ON public.ordenes_taller;
 
   -- Admin puede insertar
   CREATE POLICY taller_admin_insert ON public.ordenes_taller
@@ -127,13 +89,18 @@ BEGIN
     FOR INSERT TO authenticated
     WITH CHECK (public.ssepi_current_rol() IN ('ventas', 'ventas_sin_compras'));
 
+  -- Rol automatizacion: mismo criterio que ventas en RLS (hasPermission ya puede usar rol base en modo dual)
+  CREATE POLICY taller_automatizacion_insert ON public.ordenes_taller
+    FOR INSERT TO authenticated
+    WITH CHECK (public.ssepi_current_rol() = 'automatizacion');
+
   -- SELECT: el módulo Ventas hace GET a ordenes_taller; sin política SELECT, 403 aunque INSERT exista.
   DROP POLICY IF EXISTS taller_fix_select_equipo ON public.ordenes_taller;
   CREATE POLICY taller_fix_select_equipo ON public.ordenes_taller
     FOR SELECT TO authenticated
     USING (public.ssepi_current_rol() IN (
       'admin', 'superadmin', 'ventas', 'ventas_sin_compras',
-      'taller', 'compras', 'facturacion', 'contabilidad'
+      'taller', 'compras', 'facturacion', 'contabilidad', 'automatizacion'
     ));
 END $$;
 

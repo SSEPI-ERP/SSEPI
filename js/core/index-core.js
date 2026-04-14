@@ -260,12 +260,10 @@ export const IndexCore = (function() {
         const feedList = document.getElementById('feedList');
         if (!feedList || !supabase) return;
 
-        const selFull = 'id,timestamp,action,record_id,user_email,user_role,table_name,old_data,new_data,metadata';
-        const selSafe = 'id,timestamp,action,record_id,user_email,user_role,old_data,new_data,metadata';
         let data = [];
-        let { data: rows, error } = await supabase.from('audit_logs').select(selFull).order('timestamp', { ascending: false }).limit(10);
-        if (error && String(error.message || '').includes('table_name')) {
-            ({ data: rows, error } = await supabase.from('audit_logs').select(selSafe).order('timestamp', { ascending: false }).limit(10));
+        let { data: rows, error } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(10);
+        if (error) {
+            ({ data: rows, error } = await supabase.from('audit_logs').select('*').order('timestamp', { ascending: false }).limit(10));
         }
         if (error) {
             console.error('Error cargando feed:', error);
@@ -292,16 +290,18 @@ export const IndexCore = (function() {
         });
         data.forEach(log => {
             const tbl = _auditTableName(log) || 'sistema';
+            const ts = log.timestamp || log.created_at;
+            const act = log.action || log.accion || '';
             const item = document.createElement('div');
             item.className = 'feed-item';
             item.innerHTML = `
                 <div class="feed-dot"></div>
                 <div class="feed-meta">
                     <span>${tbl.toUpperCase()}</span>
-                    <span>${new Date(log.timestamp).toLocaleTimeString()}</span>
+                    <span>${ts ? new Date(ts).toLocaleTimeString() : '—'}</span>
                 </div>
                 <div class="feed-body">
-                    <strong>${log.action}</strong> · ${tbl}${log.record_id ? ' · ' + String(log.record_id).substring(0, 8) + '…' : ''}
+                    <strong>${act}</strong> · ${tbl}${log.record_id ? ' · ' + String(log.record_id).substring(0, 8) + '…' : ''}
                 </div>
             `;
             feedList.appendChild(item);

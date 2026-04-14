@@ -516,8 +516,15 @@ const VentasModule = (function() {
                 { orderBy: 'fecha', ascending: false, page: 0, pageSize: 400 }
             ) || [];
         } catch (e) {
-            console.warn('[Ventas] Error cargando cotizaciones:', e);
-            cotizaciones = [];
+            try {
+                cotizaciones = await cotizacionesService.select(
+                    {},
+                    { orderBy: 'fecha_creacion', ascending: false, page: 0, pageSize: 400 }
+                ) || [];
+            } catch (e2) {
+                console.warn('[Ventas] Error cargando cotizaciones:', e2);
+                cotizaciones = [];
+            }
         }
     }
 
