@@ -53,7 +53,10 @@
         // ─── Roles de soporte (compatibilidad hacia atrás) ───
         compras:             ['compras', 'inventario', 'vacaciones'],
         facturacion:         ['ventas', 'compras', 'facturas', 'vacaciones'],
-        contabilidad:        null
+        contabilidad:        null,
+
+        // ─── Módulo de Configuración (solo admin) ───
+        configuracion:       null  // Alias de admin, solo para visibilidad en nav
     };
 
     function allowedForModule(rol, moduleName, moduleAny) {
