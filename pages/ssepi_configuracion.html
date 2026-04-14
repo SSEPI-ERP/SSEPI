@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSEPI · Configuración</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="/js/core/supabase-config.js"></script>
+    <script type="module" src="/js/core/security-middleware.js"></script>
+    <script type="module" src="/js/core/auth-service.js"></script>
+    <script src="/js/core/theme-clock.js"></script>
+    <script src="/js/core/user-menu.js"></script>
+    <script src="/js/core/nav-by-role.js"></script>
+</head>
+<body class="page-configuracion nav-loading">
+    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
+
+    <!-- HEADER -->
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <div class="brand-icon"><i class="fas fa-cog"></i></div>
+                <div>
+                    <div class="brand-text">CONFIGURACIÓN DEL SISTEMA</div>
+                    <div class="brand-sub">Permisos · Roles · Módulos</div>
+                </div>
+            </div>
+            <a href="/panel.html" class="home-link"><i class="fas fa-house"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <div class="user-pill" id="userMenu">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <div class="menu-category">SISTEMA</div>
+        <a href="/pages/ssepi_configuracion.html" class="nav-item active" data-module="configuracion"><span class="icon-box"><i class="fas fa-cog"></i></span> Configuración</a>
+    </nav>
+
+    <!-- MAIN -->
+    <main>
+        <div class="welcome-header">
+            <h1><i class="fas fa-cog"></i> Configuración de Permisos</h1>
+            <p class="welcome-subtitle">Gestión de roles y módulos del sistema</p>
+        </div>
+
+        <!-- ALERTA DE SEGURIDAD -->
+        <div class="alert alert-warning" style="background: #FFF3CD; border: 1px solid #FFC107; color: #856404; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Acceso restringido:</strong> Solo administradores pueden modificar permisos. Los cambios se aplican inmediatamente.
+        </div>
+
+        <!-- SECCIÓN 1: USUARIOS Y ROLES -->
+        <section class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-users" style="color: var(--c-ventas);"></i>
+                Usuarios y Roles
+            </h2>
+            <p style="color: var(--text-secondary); margin-bottom: 16px;">Asigna roles a los usuarios del sistema.</p>
+
+            <div id="usuariosContainer" style="overflow-x: auto;">
+                <table class="lista-table" id="usuariosTable">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Email</th>
+                            <th>Rol Actual</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usuariosBody">
+                        <tr><td colspan="4" style="text-align: center; padding: 40px;">Cargando usuarios...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 2: PERMISOS POR ROL -->
+        <section class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-shield-alt" style="color: var(--c-ventas);"></i>
+                Permisos por Rol
+            </h2>
+            <p style="color: var(--text-secondary); margin-bottom: 16px;">Configura qué módulos y acciones puede realizar cada rol.</p>
+
+            <div style="margin-bottom: 16px;">
+                <label style="font-weight: 600; font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Seleccionar Rol:</label>
+                <select id="rolSelector" style="padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: var(--text-primary); font-size: 14px; min-width: 200px;">
+                    <option value="admin">Admin</option>
+                    <option value="ventas">Ventas</option>
+                    <option value="ventas_sin_compras">Ventas (sin Compras)</option>
+                    <option value="administracion">Administración</option>
+                    <option value="taller">Taller</option>
+                    <option value="motores">Motores</option>
+                    <option value="automatizacion">Automatización</option>
+                    <option value="compras">Compras</option>
+                    <option value="facturacion">Facturación</option>
+                </select>
+            </div>
+
+            <div id="permisosContainer">
+                <table class="lista-table" id="permisosTable">
+                    <thead>
+                        <tr>
+                            <th>Módulo</th>
+                            <th>Lectura</th>
+                            <th>Crear</th>
+                            <th>Actualizar</th>
+                            <th>Eliminar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="permisosBody">
+                        <tr><td colspan="5" style="text-align: center; padding: 40px;">Selecciona un rol para ver permisos</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top: 20px; display: flex; gap: 12px;">
+                <button class="btn-ssepi btn-ventas" id="btnGuardarPermisos">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+                <button class="btn-ssepi btn-secondary" id="btnResetearPermisos">
+                    <i class="fas fa-undo"></i> Resetear a Default
+                </button>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 3: MODO DUAL -->
+        <section class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-user-shield" style="color: var(--c-ventas);"></i>
+                Modo Dual (Normal ↔ Admin)
+            </h2>
+            <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                Usuarios con modo dual pueden alternar entre su rol base (Normal) y admin (ve todo).
+                Actualmente configurado en <code style="background: var(--bg-hover); padding: 2px 6px; border-radius: 4px;">js/core/nav-by-role.js</code>
+            </p>
+
+            <div id="dualModeContainer">
+                <p style="color: var(--text-muted); font-size: 13px;">
+                    <strong>Nota:</strong> Para agregar usuarios con modo dual, editar el mapa <code>DUAL_MODE_USERS</code> en <code>nav-by-role.js</code>.
+                    En el futuro, esto se migrará a la BD (campos <code>users.modo_dual</code> y <code>users.rol_normal</code>).
+                </p>
+                <pre style="background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 6px; font-size: 12px; overflow-x: auto;">
+<code style="font-family: 'Cascadia Code', 'Fira Code', monospace;">var DUAL_MODE_USERS = {
+  'norbertomoro4@gmail.com': 'automatizacion'
+  // Agregar más: 'email@ejemplo.com': 'rol_base'
+};</code></pre>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL: EDITAR ROL DE USUARIO -->
+    <div class="modal-backdrop" id="editarRolModal">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-user-tag"></i> Editar Rol de Usuario</h3>
+                <button class="modal-close" onclick="document.getElementById('editarRolModal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editUserId">
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Usuario:</label>
+                    <input type="text" id="editUserName" readonly style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-hover); color: var(--text-secondary);">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Email:</label>
+                    <input type="text" id="editUserEmail" readonly style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-hover); color: var(--text-secondary);">
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Nuevo Rol:</label>
+                    <select id="editUserRol" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: var(--text-primary); font-size: 14px;">
+                        <option value="admin">Admin</option>
+                        <option value="ventas">Ventas</option>
+                        <option value="ventas_sin_compras">Ventas (sin Compras)</option>
+                        <option value="administracion">Administración</option>
+                        <option value="taller">Taller</option>
+                        <option value="motores">Motores</option>
+                        <option value="automatizacion">Automatización</option>
+                        <option value="compras">Compras</option>
+                        <option value="facturacion">Facturación</option>
+                        <option value="contabilidad">Contabilidad</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ssepi btn-secondary" onclick="document.getElementById('editarRolModal').classList.remove('active')">Cancelar</button>
+                <button class="btn-ssepi btn-ventas" id="btnConfirmarRol">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { authService } from '/js/core/auth-service.js';
+
+        // ================================================
+        // VERIFICAR PERMISOS DE ADMIN
+        // ================================================
+        async function checkAdminAccess() {
+            const profile = await authService.getCurrentProfile();
+            if (!profile || (profile.rol !== 'admin' && profile.rol !== 'superadmin')) {
+                alert('Acceso denegado. Solo administradores pueden configurar permisos.');
+                window.location.href = '/panel.html';
+                return false;
+            }
+            return true;
+        }
+
+        // ================================================
+        // CARGAR USUARIOS
+        // ================================================
+        async function loadUsuarios() {
+            try {
+                const { data, error } = await window.supabase
+                    .from('usuarios')
+                    .select('auth_user_id, email, nombre, rol, telefono, created_at');
+
+                if (error) throw error;
+
+                const tbody = document.getElementById('usuariosBody');
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 40px;">No hay usuarios registrados</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.map(u => `
+                    <tr>
+                        <td>${u.nombre || '—'}</td>
+                        <td>${u.email}</td>
+                        <td><span class="status-badge status-info">${u.rol || 'sin rol'}</span></td>
+                        <td>
+                            <button class="btn-ssepi btn-sm btn-secondary" onclick="window.editarRol('${u.auth_user_id}', '${u.email}', '${u.nombre || ''}', '${u.rol || 'ventas'}')">
+                                <i class="fas fa-edit"></i> Cambiar rol
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('[Config] Error cargando usuarios:', error);
+                document.getElementById('usuariosBody').innerHTML =
+                    '<tr><td colspan="4" style="text-align: center; padding: 40px; color: #c62828;">Error al cargar usuarios: ' + error.message + '</td></tr>';
+            }
+        }
+
+        // ================================================
+        // CARGAR PERMISOS POR ROL
+        // ================================================
+        const MODULOS = [
+            { id: 'ventas', nombre: 'Ventas' },
+            { id: 'ordenes_taller', nombre: 'Laboratorio (Taller)' },
+            { id: 'ordenes_motores', nombre: 'Motores' },
+            { id: 'proyectos_automatizacion', nombre: 'Automatización / Proyectos' },
+            { id: 'compras', nombre: 'Compras' },
+            { id: 'facturas', nombre: 'Facturación' },
+            { id: 'contabilidad', nombre: 'Contabilidad' },
+            { id: 'inventario', nombre: 'Inventario' },
+            { id: 'pagos_nomina', nombre: 'Nómina' },
+            { id: 'contactos', nombre: 'Contactos' },
+            { id: 'vacaciones', nombre: 'Vacaciones' },
+            { id: 'calculadoras', nombre: 'Calculadoras' },
+            { id: 'analisis_ventas', nombre: 'Análisis Ventas' },
+            { id: 'configuracion', nombre: 'Configuración' }
+        ];
+
+        let permisosActuales = new Map();
+
+        async function loadPermisos(rol) {
+            try {
+                const { data, error } = await window.supabase
+                    .from('role_permissions')
+                    .select('rol, module, action')
+                    .eq('rol', rol);
+
+                if (error) throw error;
+
+                permisosActuales.clear();
+                if (data) {
+                    data.forEach(p => {
+                        const key = `${p.module}-${p.action}`;
+                        permisosActuales.set(key, true);
+                    });
+                }
+
+                renderPermisos(rol);
+            } catch (error) {
+                console.error('[Config] Error cargando permisos:', error);
+                document.getElementById('permisosBody').innerHTML =
+                    '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #c62828;">Error: ' + error.message + '</td></tr>';
+            }
+        }
+
+        function renderPermisos(rol) {
+            const tbody = document.getElementById('permisosBody');
+            const esAdmin = rol === 'admin' || rol === 'superadmin';
+
+            if (esAdmin) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--status-success-text);"><i class="fas fa-check-circle"></i> Admin tiene acceso total a todos los módulos</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = MODULOS.map(m => {
+                const checked = {
+                    read: permisosActuales.has(`${m.id}-read`),
+                    create: permisosActuales.has(`${m.id}-create`),
+                    update: permisosActuales.has(`${m.id}-update`),
+                    delete: permisosActuales.has(`${m.id}-delete`)
+                };
+
+                return `
+                    <tr>
+                        <td>${m.nombre}</td>
+                        <td style="text-align: center;"><input type="checkbox" data-module="${m.id}" data-action="read" ${checked.read ? 'checked' : ''}></td>
+                        <td style="text-align: center;"><input type="checkbox" data-module="${m.id}" data-action="create" ${checked.create ? 'checked' : ''}></td>
+                        <td style="text-align: center;"><input type="checkbox" data-module="${m.id}" data-action="update" ${checked.update ? 'checked' : ''}></td>
+                        <td style="text-align: center;"><input type="checkbox" data-module="${m.id}" data-action="delete" ${checked.delete ? 'checked' : ''}></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ================================================
+        // GUARDAR PERMISOS
+        // ================================================
+        async function guardarPermisos() {
+            const rol = document.getElementById('rolSelector').value;
+            if (!rol || rol === 'admin' || rol === 'superadmin') {
+                alert('Los permisos de admin no se pueden modificar (acceso total por defecto).');
+                return;
+            }
+
+            const checkboxes = document.querySelectorAll('#permisosBody input[type="checkbox"]');
+            const nuevosPermisos = [];
+
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    nuevosPermisos.push({
+                        rol,
+                        module: cb.dataset.module,
+                        action: cb.dataset.action
+                    });
+                }
+            });
+
+            try {
+                // Eliminar permisos existentes del rol
+                const { error: deleteError } = await window.supabase
+                    .from('role_permissions')
+                    .delete()
+                    .eq('rol', rol);
+
+                if (deleteError) throw deleteError;
+
+                // Insertar nuevos permisos
+                if (nuevosPermisos.length > 0) {
+                    const { error: insertError } = await window.supabase
+                        .from('role_permissions')
+                        .insert(nuevosPermisos);
+
+                    if (insertError) throw insertError;
+                }
+
+                alert('Permisos guardados correctamente para el rol "' + rol + '"');
+                loadPermisos(rol);
+            } catch (error) {
+                console.error('[Config] Error guardando permisos:', error);
+                alert('Error al guardar permisos: ' + error.message);
+            }
+        }
+
+        // ================================================
+        // EDITAR ROL DE USUARIO
+        // ================================================
+        window.editarRol = function(userId, email, nombre, rolActual) {
+            document.getElementById('editUserId').value = userId;
+            document.getElementById('editUserName').value = nombre || email;
+            document.getElementById('editUserEmail').value = email;
+            document.getElementById('editUserRol').value = rolActual || 'ventas';
+            document.getElementById('editarRolModal').classList.add('active');
+        };
+
+        async function confirmarCambioRol() {
+            const userId = document.getElementById('editUserId').value;
+            const nuevoRol = document.getElementById('editUserRol').value;
+
+            if (!userId || !nuevoRol) {
+                alert('Datos inválidos');
+                return;
+            }
+
+            try {
+                const { error } = await window.supabase
+                    .from('usuarios')
+                    .update({ rol: nuevoRol })
+                    .eq('auth_user_id', userId);
+
+                if (error) throw error;
+
+                alert('Rol actualizado correctamente');
+                document.getElementById('editarRolModal').classList.remove('active');
+                loadUsuarios();
+            } catch (error) {
+                console.error('[Config] Error actualizando rol:', error);
+                alert('Error al actualizar rol: ' + error.message);
+            }
+        }
+
+        // ================================================
+        // INIT
+        // ================================================
+        (async function init() {
+            const hasAccess = await checkAdminAccess();
+            if (!hasAccess) return;
+
+            await loadUsuarios();
+            await loadPermisos('ventas');
+
+            // Event listeners
+            document.getElementById('rolSelector').addEventListener('change', (e) => {
+                loadPermisos(e.target.value);
+            });
+
+            document.getElementById('btnGuardarPermisos').addEventListener('click', guardarPermisos);
+
+            document.getElementById('btnConfirmarRol').addEventListener('click', confirmarCambioRol);
+
+            document.getElementById('btnResetearPermisos').addEventListener('click', () => {
+                alert('Función de resetear permisos a default: implementar según necesidad.');
+            });
+        })();
+    </script>
+</body>
+</html>
