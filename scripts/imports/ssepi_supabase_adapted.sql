@@ -333,7 +333,7 @@ VALUES
   (47, 'CTHW12N', 'METROS DE CABLE CON AISLAMIENTO TIPO THW 12 AWG, 90° 600V. COLOR NEGRO MCA. CONDULAC', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'EURO ELÉCTRICA', 12.1, NULL, 'https://euroelectrica.com.mx/producto/cable-con-aislamiento-tipo-thw-12-awg-90-600v-color-negro-mca-condulac/', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
   (48, '4160326', 'METROS DE OLFLEX Cable 18Awg 1X1 Azul/Bco Multi-Standard', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'DIMEINT', 15.0, NULL, 'https://dimeint.com/products/4160326', 'TME', 25.0, NULL, 'https://www.tme.com/mx/es/details/h07v2-k150blwh/cables-de-un-hilo-trenzado/helukabel/63417/', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
   (49, 'TS35X7.5 1M', 'Riel Din Perforado 1 metro', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'MERCADO LIBRE', 112.0, NULL, 'https://www.mercadolibre.com.mx/riel-din-perforado-plateado-1-metro/up/MLMU3118674891?pdp_filters=item_id%3AMLM2281070227&from=gshop&matt_tool=53826643&matt_word=&matt_source=google&matt_campaign_id=23406600413&matt_ad_group_id=193915105674&matt_match_type=&matt_network=g&matt_device=c&matt_creative=790322146796&matt_keyword=&matt_ad_position=&matt_ad_type=pla&matt_merchant_id=5589206556&matt_product_id=MLMU3118674891&matt_product_partition_id=2388138774430&matt_target_id=aud-1927594328786:pla-2388138774430&cq_src=google_ads&cq_cmp=23406600413&cq_net=g&cq_plt=gp&cq_med=pla&gad_source=1&gad_campaignid=23406600413&gbraid=0AAAAAoTLPrKDOaxZgTEvU7lO63Zcr0Pkh&gclid=Cj0KCQjwgr_NBhDFARIsAHiUWr47zlUxA98cWFg2PuXfKCuQsJENpKMFhw1cF4NTsJkQAuqW_bKTXdgaAt2QEALw_wcB', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
-ON CONFLICT (numero_de_parte) DO NOTHING;
+ON CONFLICT (numero_de_parte) WHERE numero_de_parte IS NOT NULL AND numero_de_parte != '' DO NOTHING;
 
 INSERT INTO ssepi_import.bom_materiales (item, numero_de_parte, descripcion, imagen, categoria, estado, nombre_del_proveedor, precio, tiempo_de_entrega, link, nombre_del_proveedor_2, precio_2, tiempo_de_entrega_2, link2, nombre_del_proveedor_3, precio_3, tiempo_de_entrega_3, link_3, nombre_del_proveedor_4, precio_4, tiempo_de_entrega_4, link_4, costo_menor, costo_total_de_las_piezas)
 VALUES
@@ -387,7 +387,7 @@ VALUES
   (98, 'CPD13', 'CODO PARED DELGADA 13MM (1/2 )', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'Euroelectrica', 16.17, NULL, 'COMPRA FOLIO XLA84845 28012026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
   (99, 'COPLE13TADO', 'COPLE PARA TUBO PARED DELGADA DE 13MM (1/2) TIPO AMERICANO MCA. CCH', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'Euroelectrica', 5.94, NULL, 'COMPRA FOLIO XLA84845 28012026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
   (100, 'CONECTOR13TADO', 'CONECTOR PARA TUBO PARED DELGADA DE 13MM (1/2) TIPO AMERICANO', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'Euroelectrica', 6.72, NULL, 'COMPRA FOLIO XLA84845 28012026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
-ON CONFLICT (numero_de_parte) DO NOTHING;
+ON CONFLICT (numero_de_parte) WHERE numero_de_parte IS NOT NULL AND numero_de_parte != '' DO NOTHING;
 
 INSERT INTO ssepi_import.bom_materiales (item, numero_de_parte, descripcion, imagen, categoria, estado, nombre_del_proveedor, precio, tiempo_de_entrega, link, nombre_del_proveedor_2, precio_2, tiempo_de_entrega_2, link2, nombre_del_proveedor_3, precio_3, tiempo_de_entrega_3, link_3, nombre_del_proveedor_4, precio_4, tiempo_de_entrega_4, link_4, costo_menor, costo_total_de_las_piezas)
 VALUES
@@ -441,7 +441,7 @@ VALUES
   (198, '301-180', 'Plug RJ45 de 8 contactos CAT 6, para cable redondo.', NULL, 'COMUNICACIÓN', 'ACTUALIZADO', 'STEREN', 5.0, 'INMEDIATO', 'https://www.steren.com.mx/plug-rj45-de-8-contactos-cat-6-para-cable-redondo.html', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
   (199, '202-728', 'TAQUETE MARIPOSA CON TORNILLO 1/4X2', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'EL TORNILLO', 5.3918, 'INMEDIATO', 'https://eltornillo.com.mx/tienda-en-linea/catalogo/taquetes/taquete-mariposa-con-tornillo-1%2f4x2', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
   (200, '201-004', 'TAQUETE DE PLASTICO ANKER GRIS 1/4', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'EL TORNILLO', 1.3973, 'INMEDIATO', 'https://eltornillo.com.mx/tienda-en-linea/catalogo/taquetes/taquete-de-plastico-anker-gris-1%2f4', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
-ON CONFLICT (numero_de_parte) DO NOTHING;
+ON CONFLICT (numero_de_parte) WHERE numero_de_parte IS NOT NULL AND numero_de_parte != '' DO NOTHING;
 
 INSERT INTO ssepi_import.bom_materiales (item, numero_de_parte, descripcion, imagen, categoria, estado, nombre_del_proveedor, precio, tiempo_de_entrega, link, nombre_del_proveedor_2, precio_2, tiempo_de_entrega_2, link2, nombre_del_proveedor_3, precio_3, tiempo_de_entrega_3, link_3, nombre_del_proveedor_4, precio_4, tiempo_de_entrega_4, link_4, costo_menor, costo_total_de_las_piezas)
 VALUES
@@ -495,7 +495,7 @@ VALUES
   (248, 'SKU 207-304', 'UNICANAL SOLIDO CALIBRE 14 4X4', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'EL TORNILLO', 258.3652, '2 DIAS', 'https://eltornillo.com.mx/tienda-en-linea/catalogo/soporteria-y-sujecion/unicanal-solido-calibre-14-4x4?gad_source=1&gad_campaignid=21686270870&gbraid=0AAAAADsHgcmnVJmJqQa-rbPuX1JbcFdVE', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
   (249, 'CH-111', 'CURVA HORIZONTAL RADIAL 90° PERFIL Z PERALTE 3 1/4 CLASE 8A ANCHO DE CHAROLA 6 (15.24 CM)', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'EUROELECTRICA', 292.79, '8 SEMANAS', '07/04/2026 NÚMERO DE COTIZACIÓN: L320067', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
   (250, 'CVE-111', 'CURVA VERTICAL EXTERIOR RADIAL 90° PERFIL Z PERALTE 3 1/4 CLASE 8A ANCHO DE CHAROLA 6 (15.24 CM)', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'EUROELECTRICA', 279.35, '8 SEMANAS', '07/04/2026 NÚMERO DE COTIZACIÓN: L320067', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
-ON CONFLICT (numero_de_parte) DO NOTHING;
+ON CONFLICT (numero_de_parte) WHERE numero_de_parte IS NOT NULL AND numero_de_parte != '' DO NOTHING;
 
 INSERT INTO ssepi_import.bom_materiales (item, numero_de_parte, descripcion, imagen, categoria, estado, nombre_del_proveedor, precio, tiempo_de_entrega, link, nombre_del_proveedor_2, precio_2, tiempo_de_entrega_2, link2, nombre_del_proveedor_3, precio_3, tiempo_de_entrega_3, link_3, nombre_del_proveedor_4, precio_4, tiempo_de_entrega_4, link_4, costo_menor, costo_total_de_las_piezas)
 VALUES
@@ -547,7 +547,7 @@ VALUES
   (296, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
   (297, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
   (298, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
-ON CONFLICT (numero_de_parte) DO NOTHING;
+ON CONFLICT (numero_de_parte) WHERE numero_de_parte IS NOT NULL AND numero_de_parte != '' DO NOTHING;
 
 INSERT INTO ssepi_import.bom_datos_referencia (actualizado, sensores)
 VALUES
@@ -625,7 +625,7 @@ VALUES
   (NULL, 'GRUPO COMERCIAL CZO CARNAVALLIA', NULL, NULL, NULL, 'México', '[{"iconClass": "fa-pencil-square-o", "value": 1, "label": "Facturas de clientes/Facturas de proveedores/Mandatos", "tagClass": "o_tag_color_9"}]'),
   (NULL, 'GUSTAVO NASSER GONZALEZ', NULL, NULL, NULL, 'México', '[{"iconClass": "fa-pencil-square-o", "value": 1, "label": "Facturas de clientes/Facturas de proveedores/Mandatos", "tagClass": "o_tag_color_9"}]'),
   (NULL, 'Granos y Servicios Integrales, S.A. de C.V.', 'pedro.pastor@proan.com', '+52 395 725 8033', NULL, 'México', '[{"iconClass": "fa-usd", "value": 3, "label": "\u00d3rdenes de venta", "tagClass": "o_tag_color_2"}]')
-ON CONFLICT (correo_electronico) DO NOTHING;
+ON CONFLICT (correo_electronico) WHERE correo_electronico IS NOT NULL AND correo_electronico != '' DO NOTHING;
 
 INSERT INTO ssepi_import.contactos (avatar_128, nombre_completo, correo_electronico, telefono, actividades, pais, estadisticas)
 VALUES
@@ -679,7 +679,7 @@ VALUES
   (NULL, 'Pieles Azteca, S.A. de C.V., Jesus Bolaños', NULL, '+52 479 208 6446', NULL, 'México', NULL),
   (NULL, 'Polímeros y Derivados, S.A. de C.V.', 'jlcastro@polimeros.com', '+52 477 710 9795', NULL, 'México', '[{"iconClass": "fa-usd", "value": 1, "label": "\u00d3rdenes de venta", "tagClass": "o_tag_color_2"}]'),
   (NULL, 'Prefabricadora de Losas, S.A. de C.V.', 'francisco.aguirre@prelosa.com', '+52 477 740 6000', NULL, 'México', '[{"iconClass": "fa-usd", "value": 5, "label": "\u00d3rdenes de venta", "tagClass": "o_tag_color_2"}]')
-ON CONFLICT (correo_electronico) DO NOTHING;
+ON CONFLICT (correo_electronico) WHERE correo_electronico IS NOT NULL AND correo_electronico != '' DO NOTHING;
 
 INSERT INTO ssepi_import.contactos (avatar_128, nombre_completo, correo_electronico, telefono, actividades, pais, estadisticas)
 VALUES
@@ -715,7 +715,7 @@ VALUES
   (NULL, 'Tenería Vargas, S.A. de C.V., Hector', NULL, '+52 477 124 1524', NULL, 'México', NULL),
   (NULL, 'VOLKER BRUNK SANCHEZ', NULL, NULL, NULL, 'México', '[{"iconClass": "fa-pencil-square-o", "value": 1, "label": "Facturas de clientes/Facturas de proveedores/Mandatos", "tagClass": "o_tag_color_9"}]'),
   (NULL, 'prueba', NULL, NULL, NULL, NULL, NULL)
-ON CONFLICT (correo_electronico) DO NOTHING;
+ON CONFLICT (correo_electronico) WHERE correo_electronico IS NOT NULL AND correo_electronico != '' DO NOTHING;
 
 INSERT INTO ssepi_import.cotizacion_viajes (empresa, km_x2, litros, gasolina, gasolina2, hrs, hr_dani, dani, total)
 VALUES
@@ -1041,7 +1041,7 @@ VALUES
   ('2026-09-02T00:00:00', 1, 'Neumatica', 'NSE38N6MM', 'CONECTOR/REGULADOR DE CAUDAL NEUMÁTICO CODO 3/8 NTP X 6 MM', 155.0, 155.0, 1, 0, NULL),
   ('2026-09-02T00:00:00', 2, 'Neumatica', 'PL38N8MMQTY5', 'CONECTOR NEUMÁTICO CODO 3/8 NTP X 8 MM', 160.0, 320.0, 2, 0, NULL),
   ('2026-09-02T00:00:00', 1, 'Sensor', 'AD1/AN-1A', 'SENSOR INDUCTIVO M5, NO, NPN, CABLE 2 MTS, DISTANCIA 0.8 MM', 920.0, 920.0, 1, 0, NULL)
-ON CONFLICT (num_parte, fecha) DO NOTHING;
+ON CONFLICT (num_parte, fecha) WHERE num_parte IS NOT NULL AND num_parte != '' DO NOTHING;
 
 INSERT INTO ssepi_import.inventario_automatizacion (fecha, cantidad, categoria, num_parte, descripcion, costo_unitario, importe, entradas, salidas, fecha_de_salida)
 VALUES
@@ -1077,7 +1077,7 @@ VALUES
   (NULL, 0, NULL, NULL, NULL, NULL, 0.0, NULL, NULL, NULL),
   (NULL, 0, NULL, NULL, NULL, NULL, 0.0, NULL, NULL, NULL),
   (NULL, 0, NULL, NULL, NULL, NULL, 0.0, NULL, NULL, NULL)
-ON CONFLICT (num_parte, fecha) DO NOTHING;
+ON CONFLICT (num_parte, fecha) WHERE num_parte IS NOT NULL AND num_parte != '' DO NOTHING;
 
 INSERT INTO ssepi_import.inventario_electronica (codigo_marking, descripcion, existencia, ubicacion, encapsulado, link_octopart, link_digikey, link_mouser, costo_unitario_mxn, total_linea_mxn)
 VALUES
@@ -1131,7 +1131,7 @@ VALUES
   ('GBU2510-G', 'PUENTE RECTIFICADOR 25A', 1, 'H5', NULL, 'https://octopart.com/search?q=GBU2510-G', 'https://www.digikey.com.mx/es/products/result?keywords=GBU2510-G', 'https://www.mouser.mx/c/?q=GBU2510-G', 35, 35),
   ('FM1', 'FUSIBLE MINI 1 A 250 V', 4, 'A6', NULL, 'https://octopart.com/search?q=FM1', 'https://www.digikey.com.mx/es/products/result?keywords=FM1', 'https://www.mouser.mx/c/?q=FM1', 15, 60),
   ('MMBF4393LT1G', 'MOSFET 30V  30ma', 5, 'B6', 'SOT-23', 'https://octopart.com/search?q=MMBF4393LT1G', 'https://www.digikey.com.mx/es/products/result?keywords=MMBF4393LT1G', 'https://www.mouser.mx/c/?q=MMBF4393LT1G', 15, 75)
-ON CONFLICT (codigo_marking, ubicacion) DO NOTHING;
+ON CONFLICT (codigo_marking, ubicacion) WHERE codigo_marking IS NOT NULL AND codigo_marking != '' DO NOTHING;
 
 INSERT INTO ssepi_import.inventario_electronica (codigo_marking, descripcion, existencia, ubicacion, encapsulado, link_octopart, link_digikey, link_mouser, costo_unitario_mxn, total_linea_mxn)
 VALUES
@@ -1182,14 +1182,14 @@ VALUES
   ('74HC08D', 'COMPUERTA LOGICA', 1, 'E9', NULL, 'https://octopart.com/search?q=74HC08D', 'https://www.digikey.com.mx/es/products/result?keywords=74HC08D', 'https://www.mouser.mx/c/?q=74HC08D', 15, 15),
   ('PS2802-4-A', 'HI-ISO DARLING 4 CH', 1, 'D10', NULL, 'https://octopart.com/search?q=PS2802-4-A', 'https://www.digikey.com.mx/es/products/result?keywords=PS2802-4-A', 'https://www.mouser.mx/c/?q=PS2802-4-A', 15, 15),
   ('TPD2007F', 'COMPUERTA', 4, 'E10', NULL, 'https://octopart.com/search?q=TPD2007F', 'https://www.digikey.com.mx/es/products/result?keywords=TPD2007F', 'https://www.mouser.mx/c/?q=TPD2007F', 90, 360)
-ON CONFLICT (codigo_marking, ubicacion) DO NOTHING;
+ON CONFLICT (codigo_marking, ubicacion) WHERE codigo_marking IS NOT NULL AND codigo_marking != '' DO NOTHING;
 
 INSERT INTO ssepi_import.ordenes_compra (prioridad, referencia_de_la_orden, proveedor, comprador, fecha_limite_de_la_orden, actividades, total, estado)
 VALUES
   ('Normal', 'SP-OCS260324', 'DOMUM, Ariel Diaz', 'Arturo Moreno', '2026-04-02T09:51:17', NULL, 29189.27, 'Orden de compra'),
   ('Normal', 'SP-OC0654', 'EBAY', 'Daniel Zuñiga', '2026-02-09T13:03:24', NULL, 0.0, 'Solicitud de cotización'),
   ('Normal', 'SP-OC26121', 'HT6 INGENIERIA S DE RL DE CV', 'Arturo Moreno', '2026-01-29T12:12:21', NULL, 1414.74, 'Orden de compra')
-ON CONFLICT (referencia_de_la_orden) DO NOTHING;
+ON CONFLICT (referencia_de_la_orden) WHERE referencia_de_la_orden IS NOT NULL AND referencia_de_la_orden != '' DO NOTHING;
 
 INSERT INTO ssepi_import.ordenes_reparacion (prioridad, referencia_de_reparacion, fecha_programada, producto_a_reparar, estado_del_componente, cliente, orden_de_venta, estado, decoracion_de_la_actividad_de_excepcion)
 VALUES
@@ -1243,7 +1243,7 @@ VALUES
   ('Normal', 'SP-E0710', '2026-03-06T19:07:47', 'FUENTE AC/DC', NULL, 'NHK Spring México, S.A. de C.V.', NULL, 'Reparado', NULL),
   ('Normal', 'SP-E0709', '2026-03-04T13:40:14', 'SENSOR', NULL, NULL, NULL, 'Reparado', NULL),
   ('Normal', 'SP-E0708', '2026-03-04T13:24:04', 'SENSOR', NULL, NULL, NULL, 'Reparado', NULL)
-ON CONFLICT (referencia_de_reparacion) DO NOTHING;
+ON CONFLICT (referencia_de_reparacion) WHERE referencia_de_reparacion IS NOT NULL AND referencia_de_reparacion != '' DO NOTHING;
 
 INSERT INTO ssepi_import.ordenes_reparacion (prioridad, referencia_de_reparacion, fecha_programada, producto_a_reparar, estado_del_componente, cliente, orden_de_venta, estado, decoracion_de_la_actividad_de_excepcion)
 VALUES
@@ -1297,7 +1297,7 @@ VALUES
   ('Normal', 'WH/RO/00092', '2026-02-09T13:38:53', NULL, 'Disponible', 'NHK Spring México, S.A. de C.V.', 'SP-E0676', 'Confirmado', NULL),
   ('Normal', 'WH/RO/00091', '2026-02-09T13:38:44', NULL, 'Disponible', 'IK PLASTIC', 'SP-E0667', 'Confirmado', NULL),
   ('Normal', 'WH/RO/00090', '2026-02-09T13:38:36', NULL, 'Disponible', 'ECOBOLSAS', 'SP-E0654', 'Confirmado', NULL)
-ON CONFLICT (referencia_de_reparacion) DO NOTHING;
+ON CONFLICT (referencia_de_reparacion) WHERE referencia_de_reparacion IS NOT NULL AND referencia_de_reparacion != '' DO NOTHING;
 
 INSERT INTO ssepi_import.ordenes_reparacion (prioridad, referencia_de_reparacion, fecha_programada, producto_a_reparar, estado_del_componente, cliente, orden_de_venta, estado, decoracion_de_la_actividad_de_excepcion)
 VALUES
@@ -1351,7 +1351,7 @@ VALUES
   ('Normal', 'SP-0635', '2025-11-25T10:41:34', 'TARJETA ELECTRONICA', NULL, 'NHK Spring México, S.A. de C.V.', NULL, 'Reparado', NULL),
   ('Normal', 'SP-0634', '2025-11-21T08:19:19', 'VARIADOR DE FRECUENCIA', NULL, 'BOLSAS DE LOS ALTOS', NULL, 'Reparado', NULL),
   ('Normal', 'SP-0633', '2025-11-18T11:20:50', 'BARRA ANTI ESTATICA', NULL, 'Anguiplast, S.A. de C.V.', NULL, 'Cancelado', NULL)
-ON CONFLICT (referencia_de_reparacion) DO NOTHING;
+ON CONFLICT (referencia_de_reparacion) WHERE referencia_de_reparacion IS NOT NULL AND referencia_de_reparacion != '' DO NOTHING;
 
 INSERT INTO ssepi_import.ordenes_reparacion (prioridad, referencia_de_reparacion, fecha_programada, producto_a_reparar, estado_del_componente, cliente, orden_de_venta, estado, decoracion_de_la_actividad_de_excepcion)
 VALUES
@@ -1405,7 +1405,7 @@ VALUES
   ('Normal', 'SP-0584', '2025-09-15T08:03:56', 'HMI', NULL, 'NHK Spring México, S.A. de C.V.', 'SP-0684', 'Reparado', NULL),
   ('Normal', 'SP-0582', '2025-09-11T12:39:55', 'HMI', NULL, 'NHK Spring México, S.A. de C.V.', NULL, 'Reparado', NULL),
   ('Normal', 'SP-0581', '2025-09-09T15:33:08', 'VARIADOR DE FRECUENCIA', NULL, 'Envases Plásticos del Centro, S.A. de C.V.', NULL, 'Reparado', NULL)
-ON CONFLICT (referencia_de_reparacion) DO NOTHING;
+ON CONFLICT (referencia_de_reparacion) WHERE referencia_de_reparacion IS NOT NULL AND referencia_de_reparacion != '' DO NOTHING;
 
 INSERT INTO ssepi_import.ordenes_reparacion (prioridad, referencia_de_reparacion, fecha_programada, producto_a_reparar, estado_del_componente, cliente, orden_de_venta, estado, decoracion_de_la_actividad_de_excepcion)
 VALUES
@@ -1459,14 +1459,14 @@ VALUES
   ('Normal', 'SP-0530', '2025-07-28T21:27:00', 'TARJETA ELECTRONICA', NULL, 'ECOBOLSAS', NULL, 'Reparado', NULL),
   ('Normal', 'SP-0529', '2025-07-28T21:20:07', 'TARJETA ELECTRONICA', NULL, 'ECOBOLSAS', NULL, 'Reparado', NULL),
   ('Normal', 'SP-0528', '2025-07-28T21:18:14', 'HMI', NULL, 'RONGTAI', NULL, 'Cancelado', NULL)
-ON CONFLICT (referencia_de_reparacion) DO NOTHING;
+ON CONFLICT (referencia_de_reparacion) WHERE referencia_de_reparacion IS NOT NULL AND referencia_de_reparacion != '' DO NOTHING;
 
 INSERT INTO ssepi_import.ordenes_reparacion (prioridad, referencia_de_reparacion, fecha_programada, producto_a_reparar, estado_del_componente, cliente, orden_de_venta, estado, decoracion_de_la_actividad_de_excepcion)
 VALUES
   ('Normal', 'SP-0526', '2025-07-28T21:07:29', 'FUENTE AC/DC', NULL, 'Envases Plásticos del Centro, S.A. de C.V.', NULL, 'Reparado', NULL),
   ('Normal', 'SP-0525', '2025-07-28T21:03:33', 'VARIADOR DE FRECUENCIA', NULL, 'Envases Plásticos del Centro, S.A. de C.V.', NULL, 'Reparado', NULL),
   ('Normal', 'SP-0524', '2025-07-25T11:58:52', 'Servicio de reparación de SERVODRIVE', NULL, 'RONGTAI', NULL, 'Reparado', NULL)
-ON CONFLICT (referencia_de_reparacion) DO NOTHING;
+ON CONFLICT (referencia_de_reparacion) WHERE referencia_de_reparacion IS NOT NULL AND referencia_de_reparacion != '' DO NOTHING;
 
 INSERT INTO ssepi_import.ordenes_venta (referencia_de_la_orden, fecha_de_creacion, cliente, vendedor, actividades, total, estado)
 VALUES
@@ -1520,7 +1520,7 @@ VALUES
   ('SP-S260216-1', '2026-02-16T16:22:14', 'DI-CENTRAL', 'Eduardo Amezcua', NULL, 135316.32, 'Cancelado'),
   ('SP-S260216', '2026-02-16T09:28:12', 'DI-CENTRAL', 'Eduardo Amezcua', NULL, 184426.08, 'Cancelado'),
   ('SP-0638', '2026-02-09T16:43:49', 'Envases Plásticos del Centro, S.A. de C.V.', 'Daniel Zuñiga', NULL, 1.16, 'Orden de venta')
-ON CONFLICT (referencia_de_la_orden) DO NOTHING;
+ON CONFLICT (referencia_de_la_orden) WHERE referencia_de_la_orden IS NOT NULL AND referencia_de_la_orden != '' DO NOTHING;
 
 INSERT INTO ssepi_import.ordenes_venta (referencia_de_la_orden, fecha_de_creacion, cliente, vendedor, actividades, total, estado)
 VALUES
@@ -1574,7 +1574,7 @@ VALUES
   ('SP-S260323', '2026-03-23T09:13:24', 'Centro de Investigación en Cómputo Aplicado, S.A. de C.V.', 'Daniel Zuñiga', NULL, 45017.51, 'Cotización'),
   ('SP-S260326', '2026-03-26T14:16:44', 'Grupo Zahonero', 'Eduardo Amezcua', NULL, 190647.51, 'Cotización'),
   ('SP-S260306-1', '2026-03-23T11:28:02', 'DI-CENTRAL', 'Eduardo Amezcua', NULL, 57417.08, 'Cotización')
-ON CONFLICT (referencia_de_la_orden) DO NOTHING;
+ON CONFLICT (referencia_de_la_orden) WHERE referencia_de_la_orden IS NOT NULL AND referencia_de_la_orden != '' DO NOTHING;
 
 INSERT INTO ssepi_import.ordenes_venta (referencia_de_la_orden, fecha_de_creacion, cliente, vendedor, actividades, total, estado)
 VALUES
@@ -1628,7 +1628,7 @@ VALUES
   ('SP-MDZ004-39', '2026-03-11T09:43:55', 'Nishikawa Sealing Systems Mexico, Victor Garnica', 'Daniel Zuñiga', NULL, 6768.6, 'Cotización'),
   ('SP-MDZ004-38', '2026-03-11T09:32:35', 'Nishikawa Sealing Systems Mexico, Victor Garnica', 'Daniel Zuñiga', NULL, 10266.0, 'Cotización'),
   ('SP-MDZ004-34', '2026-02-27T10:50:50', 'Nishikawa Sealing Systems Mexico, Victor Garnica', 'Daniel Zuñiga', NULL, 5332.52, 'Cancelado')
-ON CONFLICT (referencia_de_la_orden) DO NOTHING;
+ON CONFLICT (referencia_de_la_orden) WHERE referencia_de_la_orden IS NOT NULL AND referencia_de_la_orden != '' DO NOTHING;
 
 INSERT INTO ssepi_import.ordenes_venta (referencia_de_la_orden, fecha_de_creacion, cliente, vendedor, actividades, total, estado)
 VALUES
@@ -1637,7 +1637,7 @@ VALUES
   ('SP-MEQ028-01', '2026-02-09T09:43:06', 'Granos y Servicios Integrales, S.A. de C.V.', 'Eduardo Amezcua', NULL, 6293.0, 'Orden de venta'),
   ('SP-MEQ028-02', '2026-02-09T10:43:58', 'Granos y Servicios Integrales, S.A. de C.V.', NULL, NULL, 0.0, 'Orden de venta'),
   ('SP-MDZ008-10', '2026-02-12T09:25:01', 'COFICAB', 'Daniel Zuñiga', NULL, 13548.8, 'Orden de venta')
-ON CONFLICT (referencia_de_la_orden) DO NOTHING;
+ON CONFLICT (referencia_de_la_orden) WHERE referencia_de_la_orden IS NOT NULL AND referencia_de_la_orden != '' DO NOTHING;
 
 -- FIN: verificación de conteo
 SELECT 'bom_materiales', COUNT(*) FROM ssepi_import.bom_materiales
