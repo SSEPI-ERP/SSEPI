@@ -126,6 +126,15 @@ BEGIN
   CREATE POLICY taller_ventas_insert ON public.ordenes_taller
     FOR INSERT TO authenticated
     WITH CHECK (public.ssepi_current_rol() IN ('ventas', 'ventas_sin_compras'));
+
+  -- SELECT: el módulo Ventas hace GET a ordenes_taller; sin política SELECT, 403 aunque INSERT exista.
+  DROP POLICY IF EXISTS taller_fix_select_equipo ON public.ordenes_taller;
+  CREATE POLICY taller_fix_select_equipo ON public.ordenes_taller
+    FOR SELECT TO authenticated
+    USING (public.ssepi_current_rol() IN (
+      'admin', 'superadmin', 'ventas', 'ventas_sin_compras',
+      'taller', 'compras', 'facturacion', 'contabilidad'
+    ));
 END $$;
 
 -- -----------------------------------------------------------------------------
@@ -178,6 +187,7 @@ BEGIN
 
   DROP POLICY IF EXISTS orden_historial_ventas_insert ON public.orden_historial;
   DROP POLICY IF EXISTS orden_historial_admin_insert ON public.orden_historial;
+  DROP POLICY IF EXISTS orden_historial_taller_insert ON public.orden_historial;
 
   -- Admin puede insertar
   CREATE POLICY orden_historial_admin_insert ON public.orden_historial
