@@ -4,8 +4,247 @@ BEGIN;
 CREATE SCHEMA IF NOT EXISTS ssepi_import;
 SET LOCAL search_path TO ssepi_import, public;
 
+-- ================================================================
+-- FASE 1: SCHEMA (CREATE TABLE, ALTER TABLE, índices no-únicos)
+-- ================================================================
 
--- ÍNDICES ÚNICOS (llaves naturales para ON CONFLICT)
+CREATE TABLE IF NOT EXISTS ssepi_import.bom_materiales (
+  id BIGSERIAL PRIMARY KEY,
+  item INTEGER,
+  numero_de_parte TEXT,
+  descripcion TEXT,
+  imagen TEXT,
+  categoria TEXT,
+  estado TEXT,
+  nombre_del_proveedor TEXT,
+  precio NUMERIC(15,4),
+  tiempo_de_entrega TEXT,
+  link TEXT,
+  nombre_del_proveedor_2 TEXT,
+  precio_2 NUMERIC(15,4),
+  tiempo_de_entrega_2 TEXT,
+  link2 TEXT,
+  nombre_del_proveedor_3 TEXT,
+  precio_3 TEXT,
+  tiempo_de_entrega_3 TEXT,
+  link_3 TEXT,
+  nombre_del_proveedor_4 TEXT,
+  precio_4 NUMERIC(15,4),
+  tiempo_de_entrega_4 TEXT,
+  link_4 TEXT,
+  costo_menor TEXT,
+  costo_total_de_las_piezas TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ssepi_import.bom_datos_referencia (
+  id BIGSERIAL PRIMARY KEY,
+  actualizado TEXT,
+  sensores TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ssepi_import.contactos (
+  id BIGSERIAL PRIMARY KEY,
+  avatar_128 TEXT,
+  nombre_completo TEXT,
+  correo_electronico TEXT,
+  telefono TEXT,
+  actividades TEXT,
+  pais TEXT,
+  estadisticas TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ssepi_import.cotizacion_viajes (
+  id BIGSERIAL PRIMARY KEY,
+  empresa TEXT,
+  km_x2 NUMERIC(15,4),
+  litros NUMERIC(15,4),
+  gasolina NUMERIC(15,4),
+  gasolina2 NUMERIC(15,4),
+  hrs INTEGER,
+  hr_dani NUMERIC(15,4),
+  dani NUMERIC(15,4),
+  total NUMERIC(15,4),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ssepi_import.cotizacion_laboratorio (
+  id BIGSERIAL PRIMARY KEY,
+  col_30 TEXT,
+  col_87 TEXT,
+  col_80 TEXT,
+  col_161_85 TEXT,
+  col_52_67 TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ssepi_import.cotizacion_motores (
+  id BIGSERIAL PRIMARY KEY,
+  col_30 TEXT,
+  col_87 TEXT,
+  col_52_67 TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ssepi_import.cotizacion_automatizacion (
+  id BIGSERIAL PRIMARY KEY,
+  col_650 TEXT,
+  col_700 TEXT,
+  col_450 TEXT,
+  col_900 TEXT,
+  col_350 TEXT,
+  col_600 TEXT,
+  col_1100 TEXT,
+  col_150 TEXT,
+  col_52_67 TEXT,
+  col_30 TEXT,
+  col_161_85 TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ssepi_import.cotizacion_suministros (
+  id BIGSERIAL PRIMARY KEY,
+  col_30 TEXT,
+  col_87 TEXT,
+  col_52_67 TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ssepi_import.inventario_automatizacion (
+  id BIGSERIAL PRIMARY KEY,
+  fecha TIMESTAMPTZ,
+  cantidad INTEGER,
+  categoria TEXT,
+  num_parte TEXT,
+  descripcion TEXT,
+  costo_unitario NUMERIC(15,4),
+  importe NUMERIC(15,4),
+  entradas INTEGER,
+  salidas INTEGER,
+  fecha_de_salida TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ssepi_import.inventario_electronica (
+  id BIGSERIAL PRIMARY KEY,
+  codigo_marking TEXT,
+  descripcion TEXT,
+  existencia INTEGER,
+  ubicacion TEXT,
+  encapsulado TEXT,
+  link_octopart TEXT,
+  link_digikey TEXT,
+  link_mouser TEXT,
+  costo_unitario_mxn INTEGER,
+  total_linea_mxn INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ssepi_import.ordenes_compra (
+  id BIGSERIAL PRIMARY KEY,
+  prioridad TEXT,
+  referencia_de_la_orden TEXT,
+  proveedor TEXT,
+  comprador TEXT,
+  fecha_limite_de_la_orden TIMESTAMPTZ,
+  actividades TEXT,
+  total NUMERIC(15,4),
+  estado TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ssepi_import.ordenes_reparacion (
+  id BIGSERIAL PRIMARY KEY,
+  prioridad TEXT,
+  referencia_de_reparacion TEXT,
+  fecha_programada TIMESTAMPTZ,
+  producto_a_reparar TEXT,
+  estado_del_componente TEXT,
+  cliente TEXT,
+  orden_de_venta TEXT,
+  estado TEXT,
+  decoracion_de_la_actividad_de_excepcion TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ssepi_import.ordenes_venta (
+  id BIGSERIAL PRIMARY KEY,
+  referencia_de_la_orden TEXT,
+  fecha_de_creacion TIMESTAMPTZ,
+  cliente TEXT,
+  vendedor TEXT,
+  actividades TEXT,
+  total NUMERIC(15,4),
+  estado TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE ssepi_import.bom_materiales ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ssepi_import.bom_datos_referencia ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ssepi_import.contactos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ssepi_import.cotizacion_viajes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ssepi_import.cotizacion_laboratorio ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ssepi_import.cotizacion_motores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ssepi_import.cotizacion_automatizacion ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ssepi_import.cotizacion_suministros ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ssepi_import.inventario_automatizacion ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ssepi_import.inventario_electronica ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ssepi_import.ordenes_compra ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ssepi_import.ordenes_reparacion ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ssepi_import.ordenes_venta ENABLE ROW LEVEL SECURITY;
+
+CREATE INDEX IF NOT EXISTS idx_bom_materiales_categoria ON ssepi_import.bom_materiales(categoria);
+CREATE INDEX IF NOT EXISTS idx_bom_materiales_estado ON ssepi_import.bom_materiales(estado);
+CREATE INDEX IF NOT EXISTS idx_bom_materiales_nombre_del_proveedor ON ssepi_import.bom_materiales(nombre_del_proveedor);
+CREATE INDEX IF NOT EXISTS idx_bom_materiales_nombre_del_proveedor_2 ON ssepi_import.bom_materiales(nombre_del_proveedor_2);
+CREATE INDEX IF NOT EXISTS idx_bom_materiales_nombre_del_proveedor_3 ON ssepi_import.bom_materiales(nombre_del_proveedor_3);
+CREATE INDEX IF NOT EXISTS idx_bom_materiales_nombre_del_proveedor_4 ON ssepi_import.bom_materiales(nombre_del_proveedor_4);
+CREATE INDEX IF NOT EXISTS idx_contactos_nombre_completo ON ssepi_import.contactos(nombre_completo);
+CREATE INDEX IF NOT EXISTS idx_inventario_automatizacion_fecha ON ssepi_import.inventario_automatizacion(fecha);
+CREATE INDEX IF NOT EXISTS idx_inventario_automatizacion_categoria ON ssepi_import.inventario_automatizacion(categoria);
+CREATE INDEX IF NOT EXISTS idx_inventario_automatizacion_num_parte ON ssepi_import.inventario_automatizacion(num_parte);
+CREATE INDEX IF NOT EXISTS idx_inventario_automatizacion_fecha_de_salida ON ssepi_import.inventario_automatizacion(fecha_de_salida);
+CREATE INDEX IF NOT EXISTS idx_inventario_electronica_codigo_marking ON ssepi_import.inventario_electronica(codigo_marking);
+CREATE INDEX IF NOT EXISTS idx_ordenes_compra_referencia_de_la_orden ON ssepi_import.ordenes_compra(referencia_de_la_orden);
+CREATE INDEX IF NOT EXISTS idx_ordenes_compra_proveedor ON ssepi_import.ordenes_compra(proveedor);
+CREATE INDEX IF NOT EXISTS idx_ordenes_compra_fecha_limite_de_la_orden ON ssepi_import.ordenes_compra(fecha_limite_de_la_orden);
+CREATE INDEX IF NOT EXISTS idx_ordenes_compra_estado ON ssepi_import.ordenes_compra(estado);
+CREATE INDEX IF NOT EXISTS idx_ordenes_reparacion_referencia_de_reparacion ON ssepi_import.ordenes_reparacion(referencia_de_reparacion);
+CREATE INDEX IF NOT EXISTS idx_ordenes_reparacion_fecha_programada ON ssepi_import.ordenes_reparacion(fecha_programada);
+CREATE INDEX IF NOT EXISTS idx_ordenes_reparacion_estado_del_componente ON ssepi_import.ordenes_reparacion(estado_del_componente);
+CREATE INDEX IF NOT EXISTS idx_ordenes_reparacion_cliente ON ssepi_import.ordenes_reparacion(cliente);
+CREATE INDEX IF NOT EXISTS idx_ordenes_reparacion_estado ON ssepi_import.ordenes_reparacion(estado);
+CREATE INDEX IF NOT EXISTS idx_ordenes_venta_referencia_de_la_orden ON ssepi_import.ordenes_venta(referencia_de_la_orden);
+CREATE INDEX IF NOT EXISTS idx_ordenes_venta_fecha_de_creacion ON ssepi_import.ordenes_venta(fecha_de_creacion);
+CREATE INDEX IF NOT EXISTS idx_ordenes_venta_cliente ON ssepi_import.ordenes_venta(cliente);
+CREATE INDEX IF NOT EXISTS idx_ordenes_venta_estado ON ssepi_import.ordenes_venta(estado);
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- ================================================================
+-- FASE 2: DEDUPE (eliminar duplicados antes de crear UNIQUE)
+-- ================================================================
+
+DELETE FROM ssepi_import.bom_materiales WHERE id IN (
+  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY numero_de_parte ORDER BY id) AS rn FROM ssepi_import.bom_materiales WHERE numero_de_parte IS NOT NULL AND numero_de_parte != '') t WHERE t.rn > 1
+);
+DELETE FROM ssepi_import.contactos WHERE id IN (
+  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY correo_electronico ORDER BY id) AS rn FROM ssepi_import.contactos WHERE correo_electronico IS NOT NULL AND correo_electronico != '') t WHERE t.rn > 1
+);
+DELETE FROM ssepi_import.contactos WHERE id IN (
+  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY nombre_completo, telefono ORDER BY id) AS rn FROM ssepi_import.contactos WHERE nombre_completo IS NOT NULL AND telefono IS NOT NULL AND (correo_electronico IS NULL OR correo_electronico = '')) t WHERE t.rn > 1
+);
+DELETE FROM ssepi_import.inventario_automatizacion WHERE id IN (
+  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY num_parte, fecha ORDER BY id) AS rn FROM ssepi_import.inventario_automatizacion WHERE num_parte IS NOT NULL AND num_parte != '') t WHERE t.rn > 1
+);
+DELETE FROM ssepi_import.inventario_electronica WHERE id IN (
+  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY codigo_marking, ubicacion ORDER BY id) AS rn FROM ssepi_import.inventario_electronica WHERE codigo_marking IS NOT NULL AND codigo_marking != '') t WHERE t.rn > 1
+);
+DELETE FROM ssepi_import.ordenes_compra WHERE id IN (
+  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY referencia_de_la_orden ORDER BY id) AS rn FROM ssepi_import.ordenes_compra WHERE referencia_de_la_orden IS NOT NULL AND referencia_de_la_orden != '') t WHERE t.rn > 1
+);
+DELETE FROM ssepi_import.ordenes_reparacion WHERE id IN (
+  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY referencia_de_reparacion ORDER BY id) AS rn FROM ssepi_import.ordenes_reparacion WHERE referencia_de_reparacion IS NOT NULL AND referencia_de_reparacion != '') t WHERE t.rn > 1
+);
+DELETE FROM ssepi_import.ordenes_venta WHERE id IN (
+  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY referencia_de_la_orden ORDER BY id) AS rn FROM ssepi_import.ordenes_venta WHERE referencia_de_la_orden IS NOT NULL AND referencia_de_la_orden != '') t WHERE t.rn > 1
+);
+
+-- ================================================================
+-- FASE 3: ÍNDICES ÚNICOS (llaves naturales para ON CONFLICT)
+-- ================================================================
+
 DROP INDEX IF EXISTS ssepi_import.ux_bom_materiales_numero_parte;
 CREATE UNIQUE INDEX IF NOT EXISTS ux_bom_materiales_numero_parte
   ON ssepi_import.bom_materiales (numero_de_parte) WHERE numero_de_parte IS NOT NULL AND numero_de_parte != '';
@@ -38,283 +277,10 @@ DROP INDEX IF EXISTS ssepi_import.ux_ordenes_venta_referencia;
 CREATE UNIQUE INDEX IF NOT EXISTS ux_ordenes_venta_referencia
   ON ssepi_import.ordenes_venta (referencia_de_la_orden) WHERE referencia_de_la_orden IS NOT NULL AND referencia_de_la_orden != '';
 
-
--- DEDUPE: eliminar duplicados antes de imponer UNIQUE
-DELETE FROM ssepi_import.bom_materiales WHERE id IN (
-  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY numero_de_parte ORDER BY id) AS rn FROM ssepi_import.bom_materiales WHERE numero_de_parte IS NOT NULL AND numero_de_parte != '') t WHERE t.rn > 1
-);
-DELETE FROM ssepi_import.contactos WHERE id IN (
-  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY correo_electronico ORDER BY id) AS rn FROM ssepi_import.contactos WHERE correo_electronico IS NOT NULL AND correo_electronico != '') t WHERE t.rn > 1
-);
-DELETE FROM ssepi_import.contactos WHERE id IN (
-  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY nombre_completo, telefono ORDER BY id) AS rn FROM ssepi_import.contactos WHERE nombre_completo IS NOT NULL AND telefono IS NOT NULL AND (correo_electronico IS NULL OR correo_electronico = '')) t WHERE t.rn > 1
-);
-DELETE FROM ssepi_import.inventario_automatizacion WHERE id IN (
-  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY num_parte, fecha ORDER BY id) AS rn FROM ssepi_import.inventario_automatizacion WHERE num_parte IS NOT NULL AND num_parte != '') t WHERE t.rn > 1
-);
-DELETE FROM ssepi_import.inventario_electronica WHERE id IN (
-  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY codigo_marking, ubicacion ORDER BY id) AS rn FROM ssepi_import.inventario_electronica WHERE codigo_marking IS NOT NULL AND codigo_marking != '') t WHERE t.rn > 1
-);
-DELETE FROM ssepi_import.ordenes_compra WHERE id IN (
-  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY referencia_de_la_orden ORDER BY id) AS rn FROM ssepi_import.ordenes_compra WHERE referencia_de_la_orden IS NOT NULL AND referencia_de_la_orden != '') t WHERE t.rn > 1
-);
-DELETE FROM ssepi_import.ordenes_reparacion WHERE id IN (
-  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY referencia_de_reparacion ORDER BY id) AS rn FROM ssepi_import.ordenes_reparacion WHERE referencia_de_reparacion IS NOT NULL AND referencia_de_reparacion != '') t WHERE t.rn > 1
-);
-DELETE FROM ssepi_import.ordenes_venta WHERE id IN (
-  SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY referencia_de_la_orden ORDER BY id) AS rn FROM ssepi_import.ordenes_venta WHERE referencia_de_la_orden IS NOT NULL AND referencia_de_la_orden != '') t WHERE t.rn > 1
-);
-
 -- ================================================================
--- SSEPI — Esquema y datos para Supabase (PostgreSQL)
--- Empresa: SSEPI · ventas@ssepi.org · León, Guanajuato, México
--- Generado automáticamente desde archivos Excel
---
--- INSTRUCCIONES DE IMPORTACIÓN:
---   1. En Supabase: SQL Editor → New query
---   2. Pega primero la sección SCHEMA (CREATE TABLE)
---   3. Ejecuta, luego pega la sección DATOS (INSERT)
---   4. O usa: psql -U postgres -d postgres -f ssepi_supabase.sql
+-- FASE 4: INSERTS (con ON CONFLICT específico)
 -- ================================================================
 
--- Extensiones recomendadas
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
--- ================================================================
--- SCHEMA — Definición de tablas
--- ================================================================
-
--- ── bom_materiales (Fuente: BOM_SSEPI / BOM) ──
-CREATE TABLE IF NOT EXISTS ssepi_import.bom_materiales (
-  id BIGSERIAL PRIMARY KEY,
-  item INTEGER,
-  numero_de_parte TEXT,
-  descripcion TEXT,
-  imagen TEXT,
-  categoria TEXT,
-  estado TEXT,
-  nombre_del_proveedor TEXT,
-  precio NUMERIC(15,4),
-  tiempo_de_entrega TEXT,
-  link TEXT,
-  nombre_del_proveedor_2 TEXT,
-  precio_2 NUMERIC(15,4),
-  tiempo_de_entrega_2 TEXT,
-  link2 TEXT,
-  nombre_del_proveedor_3 TEXT,
-  precio_3 TEXT,
-  tiempo_de_entrega_3 TEXT,
-  link_3 TEXT,
-  nombre_del_proveedor_4 TEXT,
-  precio_4 NUMERIC(15,4),
-  tiempo_de_entrega_4 TEXT,
-  link_4 TEXT,
-  costo_menor TEXT,
-  costo_total_de_las_piezas TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE ssepi_import.bom_materiales ENABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS idx_bom_materiales_categoria ON ssepi_import.bom_materiales(categoria);
-CREATE INDEX IF NOT EXISTS idx_bom_materiales_estado ON ssepi_import.bom_materiales(estado);
-CREATE INDEX IF NOT EXISTS idx_bom_materiales_nombre_del_proveedor ON ssepi_import.bom_materiales(nombre_del_proveedor);
-CREATE INDEX IF NOT EXISTS idx_bom_materiales_nombre_del_proveedor_2 ON ssepi_import.bom_materiales(nombre_del_proveedor_2);
-CREATE INDEX IF NOT EXISTS idx_bom_materiales_nombre_del_proveedor_3 ON ssepi_import.bom_materiales(nombre_del_proveedor_3);
-CREATE INDEX IF NOT EXISTS idx_bom_materiales_nombre_del_proveedor_4 ON ssepi_import.bom_materiales(nombre_del_proveedor_4);
-
--- ── bom_datos_referencia (Fuente: BOM_SSEPI / Datos) ──
-CREATE TABLE IF NOT EXISTS ssepi_import.bom_datos_referencia (
-  id BIGSERIAL PRIMARY KEY,
-  actualizado TEXT,
-  sensores TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE ssepi_import.bom_datos_referencia ENABLE ROW LEVEL SECURITY;
-
--- ── contactos (Fuente: Contacto__res_partner_ / Sheet1) ──
-CREATE TABLE IF NOT EXISTS ssepi_import.contactos (
-  id BIGSERIAL PRIMARY KEY,
-  avatar_128 TEXT,
-  nombre_completo TEXT,
-  correo_electronico TEXT,
-  telefono TEXT,
-  actividades TEXT,
-  pais TEXT,
-  estadisticas TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE ssepi_import.contactos ENABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS idx_contactos_nombre_completo ON ssepi_import.contactos(nombre_completo);
-
--- ── cotizacion_viajes (Fuente: FORMULAS_DE_COTIZACIÓN / Hoja1) ──
-CREATE TABLE IF NOT EXISTS ssepi_import.cotizacion_viajes (
-  id BIGSERIAL PRIMARY KEY,
-  empresa TEXT,
-  km_x2 NUMERIC(15,4),
-  litros NUMERIC(15,4),
-  gasolina NUMERIC(15,4),
-  gasolina2 NUMERIC(15,4),
-  hrs INTEGER,
-  hr_dani NUMERIC(15,4),
-  dani NUMERIC(15,4),
-  total NUMERIC(15,4),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE ssepi_import.cotizacion_viajes ENABLE ROW LEVEL SECURITY;
-
--- ── cotizacion_laboratorio (Fuente: FORMULAS_DE_COTIZACIÓN / LABORATORIO) ──
-CREATE TABLE IF NOT EXISTS ssepi_import.cotizacion_laboratorio (
-  id BIGSERIAL PRIMARY KEY,
-  col_30 TEXT,
-  col_87 TEXT,
-  col_80 TEXT,
-  col_161_85 TEXT,
-  col_52_67 TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE ssepi_import.cotizacion_laboratorio ENABLE ROW LEVEL SECURITY;
-
--- ── cotizacion_motores (Fuente: FORMULAS_DE_COTIZACIÓN / MOTORES) ──
-CREATE TABLE IF NOT EXISTS ssepi_import.cotizacion_motores (
-  id BIGSERIAL PRIMARY KEY,
-  col_30 TEXT,
-  col_87 TEXT,
-  col_52_67 TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE ssepi_import.cotizacion_motores ENABLE ROW LEVEL SECURITY;
-
--- ── cotizacion_automatizacion (Fuente: FORMULAS_DE_COTIZACIÓN / AUTOMATIZACIÓN) ──
-CREATE TABLE IF NOT EXISTS ssepi_import.cotizacion_automatizacion (
-  id BIGSERIAL PRIMARY KEY,
-  col_650 TEXT,
-  col_700 TEXT,
-  col_450 TEXT,
-  col_900 TEXT,
-  col_350 TEXT,
-  col_600 TEXT,
-  col_1100 TEXT,
-  col_150 TEXT,
-  col_52_67 TEXT,
-  col_30 TEXT,
-  col_161_85 TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE ssepi_import.cotizacion_automatizacion ENABLE ROW LEVEL SECURITY;
-
--- ── cotizacion_suministros (Fuente: FORMULAS_DE_COTIZACIÓN / SUMINISTROS) ──
-CREATE TABLE IF NOT EXISTS ssepi_import.cotizacion_suministros (
-  id BIGSERIAL PRIMARY KEY,
-  col_30 TEXT,
-  col_87 TEXT,
-  col_52_67 TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE ssepi_import.cotizacion_suministros ENABLE ROW LEVEL SECURITY;
-
--- ── inventario_automatizacion (Fuente: Inventario_Automatizacion / Stock) ──
-CREATE TABLE IF NOT EXISTS ssepi_import.inventario_automatizacion (
-  id BIGSERIAL PRIMARY KEY,
-  fecha TIMESTAMPTZ,
-  cantidad INTEGER,
-  categoria TEXT,
-  num_parte TEXT,
-  descripcion TEXT,
-  costo_unitario NUMERIC(15,4),
-  importe NUMERIC(15,4),
-  entradas INTEGER,
-  salidas INTEGER,
-  fecha_de_salida TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE ssepi_import.inventario_automatizacion ENABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS idx_inventario_automatizacion_fecha ON ssepi_import.inventario_automatizacion(fecha);
-CREATE INDEX IF NOT EXISTS idx_inventario_automatizacion_categoria ON ssepi_import.inventario_automatizacion(categoria);
-CREATE INDEX IF NOT EXISTS idx_inventario_automatizacion_num_parte ON ssepi_import.inventario_automatizacion(num_parte);
-CREATE INDEX IF NOT EXISTS idx_inventario_automatizacion_fecha_de_salida ON ssepi_import.inventario_automatizacion(fecha_de_salida);
-
--- ── inventario_electronica (Fuente: inventario_electronica_ssepi / Sheet1) ──
-CREATE TABLE IF NOT EXISTS ssepi_import.inventario_electronica (
-  id BIGSERIAL PRIMARY KEY,
-  codigo_marking TEXT,
-  descripcion TEXT,
-  existencia INTEGER,
-  ubicacion TEXT,
-  encapsulado TEXT,
-  link_octopart TEXT,
-  link_digikey TEXT,
-  link_mouser TEXT,
-  costo_unitario_mxn INTEGER,
-  total_linea_mxn INTEGER,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE ssepi_import.inventario_electronica ENABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS idx_inventario_electronica_codigo_marking ON ssepi_import.inventario_electronica(codigo_marking);
-
--- ── ordenes_compra (Fuente: Orden_de_compra__purchase_order_ / Sheet1) ──
-CREATE TABLE IF NOT EXISTS ssepi_import.ordenes_compra (
-  id BIGSERIAL PRIMARY KEY,
-  prioridad TEXT,
-  referencia_de_la_orden TEXT,
-  proveedor TEXT,
-  comprador TEXT,
-  fecha_limite_de_la_orden TIMESTAMPTZ,
-  actividades TEXT,
-  total NUMERIC(15,4),
-  estado TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE ssepi_import.ordenes_compra ENABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS idx_ordenes_compra_referencia_de_la_orden ON ssepi_import.ordenes_compra(referencia_de_la_orden);
-CREATE INDEX IF NOT EXISTS idx_ordenes_compra_proveedor ON ssepi_import.ordenes_compra(proveedor);
-CREATE INDEX IF NOT EXISTS idx_ordenes_compra_fecha_limite_de_la_orden ON ssepi_import.ordenes_compra(fecha_limite_de_la_orden);
-CREATE INDEX IF NOT EXISTS idx_ordenes_compra_estado ON ssepi_import.ordenes_compra(estado);
-
--- ── ordenes_reparacion (Fuente: Orden_de_reparación__repair_order_ / Sheet1) ──
-CREATE TABLE IF NOT EXISTS ssepi_import.ordenes_reparacion (
-  id BIGSERIAL PRIMARY KEY,
-  prioridad TEXT,
-  referencia_de_reparacion TEXT,
-  fecha_programada TIMESTAMPTZ,
-  producto_a_reparar TEXT,
-  estado_del_componente TEXT,
-  cliente TEXT,
-  orden_de_venta TEXT,
-  estado TEXT,
-  decoracion_de_la_actividad_de_excepcion TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE ssepi_import.ordenes_reparacion ENABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS idx_ordenes_reparacion_referencia_de_reparacion ON ssepi_import.ordenes_reparacion(referencia_de_reparacion);
-CREATE INDEX IF NOT EXISTS idx_ordenes_reparacion_fecha_programada ON ssepi_import.ordenes_reparacion(fecha_programada);
-CREATE INDEX IF NOT EXISTS idx_ordenes_reparacion_estado_del_componente ON ssepi_import.ordenes_reparacion(estado_del_componente);
-CREATE INDEX IF NOT EXISTS idx_ordenes_reparacion_cliente ON ssepi_import.ordenes_reparacion(cliente);
-CREATE INDEX IF NOT EXISTS idx_ordenes_reparacion_estado ON ssepi_import.ordenes_reparacion(estado);
-
--- ── ordenes_venta (Fuente: Orden_de_venta__sale_order_ / Sheet1) ──
-CREATE TABLE IF NOT EXISTS ssepi_import.ordenes_venta (
-  id BIGSERIAL PRIMARY KEY,
-  referencia_de_la_orden TEXT,
-  fecha_de_creacion TIMESTAMPTZ,
-  cliente TEXT,
-  vendedor TEXT,
-  actividades TEXT,
-  total NUMERIC(15,4),
-  estado TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE ssepi_import.ordenes_venta ENABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS idx_ordenes_venta_referencia_de_la_orden ON ssepi_import.ordenes_venta(referencia_de_la_orden);
-CREATE INDEX IF NOT EXISTS idx_ordenes_venta_fecha_de_creacion ON ssepi_import.ordenes_venta(fecha_de_creacion);
-CREATE INDEX IF NOT EXISTS idx_ordenes_venta_cliente ON ssepi_import.ordenes_venta(cliente);
-CREATE INDEX IF NOT EXISTS idx_ordenes_venta_estado ON ssepi_import.ordenes_venta(estado);
-
-
--- ================================================================
--- DATOS — Registros de todos los módulos
--- ================================================================
-
--- ── Datos: bom_materiales ──
 INSERT INTO ssepi_import.bom_materiales (item, numero_de_parte, descripcion, imagen, categoria, estado, nombre_del_proveedor, precio, tiempo_de_entrega, link, nombre_del_proveedor_2, precio_2, tiempo_de_entrega_2, link2, nombre_del_proveedor_3, precio_3, tiempo_de_entrega_3, link_3, nombre_del_proveedor_4, precio_4, tiempo_de_entrega_4, link_4, costo_menor, costo_total_de_las_piezas)
 VALUES
   (1, 'DOP-107EV', '7” (800 * 480) 65536 Colores TFT, 256 MB RAM, Ethernet incorporada, 2 juegos de puertos COM / 1 puerto COM de extensión, USB Host, USB Client', NULL, 'HMI´S', 'ACTUALIZADO', 'MERCADO LIBRE', 4925.75, NULL, 'https://www.mercadolibre.com.mx/hmi-dop-107ev-delta-de-7-pulgadas-ethernet-color-touch/p/MLM59644571?pdp_filters=item_id%3AMLM2534674213&from=gshop&matt_tool=28796641&matt_word=&matt_source=google&matt_campaign_id=22118385007&matt_ad_group_id=177188373510&matt_match_type=&matt_network=g&matt_device=c&matt_creative=729726335021&matt_keyword=&matt_ad_position=&matt_ad_type=pla&matt_merchant_id=735120154&matt_product_id=MLM59644571-product&matt_product_partition_id=2392713578861&matt_target_id=aud-2010778457741:pla-2392713578861&cq_src=google_ads&cq_cmp=22118385007&cq_net=g&cq_plt=gp&cq_med=pla&gad_source=1&gad_campaignid=22118385007&gbraid=0AAAAAoTLPrKllrPbEnhRPhTAbgbW_pjBO', NULL, NULL, NULL, NULL, NULL, '}', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
@@ -368,6 +334,7 @@ VALUES
   (48, '4160326', 'METROS DE OLFLEX Cable 18Awg 1X1 Azul/Bco Multi-Standard', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'DIMEINT', 15.0, NULL, 'https://dimeint.com/products/4160326', 'TME', 25.0, NULL, 'https://www.tme.com/mx/es/details/h07v2-k150blwh/cables-de-un-hilo-trenzado/helukabel/63417/', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
   (49, 'TS35X7.5 1M', 'Riel Din Perforado 1 metro', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'MERCADO LIBRE', 112.0, NULL, 'https://www.mercadolibre.com.mx/riel-din-perforado-plateado-1-metro/up/MLMU3118674891?pdp_filters=item_id%3AMLM2281070227&from=gshop&matt_tool=53826643&matt_word=&matt_source=google&matt_campaign_id=23406600413&matt_ad_group_id=193915105674&matt_match_type=&matt_network=g&matt_device=c&matt_creative=790322146796&matt_keyword=&matt_ad_position=&matt_ad_type=pla&matt_merchant_id=5589206556&matt_product_id=MLMU3118674891&matt_product_partition_id=2388138774430&matt_target_id=aud-1927594328786:pla-2388138774430&cq_src=google_ads&cq_cmp=23406600413&cq_net=g&cq_plt=gp&cq_med=pla&gad_source=1&gad_campaignid=23406600413&gbraid=0AAAAAoTLPrKDOaxZgTEvU7lO63Zcr0Pkh&gclid=Cj0KCQjwgr_NBhDFARIsAHiUWr47zlUxA98cWFg2PuXfKCuQsJENpKMFhw1cF4NTsJkQAuqW_bKTXdgaAt2QEALw_wcB', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 ON CONFLICT (numero_de_parte) DO NOTHING;
+
 INSERT INTO ssepi_import.bom_materiales (item, numero_de_parte, descripcion, imagen, categoria, estado, nombre_del_proveedor, precio, tiempo_de_entrega, link, nombre_del_proveedor_2, precio_2, tiempo_de_entrega_2, link2, nombre_del_proveedor_3, precio_3, tiempo_de_entrega_3, link_3, nombre_del_proveedor_4, precio_4, tiempo_de_entrega_4, link_4, costo_menor, costo_total_de_las_piezas)
 VALUES
   (50, 'WDU 2.5', 'Paquete De 30 Clemas De Paso Wdu 2.5 24a Cal 26 A 12 Awg', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'MERCADO LIBRE', 1147.65, NULL, 'https://www.mercadolibre.com.mx/paquete-de-30-clemas-de-paso-wdu-25--24a--cal-26-a-12-awg/up/MLMU561648330?pdp_filters=item_id:MLM1766779705#polycard_client=search-nordic&position=7&search_layout=stack&type=item&tracking_id=90562171-34a5-4085-b96b-d721f15d64f0', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
@@ -421,59 +388,7 @@ VALUES
   (99, 'COPLE13TADO', 'COPLE PARA TUBO PARED DELGADA DE 13MM (1/2) TIPO AMERICANO MCA. CCH', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'Euroelectrica', 5.94, NULL, 'COMPRA FOLIO XLA84845 28012026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
   (100, 'CONECTOR13TADO', 'CONECTOR PARA TUBO PARED DELGADA DE 13MM (1/2) TIPO AMERICANO', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'Euroelectrica', 6.72, NULL, 'COMPRA FOLIO XLA84845 28012026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 ON CONFLICT (numero_de_parte) DO NOTHING;
-INSERT INTO ssepi_import.bom_materiales (item, numero_de_parte, descripcion, imagen, categoria, estado, nombre_del_proveedor, precio, tiempo_de_entrega, link, nombre_del_proveedor_2, precio_2, tiempo_de_entrega_2, link2, nombre_del_proveedor_3, precio_3, tiempo_de_entrega_3, link_3, nombre_del_proveedor_4, precio_4, tiempo_de_entrega_4, link_4, costo_menor, costo_total_de_las_piezas)
-VALUES
-  (101, 'WDL0808P', 'CAJA ESTANCAS IP 55 80X80X45 CON LADOS DOBLADOS Y TAPA A PRESION', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'Euroelectrica', 25.37, NULL, 'COMPRA FOLIO XLA84845 28012026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (102, 'UNIST13', 'Abrazadera Unicanal p/Conduit EMT 13 mm (1/2″', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'Euroelectrica', 6.24, NULL, 'COMPRA FOLIO XLA84845 28012026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (103, 'COPLE13PG', 'COPLE PARED GRUESA DE 13MM(1/2)', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'Euroelectrica', 5.88, NULL, 'COMPRA FOLIO XLA84845 28012026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (104, '10-008-1/4X2-1/4', 'TAQUETE ARPON GALVANIZADO  1/4 X2 -1/4', NULL, 'MATERIALES MECÁNICOS', 'ACTUALIZADO', 'EL TORNILLO', 4.38, NULL, 'COMPRA FOLIO 0029675 30012026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (105, '10-008-3/8X3', 'TAQUETE ARPON GALVANIZADO 3/8X3', NULL, 'MATERIALES MECÁNICOS', 'ACTUALIZADO', 'EL TORNILLO', 9.12, NULL, 'COMPRA FOLIO 0029675 30012026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (106, NULL, 'PLACA BASE 45X45', NULL, 'MATERIALES MECÁNICOS', 'ACTUALIZADO', 'DMI', 1029.1, NULL, 'SEVICIO 23153100', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (107, 'DMI-R6-2020L', 'Perfil 20X20  R6', NULL, 'MATERIALES MECÁNICOS', 'ACTUALIZADO', 'DMI', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (108, 'DMI-R8-3030L', 'PERFIL 30X30 R8', NULL, 'MATERIALES MECÁNICOS', 'ACTUALIZADO', 'DMI', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (109, 'DMI-R10-4040L', 'PERFIL 40X40 R10', NULL, 'MATERIALES MECÁNICOS', 'ACTUALIZADO', 'DMI', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (110, 'DMI-R10-4545L', 'PERFIL 45X45 R10', NULL, 'MATERIALES MECÁNICOS', 'ACTUALIZADO', 'DMI', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (111, 'DMI-3024-45', 'ESCUADRA PERFIL 4545', NULL, 'MATERIALES MECÁNICOS', 'ACTUALIZADO', 'DMI', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (112, 'H07Z1-K', 'CABLE AMARILLO/VERDE CALIBRE 14AWG (2,5MM2) H07Z-K (a partir de 1,5 mm: 450/750 V.', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'IKA TECHNOLOGY', 17.15, NULL, 'COTIZACIÓN IKA TECHNOLOGY COTIZACIÓN No. : M0000000322', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (113, '7000-50021-9615000', 'Cable de alimentación 7/8" para módulos ET200 Pro - 50 metros Marca Murr', NULL, 'ALIMENTACIÓN', 'ACTUALIZADO', 'KOPAR', 34680.49, NULL, 'COTIZACIÓN KOPAR COTIZACIÓN: PV091814', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (114, '7000-44711-6593500', 'Cable de comunicación profinet M12/RJ45 - 35 metros', NULL, 'COMUNICACIÓN', 'ACTUALIZADO', 'KOPAR', 12405.31, NULL, 'COTIZACIÓN KOPAR COTIZACIÓN: PV091814', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (115, '7000-40021-6343000', 'Cable para sensor M12-M12 Macho/Hemba 30 metros', NULL, 'SENSORES', 'ACTUALIZADO', 'KOPAR', 3668.16, NULL, 'COTIZACIÓN KOPAR COTIZACIÓN: PV091814', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (116, '7000-40021-6343500', 'Cable para sensor M12-M12 Macho/Hemba 35 metros', NULL, 'SENSORES', 'ACTUALIZADO', 'KOPAR', 4182.7, NULL, 'COTIZACIÓN KOPAR COTIZACIÓN: PV091814', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (117, '7000-40021-6345000', 'Cable para sensor M12-M12 Macho/Hemba 50 metros', NULL, 'SENSORES', 'ACTUALIZADO', 'KOPAR', 5984.6, NULL, 'COTIZACIÓN KOPAR COTIZACIÓN: PV091814', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (118, '7000-40021-6342000', 'Cable para sensor M12-M12 Macho/Hemba 20 metros', NULL, 'SENSORES', 'ACTUALIZADO', 'KOPAR', 2401.39, NULL, 'COTIZACIÓN KOPAR COTIZACIÓN: PV091814', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (119, '7000-40021-6344000', 'Cable para sensor M12-M12 Macho/Hemba 40 metros', NULL, 'SENSORES', 'ACTUALIZADO', 'KOPAR', 4696.2, NULL, 'COTIZACIÓN KOPAR COTIZACIÓN: PV091814', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (120, '7000-44711-6594000', 'Cable de comunicación profinet M12/RJ45 - 40 metros', NULL, 'COMUNICACIÓN', 'ACTUALIZADO', 'KOPAR', 14007.26, NULL, 'COTIZACIÓN KOPAR COTIZACIÓN: PV091814', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (121, 'CTHW3/0C', 'CABLE CON AISLAMIENTO TIPO THW CAL.3/0 AWG 90° 600V COLOR NEGRO', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'Euroelectrica', 282.07, NULL, 'Cotizacion Euroelectrica 13/02/2026 L315116', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (122, 'CTHW2N', 'CABLE CON AISLAMIENTO TIPO THW CAL.2 AWG 90° 600V COLOR NEGRO', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'Euroelectrica', 113.11, NULL, 'Cotizacion Euroelectrica 13/02/2026 L315116', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (123, 'CTHW8N', 'CABLE CON AISLAMIENTO TIPO THW CAL.8 AWG 90° 600V COLOR NEGRO', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'Euroelectrica', 29.14, NULL, 'Cotizacion Euroelectrica 13/02/2026 L315116', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (124, 'CTHW10N', 'CABLE CON AISLAMIENTO TIPO THW CAL.10 AWG 90° 600V COLOR NEGRO', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'Euroelectrica', 18.16, NULL, 'Cotizacion Euroelectrica 13/02/2026 L315116', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (125, 'CTHW12N', 'CABLE CON AISLAMIENTO TIPO THW CAL.12 AWG 90° 600V COLOR NEGRO', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'Euroelectrica', 11.48, NULL, 'Cotizacion Euroelectrica 13/02/2026 L315116', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (126, 'CTHW14N', 'CABLE CON AISLAMIENTO TIPO THW CAL.14 AWG 90° 600V COLOR NEGRO', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'Euroelectrica', 8.17, NULL, 'Cotizacion Euroelectrica 13/02/2026 L315116', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (127, '777024507', 'CABLE M-H 7/8", 5 PIN, AMARILLO, 50m MOD. RSM RKM 56-50M/S3059. MARCA: TURCK', NULL, 'ALIMENTACIÓN', 'ACTUALIZADO', 'ABETEC', 13740.0, NULL, 'Cotizacion ABETEC 01-SSEPI-2026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (128, '777006937', 'CABLE ETH M12 (D-CODE) A RJ45, 30m, BLINDADO, AZUL/VERDE, 30m  MOD. RSSD RJ45S 441-30M MARCA: TURCK', NULL, 'COMUNICACIÓN', 'ACTUALIZADO', 'ABETEC', 3792.24, NULL, 'Cotizacion ABETEC 01-SSEPI-2026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (129, '777002622', 'CABLE H-M, M12, 4 PIN, AMARILLO, 30m MOD. RKC 4.4T-30-RSC 4.4T/S1587  MARCA: TURCK', NULL, 'SENSORES', 'ACTUALIZADO', 'ABETEC', 4069.62, NULL, 'Cotizacion ABETEC 01-SSEPI-2026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (130, '777008487', 'CABLE H-M, M12, 4 PIN, AMARILLO, 35m MOD. RK 4.4T-35-RS 4.4T/S1587  MARCA: TURCK', NULL, 'SENSORES', 'ACTUALIZADO', 'ABETEC', 4204.26, NULL, 'Cotizacion ABETEC 01-SSEPI-2026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (131, '777008487', 'CABLE H-M, M12, 4 PIN, AMARILLO, 50m  MOD. RK 4.4T-50-RS 4.4T/S1587  MARCA: TURCK', NULL, 'SENSORES', 'ACTUALIZADO', 'ABETEC', 5725.62, NULL, 'Cotizacion ABETEC 01-SSEPI-2026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (132, '777008487', 'CABLE H-M, M12, 4 PIN, AMARILLO, 20m  MOD. RK 4.4T-20-RS 4.4T/S1587 MARCA: TURCK', NULL, 'SENSORES', 'ACTUALIZADO', 'ABETEC', 2682.72, NULL, 'Cotizacion ABETEC 01-SSEPI-2026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (133, '777008487', 'CABLE H-M, M12, 4 PIN, AMARILLO, 40m  MOD. RK 4.4T-40-RS 4.4T/S1587  MARCA: TURCK', NULL, 'SENSORES', 'ACTUALIZADO', 'ABETEC', 4711.32, NULL, 'Cotizacion ABETEC 01-SSEPI-2026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (134, '777035863', 'CABLE ETH M12 (D-CODE) A RJ45, 30m, NO BLINDADO, GRIS, 45m  RSCD RJ45 440G-45M  MARCA: TURCK', NULL, 'COMUNICACIÓN', 'ACTUALIZADO', 'ABETEC', 4431.44, NULL, 'Cotizacion ABETEC 01-SSEPI-2026', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (135, 'EPL5K2FVR', 'Regulador Epcom Epl5k2fvr 5 Kva / 5000 W, Entrada 120 V, Negro, Ancho: 243 mm, Profundidad:180 mm, Altura: 342 mm', NULL, 'ALIMENTACIÓN', 'ACTUALIZADO', 'ZEGUCOM', 6783.66, NULL, 'https://www.zegucom.com.mx/producto/reguladores-nobreaks-y-energia/reguladores/regulador-epcom-epl5k2fvr-5-kva-5000-w-entrada-120-v-negro/RVBMNUsyRlZS', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (136, '00-1588-3', 'Regulador Koblenz Er-2250 2.25 Kva / 1000w, Energia 134 J, Entrada 145 V, Salida 132v, 60hz, 8 Salidas Ac, Compacto, Indicadores Led, Color Negro', NULL, 'ALIMENTACIÓN', 'ACTUALIZADO', 'ZEGUCOM', 614.97, NULL, 'https://www.zegucom.com.mx/producto/reguladores-nobreaks-y-energia/reguladores/regulador-koblenz-er-2250-2-25-kva-1000w-energia-134-j-entrada-145-v/MDAtMTU4OC0z', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (137, '12860555', 'Motor Weg Trifásico 15 Hp 1750 Rpm, Carcasa 254/6T, Tensión nominal 208-230/460 V, Corriente nominal 39.8-36.0/18.0 A', NULL, 'MOTORES', 'ACTUALIZADO', 'HAB', 17897.64, NULL, 'Cotización:16082 COMERCIALIZADORAYDISTRIBUIDORAELECTRICAHAB', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (138, 'LSLV0110S100-2EONNS', 'VARIADOR DE FRECUENCIA S100 15HP DE POTENCIA, ALIMENTACIÓN Y SALIDA 230V, 3 FASES', NULL, 'VARIADOR', 'ACTUALIZADO', 'DOMUM', 26280.0, NULL, '25/02/2026 Número de cotización S02894', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (139, 'LSLV0110G100-2EONN', 'VARIADOR FAMILIA G100, 15HP DE POTENCIA, ALIMENTACIÓN Y SALIDA 230V, 3 FASES', NULL, 'VARIADOR', 'ACTUALIZADO', 'DOMUM', 24888.0, NULL, '25/02/2026 Número de cotización S02894', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (140, 'VFD500-011GT2B', 'Variador de Frecuencia Trifásico 15 hp VFD500-011GT2B, 200  240 VAC, 45 AMP', NULL, 'VARIADOR', 'ACTUALIZADO', 'VEIKONG', 21738.68, NULL, '25/02/2026 Número de cotización #D11704', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (141, 'NH00-80A', 'Juego de 3 Fusibles tipo cuchilla, Tamaño NH00 , Acción Rapida (AR), 690VAC, 80 Amp, 100kA, para variador modelo:VFD500 011GT2B; 022G/030PT4B', NULL, 'PROTECCION ELECTRICA', 'ACTUALIZADO', 'VEIKONG', 735.09, NULL, '25/02/2026 Número de cotización #D11704', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (142, '65fcc48c8fdc4', 'Seccionador Portafusible 3 Polos , tipo: NH00, Modelo:DNH7 160/300, 400/690 Vac, 60Hz.', NULL, 'PROTECCION ELECTRICA', 'ACTUALIZADO', 'VEIKONG', 756.49, NULL, '25/02/2026 Número de cotización #D11704', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (143, 'E820-0470EPA-60', 'Variador de Frecuencia Mitsubishi Electric (serie FREQROL FR-E800) - entrada 200Vac-240Vac (trifásico/3P) - 11kW/15HP - 47A (ND Normal Duty) - frecuencia (salida) 0,2-590Hz - con Ethernet + Ethernet/IP + CC-Link + Modbus TCP + BACnet/Capacidad de comunicación IP - IP20 - valores nominales de tensión de entrada 220Vac / 230Vac - Resistencia química (recubrimiento de placa de circuito - IEC60721-3-3 3S2 3C2) - equivalente a FR-E820-0470EPA-60 / FRE8200470EPA60', NULL, 'VARIADOR', 'ACTUALIZADO', 'IkA TECHNOLOGY', 25785.28, NULL, '25/02/2026 Número de cotización M0000000323', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (144, 'E820-0470-5-60', 'Variador de frecuencia Mitsubishi Electric (serie FREQROL FR-E800) - entrada 200Vac-240Vac (trifásico/3P) - 11kW / 15HP - 47A (ND Normal Duty) - frecuencia (salida) 0,2-590Hz - con capacidad de comunicación RS-485 - IP20 - valores nominales de voltaje de entrada 220Vac / 230Vac - Resistencia química (recubrimiento de placa de circuito - IEC60721-3-3 3S2 3C2) - equivalente a FR-E820-0470-5-60 / FRE8200470560', NULL, 'VARIADOR', 'ACTUALIZADO', 'IKA TECHNOLOGY', 22133.51, NULL, '25/02/2026 Número de cotización M0000000323', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (145, 'ACS355-03E46A2-2', 'Variador de frecuencia compacto y versátil de 11 kW (15 HP), diseñado para motores de inducción y de imanes permanentes en aplicaciones industriales exigentes. Opera con entrada trifásica 200-240V, ofrece una corriente de salida de 46.2A, incluye frenado integrado y destaca por su fácil configuración y control vectorial preciso', NULL, 'VARIADOR', 'ACTUALIZADO', 'BADESA', 20885.94, NULL, '25/02/2026 Número de cotización   79134', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (146, 'PNOZ s5 24VDC 2 n/o 2 n/o t, 750105', 'Dispositivo de seguridad PNOZsigma (standalone), entradas: conexionado monocanal/bicanal con/sin detección de derivación, rearme manual/automático, salidas: 2 NA, 2 Sz (t = 0,04 - 300 s), 1 SEMIC., UB= 24 V DC, ancho: 22,5 mm, bornes de tornillo enchufables, supervisión de parada deemergencia, puertas protectoras, barreras fotoeléctricas de seguridad.', NULL, 'SEGURIDAD IND', 'ACTUALIZADO', 'ACOME', 12300.0, NULL, 'https://www.acomee.com.mx/articulo.php?search=PNOZ-S5-24VDC&id=PILZ', 'GRUPOMI', 10423.8, '1-3 DIAS', '23/03/2026 Número de cotización GMI-1052983', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (147, 'PNOZ e3.1p 24VDC 2so', 'Dispositivo de seguridad (standalone), entradas: conexionado bicanal con/sin detección de derivación (PSEN 2.1p/2.2p), salidas: 2 salidas de seguridad, 1 salida auxiliar por semiconductor, rearme automático/supervisado, UB = 24 V DC, ancho: 22,5 mm, bornes de tornillo enchufables, vinculación de varios dispositivos, puertas protectoras, circuito de realimentación.', NULL, 'SEGURIDAD IND', 'ACTUALIZADO', 'ACOME', 6315.46, NULL, 'https://www.acomee.com.mx/articulo.php?search=PNOZ-E3.1P&id=PILZ&pro=', 'GRUPOMI', 6342.3, '1-3 DIAS', '23/03/2026 Número de cotización GMI-1052983', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (148, 'EWZ0046', 'Connectors Type EWZ0046 Number of poles 9 Connection type Insul. displacemnt connection Rated current 5 A OEM number QEV111AC6MVR', NULL, 'COMUNICACIÓN', 'ACTUALIZADO', 'SUCOMO', 3238.9, NULL, '06/03/2026 Número de cotización B 263', 'ebay', 2524.31, '2-3 SEMAAS', 'https://www.ebay.com/itm/176974572550', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (149, 'LS14250', 'Batería Saft 14250 Ls14250 3.6v 1200mah 1/2 Aa Uso Especial', NULL, 'ALIMENTACIÓN', 'ACTUALIZADO', 'MERCADO LIBRE', 165.0, NULL, 'https://www.mercadolibre.com.mx/bateria-saft-14250-ls14250-36v-1200mah-12-aa-uso-especial/up/MLMU3518773335?matt_tool=28238160&utm_source=google_shopping&utm_medium=organic&pdp_filters=item_id%3AMLM4287942156&from=gshop', 'MERCADO LIBRE', 249.0, NULL, 'https://www.mercadolibre.com.mx/bateria-saft-12aa-litio-cilindrica-36v-1200mah-ls14250/p/MLM22858831#polycard_client=search-desktop&search_layout=grid&position=4&type=product&tracking_id=d0b5fb56-0013-41f9-bddd-ca86df6dc450&wid=MLM2682524409&sid=search', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-  (150, '6GK15622AA00', 'PROCESADOR DE COMUNIC. CP 5622 TARJ. PCI', NULL, 'COMUNICACIÓN', 'ACTUALIZADO', 'AK CORPORATION', 20401.82, NULL, '06/03/2026 Número de cotización V19104', 'AMAZON', 10694.04, NULL, 'https://www.amazon.com.mx/BXNXLX-Nuevo-6GK1562-2AA00-6GK15622AA00-Expedited/dp/B0D1N8TH19', 'ALI EXPRESS', '11104.9', NULL, 'https://es.aliexpress.com/item/1005009132832615.html?spm=a2g0o.productlist.main.7.17b6JJ1OJJ1Oa9&algo_pvid=d98d0208-56fc-43e5-beed-0ce632eb1a97&algo_exp_id=d98d0208-56fc-43e5-beed-0ce632eb1a97-6&pdp_ext_f=%7B%22order%22%3A%22-1%22%2C%22spu_best_type%22%3A%22price%22%2C%22eval%22%3A%221%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21MXN%2110694.90%2110694.90%21%21%21594.03%21594.03%21%402103128917731788052087436ed061%2112000048031040451%21sea%21MX%217056288988%21X%211%210%21n_tag%3A-29911%3Bd%3A8d82e2f1%3Bm03_new_user%3A-29895&curPageLogUid=8r7SQpwEPIZb&utparam-url=scene%3Asearch%7Cquery_from%3A%7Cx_object_id%3A1005009132832615%7C_p_origin_prod%3A', NULL, NULL, NULL, NULL, NULL, NULL)
-ON CONFLICT (numero_de_parte) DO NOTHING;
+
 INSERT INTO ssepi_import.bom_materiales (item, numero_de_parte, descripcion, imagen, categoria, estado, nombre_del_proveedor, precio, tiempo_de_entrega, link, nombre_del_proveedor_2, precio_2, tiempo_de_entrega_2, link2, nombre_del_proveedor_3, precio_3, tiempo_de_entrega_3, link_3, nombre_del_proveedor_4, precio_4, tiempo_de_entrega_4, link_4, costo_menor, costo_total_de_las_piezas)
 VALUES
   (151, 'Q35B', 'Q SERIES, BASE UNIT, 5 SLOT MITSUBISHI', NULL, 'PLC''S', 'ACTUALIZADO', 'LUGUER', 4326.3, NULL, '03/03/2026 Número de cotización #COTL11992', 'IkA TECHNOLOGY', 4740.12, NULL, '04/03/2026 Número de cotización M0000000331', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
@@ -527,6 +442,7 @@ VALUES
   (199, '202-728', 'TAQUETE MARIPOSA CON TORNILLO 1/4X2', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'EL TORNILLO', 5.3918, 'INMEDIATO', 'https://eltornillo.com.mx/tienda-en-linea/catalogo/taquetes/taquete-mariposa-con-tornillo-1%2f4x2', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
   (200, '201-004', 'TAQUETE DE PLASTICO ANKER GRIS 1/4', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'EL TORNILLO', 1.3973, 'INMEDIATO', 'https://eltornillo.com.mx/tienda-en-linea/catalogo/taquetes/taquete-de-plastico-anker-gris-1%2f4', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 ON CONFLICT (numero_de_parte) DO NOTHING;
+
 INSERT INTO ssepi_import.bom_materiales (item, numero_de_parte, descripcion, imagen, categoria, estado, nombre_del_proveedor, precio, tiempo_de_entrega, link, nombre_del_proveedor_2, precio_2, tiempo_de_entrega_2, link2, nombre_del_proveedor_3, precio_3, tiempo_de_entrega_3, link_3, nombre_del_proveedor_4, precio_4, tiempo_de_entrega_4, link_4, costo_menor, costo_total_de_las_piezas)
 VALUES
   (201, '188-144', 'PIJA CABEZA FIJADORA COMBINADA PUNTA AB GALVANIZADA 10X1-1/2', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'EL TORNILLO', 0.9633, 'INMEIDATO', 'https://eltornillo.com.mx/tienda-en-linea/catalogo/pijas/pija-cabeza-fijadora-combinada-punta-ab-galvanizada-10x1_1%2f2', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
@@ -580,6 +496,7 @@ VALUES
   (249, 'CH-111', 'CURVA HORIZONTAL RADIAL 90° PERFIL Z PERALTE 3 1/4 CLASE 8A ANCHO DE CHAROLA 6 (15.24 CM)', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'EUROELECTRICA', 292.79, '8 SEMANAS', '07/04/2026 NÚMERO DE COTIZACIÓN: L320067', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
   (250, 'CVE-111', 'CURVA VERTICAL EXTERIOR RADIAL 90° PERFIL Z PERALTE 3 1/4 CLASE 8A ANCHO DE CHAROLA 6 (15.24 CM)', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'EUROELECTRICA', 279.35, '8 SEMANAS', '07/04/2026 NÚMERO DE COTIZACIÓN: L320067', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 ON CONFLICT (numero_de_parte) DO NOTHING;
+
 INSERT INTO ssepi_import.bom_materiales (item, numero_de_parte, descripcion, imagen, categoria, estado, nombre_del_proveedor, precio, tiempo_de_entrega, link, nombre_del_proveedor_2, precio_2, tiempo_de_entrega_2, link2, nombre_del_proveedor_3, precio_3, tiempo_de_entrega_3, link_3, nombre_del_proveedor_4, precio_4, tiempo_de_entrega_4, link_4, costo_menor, costo_total_de_las_piezas)
 VALUES
   (251, 'SKU 131-104', 'TUERCA RESORTE NC 16H GALVANIZADA 3/8', NULL, 'MATERIAL ELECTRICO', 'ACTUALIZADO', 'EL TORNILLO', 16.6347, '3 DIAS', 'https://eltornillo.com.mx/tienda-en-linea/catalogo/tuercas/tuerca-resorte-nc-16h-galvanizada-3%2f8', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
@@ -632,7 +549,6 @@ VALUES
   (298, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
 ON CONFLICT (numero_de_parte) DO NOTHING;
 
--- ── Datos: bom_datos_referencia ──
 INSERT INTO ssepi_import.bom_datos_referencia (actualizado, sensores)
 VALUES
   ('NO ACTUALIZADO', 'MOTORES'),
@@ -657,7 +573,6 @@ VALUES
   (NULL, 'SEGURIDAD IND')
 ON CONFLICT DO NOTHING;
 
--- ── Datos: contactos ──
 INSERT INTO ssepi_import.contactos (avatar_128, nombre_completo, correo_electronico, telefono, actividades, pais, estadisticas)
 VALUES
   (NULL, 'A Y B EUROSERVICIOS', NULL, NULL, NULL, 'México', '[{"iconClass": "fa-pencil-square-o", "value": 2, "label": "Facturas de clientes/Facturas de proveedores/Mandatos", "tagClass": "o_tag_color_9"}]'),
@@ -711,6 +626,7 @@ VALUES
   (NULL, 'GUSTAVO NASSER GONZALEZ', NULL, NULL, NULL, 'México', '[{"iconClass": "fa-pencil-square-o", "value": 1, "label": "Facturas de clientes/Facturas de proveedores/Mandatos", "tagClass": "o_tag_color_9"}]'),
   (NULL, 'Granos y Servicios Integrales, S.A. de C.V.', 'pedro.pastor@proan.com', '+52 395 725 8033', NULL, 'México', '[{"iconClass": "fa-usd", "value": 3, "label": "\u00d3rdenes de venta", "tagClass": "o_tag_color_2"}]')
 ON CONFLICT (correo_electronico) DO NOTHING;
+
 INSERT INTO ssepi_import.contactos (avatar_128, nombre_completo, correo_electronico, telefono, actividades, pais, estadisticas)
 VALUES
   (NULL, 'Granos y Servicios Integrales, S.A. de C.V., Ing. Uriel Padilla', 'mantenimiento.gsi@consorciogsi.com', '+52 395 112 6913', NULL, 'México', '[{"iconClass": "fa-usd", "value": 1, "label": "\u00d3rdenes de venta", "tagClass": "o_tag_color_2"}]'),
@@ -764,6 +680,7 @@ VALUES
   (NULL, 'Polímeros y Derivados, S.A. de C.V.', 'jlcastro@polimeros.com', '+52 477 710 9795', NULL, 'México', '[{"iconClass": "fa-usd", "value": 1, "label": "\u00d3rdenes de venta", "tagClass": "o_tag_color_2"}]'),
   (NULL, 'Prefabricadora de Losas, S.A. de C.V.', 'francisco.aguirre@prelosa.com', '+52 477 740 6000', NULL, 'México', '[{"iconClass": "fa-usd", "value": 5, "label": "\u00d3rdenes de venta", "tagClass": "o_tag_color_2"}]')
 ON CONFLICT (correo_electronico) DO NOTHING;
+
 INSERT INTO ssepi_import.contactos (avatar_128, nombre_completo, correo_electronico, telefono, actividades, pais, estadisticas)
 VALUES
   (NULL, 'Productos Industriales de León, S.A. de C.V.', 'hola@pilsac.com.mx.', '+52 477 778 4155', NULL, 'México', '[{"iconClass": "fa-usd", "value": 2, "label": "\u00d3rdenes de venta", "tagClass": "o_tag_color_2"}]'),
@@ -800,7 +717,6 @@ VALUES
   (NULL, 'prueba', NULL, NULL, NULL, NULL, NULL)
 ON CONFLICT (correo_electronico) DO NOTHING;
 
--- ── Datos: cotizacion_viajes ──
 INSERT INTO ssepi_import.cotizacion_viajes (empresa, km_x2, litros, gasolina, gasolina2, hrs, hr_dani, dani, total)
 VALUES
   ('BOLSAS DE LOS ALTOS', 226.0, 23.7895, 24.5, 582.8421, 5, 104.16, 520.8, 1103.6421),
@@ -837,7 +753,6 @@ VALUES
   ('MINO INDUSTRY', 29.2, 3.0737, 24.5, 75.3053, 2, 104.16, 208.32, 283.6253)
 ON CONFLICT DO NOTHING;
 
--- ── Datos: cotizacion_laboratorio ──
 INSERT INTO ssepi_import.cotizacion_laboratorio (col_30, col_87, col_80, col_161_85, col_52_67)
 VALUES
   ('GASOLINA', 'VENTAS', 'TIEMP. INVERTIDO', 'GASTOS FIJOS X HORA TOTAL', 'CAMIONETA X HORA'),
@@ -891,12 +806,12 @@ VALUES
   ('60', '174', NULL, '0', '105.34'),
   ('48', '174', NULL, '0', '105.34')
 ON CONFLICT DO NOTHING;
+
 INSERT INTO ssepi_import.cotizacion_laboratorio (col_30, col_87, col_80, col_161_85, col_52_67)
 VALUES
   ('480', '348', NULL, '0', '210.68')
 ON CONFLICT DO NOTHING;
 
--- ── Datos: cotizacion_motores ──
 INSERT INTO ssepi_import.cotizacion_motores (col_30, col_87, col_52_67)
 VALUES
   ('GASOLINA', 'VENTAS', 'CAMIONETA X HORA'),
@@ -950,12 +865,12 @@ VALUES
   ('60', '174', '105.34'),
   ('60', '174', '105.34')
 ON CONFLICT DO NOTHING;
+
 INSERT INTO ssepi_import.cotizacion_motores (col_30, col_87, col_52_67)
 VALUES
   ('48', '348', '210.68')
 ON CONFLICT DO NOTHING;
 
--- ── Datos: cotizacion_automatizacion ──
 INSERT INTO ssepi_import.cotizacion_automatizacion (col_650, col_700, col_450, col_900, col_350, col_600, col_1100, col_150, col_52_67, col_30, col_161_85)
 VALUES
   ('PROGRAMACIÓN PLC HMI', 'SERVOMOTOR', 'DISEÑO TABLERO', 'DISEÑO MECANICO', 'INSTALACIÓN', 'FABRICACIÓN', 'SOPORTE', 'ARQUITECTURA', 'HR CAMIONETA', 'GASOLINA', 'GASTOS GENERALES'),
@@ -1009,12 +924,12 @@ VALUES
   (NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '0', '60', '0'),
   (NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '0', '48', '0')
 ON CONFLICT DO NOTHING;
+
 INSERT INTO ssepi_import.cotizacion_automatizacion (col_650, col_700, col_450, col_900, col_350, col_600, col_1100, col_150, col_52_67, col_30, col_161_85)
 VALUES
   (NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '0', '642', '0')
 ON CONFLICT DO NOTHING;
 
--- ── Datos: cotizacion_suministros ──
 INSERT INTO ssepi_import.cotizacion_suministros (col_30, col_87, col_52_67)
 VALUES
   ('GASOLINA', 'VENTAS', 'CAMIONETA X HORA'),
@@ -1068,12 +983,12 @@ VALUES
   ('60', '174', '105.34'),
   ('60', '174', '105.34')
 ON CONFLICT DO NOTHING;
+
 INSERT INTO ssepi_import.cotizacion_suministros (col_30, col_87, col_52_67)
 VALUES
   ('48', '348', '210.68')
 ON CONFLICT DO NOTHING;
 
--- ── Datos: inventario_automatizacion ──
 INSERT INTO ssepi_import.inventario_automatizacion (fecha, cantidad, categoria, num_parte, descripcion, costo_unitario, importe, entradas, salidas, fecha_de_salida)
 VALUES
   ('2026-09-02T00:00:00', 12, 'Canalización', 'US4X2', 'PERFIL UNICANAL SOLIDO 4X2 0.15 MTS CAL 16.', 11.0, 132.0, 12, 0, NULL),
@@ -1127,6 +1042,7 @@ VALUES
   ('2026-09-02T00:00:00', 2, 'Neumatica', 'PL38N8MMQTY5', 'CONECTOR NEUMÁTICO CODO 3/8 NTP X 8 MM', 160.0, 320.0, 2, 0, NULL),
   ('2026-09-02T00:00:00', 1, 'Sensor', 'AD1/AN-1A', 'SENSOR INDUCTIVO M5, NO, NPN, CABLE 2 MTS, DISTANCIA 0.8 MM', 920.0, 920.0, 1, 0, NULL)
 ON CONFLICT (num_parte, fecha) DO NOTHING;
+
 INSERT INTO ssepi_import.inventario_automatizacion (fecha, cantidad, categoria, num_parte, descripcion, costo_unitario, importe, entradas, salidas, fecha_de_salida)
 VALUES
   ('2026-09-02T00:00:00', 2, 'Sensor', 'D-M9B', 'SENSOR MAGNÉTICO DE ESTADO SOLIDO, 2 HILOS, CABLE  3 MTS', 460.0, 920.0, 2, 0, NULL),
@@ -1163,7 +1079,6 @@ VALUES
   (NULL, 0, NULL, NULL, NULL, NULL, 0.0, NULL, NULL, NULL)
 ON CONFLICT (num_parte, fecha) DO NOTHING;
 
--- ── Datos: inventario_electronica ──
 INSERT INTO ssepi_import.inventario_electronica (codigo_marking, descripcion, existencia, ubicacion, encapsulado, link_octopart, link_digikey, link_mouser, costo_unitario_mxn, total_linea_mxn)
 VALUES
   ('LM339', 'AMPLIFICADOR COMPARADOR', 7, 'A1', 'DIP 14', 'https://octopart.com/search?q=LM339', 'https://www.digikey.com.mx/es/products/result?keywords=LM339', 'https://www.mouser.mx/c/?q=LM339', 15, 105),
@@ -1217,6 +1132,7 @@ VALUES
   ('FM1', 'FUSIBLE MINI 1 A 250 V', 4, 'A6', NULL, 'https://octopart.com/search?q=FM1', 'https://www.digikey.com.mx/es/products/result?keywords=FM1', 'https://www.mouser.mx/c/?q=FM1', 15, 60),
   ('MMBF4393LT1G', 'MOSFET 30V  30ma', 5, 'B6', 'SOT-23', 'https://octopart.com/search?q=MMBF4393LT1G', 'https://www.digikey.com.mx/es/products/result?keywords=MMBF4393LT1G', 'https://www.mouser.mx/c/?q=MMBF4393LT1G', 15, 75)
 ON CONFLICT (codigo_marking, ubicacion) DO NOTHING;
+
 INSERT INTO ssepi_import.inventario_electronica (codigo_marking, descripcion, existencia, ubicacion, encapsulado, link_octopart, link_digikey, link_mouser, costo_unitario_mxn, total_linea_mxn)
 VALUES
   ('LM358', 'AMPLIFICADOR OPERACIONAL DUAL', 3, 'C6', 'SOIC 8', 'https://octopart.com/search?q=LM358', 'https://www.digikey.com.mx/es/products/result?keywords=LM358', 'https://www.mouser.mx/c/?q=LM358', 10, 30),
@@ -1268,7 +1184,6 @@ VALUES
   ('TPD2007F', 'COMPUERTA', 4, 'E10', NULL, 'https://octopart.com/search?q=TPD2007F', 'https://www.digikey.com.mx/es/products/result?keywords=TPD2007F', 'https://www.mouser.mx/c/?q=TPD2007F', 90, 360)
 ON CONFLICT (codigo_marking, ubicacion) DO NOTHING;
 
--- ── Datos: ordenes_compra ──
 INSERT INTO ssepi_import.ordenes_compra (prioridad, referencia_de_la_orden, proveedor, comprador, fecha_limite_de_la_orden, actividades, total, estado)
 VALUES
   ('Normal', 'SP-OCS260324', 'DOMUM, Ariel Diaz', 'Arturo Moreno', '2026-04-02T09:51:17', NULL, 29189.27, 'Orden de compra'),
@@ -1276,7 +1191,6 @@ VALUES
   ('Normal', 'SP-OC26121', 'HT6 INGENIERIA S DE RL DE CV', 'Arturo Moreno', '2026-01-29T12:12:21', NULL, 1414.74, 'Orden de compra')
 ON CONFLICT (referencia_de_la_orden) DO NOTHING;
 
--- ── Datos: ordenes_reparacion ──
 INSERT INTO ssepi_import.ordenes_reparacion (prioridad, referencia_de_reparacion, fecha_programada, producto_a_reparar, estado_del_componente, cliente, orden_de_venta, estado, decoracion_de_la_actividad_de_excepcion)
 VALUES
   ('Normal', 'SP-E0738', '2026-04-02T12:24:43', 'HMI', 'Disponible', 'NHK Spring México, S.A. de C.V.', NULL, 'En reparación', NULL),
@@ -1330,6 +1244,7 @@ VALUES
   ('Normal', 'SP-E0709', '2026-03-04T13:40:14', 'SENSOR', NULL, NULL, NULL, 'Reparado', NULL),
   ('Normal', 'SP-E0708', '2026-03-04T13:24:04', 'SENSOR', NULL, NULL, NULL, 'Reparado', NULL)
 ON CONFLICT (referencia_de_reparacion) DO NOTHING;
+
 INSERT INTO ssepi_import.ordenes_reparacion (prioridad, referencia_de_reparacion, fecha_programada, producto_a_reparar, estado_del_componente, cliente, orden_de_venta, estado, decoracion_de_la_actividad_de_excepcion)
 VALUES
   ('Normal', 'SP-E0707', '2026-03-04T13:22:03', 'FUENTE AC/DC', NULL, 'Nishikawa Sealing Systems Mexico', NULL, 'Reparado', NULL),
@@ -1383,6 +1298,7 @@ VALUES
   ('Normal', 'WH/RO/00091', '2026-02-09T13:38:44', NULL, 'Disponible', 'IK PLASTIC', 'SP-E0667', 'Confirmado', NULL),
   ('Normal', 'WH/RO/00090', '2026-02-09T13:38:36', NULL, 'Disponible', 'ECOBOLSAS', 'SP-E0654', 'Confirmado', NULL)
 ON CONFLICT (referencia_de_reparacion) DO NOTHING;
+
 INSERT INTO ssepi_import.ordenes_reparacion (prioridad, referencia_de_reparacion, fecha_programada, producto_a_reparar, estado_del_componente, cliente, orden_de_venta, estado, decoracion_de_la_actividad_de_excepcion)
 VALUES
   ('Normal', 'WH/RO/00089', '2026-02-09T13:38:20', NULL, 'Disponible', 'IK PLASTIC', 'SP-E0680', 'Confirmado', NULL),
@@ -1436,6 +1352,7 @@ VALUES
   ('Normal', 'SP-0634', '2025-11-21T08:19:19', 'VARIADOR DE FRECUENCIA', NULL, 'BOLSAS DE LOS ALTOS', NULL, 'Reparado', NULL),
   ('Normal', 'SP-0633', '2025-11-18T11:20:50', 'BARRA ANTI ESTATICA', NULL, 'Anguiplast, S.A. de C.V.', NULL, 'Cancelado', NULL)
 ON CONFLICT (referencia_de_reparacion) DO NOTHING;
+
 INSERT INTO ssepi_import.ordenes_reparacion (prioridad, referencia_de_reparacion, fecha_programada, producto_a_reparar, estado_del_componente, cliente, orden_de_venta, estado, decoracion_de_la_actividad_de_excepcion)
 VALUES
   ('Normal', 'SP-0632', '2025-11-14T16:59:55', 'BARRA ANTI ESTATICA', NULL, 'Anguiplast, S.A. de C.V.', NULL, 'Cancelado', NULL),
@@ -1489,6 +1406,7 @@ VALUES
   ('Normal', 'SP-0582', '2025-09-11T12:39:55', 'HMI', NULL, 'NHK Spring México, S.A. de C.V.', NULL, 'Reparado', NULL),
   ('Normal', 'SP-0581', '2025-09-09T15:33:08', 'VARIADOR DE FRECUENCIA', NULL, 'Envases Plásticos del Centro, S.A. de C.V.', NULL, 'Reparado', NULL)
 ON CONFLICT (referencia_de_reparacion) DO NOTHING;
+
 INSERT INTO ssepi_import.ordenes_reparacion (prioridad, referencia_de_reparacion, fecha_programada, producto_a_reparar, estado_del_componente, cliente, orden_de_venta, estado, decoracion_de_la_actividad_de_excepcion)
 VALUES
   ('Normal', 'SP-0580', '2025-09-09T15:16:30', 'HMI', NULL, 'IK Plastic Compound México, S.A. de C.V.', NULL, 'Reparado', NULL),
@@ -1542,6 +1460,7 @@ VALUES
   ('Normal', 'SP-0529', '2025-07-28T21:20:07', 'TARJETA ELECTRONICA', NULL, 'ECOBOLSAS', NULL, 'Reparado', NULL),
   ('Normal', 'SP-0528', '2025-07-28T21:18:14', 'HMI', NULL, 'RONGTAI', NULL, 'Cancelado', NULL)
 ON CONFLICT (referencia_de_reparacion) DO NOTHING;
+
 INSERT INTO ssepi_import.ordenes_reparacion (prioridad, referencia_de_reparacion, fecha_programada, producto_a_reparar, estado_del_componente, cliente, orden_de_venta, estado, decoracion_de_la_actividad_de_excepcion)
 VALUES
   ('Normal', 'SP-0526', '2025-07-28T21:07:29', 'FUENTE AC/DC', NULL, 'Envases Plásticos del Centro, S.A. de C.V.', NULL, 'Reparado', NULL),
@@ -1549,7 +1468,6 @@ VALUES
   ('Normal', 'SP-0524', '2025-07-25T11:58:52', 'Servicio de reparación de SERVODRIVE', NULL, 'RONGTAI', NULL, 'Reparado', NULL)
 ON CONFLICT (referencia_de_reparacion) DO NOTHING;
 
--- ── Datos: ordenes_venta ──
 INSERT INTO ssepi_import.ordenes_venta (referencia_de_la_orden, fecha_de_creacion, cliente, vendedor, actividades, total, estado)
 VALUES
   ('Reparacion electrónica (72)', NULL, NULL, NULL, NULL, 1103467.68, NULL),
@@ -1603,6 +1521,7 @@ VALUES
   ('SP-S260216', '2026-02-16T09:28:12', 'DI-CENTRAL', 'Eduardo Amezcua', NULL, 184426.08, 'Cancelado'),
   ('SP-0638', '2026-02-09T16:43:49', 'Envases Plásticos del Centro, S.A. de C.V.', 'Daniel Zuñiga', NULL, 1.16, 'Orden de venta')
 ON CONFLICT (referencia_de_la_orden) DO NOTHING;
+
 INSERT INTO ssepi_import.ordenes_venta (referencia_de_la_orden, fecha_de_creacion, cliente, vendedor, actividades, total, estado)
 VALUES
   ('SP-0684', '2026-02-09T16:22:31', 'NHK Spring México, S.A. de C.V.', 'Daniel Zuñiga', NULL, 12101.12, 'Orden de venta'),
@@ -1656,6 +1575,7 @@ VALUES
   ('SP-S260326', '2026-03-26T14:16:44', 'Grupo Zahonero', 'Eduardo Amezcua', NULL, 190647.51, 'Cotización'),
   ('SP-S260306-1', '2026-03-23T11:28:02', 'DI-CENTRAL', 'Eduardo Amezcua', NULL, 57417.08, 'Cotización')
 ON CONFLICT (referencia_de_la_orden) DO NOTHING;
+
 INSERT INTO ssepi_import.ordenes_venta (referencia_de_la_orden, fecha_de_creacion, cliente, vendedor, actividades, total, estado)
 VALUES
   ('SP-S260320', '2026-03-20T14:07:23', 'DI-CENTRAL', 'Eduardo Amezcua', NULL, 109649.0, 'Cotización'),
@@ -1709,6 +1629,7 @@ VALUES
   ('SP-MDZ004-38', '2026-03-11T09:32:35', 'Nishikawa Sealing Systems Mexico, Victor Garnica', 'Daniel Zuñiga', NULL, 10266.0, 'Cotización'),
   ('SP-MDZ004-34', '2026-02-27T10:50:50', 'Nishikawa Sealing Systems Mexico, Victor Garnica', 'Daniel Zuñiga', NULL, 5332.52, 'Cancelado')
 ON CONFLICT (referencia_de_la_orden) DO NOTHING;
+
 INSERT INTO ssepi_import.ordenes_venta (referencia_de_la_orden, fecha_de_creacion, cliente, vendedor, actividades, total, estado)
 VALUES
   ('SP-MDZ04-31', '2026-02-27T09:15:40', 'Nishikawa Sealing Systems Mexico, Diego García', 'Daniel Zuñiga', NULL, 9261.44, 'Orden de venta'),
@@ -1717,7 +1638,6 @@ VALUES
   ('SP-MEQ028-02', '2026-02-09T10:43:58', 'Granos y Servicios Integrales, S.A. de C.V.', NULL, NULL, 0.0, 'Orden de venta'),
   ('SP-MDZ008-10', '2026-02-12T09:25:01', 'COFICAB', 'Daniel Zuñiga', NULL, 13548.8, 'Orden de venta')
 ON CONFLICT (referencia_de_la_orden) DO NOTHING;
-
 
 -- FIN: verificación de conteo
 SELECT 'bom_materiales', COUNT(*) FROM ssepi_import.bom_materiales
