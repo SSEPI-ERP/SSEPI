@@ -158,16 +158,16 @@ const ComprasModule = (function() {
     }
 
     async function _loadCompras() {
-        compras = await comprasService.select({}, { orderBy: 'fecha_creacion', ascending: false });
+        compras = await comprasService.select({}, { orderBy: 'fecha_creacion', ascending: false, page: 0, pageSize: 500 });
         _applyFilters();
     }
 
     async function _loadProveedores() {
-        proveedores = await contactosService.select({ tipo: 'provider' });
+        proveedores = await contactosService.select({ tipo: 'provider' }, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 2000 });
     }
 
     async function _loadContactos() {
-        contactos = await contactosService.select({});
+        contactos = await contactosService.select({}, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 3000 });
     }
 
     function _rebuildProveedoresVista() {
@@ -175,15 +175,15 @@ const ComprasModule = (function() {
     }
 
     async function _loadTaller() {
-        ordenesTaller = await tallerService.select({ estado: ['Diagnóstico', 'En Espera'] });
+        ordenesTaller = await tallerService.select({ estado: ['Diagnóstico', 'En Espera'] }, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 });
     }
 
     async function _loadMotores() {
-        ordenesMotores = await motoresService.select({ estado: ['Diagnóstico', 'En Espera'] });
+        ordenesMotores = await motoresService.select({ estado: ['Diagnóstico', 'En Espera'] }, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 });
     }
 
     async function _loadProyectos() {
-        proyectos = await proyectosService.select({ estado: ['pendiente', 'progreso'] });
+        proyectos = await proyectosService.select({ estado: ['pendiente', 'progreso'] }, { orderBy: 'fecha', ascending: false, page: 0, pageSize: 800 });
     }
 
     function _populateProveedoresSelect() {

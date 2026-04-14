@@ -331,7 +331,8 @@ const TallerModule = (function() {
 
     async function _loadOrders() {
         try {
-            orders = await ordenesService.select({}, { orderBy: 'fecha_ingreso', ascending: false });
+            // Cargar solo el primer bloque para que el módulo abra rápido.
+            orders = await ordenesService.select({}, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 400 });
         } catch (e) {
             console.error('[Taller] Error cargando ordenes_taller:', e);
             orders = [];
@@ -342,16 +343,19 @@ const TallerModule = (function() {
 
     async function _loadClients() {
         // Obtener contactos de tipo cliente (provider = false)
-        const contactos = await contactosService.select({ tipo: 'client' });
+        const contactos = await contactosService.select({ tipo: 'client' }, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 2000 });
         clients = contactos;
     }
 
     async function _loadInventory() {
-        inventory = await inventarioService.select({ categoria: ['refaccion', 'consumible'] });
+        inventory = await inventarioService.select(
+            { categoria: ['refaccion', 'consumible'] },
+            { orderBy: 'sku', ascending: true, page: 0, pageSize: 2000 }
+        );
     }
 
     async function _loadComprasVinculadas() {
-        const compras = await comprasService.select();
+        const compras = await comprasService.select({}, { orderBy: 'fecha_creacion', ascending: false, page: 0, pageSize: 600 });
         compras
             .filter(c => c.vinculacion && c.vinculacion.tipo === 'taller')
             .forEach(c => {

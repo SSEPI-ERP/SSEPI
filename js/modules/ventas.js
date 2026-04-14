@@ -499,7 +499,10 @@ const VentasModule = (function() {
 
     async function _loadVentas() {
         try {
-            ventas = await ventasService.select({}, { orderBy: 'fecha', ascending: false }) || [];
+            ventas = await ventasService.select(
+                {},
+                { orderBy: 'fecha', ascending: false, page: 0, pageSize: 400 }
+            ) || [];
         } catch (e) {
             console.warn('[Ventas] Error cargando ventas:', e);
             ventas = [];
@@ -508,7 +511,10 @@ const VentasModule = (function() {
 
     async function _loadCotizaciones() {
         try {
-            cotizaciones = await cotizacionesService.select({}, { orderBy: 'fecha', ascending: false }) || [];
+            cotizaciones = await cotizacionesService.select(
+                {},
+                { orderBy: 'fecha', ascending: false, page: 0, pageSize: 400 }
+            ) || [];
         } catch (e) {
             console.warn('[Ventas] Error cargando cotizaciones:', e);
             cotizaciones = [];
@@ -516,28 +522,32 @@ const VentasModule = (function() {
     }
 
     async function _loadInventario() {
-        try { inventario = await inventarioService.select({}) || []; } catch (e) { console.warn('[Ventas] inventario:', e); inventario = []; }
+        try {
+            inventario = await inventarioService.select({}, { orderBy: 'sku', ascending: true, page: 0, pageSize: 2000 }) || [];
+        } catch (e) { console.warn('[Ventas] inventario:', e); inventario = []; }
     }
 
     async function _loadContactos() {
-        try { contactos = await contactosService.select({ tipo: 'client' }) || []; } catch (e) { console.warn('[Ventas] contactos:', e); contactos = []; }
+        try {
+            contactos = await contactosService.select({ tipo: 'client' }, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 2000 }) || [];
+        } catch (e) { console.warn('[Ventas] contactos:', e); contactos = []; }
     }
 
     async function _loadProyectos() {
-        try { proyectos = await proyectosService.select({}) || []; } catch (e) { console.warn('[Ventas] proyectos:', e); proyectos = []; }
+        try { proyectos = await proyectosService.select({}, { orderBy: 'fecha', ascending: false, page: 0, pageSize: 800 }) || []; } catch (e) { console.warn('[Ventas] proyectos:', e); proyectos = []; }
     }
 
     async function _loadTaller() {
-        try { taller = await tallerService.select({}) || []; } catch (e) { console.warn('[Ventas] taller:', e); taller = []; }
+        try { taller = await tallerService.select({}, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 }) || []; } catch (e) { console.warn('[Ventas] taller:', e); taller = []; }
     }
 
     async function _loadMotores() {
-        try { motores = await motoresService.select({}) || []; } catch (e) { console.warn('[Ventas] motores:', e); motores = []; }
+        try { motores = await motoresService.select({}, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 }) || []; } catch (e) { console.warn('[Ventas] motores:', e); motores = []; }
     }
 
     async function _loadCompras() {
         try {
-            const compras = await comprasService.select({}) || [];
+            const compras = await comprasService.select({}, { orderBy: 'fecha_creacion', ascending: false, page: 0, pageSize: 800 }) || [];
             solicitudesTaller = compras.filter(c => c.vinculacion?.tipo === 'taller' && c.estado === 1);
         } catch (e) {
             console.warn('[Ventas] compras:', e);

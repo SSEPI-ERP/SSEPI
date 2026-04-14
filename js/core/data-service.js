@@ -154,7 +154,9 @@ export class DataService {
 
     // Select con columnas específicas o '*' por defecto
     const columns = options.select || '*';
-    let supabaseQuery = this.supabase.from(this.tableName).select(columns, { count: options.count ? 'exact' : undefined });
+    let supabaseQuery = this.supabase
+      .from(this.tableName)
+      .select(columns, options.count ? { count: 'exact' } : undefined);
 
     // Aplicar filtros
     Object.entries(query).forEach(([key, value]) => {
@@ -216,13 +218,13 @@ export class DataService {
     // Aplicar paginación con range
     supabaseQuery = supabaseQuery.range(rangeStart, rangeEnd);
 
-    const { data, error } = await supabaseQuery;
+    const { data, error, count } = await supabaseQuery;
 
     if (error) throw error;
 
     // Retornar datos con info de paginación si se solicitó count
     if (options.count) {
-      return { data, count: error?.details?.count || data?.length };
+      return { data: data || [], count: (typeof count === 'number' ? count : 0) };
     }
 
     return data;
