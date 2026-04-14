@@ -19,10 +19,11 @@ WHERE n.nspname = 'public' AND p.proname = 'ssepi_current_rol';
 -- NOTA: Esto solo funciona si hay una sesión autenticada
 -- SELECT public.ssepi_current_rol() AS rol_actual;
 
--- 4. Verificar políticas RLS en ordenes_taller
+-- 4. Verificar políticas RLS en ordenes_taller (INSERT y nombres relacionados ventas/admin)
 SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check
 FROM pg_policies
-WHERE tablename = 'ordenes_taller' AND policyname LIKE '%ventas%' OR policyname LIKE '%insert%';
+WHERE tablename = 'ordenes_taller'
+  AND (policyname ILIKE '%ventas%' OR policyname ILIKE '%admin%' OR cmd = 'INSERT');
 
 -- 5. Verificar políticas RLS en orden_historial
 SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check
@@ -51,9 +52,33 @@ WHERE n.nspname = 'public' AND p.proname = 'trg_taller_al_crear';
 -- 9. Contar registros en orden_historial (si está vacío, el trigger no está funcionando)
 SELECT COUNT(*) AS total_eventos FROM public.orden_historial;
 
--- 10. Verificar si hay errores recientes en audit_logs (si existe la tabla)
-SELECT table_name, action, user_email, user_role, timestamp, metadata
+-- 10. Últimos eventos en audit_logs (solo si existe public.audit_logs)
+--    Esquemas distintos en distintos entornos. Lista columnas con:
+--    SELECT column_name FROM information_schema.columns
+--      WHERE table_schema = 'public' AND table_name = 'audit_logs' ORDER BY ordinal_position;
+
+-- Variante inglés típica (action, user_email, user_role, timestamp):
+-- SELECT table_name, action, user_email, user_role, "timestamp", metadata
+-- FROM public.audit_logs
+-- WHERE table_name IN ('ordenes_taller', 'orden_historial')
+-- ORDER BY "timestamp" DESC LIMIT 10;
+
+-- Variante Supabase/prod actual: usuario, accion, created_at (sin user_email ni timestamp ni user_role a nivel columna)
+SELECT
+  table_name,
+  accion AS action,
+  usuario AS user_email,
+  metadata ->> 'user_role' AS user_role,
+  created_at AS "timestamp",
+  metadata
 FROM public.audit_logs
 WHERE table_name IN ('ordenes_taller', 'orden_historial')
-ORDER BY timestamp DESC
+ORDER BY created_at DESC
 LIMIT 10;
+
+-- 10b. (Opcional) Ver forma de metadata para afinar metadata ->> '...'
+-- SELECT metadata
+-- FROM public.audit_logs
+-- WHERE table_name IN ('ordenes_taller', 'orden_historial')
+-- ORDER BY created_at DESC
+-- LIMIT 1;
