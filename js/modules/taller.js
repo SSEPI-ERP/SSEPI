@@ -845,13 +845,28 @@ const TallerModule = (function() {
         _renderPrioritySupplierBarTaller();
     }
 
-    function _abrirNuevaOrden() {
+    async function _abrirNuevaOrden() {
         console.log('✅ [Taller] Click en Nueva Orden → abriendo modal');
         const wsModal = document.getElementById('wsModal');
         if (!wsModal) {
             console.error('[Taller] No se encontró #wsModal');
             return;
         }
+
+        // Verificar si hay cotizaciones pendientes de Ventas
+        const cotizacionesPendientes = await _buscarCotizacionesPendientes();
+
+        if (cotizacionesPendientes && cotizacionesPendientes.length > 0) {
+            // Mostrar selector de cotizaciones
+            const seleccion = await _mostrarSelectorCotizaciones(cotizacionesPendientes);
+            if (seleccion) {
+                await _cargarOrdenDesdeCotizacion(seleccion);
+                wsModal.classList.add('active');
+                return;
+            }
+        }
+
+        // Si no hay cotizaciones o usuario cancela, abrir orden vacía
         try {
             tallerDraftSessionKey = null;
             isNewOrder = true;
@@ -874,6 +889,151 @@ const TallerModule = (function() {
             console.warn('[Taller] _abrirNuevaOrden preparación:', e);
         }
         wsModal.classList.add('active');
+    }
+
+    async function _buscarCotizacionesPendientes() {
+        try {
+            const supabase = window.supabase;
+            if (!supabase) return [];
+
+            // Buscar cotizaciones con origen='taller' o departamento='Taller Electrónica'
+            const { data, error } = await supabase
+                .from('cotizaciones')
+                .select('*')
+                .eq('estado', 'aprobada')
+                .in('departamento', ['Taller Electrónica', 'Electrónica'])
+                .is('orden_origen_id', null) // Que no haya generado orden aún
+                .order('fecha_creacion', { ascending: false })
+                .limit(10);
+
+            if (error) {
+                console.warn('[Taller] No se pudieron buscar cotizaciones:', error);
+                return [];
+            }
+            return data || [];
+        } catch (e) {
+            console.warn('[Taller] Error buscando cotizaciones:', e);
+            return [];
+        }
+    }
+
+    function _mostrarSelectorCotizaciones(cotizaciones) {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'config-modal-backdrop';
+            modal.innerHTML = `
+                <div class="config-modal" style="max-width: 800px;">
+                    <div class="config-modal-header">
+                        <h2><i class="fas fa-file-invoice"></i> Cotizaciones Pendientes de Ventas</h2>
+                        <button type="button" class="config-modal-close" id="closeCotModal"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="config-modal-body">
+                        <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                            Hay ${cotizaciones.length} cotización(es) aprobada(s) desde Ventas. ¿Deseas crear una orden desde alguna de ellas?
+                        </p>
+                        <div style="max-height: 400px; overflow-y: auto;">
+                            <table class="lista-table">
+                                <thead>
+                                    <tr>
+                                        <th>Folio</th>
+                                        <th>Cliente</th>
+                                        <th>Equipo</th>
+                                        <th>Total</th>
+                                        <th>Fecha</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${cotizaciones.map(c => `
+                                        <tr>
+                                            <td>${c.folio || '—'}</td>
+                                            <td>${c.cliente || '—'}</td>
+                                            <td>${c.equipo || c.descripcion || '—'}</td>
+                                            <td>$${(c.total || 0).toLocaleString()}</td>
+                                            <td>${new Date(c.fecha_creacion || c.fecha).toLocaleDateString()}</td>
+                                            <td><button class="btn btn-sm btn-primary" data-cot-id="${c.id}">Seleccionar</button></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style="margin-top: 16px; text-align: right;">
+                            <button class="btn btn-secondary" id="cancelCotSelect">Crear orden vacía</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            modal.querySelector('#closeCotModal').onclick = () => { resolve(null); modal.remove(); };
+            modal.querySelector('#cancelCotSelect').onclick = () => { resolve(null); modal.remove(); };
+            modal.querySelectorAll('[data-cot-id]').forEach(btn => {
+                btn.onclick = () => {
+                    const cot = cotizaciones.find(c => c.id === btn.dataset.cotId);
+                    resolve(cot);
+                    modal.remove();
+                };
+            });
+
+            modal.onclick = (e) => { if (e.target === modal) { resolve(null); modal.remove(); } };
+        });
+    }
+
+    async function _cargarOrdenDesdeCotizacion(cotizacion) {
+        console.log('[Taller] Cargando orden desde cotización:', cotizacion.folio);
+
+        tallerDraftSessionKey = null;
+        isNewOrder = true;
+        currentOrder = null;
+        orderId = null;
+        diagnosticoEnlaces = [];
+        diagnosticoInventario = [];
+        consumiblesUsados = [];
+        componentesInventario = [];
+        componentesCompra = [];
+        fechaInicioOrden = new Date().toISOString();
+        fechasEtapas = {};
+
+        _resetForm();
+
+        // Llenar datos desde la cotización
+        const folioEl = document.getElementById('inpFolio');
+        if (folioEl) folioEl.value = 'SP-E' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-001';
+
+        // Cliente
+        const clientSel = document.getElementById('selClient');
+        if (clientSel && cotizacion.cliente) {
+            clientSel.value = cotizacion.cliente;
+        }
+
+        // Equipo/Descripción
+        const equipEl = document.getElementById('inpEquip');
+        if (equipEl && cotizacion.descripcion) {
+            equipEl.value = cotizacion.descripcion;
+        }
+
+        // Falla reportada
+        const failEl = document.getElementById('inpFail');
+        if (failEl && cotizacion.falla) {
+            failEl.value = cotizacion.falla;
+        }
+
+        // Notas
+        const notesEl = document.getElementById('generalNotes');
+        if (notesEl && cotizacion.notas) {
+            notesEl.value = cotizacion.notas;
+            _setWsGnrlText(cotizacion.notas);
+        }
+
+        // Guardar referencia a la cotización original
+        window._cotizacionOrigenId = cotizacion.id;
+
+        _populateClientSelect();
+        _irPaso(1);
+        document.getElementById('fechaInicioDisplay').innerText = new Date().toLocaleString();
+        _renderPrioritySupplierBarTaller();
+
+        alert('✅ Orden cargada desde cotización ' + cotizacion.folio);
     }
 
     function _estadoToPaso(estado) {

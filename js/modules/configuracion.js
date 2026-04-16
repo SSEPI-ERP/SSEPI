@@ -48,8 +48,10 @@
         if (!window.authService) return;
         window.authService.getCurrentProfile().then(function (p) {
             currentProfile = p;
-            if (!p || (p.rol !== 'admin' && p.rol !== 'superadmin')) {
-                alert('Acceso denegado. Solo administradores pueden configurar permisos.');
+            // Solo admin, superadmin, automatizacion y electronica pueden acceder
+            var rolesPermitidos = ['admin', 'superadmin', 'automatizacion', 'electronica'];
+            if (!p || !rolesPermitidos.includes(p.rol)) {
+                alert('Acceso denegado. Solo administradores y roles autorizados pueden configurar permisos.');
                 window.location.href = '/panel.html';
                 return;
             }
