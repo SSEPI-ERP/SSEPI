@@ -663,13 +663,25 @@ tr.inbound-unread td { font-weight: 500; }
 
 /* Override para submenu de configuración en panel.html */
 #configSubmenu {
-  max-height: 0;
+  max-height: 0 !important;
   opacity: 0;
+  overflow: hidden;
 }
 
 #configSubmenu.expanded {
-  max-height: 500px;
+  max-height: 500px !important;
   opacity: 1;
+}
+
+/* Asegurar que el submenu no tenga display:none inline */
+#configSubmenu[style*="display: none"] {
+  display: block !important;
+  max-height: 0;
+}
+
+#configSubmenu.expanded[style*="display"] {
+  display: block !important;
+  max-height: 500px;
 }
 
 .nav-submenu li a {
