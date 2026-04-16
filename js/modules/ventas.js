@@ -1825,13 +1825,14 @@ const VentasModule = (function() {
                 ? (contacto.nombre || contacto.empresa || contacto.email || 'Cliente')
                 : '';
             if (contacto) {
-                const opt = clienteSelect?.options[clienteSelect.selectedIndex];
-                const km = parseInt(opt?.dataset?.km, 10) || 0;
-                const clienteTabulador = tabuladorTaller.clientes.find(c => c.nombre === (contacto.nombre || contacto.empresa));
+                // Priorizar datos de BD (km y horas_viaje) sobre tabulador hardcoded
+                const kmDesdeBD = contacto.km || contacto.horas_viaje ? contacto.km : 0;
+                const horasDesdeBD = contacto.horas_viaje || 0;
+
                 calculadoraClienteActual = {
                     nombre: clienteNombre,
-                    km: clienteTabulador?.km || km || 0,
-                    horas: clienteTabulador?.horas || 0,
+                    km: kmDesdeBD,
+                    horas: horasDesdeBD,
                     email: contacto.email,
                     telefono: contacto.telefono,
                     rfc: contacto.rfc,
