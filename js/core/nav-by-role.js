@@ -236,6 +236,14 @@
                     }
                 } else if (!allowedForModule(rol, module, null)) {
                     hide(el);
+                } else {
+                    // Si el elemento es visible y es un submenú de configuración, asegurar que el submenu pueda desplegarse
+                    if (module === 'configuracion' && el.classList.contains('nav-item-has-submenu')) {
+                        var submenu = el.nextElementSibling;
+                        if (submenu && submenu.classList.contains('nav-submenu')) {
+                            // No forzar display aquí, el toggle lo controla
+                        }
+                    }
                 }
             }
         }
