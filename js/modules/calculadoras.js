@@ -16,6 +16,8 @@
     var excelSheetsPreview = null;
     var simAutoTarifas = [];
     var hojaFilasList = [];
+    var bomList = [];
+    var serviciosList = [];
 
     function loadCalculadoras() {
         if (!supabase()) return Promise.resolve([]);
@@ -41,6 +43,24 @@
             if (r.error) throw r.error;
             clientesList = r.data || [];
             return clientesList;
+        });
+    }
+
+    function loadBOM() {
+        if (!supabase()) return Promise.resolve([]);
+        return supabase().from('bom_automatizacion').select('*').order('item').then(function(r) {
+            if (r.error) throw r.error;
+            bomList = r.data || [];
+            return bomList;
+        });
+    }
+
+    function loadServicios() {
+        if (!supabase()) return Promise.resolve([]);
+        return supabase().from('servicios_automatizacion').select('*').order('nombre').then(function(r) {
+            if (r.error) throw r.error;
+            serviciosList = r.data || [];
+            return serviciosList;
         });
     }
 
@@ -99,6 +119,147 @@
         sel.innerHTML = calculadorasList.map(function(c) {
             return '<option value="' + esc(c.id) + '"' + (selectedId === c.id ? ' selected' : '') + '>' + esc(c.nombre) + '</option>';
         }).join('');
+    }
+
+    function renderBOM() {
+        var tbody = document.getElementById('tablaBOMBody');
+        if (!tbody) return;
+
+        if (!bomList || bomList.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">No hay materiales registrados en el BOM</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = bomList.map(function(m) {
+            return '<tr>' +
+                '<td>' + (m.item || '—') + '</td>' +
+                '<td>' + esc(m.numero_parte || '—') + '</td>' +
+                '<td>' + esc(m.descripcion || '—') + '</td>' +
+                '<td>' + esc(m.categoria || '—') + '</td>' +
+                '<td>' + esc(m.proveedor || '—') + '</td>' +
+                '<td style="text-align: right;">$' + (m.precio_unitario != null ? Number(m.precio_unitario).toFixed(2) : '0.00') + '</td>' +
+                '<td><span class="status-badge ' + (m.estado === 'Activo' ? 'status-success' : 'status-error') + '">' + esc(m.estado || 'Inactivo') + '</span></td>' +
+                '<td><button type="button" class="btn-ssepi btn-edit" data-bom-id="' + esc(m.id) + '"><i class="fas fa-edit"></i> Editar</button></td>' +
+                '</tr>';
+        }).join('');
+
+        tbody.querySelectorAll('[data-bom-id]').forEach(function(btn) {
+            btn.addEventListener('click', function() { openModalBOM(btn.getAttribute('data-bom-id')); });
+        });
+
+        updateBOMTotals();
+    }
+
+    function updateBOMTotals() {
+        var totalMateriales = 0;
+        var costoPlanta = 0;
+        var costoOficina = 0;
+
+        bomList.forEach(function(m) {
+            if (m.estado === 'Activo' && m.precio_unitario) {
+                var precio = Number(m.precio_unitario);
+                totalMateriales += precio;
+                // Desglose estimado: 70% planta, 30% oficina
+                costoPlanta += precio * 0.7;
+                costoOficina += precio * 0.3;
+            }
+        });
+
+        var fmt = function(n) { return '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+
+        var elTotalMat = document.getElementById('bomTotalMateriales');
+        var elPlanta = document.getElementById('bomCostoPlanta');
+        var elOficina = document.getElementById('bomCostoOficina');
+        var elTotal = document.getElementById('bomCostoTotal');
+
+        if (elTotalMat) elTotalMat.textContent = fmt(totalMateriales);
+        if (elPlanta) elPlanta.textContent = fmt(costoPlanta);
+        if (elOficina) elOficina.textContent = fmt(costoOficina);
+        if (elTotal) elTotal.textContent = fmt(totalMateriales);
+    }
+
+    function renderServicios() {
+        var tbody = document.getElementById('tablaServiciosBody');
+        if (!tbody) return;
+
+        if (!serviciosList || serviciosList.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">No hay servicios registrados</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = serviciosList.map(function(s) {
+            var costoPlanta = s.costo_planta != null ? Number(s.costo_planta) : 0;
+            var costoOficina = s.costo_oficina != null ? Number(s.costo_oficina) : 0;
+            var costoTotal = costoPlanta + costoOficina;
+            return '<tr>' +
+                '<td>' + esc(s.nombre) + '</td>' +
+                '<td>' + esc(s.area || '—') + '</td>' +
+                '<td style="text-align: right;">$' + costoPlanta.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + costoOficina.toFixed(2) + '</td>' +
+                '<td style="text-align: right; font-weight: 600;">$' + costoTotal.toFixed(2) + '</td>' +
+                '<td>' + (s.horas_estimadas != null ? s.horas_estimadas : '—') + '</td>' +
+                '<td><span class="status-badge ' + (s.activo ? 'status-success' : 'status-error') + '">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></td>' +
+                '<td><button type="button" class="btn-ssepi btn-edit" data-servicio-id="' + esc(s.id) + '"><i class="fas fa-edit"></i> Editar</button></td>' +
+                '</tr>';
+        }).join('');
+
+        tbody.querySelectorAll('[data-servicio-id]').forEach(function(btn) {
+            btn.addEventListener('click', function() { openModalServicio(btn.getAttribute('data-servicio-id')); });
+        });
+    }
+
+    function fillBOMFiltros() {
+        var sel = document.getElementById('bomFiltroCategoria');
+        if (!sel) return;
+
+        var categorias = {};
+        bomList.forEach(function(m) {
+            if (m.categoria) categorias[m.categoria] = true;
+        });
+
+        var current = sel.value;
+        sel.innerHTML = '<option value="">Todas</option>' +
+            Object.keys(categorias).sort().map(function(c) {
+                return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+            }).join('');
+
+        if (current && categorias[current]) sel.value = current;
+    }
+
+    function applyBOMFiltros() {
+        var catFilter = document.getElementById('bomFiltroCategoria') ? document.getElementById('bomFiltroCategoria').value : '';
+        var estFilter = document.getElementById('bomFiltroEstado') ? document.getElementById('bomFiltroEstado').value : '';
+
+        var filtered = bomList.filter(function(m) {
+            var matchCat = !catFilter || m.categoria === catFilter;
+            var matchEst = !estFilter || m.estado === estFilter;
+            return matchCat && matchEst;
+        });
+
+        var tbody = document.getElementById('tablaBOMBody');
+        if (!tbody) return;
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">No hay materiales con estos filtros</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = filtered.map(function(m) {
+            return '<tr>' +
+                '<td>' + (m.item || '—') + '</td>' +
+                '<td>' + esc(m.numero_parte || '—') + '</td>' +
+                '<td>' + esc(m.descripcion || '—') + '</td>' +
+                '<td>' + esc(m.categoria || '—') + '</td>' +
+                '<td>' + esc(m.proveedor || '—') + '</td>' +
+                '<td style="text-align: right;">$' + (m.precio_unitario != null ? Number(m.precio_unitario).toFixed(2) : '0.00') + '</td>' +
+                '<td><span class="status-badge ' + (m.estado === 'Activo' ? 'status-success' : 'status-error') + '">' + esc(m.estado || 'Inactivo') + '</span></td>' +
+                '<td><button type="button" class="btn-ssepi btn-edit" data-bom-id="' + esc(m.id) + '"><i class="fas fa-edit"></i> Editar</button></td>' +
+                '</tr>';
+        }).join('');
+
+        tbody.querySelectorAll('[data-bom-id]').forEach(function(btn) {
+            btn.addEventListener('click', function() { openModalBOM(btn.getAttribute('data-bom-id')); });
+        });
     }
 
     function fillHojaCalcSelect() {
@@ -557,6 +718,223 @@
         if (modal) { modal.classList.remove('active'); modal.setAttribute('aria-hidden', 'true'); }
     }
 
+    // --- Modal BOM ---
+    function openModalBOM(id) {
+        var title = document.getElementById('modalBOMTitle');
+        var modal = document.getElementById('modalBOM');
+        var idInp = document.getElementById('modalBOMId');
+        var item = document.getElementById('modalBOMItem');
+        var numeroParte = document.getElementById('modalBOMNumeroParte');
+        var descripcion = document.getElementById('modalBOMDescripcion');
+        var categoria = document.getElementById('modalBOMCategoria');
+        var proveedor = document.getElementById('modalBOMProveedor');
+        var precio = document.getElementById('modalBOMPrecio');
+        var moneda = document.getElementById('modalBOMMoneda');
+        var estado = document.getElementById('modalBOMEstado');
+        var link = document.getElementById('modalBOMLink');
+        var delBtn = document.getElementById('modalBOMEliminar');
+
+        if (!modal || !idInp) return;
+
+        if (id) {
+            var m = bomList.find(function(x) { return x.id === id; });
+            if (!m) return;
+            title.textContent = 'Editar material BOM';
+            idInp.value = m.id;
+            item.value = m.item || '';
+            numeroParte.value = m.numero_parte || '';
+            descripcion.value = m.descripcion || '';
+            categoria.value = m.categoria || '';
+            proveedor.value = m.proveedor || '';
+            precio.value = m.precio_unitario != null ? m.precio_unitario : '';
+            moneda.value = m.moneda || 'MXN';
+            estado.value = m.estado || 'Activo';
+            link.value = m.link || '';
+            delBtn.style.display = 'inline-flex';
+        } else {
+            title.textContent = 'Nuevo material BOM';
+            idInp.value = '';
+            item.value = bomList.length > 0 ? Math.max.apply(null, bomList.map(function(x) { return x.item || 0; })) + 1 : 1;
+            numeroParte.value = '';
+            descripcion.value = '';
+            categoria.value = '';
+            proveedor.value = '';
+            precio.value = '';
+            moneda.value = 'MXN';
+            estado.value = 'Activo';
+            link.value = '';
+            delBtn.style.display = 'none';
+        }
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function saveModalBOM() {
+        var idInp = document.getElementById('modalBOMId');
+        var item = document.getElementById('modalBOMItem');
+        var numeroParte = document.getElementById('modalBOMNumeroParte');
+        var descripcion = document.getElementById('modalBOMDescripcion');
+        var categoria = document.getElementById('modalBOMCategoria');
+        var proveedor = document.getElementById('modalBOMProveedor');
+        var precio = document.getElementById('modalBOMPrecio');
+        var moneda = document.getElementById('modalBOMMoneda');
+        var estado = document.getElementById('modalBOMEstado');
+        var link = document.getElementById('modalBOMLink');
+
+        var id = (idInp && idInp.value) ? idInp.value.trim() : '';
+        var payload = {
+            item: item && item.value ? parseInt(item.value, 10) : null,
+            numero_parte: numeroParte && numeroParte.value ? numeroParte.value.trim() : null,
+            descripcion: descripcion && descripcion.value ? descripcion.value.trim() : null,
+            categoria: categoria && categoria.value ? categoria.value.trim() : null,
+            proveedor: proveedor && proveedor.value ? proveedor.value.trim() : null,
+            precio_unitario: precio && precio.value ? parseFloat(precio.value) : 0,
+            moneda: moneda && moneda.value ? moneda.value.trim() : 'MXN',
+            estado: estado && estado.value ? estado.value.trim() : 'Activo',
+            link: link && link.value ? link.value.trim() : null,
+            updated_at: new Date().toISOString()
+        };
+
+        if (!payload.descripcion) { alert('La descripción es obligatoria.'); return; }
+
+        var prom;
+        if (id) {
+            prom = supabase().from('bom_automatizacion').update(payload).eq('id', id);
+        } else {
+            delete payload.updated_at;
+            prom = supabase().from('bom_automatizacion').insert(payload);
+        }
+
+        prom.then(function(r) {
+            if (r.error) throw r.error;
+            closeModalBOM();
+            loadBOM().then(function() { renderBOM(); fillBOMFiltros(); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+    }
+
+    function deleteModalBOM() {
+        var idInp = document.getElementById('modalBOMId');
+        var id = idInp && idInp.value ? idInp.value.trim() : '';
+        if (!id || !confirm('¿Eliminar este material del BOM?')) return;
+
+        supabase().from('bom_automatizacion').delete().eq('id', id).then(function(r) {
+            if (r.error) throw r.error;
+            closeModalBOM();
+            loadBOM().then(function() { renderBOM(); fillBOMFiltros(); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+    }
+
+    function closeModalBOM() {
+        var modal = document.getElementById('modalBOM');
+        if (modal) { modal.classList.remove('active'); modal.setAttribute('aria-hidden', 'true'); }
+    }
+
+    // --- Modal Servicio ---
+    function openModalServicio(id) {
+        var title = document.getElementById('modalServicioTitle');
+        var modal = document.getElementById('modalServicio');
+        var idInp = document.getElementById('modalServicioId');
+        var nombre = document.getElementById('modalServicioNombre');
+        var descripcion = document.getElementById('modalServicioDescripcion');
+        var area = document.getElementById('modalServicioArea');
+        var tipo = document.getElementById('modalServicioTipo');
+        var costoPlanta = document.getElementById('modalServicioCostoPlanta');
+        var costoOficina = document.getElementById('modalServicioCostoOficina');
+        var horas = document.getElementById('modalServicioHoras');
+        var activo = document.getElementById('modalServicioActivo');
+        var delBtn = document.getElementById('modalServicioEliminar');
+
+        if (!modal || !idInp) return;
+
+        if (id) {
+            var s = serviciosList.find(function(x) { return x.id === id; });
+            if (!s) return;
+            title.textContent = 'Editar servicio';
+            idInp.value = s.id;
+            nombre.value = s.nombre || '';
+            descripcion.value = s.descripcion || '';
+            area.value = s.area || '';
+            tipo.value = s.tipo || '';
+            costoPlanta.value = s.costo_planta != null ? s.costo_planta : '';
+            costoOficina.value = s.costo_oficina != null ? s.costo_oficina : '';
+            horas.value = s.horas_estimadas != null ? s.horas_estimadas : '';
+            activo.checked = s.activo !== false;
+            delBtn.style.display = 'inline-flex';
+        } else {
+            title.textContent = 'Nuevo servicio';
+            idInp.value = '';
+            nombre.value = '';
+            descripcion.value = '';
+            area.value = '';
+            tipo.value = '';
+            costoPlanta.value = '';
+            costoOficina.value = '';
+            horas.value = '';
+            activo.checked = true;
+            delBtn.style.display = 'none';
+        }
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function saveModalServicio() {
+        var idInp = document.getElementById('modalServicioId');
+        var nombre = document.getElementById('modalServicioNombre');
+        var descripcion = document.getElementById('modalServicioDescripcion');
+        var area = document.getElementById('modalServicioArea');
+        var tipo = document.getElementById('modalServicioTipo');
+        var costoPlanta = document.getElementById('modalServicioCostoPlanta');
+        var costoOficina = document.getElementById('modalServicioCostoOficina');
+        var horas = document.getElementById('modalServicioHoras');
+        var activo = document.getElementById('modalServicioActivo');
+
+        var id = (idInp && idInp.value) ? idInp.value.trim() : '';
+        var payload = {
+            nombre: nombre && nombre.value ? nombre.value.trim() : '',
+            descripcion: descripcion && descripcion.value ? descripcion.value.trim() : '',
+            area: area && area.value ? area.value.trim() : null,
+            tipo: tipo && tipo.value ? tipo.value.trim() : null,
+            costo_planta: costoPlanta && costoPlanta.value ? parseFloat(costoPlanta.value) : 0,
+            costo_oficina: costoOficina && costoOficina.value ? parseFloat(costoOficina.value) : 0,
+            horas_estimadas: horas && horas.value ? parseFloat(horas.value) : 0,
+            activo: activo ? activo.checked : true,
+            updated_at: new Date().toISOString()
+        };
+
+        if (!payload.nombre) { alert('El nombre del servicio es obligatorio.'); return; }
+
+        var prom;
+        if (id) {
+            prom = supabase().from('servicios_automatizacion').update(payload).eq('id', id);
+        } else {
+            delete payload.updated_at;
+            prom = supabase().from('servicios_automatizacion').insert(payload);
+        }
+
+        prom.then(function(r) {
+            if (r.error) throw r.error;
+            closeModalServicio();
+            loadServicios().then(renderServicios);
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+    }
+
+    function deleteModalServicio() {
+        var idInp = document.getElementById('modalServicioId');
+        var id = idInp && idInp.value ? idInp.value.trim() : '';
+        if (!id || !confirm('¿Eliminar este servicio?')) return;
+
+        supabase().from('servicios_automatizacion').delete().eq('id', id).then(function(r) {
+            if (r.error) throw r.error;
+            closeModalServicio();
+            loadServicios().then(renderServicios);
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+    }
+
+    function closeModalServicio() {
+        var modal = document.getElementById('modalServicio');
+        if (modal) { modal.classList.remove('active'); modal.setAttribute('aria-hidden', 'true'); }
+    }
+
     function updateAnalisis() {
         var elCalc = document.getElementById('analisisTotalCalc');
         var elCostos = document.getElementById('analisisTotalCostos');
@@ -875,7 +1253,29 @@
         document.getElementById('modalClienteEliminar') && document.getElementById('modalClienteEliminar').addEventListener('click', deleteModalCliente);
         document.getElementById('modalClienteCancelar') && document.getElementById('modalClienteCancelar').addEventListener('click', closeModalCliente);
 
-        [document.getElementById('modalCalc'), document.getElementById('modalCosto'), document.getElementById('modalCliente')].forEach(function(modal) {
+        // BOM Event listeners
+        if (document.getElementById('btnBOMNuevo')) document.getElementById('btnBOMNuevo').addEventListener('click', function() { openModalBOM(null); });
+        if (document.getElementById('btnBOMRecargar')) document.getElementById('btnBOMRecargar').addEventListener('click', function() { loadBOM().then(renderBOM).then(fillBOMFiltros); });
+        if (document.getElementById('bomFiltroCategoria')) document.getElementById('bomFiltroCategoria').addEventListener('change', applyBOMFiltros);
+        if (document.getElementById('bomFiltroEstado')) document.getElementById('bomFiltroEstado').addEventListener('change', applyBOMFiltros);
+
+        // Servicios Event listeners
+        if (document.getElementById('btnServicioNuevo')) document.getElementById('btnServicioNuevo').addEventListener('click', function() { openModalServicio(null); });
+
+        // BOM Modal handlers
+        document.getElementById('modalBOMClose') && document.getElementById('modalBOMClose').addEventListener('click', closeModalBOM);
+        document.getElementById('modalBOMGuardar') && document.getElementById('modalBOMGuardar').addEventListener('click', saveModalBOM);
+        document.getElementById('modalBOMEliminar') && document.getElementById('modalBOMEliminar').addEventListener('click', deleteModalBOM);
+        document.getElementById('modalBOMCancelar') && document.getElementById('modalBOMCancelar').addEventListener('click', closeModalBOM);
+
+        // Servicio Modal handlers
+        document.getElementById('modalServicioClose') && document.getElementById('modalServicioClose').addEventListener('click', closeModalServicio);
+        document.getElementById('modalServicioGuardar') && document.getElementById('modalServicioGuardar').addEventListener('click', saveModalServicio);
+        document.getElementById('modalServicioEliminar') && document.getElementById('modalServicioEliminar').addEventListener('click', deleteModalServicio);
+        document.getElementById('modalServicioCancelar') && document.getElementById('modalServicioCancelar').addEventListener('click', closeModalServicio);
+
+        [document.getElementById('modalCalc'), document.getElementById('modalCosto'), document.getElementById('modalCliente'),
+         document.getElementById('modalBOM'), document.getElementById('modalServicio')].forEach(function(modal) {
             if (modal) modal.addEventListener('click', function(ev) { if (ev.target === modal) { modal.classList.remove('active'); modal.setAttribute('aria-hidden', 'true'); } });
         });
     }
@@ -894,6 +1294,16 @@
             updateAnalisis();
             renderSimAutoTable();
             syncAutoGasDefault();
+
+            // Cargar BOM y Servicios (solo para admins)
+            var profile = await auth().getCurrentProfile();
+            if (profile && (profile.rol === 'admin' || profile.rol === 'superadmin')) {
+                await loadBOM();
+                await loadServicios();
+                renderBOM();
+                renderServicios();
+                fillBOMFiltros();
+            }
         } catch (e) {
             console.warn('[Calculadoras] init:', e);
             var tbody = document.getElementById('tablaFuncionesBody');

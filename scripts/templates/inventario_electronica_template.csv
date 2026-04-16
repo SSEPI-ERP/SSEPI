@@ -1,0 +1,2 @@
+id,sku,nombre,descripcion,categoria,ubicacion,stock,costo,precio_venta,created_at
+,,componente,descripción técnica,Electrónica,ubicación (cajón/bandeja),cantidad,costo unitario,precio venta,YYYY-MM-DD

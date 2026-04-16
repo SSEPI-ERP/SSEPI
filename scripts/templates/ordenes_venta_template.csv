@@ -1,0 +1,2 @@
+id,folio,cliente,estado,total,items,fecha_creacion,created_at
+,OV-0001,nombre cliente,borrador/en_revision/aprobada/en_proceso/completada,monto,[{"producto_id":"uuid","cantidad":1,"precio":0.00}],YYYY-MM-DD,YYYY-MM-DD

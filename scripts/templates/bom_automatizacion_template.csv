@@ -1,0 +1,2 @@
+id,item,numero_parte,descripcion,categoria,estado,proveedor,precio_unitario,moneda,link,created_at
+,1,NUM-PARTE-001,descripción detallada del material,Categoría,Activo/Inactivo,razón social proveedor,0.00,MXN/USD,https://link.com,YYYY-MM-DD

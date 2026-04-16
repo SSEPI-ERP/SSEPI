@@ -1,0 +1,2 @@
+id,folio,cliente,servicio,estado,prioridad,fecha_ingreso,fecha_entrega,costo,created_at
+,OR-TALLER-0001,nombre cliente,descripción servicio,pending/in_progress/completed/delivered,normal/urgent/express,YYYY-MM-DD,YYYY-MM-DD,0.00,YYYY-MM-DD
