@@ -1,0 +1,2 @@
+id,nombre,descripcion,tipo,area,costo_planta,costo_oficina,horas_estimadas,activo,created_at,updated_at
+,Nombre del Servicio,Descripción del servicio,Tipo,Área,500.00,300.00,10.00,true,2026-01-01,2026-01-01

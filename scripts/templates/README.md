@@ -1,34 +1,43 @@
-# Plantillas CSV para Importación/Exportación SSEPI
+# 📁 Plantillas CSV para Importación SSEPI
 
-## Instrucciones de uso
+## 🚀 Cómo Importar Datos
 
-### Importar datos
-1. Descargar la plantilla CSV correspondiente
-2. Llenar los datos manteniendo los encabezados
-3. En Configuración > Importar/Exportar, seleccionar el archivo CSV
-4. El sistema validará y registrará la acción en la bitácora de auditoría
+1. **Descargar la plantilla** del módulo que necesitas
+2. **Llenar los datos** manteniendo los encabezados (primera fila)
+3. **Ir a Configuración** → Sección "Importar/Exportar Datos"
+4. **Seleccionar módulo** del dropdown
+5. **Clic en "Importar CSV"** y seleccionar tu archivo
+6. **Verificar en Bitácora** que la importación fue exitosa
 
-### Exportar datos
-1. En Configuración > Importar/Exportar, hacer clic en "Exportar"
-2. El archivo CSV se descargará automáticamente
-3. La acción queda registrada en la bitácora de auditoría
+## 📋 Plantillas Disponibles
 
-## Formato de archivos
+| Módulo | Archivo | Columnas Principales |
+|--------|---------|---------------------|
+| Contactos | `contactos_template.csv` | nombre, empresa, email, teléfono |
+| Inventario | `inventario_template.csv` | sku, nombre, categoria, stock, costo, precio_venta |
+| BOM Automatización | `bom_automatizacion_template.csv` | item, numero_parte, descripcion, categoria, proveedor, precio_unitario |
+| Servicios Automatización | `servicios_automatizacion_template.csv` | nombre, descripcion, area, costo_planta, costo_oficina |
+| Gastos de Viaje | `gastos_viaje_template.csv` | cliente_id, concepto, monto, fecha, tipo |
+| Fórmulas de Costos | `formulas_costos_template.csv` | calculadora_id, area, cliente, concepto, valor |
 
+## 📝 Formato de Datos
+
+- **ID**: Dejar vacío para autogenerar UUID
+- **Fechas**: `YYYY-MM-DD` o `YYYY-MM-DD HH:MM:SS`
+- **Moneda**: Usar punto decimal (ej: `100.00` no `100,00`)
+- **Booleanos**: `true` / `false`
 - **Codificación**: UTF-8
-- **Separador**: Coma (,)
-- **Fechas**: YYYY-MM-DD o YYYY-MM-DD HH:MM:SS
-- **UUID**: Formato estándar (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx) o dejar vacío para autogenerar
-- **Booleanos**: true/false o 1/0
 
-## Módulo de Auditoría
+## ⚠️ Importante
 
-Todas las importaciones/exportaciones se registran en la tabla `audit_logs` con:
-- Usuario que realizó la acción
-- Tipo de acción (import/export)
-- Módulo afectado
-- Registros procesados
-- Errores encontrados
-- IP y user agent
+- **No modificar los encabezados** de la primera fila
+- **Primera fila después de encabezados** = primer registro a importar
+- **SKU debe ser único** en inventario
+- **Emails deben ser válidos** para contactos
 
-Los administradores reciben notificación de estas acciones.
+## 🔍 Auditoría
+
+Todas las importaciones se registran en:
+- **Bitácora** en Configuración → Importar/Exportar
+- **Notificaciones** a admins y Norberto
+- **Tabla `audit_logs`** en Supabase

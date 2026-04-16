@@ -1,2 +1,2 @@
-id,area,cliente,concepto,valor,unidad,created_at
-,Taller/Laboratorio/Motores/Automatización,nombre cliente,mano de obra/herramienta/transporte/equipo,0.00,fijo/porcentaje/hora,YYYY-MM-DD
+id,calculadora_id,area,cliente,concepto,valor,unidad,tipo,created_at
+,uuid-o-id-calculadora,Automatización,Cliente SA,Mano de obra,250.00,hora,fijo,2026-01-01
