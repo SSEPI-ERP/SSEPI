@@ -4,10 +4,61 @@
 -- Notificaciones: Admins y Norberto reciben alerta de estas acciones
 -- =====================================================
 
--- La tabla audit_logs ya existe en el sistema, solo agregamos columnas si faltan
--- Estructura base: id, action, user_id, user_email, timestamp, severity, details, ip_address, user_agent
+-- 1. CREAR TABLA SI NO EXISTE
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  action TEXT NOT NULL,
+  user_id UUID,
+  user_email TEXT,
+  module TEXT,
+  timestamp TIMESTAMPTZ DEFAULT NOW(),
+  severity TEXT DEFAULT 'info',
+  details TEXT,
+  ip_address TEXT,
+  user_agent TEXT,
+  records_processed INTEGER DEFAULT 0,
+  errors_count INTEGER DEFAULT 0,
+  file_name TEXT
+);
 
--- Columnas adicionales para import/export (si no existen)
+-- 2. Índices básicos
+CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON public.audit_logs(timestamp);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON public.audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON public.audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_module ON public.audit_logs(module);
+
+-- 3. RLS (Row Level Security)
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- Eliminar políticas si existen para recrearlas
+DROP POLICY IF EXISTS "Admins pueden leer audit_logs" ON public.audit_logs;
+DROP POLICY IF EXISTS "Solo admins insertan en audit_logs" ON public.audit_logs;
+
+-- Política: Admins pueden leer todo
+CREATE POLICY "Admins pueden leer audit_logs"
+  ON public.audit_logs
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.usuarios
+      WHERE auth_user_id = auth.uid()
+        AND rol IN ('admin', 'superadmin')
+    )
+  );
+
+-- Política: Solo admins pueden insertar
+CREATE POLICY "Solo admins insertan en audit_logs"
+  ON public.audit_logs
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.usuarios
+      WHERE auth_user_id = auth.uid()
+        AND rol IN ('admin', 'superadmin')
+    )
+  );
+
+-- 4. Columnas adicionales (si faltan - para compatibilidad)
 DO $$
 BEGIN
   -- Agregar columna module si no existe
@@ -31,11 +82,7 @@ BEGIN
   END IF;
 END $$;
 
--- Índice para búsquedas por módulo
-CREATE INDEX IF NOT EXISTS idx_audit_logs_module ON public.audit_logs(module);
-
--- Índice para búsquedas por acción (import/export)
-CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON public.audit_logs(action);
+-- Los índices ya se crearon arriba, estos son redundantes pero seguros
 
 -- Notificaciones para admins y Norberto
 -- Se crea una vista para consultar notificaciones pendientes

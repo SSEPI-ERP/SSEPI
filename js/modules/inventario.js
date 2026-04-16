@@ -16,10 +16,12 @@ const InventarioModule = (function() {
     let vistaActual = 'table';
     let chartInstance = null;
     let excelColumnMap = null;
-    /** Perfil Ventas: no mostrar costos ni valor (solo precio venta y stock). */
-    let isVentasProfile = false;
-    /** Solo admin/superadmin/contabilidad (y no ventas) pueden editar inventario y ver costos. */
+    /** Perfil Ventas/Compras/Norberto: no mostrar costos de compra, solo precio final (solo admin ve costos reales). */
+    let isRestrictedProfile = false;
+    /** Solo admin/superadmin pueden editar inventario y ver costos reales. */
     let canEditInventario = true;
+    /** Solo admin/superadmin ven columnas de costo y valor total */
+    let canSeeCosts = false;
 
     // Servicios de datos
     const inventarioService = createDataService('inventario');
@@ -117,15 +119,20 @@ const InventarioModule = (function() {
                 try { sessionStorage.setItem('ssepi_rol', profile.rol); } catch (e) {}
                 document.body.dataset.rol = profile.rol;
             }
-            // Visibilidad de costos por tabla users_ver_costos (ver_costos === false = no ver costos/valor)
-            isVentasProfile = (profile && profile.ver_costos === false);
-            canEditInventario = !isVentasProfile;
+            // Solo admin/superadmin ven costos reales y valor total
+            // Ventas, Compras, Norberto (dual mode) y demás roles: solo ven precio final, NO costo
+            const isAdmin = (rol === 'admin' || rol === 'superadmin');
+            canSeeCosts = isAdmin;
+            canEditInventario = isAdmin;
+            isRestrictedProfile = !isAdmin;
         } catch (e) {
             const rol = (document.body.dataset.rol || sessionStorage.getItem('ssepi_rol') || '').toLowerCase();
-            isVentasProfile = (rol === 'ventas' || rol === 'ventas_sin_compras');
-            canEditInventario = !isVentasProfile;
+            const isAdmin = (rol === 'admin' || rol === 'superadmin');
+            canSeeCosts = isAdmin;
+            canEditInventario = isAdmin;
+            isRestrictedProfile = !isAdmin;
         }
-        if (isVentasProfile) document.body.classList.add('inventario-perfil-ventas');
+        if (isRestrictedProfile) document.body.classList.add('inventario-perfil-ventas');
         else document.body.classList.remove('inventario-perfil-ventas');
         _bindEvents();
         _setVistaInicial();
@@ -141,45 +148,46 @@ const InventarioModule = (function() {
         console.log('✅ Módulo inventario iniciado');
     }
 
-    /** Oculta columnas Costo/Valor y KPI valor total para perfil Ventas. Oculta crear/editar para ventas. */
+    /** Oculta columnas Costo/Valor y KPI valor total para no-admins. Oculta crear/editar para no-admins. */
     function _applyPerfilVentasUI() {
-        if (!isVentasProfile) return;
-        // Por atributo: ocultar todo lo marcado con data-hide-for-ventas (tarjeta Valor Total, botones, th Costo/Valor)
-        document.querySelectorAll('.page-inventario [data-hide-for-ventas="true"], .inventario-perfil-ventas [data-hide-for-ventas="true"]').forEach(function (el) {
-            el.classList.add('hide-for-ventas');
+        if (!isRestrictedProfile) return;
+        // Por atributo: ocultar todo lo marcado con data-hide-for-no-admin
+        document.querySelectorAll('.page-inventario [data-hide-for-no-admin="true"]').forEach(function (el) {
+            el.classList.add('hide-for-no-admin');
             el.style.display = 'none';
         });
-        // Encabezados tabla: columnas Costo (índice 7) y Valor (índice 9)
+        // Encabezados tabla: columnas Costo (índice 7) y Valor (índice 10)
         document.querySelectorAll('.inventory-table thead th').forEach(function (th, i) {
-            if (i === 7 || i === 9) {
-                th.classList.add('hide-for-ventas');
+            if (i === 7 || i === 10) {
+                th.classList.add('hide-for-no-admin');
                 th.style.display = 'none';
             }
         });
-        // Tarjeta VALOR TOTAL: por ID por si no tiene el atributo
+        // Tarjeta VALOR TOTAL
         var kpiValor = document.getElementById('kpiValorTotal');
         if (kpiValor) {
             var card = kpiValor.closest('.kpi-card');
             if (card) {
-                card.classList.add('hide-for-ventas');
+                card.classList.add('hide-for-no-admin');
                 card.style.display = 'none';
             }
             kpiValor.textContent = 'N/D';
         }
+        // Grupo de costo en modal
         var costGroup = document.getElementById('productCostGroup');
         if (costGroup) {
             costGroup.style.display = 'none';
-            costGroup.classList.add('hide-for-ventas');
+            costGroup.classList.add('hide-for-no-admin');
         }
-        // Ventas: no crear ni importar
+        // No-admins: no crear ni importar
         var newBtn = document.getElementById('newProductBtn');
-        if (newBtn) { newBtn.style.display = 'none'; newBtn.classList.add('hide-for-ventas'); }
+        if (newBtn) { newBtn.style.display = 'none'; newBtn.classList.add('hide-for-no-admin'); }
         var importGeneralBtn = document.getElementById('importGeneralBtn');
-        if (importGeneralBtn) { importGeneralBtn.style.display = 'none'; importGeneralBtn.classList.add('hide-for-ventas'); }
+        if (importGeneralBtn) { importGeneralBtn.style.display = 'none'; importGeneralBtn.classList.add('hide-for-no-admin'); }
         var importBtn = document.getElementById('importExcelBtn');
-        if (importBtn) { importBtn.style.display = 'none'; importBtn.classList.add('hide-for-ventas'); }
+        if (importBtn) { importBtn.style.display = 'none'; importBtn.classList.add('hide-for-no-admin'); }
         var initBtn = document.getElementById('initDataBtn');
-        if (initBtn) { initBtn.style.display = 'none'; initBtn.classList.add('hide-for-ventas'); }
+        if (initBtn) { initBtn.style.display = 'none'; initBtn.classList.add('hide-for-no-admin'); }
     }
 
     /** Muestra/oculta botones Actualizar y Guardar solo para administradores (quienes pueden editar). */
@@ -336,7 +344,7 @@ const InventarioModule = (function() {
         if (loadingState) loadingState.style.display = 'none';
         _filtrarYRenderizar();
         _actualizarKPIs();
-        if (isVentasProfile) _applyPerfilVentasUI();
+        if (isRestrictedProfile) _applyPerfilVentasUI();
         _addToFeed('📦', `Inventario actualizado (${productos.length} productos)`);
     }
 
@@ -408,7 +416,7 @@ const InventarioModule = (function() {
                 </div>
                 <div class="card-footer">
                     <div class="stock-display">${p.stock || 0} <span>unidades</span></div>
-                    ${isVentasProfile ? '' : `<div class="card-cost">$${(p.costo || 0).toFixed(2)}</div>`}
+                    ${canSeeCosts ? `<div class="card-cost">$${(p.costo || 0).toFixed(2)}</div>` : `<div class="card-price">$${(p.precio_venta || 0).toFixed(2)}</div>`}
                 </div>
             </div>
         `;
@@ -418,23 +426,10 @@ const InventarioModule = (function() {
         const tbody = document.getElementById('tableBody');
         if (!tbody) return;
         tbody.innerHTML = productos.map(p => {
-            const valor = (Number(p.costo) || 0) * (parseInt(p.stock, 10) || 0);
             const catLabel = { refaccion: 'Refacción', almacenable: 'Almacenable', consumible: 'Consumible', servicio: 'Servicio' }[p.categoria] || p.categoria || '—';
-            if (isVentasProfile) {
+            if (canSeeCosts) {
+                const valor = (Number(p.costo) || 0) * (parseInt(p.stock, 10) || 0);
                 return `
-            <tr onclick="inventarioModule._abrirModalEdicion('${p.id}')" role="button" tabindex="0">
-                <td><strong>${_escapeHtml(p.sku)}</strong></td>
-                <td>${_escapeHtml(p.nombre)}</td>
-                <td class="col-desc" title="${_escapeHtml(p.descripcion || '')}">${_escapeHtml(p.descripcion)}</td>
-                <td>${_escapeHtml(catLabel)}</td>
-                <td>${_escapeHtml(p.ubicacion)}</td>
-                <td class="col-num">${_fmtInt(p.stock)}</td>
-                <td class="col-num">${_fmtInt(p.minimo)}</td>
-                <td class="col-num">${_fmtMoney(p.precio_venta)}</td>
-            </tr>
-            `;
-            }
-            return `
             <tr onclick="inventarioModule._abrirModalEdicion('${p.id}')" role="button" tabindex="0">
                 <td><strong>${_escapeHtml(p.sku)}</strong></td>
                 <td>${_escapeHtml(p.nombre)}</td>
@@ -448,6 +443,21 @@ const InventarioModule = (function() {
                 <td class="col-num">${_fmtMoney(valor)}</td>
             </tr>
             `;
+            } else {
+                // Perfil restringido: solo ve nombre, descripción, ubicación, stock, precio final
+                return `
+            <tr onclick="inventarioModule._abrirModalEdicion('${p.id}')" role="button" tabindex="0">
+                <td><strong>${_escapeHtml(p.sku)}</strong></td>
+                <td>${_escapeHtml(p.nombre)}</td>
+                <td class="col-desc" title="${_escapeHtml(p.descripcion || '')}">${_escapeHtml(p.descripcion)}</td>
+                <td>${_escapeHtml(catLabel)}</td>
+                <td>${_escapeHtml(p.ubicacion)}</td>
+                <td class="col-num">${_fmtInt(p.stock)}</td>
+                <td class="col-num">${_fmtInt(p.minimo)}</td>
+                <td class="col-num">${_fmtMoney(p.precio_venta)}</td>
+            </tr>
+            `;
+            }
         }).join('');
     }
 
@@ -468,7 +478,7 @@ const InventarioModule = (function() {
         const canvas = document.getElementById('inventoryChart');
         const chartContainer = canvas ? canvas.closest('.chart-container') : null;
         const msgEl = document.getElementById('chartVentasMsg');
-        if (isVentasProfile) {
+        if (!canSeeCosts) {
             if (chartInstance) chartInstance.destroy();
             chartInstance = null;
             if (canvas) canvas.style.display = 'none';
@@ -483,7 +493,7 @@ const InventarioModule = (function() {
         if (chartInstance) chartInstance.destroy();
         const categorias = ['refaccion', 'almacenable', 'consumible', 'servicio'];
         const nombres = ['Refacciones', 'Almacenables', 'Consumibles', 'Servicios'];
-        const valores = categorias.map(cat => 
+        const valores = categorias.map(cat =>
             productos.filter(p => p.categoria === cat).reduce((sum, p) => sum + ((p.costo || 0) * (p.stock || 0)), 0)
         );
         chartInstance = new Chart(ctx, {
@@ -504,7 +514,7 @@ const InventarioModule = (function() {
     async function _actualizarKPIs() {
         const valorTotal = productos.reduce((sum, p) => sum + ((p.costo || 0) * (p.stock || 0)), 0);
         var kpiValorEl = document.getElementById('kpiValorTotal');
-        if (kpiValorEl && !isVentasProfile) kpiValorEl.innerHTML = '$' + valorTotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        if (kpiValorEl && canSeeCosts) kpiValorEl.innerHTML = '$' + valorTotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         document.getElementById('kpiProductos').innerText = productos.length;
         const bajoStock = productos.filter(p => p.stock > 0 && p.stock <= (p.minimo || 0)).length;
         document.getElementById('kpiBajoStock').innerText = bajoStock;

@@ -126,7 +126,7 @@
     /**
      * Verifica si un rol puede ver un módulo especial (calculadoras, configuracion).
      * - calculadoras: solo admin/superadmin o dual mode en modo Admin
-     * - configuracion: solo admin/superadmin (ya manejado por ROLE_MODULES)
+     * - configuracion: solo admin/superadmin, automatizacion, y Norberto (dual mode)
      */
     function canSeeSpecialModule(rol, moduleName, profile) {
         // Calculadoras: solo admin/superadmin o dual mode activo
@@ -140,9 +140,15 @@
             }
             return false;
         }
-        // Configuracion: ya restringido por ROLE_MODULES (solo admin)
+        // Configuracion: solo admin/superadmin, automatizacion, y Norberto (dual mode)
         if (moduleName === 'configuracion') {
-            return rol === 'admin' || rol === 'superadmin';
+            if (rol === 'admin' || rol === 'superadmin') return true;
+            if (rol === 'automatizacion') return true;
+            // Norberto en modo dual puede ver configuración
+            if (profile && isDualModeUser(profile)) {
+                return true;
+            }
+            return false;
         }
         return true;
     }
@@ -190,7 +196,7 @@
     /** Aplica visibilidad por rol usando solo el mapa (síncrono, sin DB). */
     function applyNavByRoleFromCache(rol) {
         if (!rol) return;
-        var selector = '.nav-item[data-module], .card-module[data-module], .card-kpi[data-module], .card-kpi[data-module-any]';
+        var selector = '.nav-item[data-module], .nav-item-has-submenu[data-module], .card-module[data-module], .card-kpi[data-module], .card-kpi[data-module-any]';
         var elements = document.querySelectorAll(selector);
         for (var i = 0; i < elements.length; i++) {
             elements[i].style.display = '';
@@ -220,6 +226,13 @@
                 // 2. Verificar módulos especiales (calculadoras, configuracion)
                 if (!canSeeSpecialModule(rol, module, profile)) {
                     hide(el);
+                    // Si es el submenú de configuración, también ocultar el ul.nav-submenu asociado
+                    if (module === 'configuracion' && el.classList.contains('nav-item-has-submenu')) {
+                        var submenu = el.nextElementSibling;
+                        if (submenu && submenu.classList.contains('nav-submenu')) {
+                            submenu.style.display = 'none';
+                        }
+                    }
                 } else if (!allowedForModule(rol, module, null)) {
                     hide(el);
                 }
