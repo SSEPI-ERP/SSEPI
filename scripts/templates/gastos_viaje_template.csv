@@ -1,2 +1,2 @@
-id,cliente,concepto,monto,fecha,tipo,created_at
-,nombre cliente,viáticos/pasajes/hotel/alimentación,0.00,YYYY-MM-DD,nacional/internacional,YYYY-MM-DD
+id,cliente_id,concepto,monto,fecha,tipo,descripcion,created_at
+,uuid-o-id-cliente,Viáticos hotel,1500.00,2026-01-15,nacional,Hotel para visita cliente,2026-01-15

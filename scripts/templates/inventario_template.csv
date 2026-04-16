@@ -1,0 +1,2 @@
+id,sku,nombre,descripcion,categoria,ubicacion,stock,minimo,costo,precio_venta,created_at,updated_at,created_by,hash
+,SKU-001,Nombre del producto,Descripción detallada,refaccion,Estante A1,100,10,50.00,100.00,2026-01-01,2026-01-01,,

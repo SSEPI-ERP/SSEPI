@@ -1,2 +1,2 @@
-id,nombre,empresa,puesto,tipo,color,direccion,email,telefono,cargo,notas,rfc,sitio_web
-,nombre completo,empresa,puesto,client/prospecto/proveedor,#hex,dirección,email,teléfono,cargo,notas adicionales,rfc,sitio web
+id,nombre,empresa,puesto,tipo,color,created_at,avatar,direccion,email,telefono,cargo,notas,rfc,sitio_web,logo_url,updated_at,created_by
+,nombre completo,empresa,puesto,client,#hex,2026-01-01,,dirección,email,teléfono,cargo,notas,rfc,web,,2026-01-01,

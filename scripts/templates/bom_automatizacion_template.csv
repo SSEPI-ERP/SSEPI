@@ -1,2 +1,2 @@
-id,item,numero_parte,descripcion,categoria,estado,proveedor,precio_unitario,moneda,link,created_at
-,1,NUM-PARTE-001,descripción detallada del material,Categoría,Activo/Inactivo,razón social proveedor,0.00,MXN/USD,https://link.com,YYYY-MM-DD
+id,item,numero_parte,descripcion,categoria,estado,proveedor,precio_unitario,moneda,link,created_at,updated_at
+,1,NUM-PARTE-001,descripción detallada del material,Categoría,Activo,Proveedor SA,100.00,MXN,https://link.com,2026-01-01,2026-01-01
