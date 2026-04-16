@@ -171,6 +171,53 @@
 };</code></pre>
             </div>
         </section>
+
+        <!-- SECCIÓN 4: PERMISOS POR USUARIO (SWITCHES) -->
+        <section class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px;">
+            <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-toggle-on" style="color: var(--c-ventas);"></i>
+                Módulos por Usuario
+            </h2>
+            <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                Activa o desactiva módulos específicos para cada usuario. Estos permisos son adicionales a los del rol.
+            </p>
+
+            <div style="margin-bottom: 16px;">
+                <label style="font-weight: 600; font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Seleccionar Usuario:</label>
+                <select id="usuarioSelector" style="padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: var(--text-primary); font-size: 14px; min-width: 300px;">
+                    <option value="">Cargando usuarios...</option>
+                </select>
+            </div>
+
+            <div id="userModulesContainer">
+                <table class="lista-table" id="userModulesTable">
+                    <thead>
+                        <tr>
+                            <th>Módulo</th>
+                            <th>Estado</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userModulesBody">
+                        <tr><td colspan="3" style="text-align: center; padding: 40px; color: var(--text-secondary);">Selecciona un usuario para ver sus módulos</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top: 20px; display: flex; gap: 12px;">
+                <button class="btn-ssepi btn-ventas" id="btnGuardarPermisosUsuario">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+                <button class="btn-ssepi btn-secondary" id="btnResetearPermisosUsuario">
+                    <i class="fas fa-undo"></i> Restaurar a Rol
+                </button>
+            </div>
+
+            <div style="margin-top: 16px; padding: 12px; background: var(--bg-hover); border-radius: 6px; font-size: 13px; color: var(--text-secondary);">
+                <i class="fas fa-info-circle"></i>
+                <strong>Nota:</strong> Los módulos marcados con <span style="color: #f59e0b;">⚠️</span> requieren atención (ej. calculadoras solo para admins).
+            </div>
+        </section>
     </main>
 
     <!-- MODAL: EDITAR ROL DE USUARIO -->
@@ -428,6 +475,175 @@
         }
 
         // ================================================
+        // PERMISOS POR USUARIO (SWITCHES)
+        // ================================================
+        const MODULOS_PARA_USUARIOS = [
+            { id: 'ventas', nombre: 'Ventas' },
+            { id: 'ordenes_taller', nombre: 'Laboratorio (Taller)' },
+            { id: 'ordenes_motores', nombre: 'Motores' },
+            { id: 'proyectos_automatizacion', nombre: 'Automatización' },
+            { id: 'compras', nombre: 'Compras' },
+            { id: 'facturas', nombre: 'Facturación' },
+            { id: 'contabilidad', nombre: 'Contabilidad' },
+            { id: 'inventario', nombre: 'Inventario' },
+            { id: 'pagos_nomina', nombre: 'Nómina' },
+            { id: 'contactos', nombre: 'Contactos' },
+            { id: 'vacaciones', nombre: 'Vacaciones' },
+            { id: 'calculadoras', nombre: 'Calculadoras', especial: true },
+            { id: 'configuracion', nombre: 'Configuración', especial: true }
+        ];
+
+        let usuariosLista = [];
+        let permisosUsuarioActuales = new Map();
+
+        async function loadUsuariosSelector() {
+            try {
+                const { data, error } = await window.supabase
+                    .from('usuarios')
+                    .select('auth_user_id, email, nombre, rol')
+                    .order('nombre', { ascending: true });
+
+                if (error) throw error;
+
+                usuariosLista = data || [];
+                const selector = document.getElementById('usuarioSelector');
+                selector.innerHTML = '<option value="">Seleccionar usuario...</option>' +
+                    usuariosLista.map(u => `
+                        <option value="${u.auth_user_id}" data-rol="${u.rol || 'ventas'}">
+                            ${u.nombre || u.email} (${u.email}) - ${u.rol || 'sin rol'}
+                        </option>
+                    `).join('');
+            } catch (error) {
+                console.error('[Config] Error cargando usuarios para selector:', error);
+                document.getElementById('usuarioSelector').innerHTML =
+                    '<option value="">Error cargando usuarios</option>';
+            }
+        }
+
+        async function loadPermisosUsuario(userId) {
+            try {
+                const { data, error } = await window.supabase
+                    .from('user_module_permissions')
+                    .select('module, enabled')
+                    .eq('user_id', userId);
+
+                if (error) throw error;
+
+                permisosUsuarioActuales.clear();
+                if (data) {
+                    data.forEach(p => {
+                        permisosUsuarioActuales.set(p.module, p.enabled === true);
+                    });
+                }
+
+                renderPermisosUsuario(userId);
+            } catch (error) {
+                console.error('[Config] Error cargando permisos de usuario:', error);
+                document.getElementById('userModulesBody').innerHTML =
+                    '<tr><td colspan="3" style="text-align: center; padding: 40px; color: #c62828;">Error: ' + error.message + '</td></tr>';
+            }
+        }
+
+        function renderPermisosUsuario(userId) {
+            const tbody = document.getElementById('userModulesBody');
+            const usuario = usuariosLista.find(u => u.auth_user_id === userId);
+            if (!usuario) return;
+
+            const userRol = usuario.rol || 'ventas';
+            const esAdmin = userRol === 'admin' || userRol === 'superadmin';
+
+            tbody.innerHTML = MODULOS_PARA_USUARIOS.map(m => {
+                const enabled = permisosUsuarioActuales.has(m.id)
+                    ? permisosUsuarioActuales.get(m.id)
+                    : esAdmin; // Por defecto, admin tiene todos activos
+
+                const warningIcon = m.especial ? ' ⚠️' : '';
+                const warningNote = m.especial ? ' (Requiere rol admin)' : '';
+
+                return `
+                    <tr>
+                        <td>${m.nombre}${warningIcon}</td>
+                        <td style="text-align: center;">
+                            <label class="switch">
+                                <input type="checkbox" data-module="${m.id}" ${enabled ? 'checked' : ''} ${esAdmin ? 'disabled' : ''}>
+                                <span class="slider"></span>
+                            </label>
+                        </td>
+                        <td style="text-align: center; color: var(--text-secondary); font-size: 12px;">
+                            ${esAdmin ? 'Admin (todos activos)' : (enabled ? 'Activo' : 'Inactivo')}${warningNote}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function guardarPermisosUsuario() {
+            const userId = document.getElementById('usuarioSelector').value;
+            if (!userId) {
+                alert('Selecciona un usuario primero');
+                return;
+            }
+
+            const usuario = usuariosLista.find(u => u.auth_user_id === userId);
+            if (!usuario) return;
+
+            // Admin no necesita permisos individuales
+            if (usuario.rol === 'admin' || usuario.rol === 'superadmin') {
+                alert('Los administradores tienen acceso total por defecto. No es necesario configurar permisos individuales.');
+                return;
+            }
+
+            const checkboxes = document.querySelectorAll('#userModulesBody input[type="checkbox"]');
+            const nuevosPermisos = [];
+
+            checkboxes.forEach(cb => {
+                nuevosPermisos.push({
+                    user_id: userId,
+                    module: cb.dataset.module,
+                    enabled: cb.checked
+                });
+            });
+
+            try {
+                // Eliminar permisos existentes del usuario
+                const { error: deleteError } = await window.supabase
+                    .from('user_module_permissions')
+                    .delete()
+                    .eq('user_id', userId);
+
+                if (deleteError) throw deleteError;
+
+                // Insertar nuevos permisos (solo los que están enabled = true)
+                const permisosActivos = nuevosPermisos.filter(p => p.enabled);
+                if (permisosActivos.length > 0) {
+                    const { error: insertError } = await window.supabase
+                        .from('user_module_permissions')
+                        .insert(permisosActivos);
+
+                    if (insertError) throw insertError;
+                }
+
+                alert('Permisos guardados correctamente para "' + (usuario.nombre || usuario.email) + '"');
+                loadPermisosUsuario(userId);
+            } catch (error) {
+                // Si la tabla no existe, mostrar mensaje útil
+                if (error.code === '42P01' || (error.message && error.message.includes('does not exist'))) {
+                    alert('La tabla user_module_permissions no existe. Ejecuta este SQL en Supabase:\n\n' +
+                        'CREATE TABLE IF NOT EXISTS public.user_module_permissions (\n' +
+                        '  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n' +
+                        '  user_id UUID NOT NULL REFERENCES public.usuarios(auth_user_id) ON DELETE CASCADE,\n' +
+                        '  module TEXT NOT NULL,\n' +
+                        '  enabled BOOLEAN NOT NULL DEFAULT true,\n' +
+                        '  created_at TIMESTAMPTZ DEFAULT NOW(),\n' +
+                        '  UNIQUE(user_id, module)\n' +
+                        ');');
+                } else {
+                    alert('Error al guardar permisos: ' + error.message);
+                }
+            }
+        }
+
+        // ================================================
         // INIT
         // ================================================
         (async function init() {
@@ -435,20 +651,32 @@
             if (!hasAccess) return;
 
             await loadUsuarios();
+            await loadUsuariosSelector();
             await loadPermisos('ventas');
 
-            // Event listeners
+            // Event listeners - Permisos por Rol
             document.getElementById('rolSelector').addEventListener('change', (e) => {
                 loadPermisos(e.target.value);
             });
 
             document.getElementById('btnGuardarPermisos').addEventListener('click', guardarPermisos);
-
-            document.getElementById('btnConfirmarRol').addEventListener('click', confirmarCambioRol);
-
             document.getElementById('btnResetearPermisos').addEventListener('click', () => {
                 alert('Función de resetear permisos a default: implementar según necesidad.');
             });
+
+            // Event listeners - Permisos por Usuario
+            document.getElementById('usuarioSelector').addEventListener('change', (e) => {
+                const userId = e.target.value;
+                if (userId) loadPermisosUsuario(userId);
+            });
+
+            document.getElementById('btnGuardarPermisosUsuario').addEventListener('click', guardarPermisosUsuario);
+            document.getElementById('btnResetearPermisosUsuario').addEventListener('click', () => {
+                alert('Esta función restaurará los permisos del usuario a los de su rol por defecto.');
+            });
+
+            // Editar rol
+            document.getElementById('btnConfirmarRol').addEventListener('click', confirmarCambioRol);
         })();
     </script>
 </body>
