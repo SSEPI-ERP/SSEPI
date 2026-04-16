@@ -189,6 +189,16 @@ export class AuthService {
     }
   }
 
+  // ==================== OBTENER PERFIL DEL USUARIO ACTUAL (SÍNCRONO) ====================
+  /** Devuelve el perfil desde sessionStorage (cacheado tras login). Puede estar desactualizado. */
+  getProfileSync() {
+    try {
+      const cached = sessionStorage.getItem('ssepi_profile');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return null;
+  }
+
   // ==================== OBTENER PERFIL DEL USUARIO ACTUAL ====================
   async getCurrentProfile() {
     const { data: { user } } = await this.supabase.auth.getUser();
@@ -203,7 +213,7 @@ export class AuthService {
 
     if (!usuarioError && usuarioData) {
       const ver_costos = await this._getVerCostos(user.id);
-      return {
+      const perfil = {
         id: user.id,
         email: user.email || usuarioData.email,
         nombre: usuarioData.nombre ?? usuarioData.email ?? user.email?.split('@')[0] ?? 'Usuario',
@@ -215,6 +225,8 @@ export class AuthService {
         nivel_riesgo: usuarioData.nivel_riesgo ?? null,
         ver_costos
       };
+      try { sessionStorage.setItem('ssepi_profile', JSON.stringify(perfil)); } catch (e) {}
+      return perfil;
     }
 
     const { data: usersData, error: usersError } = await this.supabase
@@ -225,7 +237,7 @@ export class AuthService {
 
     if (!usersError && usersData) {
       const ver_costos = await this._getVerCostos(user.id);
-      return {
+      const perfil = {
         id: user.id,
         email: user.email || usersData.email,
         nombre: usersData.nombre ?? usersData.email ?? user.email?.split('@')[0] ?? 'Usuario',
@@ -237,6 +249,8 @@ export class AuthService {
         nivel_riesgo: usersData.nivel_riesgo ?? null,
         ver_costos
       };
+      try { sessionStorage.setItem('ssepi_profile', JSON.stringify(perfil)); } catch (e) {}
+      return perfil;
     }
 
     // Solo si no existe usuarios ni users, intentar profiles (por compatibilidad)

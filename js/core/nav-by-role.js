@@ -41,11 +41,12 @@
         superadmin: null,
 
         // ─── 5 roles básicos (solo sus módulos, sin análisis ni módulos ajenos) ───
+        // Nota: 'calculadoras' solo visible para admin/superadmin o dual mode en modo Admin
         ventas:              ['ventas', 'inventario', 'contactos', 'vacaciones'],
         administracion:      ['compras', 'facturas', 'contabilidad', 'pagos_nomina', 'inventario', 'contactos', 'vacaciones'],
-        taller:              ['ordenes_taller', 'inventario', 'vacaciones', 'calculadoras'],
-        motores:             ['ordenes_motores', 'inventario', 'vacaciones', 'calculadoras'],
-        automatizacion:      ['proyectos_automatizacion', 'inventario', 'vacaciones', 'calculadoras'],
+        taller:              ['ordenes_taller', 'inventario', 'vacaciones'],
+        motores:             ['ordenes_motores', 'inventario', 'vacaciones'],
+        automatizacion:      ['proyectos_automatizacion', 'inventario', 'vacaciones'],
 
         // ─── Variante de ventas (sin módulo Compras; nav idéntico a ventas) ───
         ventas_sin_compras:  ['ventas', 'inventario', 'contactos', 'vacaciones'],
@@ -122,6 +123,70 @@
         return profile ? profile.rol : null;
     }
 
+    /**
+     * Verifica si un rol puede ver un módulo especial (calculadoras, configuracion).
+     * - calculadoras: solo admin/superadmin o dual mode en modo Admin
+     * - configuracion: solo admin/superadmin (ya manejado por ROLE_MODULES)
+     */
+    function canSeeSpecialModule(rol, moduleName, profile) {
+        // Calculadoras: solo admin/superadmin o dual mode activo
+        if (moduleName === 'calculadoras') {
+            if (rol === 'admin' || rol === 'superadmin') return true;
+            // Si es dual mode y está en modo Admin, puede ver calculadoras
+            if (profile && isDualModeUser(profile)) {
+                try {
+                    if (sessionStorage.getItem('ssepi_mode') === 'admin') return true;
+                } catch (e) {}
+            }
+            return false;
+        }
+        // Configuracion: ya restringido por ROLE_MODULES (solo admin)
+        if (moduleName === 'configuracion') {
+            return rol === 'admin' || rol === 'superadmin';
+        }
+        return true;
+    }
+
+    /**
+     * Verifica permisos individuales de usuario desde user_module_permissions (sync).
+     * Devuelve null si no hay registro (seguir con lógica de rol).
+     * Devuelve true/false si hay registro explícito.
+     */
+    function getUserModulePermissionSync(moduleName) {
+        try {
+            var profile = window.authService ? window.authService.getProfileSync() : null;
+            if (!profile || !profile.auth_user_id) return null;
+            var cached = sessionStorage.getItem('ssepi_user_perms_' + profile.auth_user_id);
+            if (!cached) return null;
+            var perms = JSON.parse(cached);
+            if (!perms.hasOwnProperty(moduleName)) return null;
+            return perms[moduleName] === true;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Carga permisos individuales de usuario en sessionStorage para acceso rápido.
+     */
+    async function loadUserModulePermissions() {
+        try {
+            if (!window.supabase) return;
+            var profile = await window.authService.getCurrentProfile();
+            if (!profile || !profile.auth_user_id) return;
+            var _ = await window.supabase
+                .from('user_module_permissions')
+                .select('module, enabled')
+                .eq('user_id', profile.auth_user_id);
+            if (_.error || !_.data) return;
+            var perms = {};
+            _.data.forEach(function(p) { perms[p.module] = p.enabled === true; });
+            sessionStorage.setItem('ssepi_user_perms_' + profile.auth_user_id, JSON.stringify(perms));
+        } catch (e) {
+            console.warn('[nav-by-role] Error loading user perms:', e);
+        }
+    }
+
     /** Aplica visibilidad por rol usando solo el mapa (síncrono, sin DB). */
     function applyNavByRoleFromCache(rol) {
         if (!rol) return;
@@ -133,6 +198,10 @@
         }
         if (ROLE_MODULES[rol] === null) return;
         elements = document.querySelectorAll(selector);
+        var profile = null;
+        try {
+            profile = window.authService ? window.authService.getProfileSync() : null;
+        } catch (e) {}
         for (var i = 0; i < elements.length; i++) {
             var el = elements[i];
             var moduleAny = el.getAttribute('data-module-any');
@@ -141,7 +210,20 @@
                 if (!allowedForModule(rol, null, moduleAny)) hide(el);
                 continue;
             }
-            if (module && !allowedForModule(rol, module, null)) hide(el);
+            if (module) {
+                // 1. Verificar permisos individuales de usuario (prioridad)
+                var userPerm = getUserModulePermissionSync(module);
+                if (userPerm === false) {
+                    hide(el);
+                    continue;
+                }
+                // 2. Verificar módulos especiales (calculadoras, configuracion)
+                if (!canSeeSpecialModule(rol, module, profile)) {
+                    hide(el);
+                } else if (!allowedForModule(rol, module, null)) {
+                    hide(el);
+                }
+            }
         }
         hideEmptyCategories();
     }
@@ -181,6 +263,17 @@
             }
 
             if (!module) continue;
+            // 1. Verificar permisos individuales de usuario (prioridad)
+            var userPerm = getUserModulePermissionSync(module);
+            if (userPerm === false) {
+                hide(el);
+                continue;
+            }
+            // 2. Verificar módulos especiales (calculadoras, configuracion)
+            if (!canSeeSpecialModule(effectiveRol, module, profile)) {
+                hide(el);
+                continue;
+            }
             try {
                 var ok = await auth.hasPermission(module, 'read');
                 if (!ok) hide(el);
@@ -209,6 +302,8 @@
             if (Date.now() > deadline) return;
             await new Promise(function (r) { setTimeout(r, 80); });
         }
+        // Cargar permisos individuales de usuario en caché
+        await loadUserModulePermissions();
         var cachedRol = null;
         try {
             cachedRol = sessionStorage.getItem('ssepi_rol');
