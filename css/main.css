@@ -652,11 +652,24 @@ tr.inbound-unread td { font-weight: 500; }
   margin: 5px 0 0 0;
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.3s ease;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  opacity: 0;
 }
 
 .nav-submenu.expanded {
   max-height: 500px;
+  opacity: 1;
+}
+
+/* Override para submenu de configuración en panel.html */
+#configSubmenu {
+  max-height: 0;
+  opacity: 0;
+}
+
+#configSubmenu.expanded {
+  max-height: 500px;
+  opacity: 1;
 }
 
 .nav-submenu li a {
