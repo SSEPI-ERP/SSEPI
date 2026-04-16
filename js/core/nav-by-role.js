@@ -57,7 +57,8 @@
         facturacion:         ['ventas', 'compras', 'facturas', 'vacaciones', 'analisis'],
         contabilidad:        null,
 
-        // ─── Módulo de Configuración (solo admin, automatizacion, Norberto) ───
+        // ─── Módulo de Configuración (solo admin, automatizacion, electronica) ───
+        electronica:         ['ordenes_taller', 'inventario', 'vacaciones', 'analisis', 'configuracion'],
         configuracion:       null  // Alias de admin, solo para visibilidad en nav
     };
 
@@ -141,11 +142,11 @@
             }
             return false;
         }
-        // Configuracion: solo admin/superadmin, automatizacion, y Norberto (dual mode)
+        // Configuracion: solo admin/superadmin, automatizacion, electronica, y dual mode
         if (moduleName === 'configuracion') {
             if (rol === 'admin' || rol === 'superadmin') return true;
-            if (rol === 'automatizacion') return true;
-            // Norberto en modo dual puede ver configuración
+            if (rol === 'automatizacion' || rol === 'electronica') return true;
+            // Dual mode puede ver configuración
             if (profile && isDualModeUser(profile)) {
                 return true;
             }
