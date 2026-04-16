@@ -6,7 +6,8 @@
       "Bash(git commit -m 'Limpieza UI: menús simplificados y herramientas avanzadas en Configuración *)",
       "Bash(git push *)",
       "Bash(git commit -m 'Análisis unificado + Menú Configuración en sidebar *)",
-      "Bash(git commit -m 'Configuración: IDs en secciones para anclas + scroll suave *)"
+      "Bash(git commit -m 'Configuración: IDs en secciones para anclas + scroll suave *)",
+      "Bash(git commit -m 'Panel: Submenú Configuración sin data-module en enlaces internos *)"
     ]
   }
 }
