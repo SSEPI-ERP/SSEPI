@@ -10,7 +10,8 @@
       "Bash(git commit -m 'Panel: Submenú Configuración sin data-module en enlaces internos *)",
       "Bash(curl -s https://raw.githubusercontent.com/SSEPI-ERP/SSEPI/main/panel.html)",
       "Bash(git commit -m 'Fix submenú Configuración - toggle con CSS max-height *)",
-      "Bash(git commit -m 'Fix submenú + Logo SSEPI *)"
+      "Bash(git commit -m 'Fix submenú + Logo SSEPI *)",
+      "Bash(git commit *)"
     ]
   }
 }

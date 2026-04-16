@@ -249,11 +249,20 @@
                     const configSubmenuToggle = document.getElementById('configSubmenuToggle');
                     const configSubmenu = document.getElementById('configSubmenu');
                     if (configSubmenuToggle && configSubmenu) {
+                        console.log('[Submenu] Toggle encontrado:', configSubmenuToggle);
+                        console.log('[Submenu] Submenu encontrado:', configSubmenu);
+
                         configSubmenuToggle.addEventListener('click', function(e) {
                             e.preventDefault();
                             e.stopPropagation();
-                            this.classList.toggle('expanded');
+                            console.log('[Submenu] Click detectado!');
+
+                            const isExpanded = this.classList.toggle('expanded');
                             configSubmenu.classList.toggle('expanded');
+
+                            console.log('[Submenu] Estado:', isExpanded ? 'EXPANDIDO' : 'COLAPSADO');
+                            console.log('[Submenu] Toggle classes:', this.className);
+                            console.log('[Submenu] Submenu classes:', configSubmenu.className);
                         });
                     }
                 }
