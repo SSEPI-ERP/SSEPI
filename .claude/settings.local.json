@@ -11,7 +11,8 @@
       "Bash(curl -s https://raw.githubusercontent.com/SSEPI-ERP/SSEPI/main/panel.html)",
       "Bash(git commit -m 'Fix submenú Configuración - toggle con CSS max-height *)",
       "Bash(git commit -m 'Fix submenú + Logo SSEPI *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(dir \"D:\\\\SSEPI\\\\js\\\\modules\\\\motores.js\" \"D:\\\\SSEPI\\\\js\\\\modules\\\\servicios.js\" \"D:\\\\SSEPI\\\\js\\\\modules\\\\configuracion.js\")"
     ]
   }
 }
