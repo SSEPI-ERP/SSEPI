@@ -1602,10 +1602,10 @@ const VentasModule = (function() {
 
     function _getWizardTitles() {
         return {
-            1: 'Registro del caso',
-            2: 'Calculadora de Ingeniería',
-            3: 'Margen y Finanzas',
-            4: 'Confirmación'
+            1: '📋 Registro y Generación de Orden',
+            2: '⏳ En Espera - Compras/Materiales',
+            3: '💰 Cotización al Cliente',
+            4: '📊 Seguimiento y Estatus'
         };
     }
 
@@ -1671,10 +1671,16 @@ const VentasModule = (function() {
 
         return `
             <div class="calculadora-section">
-                <div class="calculadora-titulo"><i class="fas fa-clipboard-list"></i> Paso 1: Registro de datos</div>
+                <div class="calculadora-titulo"><i class="fas fa-clipboard-list"></i> Paso 1: Registro y Generación de Orden</div>
+                <p style="color:var(--text-secondary); margin-bottom:16px;">
+                    <i class="fas fa-info-circle"></i> Registra los datos del cliente y producto. Al continuar se genera la orden en Taller/Motores/Automatización para diagnóstico.
+                </p>
+                <div class="info-box" style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px; margin-bottom: 16px; border-radius: 4px;">
+                    <strong>Flujo:</strong> Este registro crea la orden → Taller diagnostica → Compras revisa materiales → Regresa a Ventas para cotizar.
+                </div>
                 <p id="wizardPaso1Error" style="display:none; font-size:13px; color:#c62828; margin:0 0 12px 0;" role="alert"></p>
                 <div class="editor-item" style="margin-bottom:14px;">
-                    <p id="wizardFolioAyuda" style="font-size:13px; color:var(--text-secondary); margin:0;">Elige departamento.</p>
+                    <p id="wizardFolioAyuda" style="font-size:13px; color:var(--text-secondary); margin:0;">Elige departamento para generar orden.</p>
                 </div>
                 <div class="editor-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                     <div class="editor-item">
@@ -1692,11 +1698,11 @@ const VentasModule = (function() {
                 <div class="editor-item" style="margin-top:14px;">
                     <label>Nombre del producto <span style="color:#c62828;">*</span></label>
                     <input type="text" id="wizardNombreProducto" placeholder="Ej. Sistema de control, Motor trifásico, Tablero eléctrico..." style="width:100%; padding:10px;">
-                    <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Requerido para continuar con la cotización.</p>
+                    <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Requerido para generar la orden.</p>
                 </div>
                 <div class="editor-item" style="margin-top:14px;">
-                    <label>Falla reportada <span style="color:#c62828;">*</span></label>
-                    <textarea id="wizardFallaReportada" rows="3" placeholder="Describe la falla o requerimiento..." style="width:100%; padding:10px; resize:vertical;"></textarea>
+                    <label>Falla reportada / Requerimiento <span style="color:#c62828;">*</span></label>
+                    <textarea id="wizardFallaReportada" rows="3" placeholder="Describe la falla o el requerimiento del cliente..." style="width:100%; padding:10px; resize:vertical;"></textarea>
                 </div>
                 <div class="editor-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px;">
                     <div class="editor-item">
@@ -1716,7 +1722,7 @@ const VentasModule = (function() {
                             <option value="Taller Motores">Taller Motores</option>
                             <option value="Automatización">Automatización</option>
                             <option value="Proyectos">Proyectos</option>
-                            <option value="Administración">Administración</option>
+                            <option value="Administración">Administración (Sin orden)</option>
                         </select>
                     </div>
                 </div>
