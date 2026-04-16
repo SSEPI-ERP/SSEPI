@@ -1,5 +1,7 @@
 /**
- * configuracion.js - Gestión de permisos, roles y usuarios
+ * configuracion.js — LEGACY (no cargar en ssepi_configuracion.html).
+ * La página usa el bloque <script type="module"> inline con el esquema real
+ * (role_permissions: rol/module/action y user_id = auth_user_id).
  */
 (function () {
     'use strict';

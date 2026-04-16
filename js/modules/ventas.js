@@ -513,17 +513,24 @@ const VentasModule = (function() {
         try {
             cotizaciones = await cotizacionesService.select(
                 {},
-                { orderBy: 'fecha', ascending: false, page: 0, pageSize: 400 }
+                { orderBy: 'fecha_cotizacion', ascending: false, page: 0, pageSize: 400 }
             ) || [];
         } catch (e) {
             try {
                 cotizaciones = await cotizacionesService.select(
                     {},
-                    { orderBy: 'fecha_creacion', ascending: false, page: 0, pageSize: 400 }
+                    { orderBy: 'fecha', ascending: false, page: 0, pageSize: 400 }
                 ) || [];
             } catch (e2) {
-                console.warn('[Ventas] Error cargando cotizaciones:', e2);
-                cotizaciones = [];
+                try {
+                    cotizaciones = await cotizacionesService.select(
+                        {},
+                        { orderBy: 'fecha_creacion', ascending: false, page: 0, pageSize: 400 }
+                    ) || [];
+                } catch (e3) {
+                    console.warn('[Ventas] Error cargando cotizaciones:', e3);
+                    cotizaciones = [];
+                }
             }
         }
     }
@@ -621,7 +628,9 @@ const VentasModule = (function() {
 
         if (filtroFechaInicio && filtroFechaFin) {
             filtered = filtered.filter(item => {
-                const f = new Date(item.fecha);
+                const raw = item.fecha ?? item.fecha_cotizacion ?? item.fecha_creacion;
+                if (!raw) return true;
+                const f = new Date(raw);
                 return f >= filtroFechaInicio && f <= filtroFechaFin;
             });
         }
