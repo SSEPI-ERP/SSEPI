@@ -5,7 +5,47 @@
 -- a `authenticated` (y SELECT a `anon`). Solo para entornos de desarrollo/staging.
 -- =============================================================================
 
--- Rol efectivo desde public.users (JWT no trae `rol` en Supabase por defecto)
+-- ---------------------------------------------------------------------------
+-- Perfiles: asegurar public.users + vista public.usuarios (compatibilidad)
+-- (algunos proyectos solo tienen `usuarios` o no tienen tabla de perfiles)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.users (
+  auth_user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  rol TEXT NOT NULL DEFAULT 'ventas',
+  email TEXT,
+  nombre TEXT
+);
+
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS rol TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS nombre TEXT;
+
+-- `usuarios` puede existir como TABLA en algunos despliegues.
+-- Solo creamos/reemplazamos la VISTA si:
+-- - no existe `public.usuarios`, o
+-- - existe y realmente es una vista.
+DO $$
+DECLARE k text;
+BEGIN
+  SELECT c.relkind INTO k
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relname = 'usuarios'
+  LIMIT 1;
+
+  IF k IS NULL THEN
+    EXECUTE 'CREATE VIEW public.usuarios AS SELECT * FROM public.users';
+  ELSIF k = 'v' THEN
+    EXECUTE 'CREATE OR REPLACE VIEW public.usuarios AS SELECT * FROM public.users';
+  ELSE
+    -- k = 'r' (table) u otros: no tocar
+    RAISE NOTICE 'public.usuarios ya existe como %; se conserva.', k;
+  END IF;
+END $$;
+
+COMMENT ON TABLE public.users IS 'Perfiles de usuario vinculados a auth.users; vista usuarios para compatibilidad';
+
+-- Rol efectivo desde DB (JWT no trae `rol` en Supabase por defecto)
 CREATE OR REPLACE FUNCTION public.ssepi_current_rol()
 RETURNS TEXT
 LANGUAGE sql
@@ -177,10 +217,24 @@ ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS fecha_creacion TIMESTAM
 -- ---------------------------------------------------------------------------
 -- fecha_creacion en tablas operativas frecuentes (si no existe)
 -- ---------------------------------------------------------------------------
-ALTER TABLE public.ordenes_taller ADD COLUMN IF NOT EXISTS fecha_creacion TIMESTAMPTZ DEFAULT now();
-ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS fecha_creacion TIMESTAMPTZ DEFAULT now();
-ALTER TABLE public.inventario ADD COLUMN IF NOT EXISTS fecha_creacion TIMESTAMPTZ DEFAULT now();
-ALTER TABLE public.facturas ADD COLUMN IF NOT EXISTS fecha_creacion TIMESTAMPTZ DEFAULT now();
+DO $$
+BEGIN
+  IF to_regclass('public.ordenes_taller') IS NOT NULL THEN
+    EXECUTE 'ALTER TABLE public.ordenes_taller ADD COLUMN IF NOT EXISTS fecha_creacion TIMESTAMPTZ DEFAULT now()';
+  END IF;
+
+  IF to_regclass('public.contactos') IS NOT NULL THEN
+    EXECUTE 'ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS fecha_creacion TIMESTAMPTZ DEFAULT now()';
+  END IF;
+
+  IF to_regclass('public.inventario') IS NOT NULL THEN
+    EXECUTE 'ALTER TABLE public.inventario ADD COLUMN IF NOT EXISTS fecha_creacion TIMESTAMPTZ DEFAULT now()';
+  END IF;
+
+  IF to_regclass('public.facturas') IS NOT NULL THEN
+    EXECUTE 'ALTER TABLE public.facturas ADD COLUMN IF NOT EXISTS fecha_creacion TIMESTAMPTZ DEFAULT now()';
+  END IF;
+END $$;
 
 -- ---------------------------------------------------------------------------
 -- audit_logs: columnas usadas por data-service.js y ssepi_configuracion.html
@@ -203,9 +257,30 @@ ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS ip TEXT;
 ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS old_data JSONB;
 ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS new_data JSONB;
 
-UPDATE public.audit_logs SET action = accion WHERE action IS NULL AND accion IS NOT NULL;
-UPDATE public.audit_logs SET "timestamp" = created_at WHERE "timestamp" IS NULL AND created_at IS NOT NULL;
-UPDATE public.audit_logs SET user_email = usuario::text WHERE user_email IS NULL AND usuario IS NOT NULL;
+DO $$
+BEGIN
+  -- Migración desde esquemas legacy (usuario/accion/created_at) -> (user_email/action/timestamp)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'audit_logs' AND column_name = 'accion'
+  ) THEN
+    EXECUTE 'UPDATE public.audit_logs SET action = accion WHERE action IS NULL AND accion IS NOT NULL';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'audit_logs' AND column_name = 'created_at'
+  ) THEN
+    EXECUTE 'UPDATE public.audit_logs SET \"timestamp\" = created_at WHERE \"timestamp\" IS NULL AND created_at IS NOT NULL';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'audit_logs' AND column_name = 'usuario'
+  ) THEN
+    EXECUTE 'UPDATE public.audit_logs SET user_email = usuario::text WHERE user_email IS NULL AND usuario IS NOT NULL';
+  END IF;
+END $$;
 
 -- ---------------------------------------------------------------------------
 -- Desactivar RLS en tablas base (desarrollo)
