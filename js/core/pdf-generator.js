@@ -1,8 +1,8 @@
-// ================================================
-// ARCHIVO: pdf-generator.js
-// DESCRIPCIÓN: Generador de PDF estilo "Ironclad Folder Edition"
-// SEGURIDAD: Incluye marca de agua con usuario y hash de integridad
-// ================================================
+/**
+ * pdf-generator.js — Generador de PDFs unificado para todos los módulos de SSEPI
+ * Formato premium basado en ssepi_servicios (6).html
+ * Uso: window.pdfGenerator.generate({ departamento, datos, ... })
+ */
 
 import { authService } from './auth-service.js';
 
@@ -11,111 +11,334 @@ export class PDFGenerator {
         this.jsPDF = window.jspdf.jsPDF;
     }
 
-    async generateCotizacion(data, user) {
-        const doc = new this.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
-        const verde = '#006847';
-        const dorado = '#c49a6c';
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
+    /**
+     * Genera PDF con formato premium SSEPI
+     * @param {Object} opts - Opciones: { departamento, datos, tipo }
+     * @param {string} opts.departamento - 'Taller Electrónica', 'Motores', 'Automatización', 'Ventas', 'Compras'
+     * @param {Object} opts.datos - Datos del documento { folio, cliente, contacto, telefono, email, conceptos/items, total }
+     * @param {string} opts.tipo - 'cotizacion' | 'reporte' | 'orden'
+     * @param {Object} user - Usuario actual (para hash)
+     */
+    async generate(opts, user) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
-        // Encabezado verde
-        doc.setFillColor(verde);
-        doc.rect(0, 0, pageWidth, 20, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('COTIZACIÓN', pageWidth / 2, 13, { align: 'center' });
+        // ═══════════════════════════════════════════════════════════════════
+        // CONFIGURACIÓN DE PÁGINA
+        // ═══════════════════════════════════════════════════════════════════
+        const PW = 210, PH = 297;
+        const ML = 15, MR = 15;
+        const TW = PW - ML - MR;
+        const MT = 20, MB = 20;
+        const BODY_TOP = MT + 25;
+        const BODY_BOTTOM = PH - MB - 15;
 
-        // Logo y datos de la empresa
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text('SSEPI Automatización Industrial', 20, 30);
-        doc.text('Blvd. Zodiaco 336, León, GTO', 20, 35);
-        doc.text('RFC: SSE240317XXX', 20, 40);
-        doc.text('Tel: +52 477-737-3118', 20, 45);
+        let y = BODY_TOP;
+        let pgNum = 1;
 
-        // Datos de la cotización
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Folio: ${data.folio}`, pageWidth - 20, 30, { align: 'right' });
-        doc.text(`Fecha: ${new Date().toLocaleDateString()}`, pageWidth - 20, 35, { align: 'right' });
-        doc.text(`Cliente: ${data.cliente}`, pageWidth - 20, 40, { align: 'right' });
-        doc.text(`RFC: ${data.rfc || 'XAXX010101000'}`, pageWidth - 20, 45, { align: 'right' });
+        // ═══════════════════════════════════════════════════════════════════
+        // PALETA DE COLORES
+        // ═══════════════════════════════════════════════════════════════════
+        const COLORS = {
+            TEAL: [23, 165, 152],
+            TEAL_LT: [235, 247, 245],
+            GR_HDR: [245, 245, 245],
+            GR_ROW: [249, 249, 249],
+            GR_SEP: [220, 220, 220],
+            GR_TXT: [51, 51, 51],
+            GR_LT: [130, 130, 130],
+            BLK: [0, 0, 0],
+            WHT: [255, 255, 255],
+            COVER: [58, 68, 82],
+            CARD_BL: [62, 92, 155],
+            DEPT: {
+                'Taller Electrónica': [46, 125, 50],
+                'Taller': [46, 125, 50],
+                'Motores': [239, 108, 0],
+                'Automatización': [106, 27, 154],
+                'Proyectos': [106, 27, 154],
+                'Ventas': [255, 152, 0],
+                'Compras': [123, 31, 162],
+                'default': [0, 104, 71]
+            }
+        };
 
-        // Línea separadora
-        doc.setDrawColor(verde);
-        doc.setLineWidth(0.5);
-        doc.line(20, 50, pageWidth - 20, 50);
+        const deptColor = COLORS.DEPT[opts.departamento] || COLORS.DEPT.default;
+        const data = opts.datos || {};
 
-        // Tabla de conceptos
-        const tableColumn = ['Cant.', 'Descripción', 'Precio Unit.', 'Importe'];
-        const tableRows = data.items.map(item => [
-            item.cantidad,
-            item.descripcion,
-            `$${item.precioUnitario.toFixed(2)}`,
-            `$${item.importe.toFixed(2)}`
-        ]);
+        // ═══════════════════════════════════════════════════════════════════
+        // FUNCIONES AUXILIARES
+        // ═══════════════════════════════════════════════════════════════════
+        const tx = (text, x, y, style = 'normal', size = 11, color = COLORS.GR_TXT, optsTx = {}) => {
+            doc.setFont('helvetica', style);
+            doc.setFontSize(size);
+            doc.setTextColor(...color);
+            const align = optsTx.align || 'left';
+            const maxWidth = optsTx.maxWidth || null;
+            if (maxWidth) {
+                const lines = doc.splitTextToSize(text, maxWidth);
+                doc.text(lines, x, y, { align });
+                return lines.length * (size * 0.3527);
+            }
+            doc.text(text, x, y, { align });
+            return size * 0.3527;
+        };
 
-        doc.autoTable({
-            startY: 55,
-            head: [tableColumn],
-            body: tableRows,
-            theme: 'striped',
-            headStyles: { fillColor: [0, 104, 71], textColor: 255, fontStyle: 'bold' },
-            columnStyles: {
-                0: { halign: 'center', cellWidth: 20 },
-                1: { halign: 'left', cellWidth: 90 },
-                2: { halign: 'right', cellWidth: 35 },
-                3: { halign: 'right', cellWidth: 35 }
-            },
-            margin: { left: 20, right: 20 }
-        });
+        const fl = (x, y, w, h, color, radius = 0) => {
+            doc.setFillColor(...color);
+            if (radius > 0) {
+                doc.roundedRect(x, y, w, h, radius, radius, 'F');
+            } else {
+                doc.rect(x, y, w, h, 'F');
+            }
+        };
 
-        // Totales
-        const finalY = doc.lastAutoTable.finalY + 8;
-        doc.setFont('helvetica', 'bold');
-        doc.text('Subtotal:', pageWidth - 80, finalY);
-        doc.text(`$${data.subtotal.toFixed(2)}`, pageWidth - 20, finalY, { align: 'right' });
-        doc.text('IVA 16%:', pageWidth - 80, finalY + 6);
-        doc.text(`$${data.iva.toFixed(2)}`, pageWidth - 20, finalY + 6, { align: 'right' });
-        doc.text('Total:', pageWidth - 80, finalY + 12);
-        doc.setFontSize(14);
-        doc.text(`$${data.total.toFixed(2)}`, pageWidth - 20, finalY + 12, { align: 'right' });
+        const hl = (x, y, w, color, thickness = 0.5) => {
+            doc.setDrawColor(...color);
+            doc.setLineWidth(thickness);
+            doc.line(x, y, x + w, y);
+        };
 
-        // Notas legales
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        const notas = [
-            '1. Esta cotización tiene una validez de 30 días.',
-            '2. Los precios incluyen IVA, a menos que se indique lo contrario.',
-            '3. El tiempo de entrega es aproximado y sujeto a disponibilidad.',
-            '4. Cualquier cambio en las especificaciones podría afectar el precio.',
-            '5. El pago deberá realizarse antes de la entrega, salvo acuerdo previo.',
-            '6. La reparación incluye garantía de 90 días por defectos de mano de obra.',
-            '7. No se aceptan devoluciones una vez iniciado el trabajo.',
-            '8. Los equipos que no sean reclamados en 60 días se consideran abandonados.',
-            '9. El cliente es responsable de la veracidad de los datos proporcionados.',
-            '10. Para facturación, se requiere RFC y uso de CFDI.',
-            '11. Esta cotización no constituye una factura.',
-            '12. Los precios están sujetos a cambio sin previo aviso.',
-            '13. Cualquier disputa será resuelta en los tribunales de León, Gto.'
-        ];
-        let yNotas = pageHeight - 60;
-        doc.text('NOTAS LEGALES:', 20, yNotas);
-        yNotas += 5;
-        notas.forEach((nota, i) => {
-            doc.text(`${i+1}. ${nota}`, 20, yNotas + (i * 4));
-        });
+        const fmtMXN = (n) => '$' + (Number(n) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-        // Marca de agua con usuario y hash
+        const newPage = () => {
+            drawFooter(pgNum);
+            doc.addPage();
+            pgNum++;
+            y = drawHeader();
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // HEADER
+        // ═══════════════════════════════════════════════════════════════════
+        const drawHeader = () => {
+            let yy = 15;
+            // Logo placeholder
+            fl(ML, 10, 20, 20, deptColor, 4);
+            tx('S', ML + 7, 24, 'bold', 14, COLORS.WHT);
+
+            tx(opts.departamento || 'SSEPI', 40, 18, 'bold', 16, deptColor);
+            tx(opts.tipo === 'orden' ? 'Orden de Compra' : 'Cotización / Reporte', 40, 26, 'normal', 10, COLORS.GR_LT);
+
+            const folio = data.folio || 'N/A';
+            const fecha = data.fecha || new Date().toLocaleDateString('es-MX');
+            const cliente = data.cliente || 'Cliente General';
+
+            tx(`Folio: ${folio}`, PW - MR - 50, 18, 'normal', 9, COLORS.GR_TXT, { align: 'right' });
+            tx(`Fecha: ${fecha}`, PW - MR - 50, 26, 'normal', 9, COLORS.GR_TXT, { align: 'right' });
+
+            hl(ML, 45, TW, COLORS.TEAL, 1.5);
+            return 50;
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // FOOTER
+        // ═══════════════════════════════════════════════════════════════════
+        const drawFooter = (pageNum) => {
+            const footerY = PH - 15;
+            hl(ML, footerY - 5, TW, COLORS.GR_SEP, 0.3);
+            tx('SSEPI - Soluciones de Servicios Enterprise', ML, footerY, 'normal', 8, COLORS.GR_LT);
+            tx(`Página ${pageNum}`, PW - MR - 20, footerY, 'normal', 8, COLORS.GR_LT, { align: 'right' });
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // DATOS DEL CLIENTE / PROVEEDOR
+        // ═══════════════════════════════════════════════════════════════════
+        const drawClientInfo = () => {
+            const boxH = 25;
+            fl(ML, y, TW, boxH, COLORS.GR_HDR, 4);
+            tx(opts.tipo === 'orden' ? 'Datos del Proveedor' : 'Datos del Cliente', ML + 5, y + 8, 'bold', 11, COLORS.GR_TXT);
+
+            const lines = [
+                `${opts.tipo === 'orden' ? 'Proveedor' : 'Cliente'}: ${data.cliente || data.proveedor || 'N/A'}`,
+                `Contacto: ${data.contacto || 'N/A'}`,
+                `Teléfono: ${data.telefono || 'N/A'}`,
+                `Email: ${data.email || 'N/A'}`
+            ];
+
+            let ly = y + 16;
+            lines.forEach((line, i) => {
+                tx(line, ML + 5, ly + (i * 5), 'normal', 9, COLORS.GR_TXT);
+            });
+
+            y += boxH + 8;
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TABLA DE CONCEPTOS
+        // ═══════════════════════════════════════════════════════════════════
+        const drawConceptsTable = () => {
+            const conceptos = data.conceptos || data.items || [];
+            if (!conceptos || !conceptos.length) return 0;
+
+            const TBH = 8;
+            const TRH = 7;
+            const TBW = TW - 10;
+            const TBX = ML + 5;
+
+            fl(TBX, y, TBW, TBH, COLORS.TEAL, 2);
+            tx('Concepto', TBX + 4, y + TBH * 0.65, 'bold', 9, COLORS.WHT);
+            tx('Cant.', TBX + TBW - 65, y + TBH * 0.65, 'bold', 9, COLORS.WHT, { align: 'right' });
+            tx('Precio Unit.', TBX + TBW - 45, y + TBH * 0.65, 'bold', 9, COLORS.WHT, { align: 'right' });
+            tx('Total', TBX + TBW - 3, y + TBH * 0.65, 'bold', 9, COLORS.WHT, { align: 'right' });
+            hl(TBX, y + TBH, TBW, COLORS.TEAL, 0.5);
+            y += TBH + 2;
+
+            let total = 0;
+            conceptos.forEach((concepto, idx) => {
+                const rowColor = idx % 2 === 0 ? COLORS.GR_ROW : COLORS.WHT;
+                fl(TBX, y, TBW, TRH, rowColor, 0);
+
+                const cant = Number(concepto.cantidad) || 1;
+                const precio = Number(concepto.precio) || Number(concepto.precioUnitario) || 0;
+                const subtotal = cant * precio;
+                total += subtotal;
+
+                tx(concepto.descripcion || concepto.nombre || 'N/A', TBX + 4, y + TRH * 0.65, 'normal', 9, COLORS.GR_TXT, { maxWidth: TBW - 80 });
+                tx(String(cant), TBX + TBW - 65, y + TRH * 0.65, 'normal', 9, COLORS.GR_TXT, { align: 'right' });
+                tx(fmtMXN(precio), TBX + TBW - 45, y + TRH * 0.65, 'normal', 9, COLORS.GR_TXT, { align: 'right' });
+                tx(fmtMXN(subtotal), TBX + TBW - 3, y + TRH * 0.65, 'normal', 9, COLORS.GR_TXT, { align: 'right' });
+
+                hl(TBX, y + TRH, TBW, COLORS.GR_SEP, 0.2);
+                y += TRH;
+
+                if (y > BODY_BOTTOM) newPage();
+            });
+
+            y += 3;
+            fl(TBX, y, TBW, TRH + 2, COLORS.TEAL_LT, 2);
+            tx('Total', TBX + 4, y + (TRH + 2) * 0.65, 'bold', 10, COLORS.TEAL);
+            tx(fmtMXN(total), TBX + TBW - 3, y + (TRH + 2) * 0.65, 'bold', 10, COLORS.TEAL, { align: 'right' });
+            hl(TBX, y + TRH + 2, TBW, COLORS.GR_SEP, 0.5);
+            y += TRH + 12;
+
+            return total;
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // NOTAS IMPORTANTES
+        // ═══════════════════════════════════════════════════════════════════
+        const drawNotas = () => {
+            if (y + 16 > BODY_BOTTOM) newPage();
+
+            tx('Notas Importantes', ML + 4, y, 'bold', 13, COLORS.BLK);
+            y += 8;
+
+            const NOTAS = [
+                { n: '1.', b: 'únicamente', post: ' los suministros y/o refacciones descritas.' },
+                { n: '2.', b: 'sujeta a confirmación', post: ' al momento de la recepción del pago.' },
+                { n: '3.', pre: 'Precios expresados en ', b: 'MXN', post: ', salvo indicación contraria.' },
+                { n: '4.', pre: 'Los costos de envío ', b: 'no están incluidos', post: ', salvo que se indique explícitamente.' },
+                { n: '5.', pre: 'Los tiempos de entrega son ', b: 'estimados', post: ' y comienzan tras confirmación de pago.' },
+                { n: '6.', pre: 'Productos cuentan con ', b: 'garantía del fabricante', post: ', conforme a sus políticas.' }
+            ];
+
+            const NL = 5.0;
+            const NMAX = TW - 12;
+
+            NOTAS.forEach(nota => {
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                const full = (nota.pre || '') + (nota.b || '') + (nota.post || '');
+                const lines = doc.splitTextToSize(full, NMAX);
+                const nH = lines.length * NL + 2;
+
+                if (y + nH > BODY_BOTTOM) newPage();
+
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(...COLORS.TEAL);
+                tx(nota.n, ML + 4, y, 'bold', 9, COLORS.TEAL);
+
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(...COLORS.GR_TXT);
+
+                let xx = ML + 10;
+                if (nota.pre) {
+                    tx(nota.pre, xx, y, 'normal', 9, COLORS.GR_TXT);
+                    xx += doc.getTextWidth(nota.pre);
+                }
+                if (nota.b) {
+                    tx(nota.b, xx, y, 'bold', 9, COLORS.TEAL);
+                    xx += doc.getTextWidth(nota.b);
+                }
+                if (nota.post) {
+                    tx(nota.post, xx, y, 'normal', 9, COLORS.GR_TXT);
+                }
+
+                y += lines.length * NL + 1;
+            });
+
+            y += 5;
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // FIRMAS
+        // ═══════════════════════════════════════════════════════════════════
+        const drawFirmas = () => {
+            if (y + 50 > BODY_BOTTOM) newPage();
+
+            const sigY = Math.max(y, BODY_BOTTOM - 60);
+            const sigW = (TW - 20) / 2;
+
+            hl(ML + 5, sigY, sigW, COLORS.GR_TXT, 0.5);
+            hl(ML + 5 + sigW + 20, sigY, sigW, COLORS.GR_TXT, 0.5);
+
+            tx('Por SSEPI', ML + 5 + sigW / 2, sigY + 8, 'normal', 9, COLORS.GR_TXT, { align: 'center' });
+            tx(`Por el ${opts.tipo === 'orden' ? 'Proveedor' : 'Cliente'}`, ML + 5 + sigW + 20 + sigW / 2, sigY + 8, 'normal', 9, COLORS.GR_TXT, { align: 'center' });
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // HASH DE SEGURIDAD
+        // ═══════════════════════════════════════════════════════════════════
+        const generateHash = async () => {
+            const json = JSON.stringify(data);
+            const encoder = new TextEncoder();
+            const dataBuffer = encoder.encode(json);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // EJECUCIÓN PRINCIPAL
+        // ═══════════════════════════════════════════════════════════════════
+        y = drawHeader();
+        drawClientInfo();
+        drawConceptsTable();
+        drawNotas();
+        drawFirmas();
+        drawFooter(pgNum);
+
+        // Hash y usuario
+        const hash = await generateHash();
         doc.setFontSize(6);
         doc.setTextColor(200, 200, 200);
-        const hash = await this.generateHash(data);
-        doc.text(`Generado por: ${user?.email || 'usuario'} | Hash: ${hash}`, 20, pageHeight - 10);
+        tx(`Generado por: ${user?.email || 'usuario'} | Hash: ${hash}`, ML, PH - 8, 'normal', 6, COLORS.GR_LT);
 
-        // Guardar
-        doc.save(`Cotizacion_${data.folio}.pdf`);
+        // Descargar
+        const tipo = opts.tipo || 'cotizacion';
+        const fileName = `${tipo.charAt(0).toUpperCase() + tipo.slice(1)}_${opts.departamento?.replace(/\s+/g, '_') || 'SSEPI'}_${data.folio || Date.now()}.pdf`;
+        doc.save(fileName);
+
+        return doc;
     }
+
+    // Alias para compatibilidad
+    async generateCotizacion(data, user) {
+        return this.generate({ departamento: data.departamento || 'Ventas', datos: data, tipo: 'cotizacion' }, user);
+    }
+
+    async generateOrdenCompra(data, user) {
+        return this.generate({ departamento: 'Compras', datos: data, tipo: 'orden' }, user);
+    }
+
+    async generateReport(data, user) {
+        return this.generate({ departamento: data.departamento || 'Taller', datos: data, tipo: 'reporte' }, user);
+    }
+}
+
+export const pdfGenerator = new PDFGenerator();
+window.pdfGenerator = pdfGenerator;
 
     /**
      * Orden de compra — mismo estilo folder (folio SP-OC...).
