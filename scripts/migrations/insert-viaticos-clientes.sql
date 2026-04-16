@@ -30,21 +30,21 @@ UPDATE public.contactos SET km = 28.2, horas_viaje = 3 WHERE nombre ILIKE '%RONG
 -- ================================================
 -- 2. INSERTAR CLIENTES NUEVOS CON SUS VIÁTICOS
 -- ================================================
-INSERT INTO public.contactos (nombre, tipo, km, horas_viaje, pais) VALUES
-('ANGUIPALST', 'cliente', 234, 6, 'México'),
-('EPC 1', 'cliente', 400, 7, 'México'),
-('GEDNEY', 'cliente', 23.6, 3, 'México'),
-('GRUPO ACERERO', 'cliente', 386, 7, 'México'),
-('HALL PLANTA 1', 'cliente', 73.8, 3, 'México'),
-('IMPRENTA JM', 'cliente', 16.2, 2, 'México'),
-('JARDÍN LA ALEMANA', 'cliente', 12, 2, 'México'),
-('MAFLOW', 'cliente', 59.8, 3, 'México'),
-('MICROONDA', 'cliente', 41.6, 3, 'México'),
-('SAFE DEMO', 'cliente', 61.6, 3, 'México'),
-('ELECTROFORJADOS', 'cliente', 14.6, 2, 'México'),
-('SUACERO', 'cliente', 392, 8, 'México'),
-('TQ-1', 'cliente', 26, 2, 'México'),
-('MINO INDUSTRY', 'cliente', 29.2, 2, 'México');
+INSERT INTO public.contactos (nombre, tipo, km, horas_viaje) VALUES
+('ANGUIPALST', 'cliente', 234, 6),
+('EPC 1', 'cliente', 400, 7),
+('GEDNEY', 'cliente', 23.6, 3),
+('GRUPO ACERERO', 'cliente', 386, 7),
+('HALL PLANTA 1', 'cliente', 73.8, 3),
+('IMPRENTA JM', 'cliente', 16.2, 2),
+('JARDÍN LA ALEMANA', 'cliente', 12, 2),
+('MAFLOW', 'cliente', 59.8, 3),
+('MICROONDA', 'cliente', 41.6, 3),
+('SAFE DEMO', 'cliente', 61.6, 3),
+('ELECTROFORJADOS', 'cliente', 14.6, 2),
+('SUACERO', 'cliente', 392, 8),
+('TQ-1', 'cliente', 26, 2),
+('MINO INDUSTRY', 'cliente', 29.2, 2);
 
 -- ================================================
 -- 3. NOTIFICAR A POSTGREST QUE RECARGUE EL SCHEMA
