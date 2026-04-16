@@ -4,7 +4,8 @@
       "Bash(node build-ssepi-adapted-import.mjs)",
       "Bash(git add *)",
       "Bash(git commit -m 'Limpieza UI: menús simplificados y herramientas avanzadas en Configuración *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git commit -m 'Análisis unificado + Menú Configuración en sidebar *)"
     ]
   }
 }

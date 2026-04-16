@@ -40,23 +40,24 @@
         admin: null,
         superadmin: null,
 
-        // ─── 5 roles básicos (solo sus módulos, sin análisis ni módulos ajenos) ───
+        // ─── 5 roles básicos (solo sus módulos + análisis general) ───
         // Nota: 'calculadoras' solo visible para admin/superadmin o dual mode en modo Admin
-        ventas:              ['ventas', 'inventario', 'contactos', 'vacaciones'],
-        administracion:      ['compras', 'facturas', 'contabilidad', 'pagos_nomina', 'inventario', 'contactos', 'vacaciones'],
-        taller:              ['ordenes_taller', 'inventario', 'vacaciones'],
-        motores:             ['ordenes_motores', 'inventario', 'vacaciones'],
-        automatizacion:      ['proyectos_automatizacion', 'inventario', 'vacaciones'],
+        // 'analisis' ahora es módulo unificado accesible para todos los roles operativos
+        ventas:              ['ventas', 'inventario', 'contactos', 'vacaciones', 'analisis'],
+        administracion:      ['compras', 'facturas', 'contabilidad', 'pagos_nomina', 'inventario', 'contactos', 'vacaciones', 'analisis'],
+        taller:              ['ordenes_taller', 'inventario', 'vacaciones', 'analisis'],
+        motores:             ['ordenes_motores', 'inventario', 'vacaciones', 'analisis'],
+        automatizacion:      ['proyectos_automatizacion', 'inventario', 'vacaciones', 'analisis', 'configuracion'],
 
         // ─── Variante de ventas (sin módulo Compras; nav idéntico a ventas) ───
-        ventas_sin_compras:  ['ventas', 'inventario', 'contactos', 'vacaciones'],
+        ventas_sin_compras:  ['ventas', 'inventario', 'contactos', 'vacaciones', 'analisis'],
 
         // ─── Roles de soporte (compatibilidad hacia atrás) ───
-        compras:             ['compras', 'inventario', 'vacaciones'],
-        facturacion:         ['ventas', 'compras', 'facturas', 'vacaciones'],
+        compras:             ['compras', 'inventario', 'vacaciones', 'analisis'],
+        facturacion:         ['ventas', 'compras', 'facturas', 'vacaciones', 'analisis'],
         contabilidad:        null,
 
-        // ─── Módulo de Configuración (solo admin) ───
+        // ─── Módulo de Configuración (solo admin, automatizacion, Norberto) ───
         configuracion:       null  // Alias de admin, solo para visibilidad en nav
     };
 
