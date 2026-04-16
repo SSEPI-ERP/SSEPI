@@ -1,0 +1,2 @@
+id,folio,proveedor,fecha_emision,fecha_entrega,estado,total,items,created_at
+,OC-0001,razón social,YYYY-MM-DD,YYYY-MM-DD,pending/received/cancelled,monto,[{"producto_id":"uuid","cantidad":1,"costo":0.00}],YYYY-MM-DD

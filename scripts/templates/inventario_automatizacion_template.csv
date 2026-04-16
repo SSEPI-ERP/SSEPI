@@ -1,0 +1,2 @@
+id,sku,nombre,descripcion,categoria,ubicacion,stock,costo,precio_venta,created_at
+,,nombre del producto,descripción detallada,Electrónica/Hidráulica/Neumática/Mecánica,ubicación física,cantidad,costo unitario,precio venta,YYYY-MM-DD

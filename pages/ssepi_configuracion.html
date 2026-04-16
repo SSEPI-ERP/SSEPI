@@ -218,6 +218,82 @@
                 <strong>Nota:</strong> Los módulos marcados con <span style="color: #f59e0b;">⚠️</span> requieren atención (ej. calculadoras solo para admins).
             </div>
         </section>
+
+        <!-- SECCIÓN 5: IMPORTAR/EXPORTAR CSV -->
+        <section class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px;">
+            <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-file-csv" style="color: #28a745;"></i>
+                Importar / Exportar Datos
+            </h2>
+            <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                Gestiona la importación y exportación de datos del sistema. Todas las acciones quedan registradas en la bitácora de auditoría.
+            </p>
+
+            <!-- Alerta de auditoría -->
+            <div style="background: #e3f2fd; border: 1px solid #2196f3; color: #0d47a1; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 13px;">
+                <i class="fas fa-shield-alt"></i>
+                <strong>Auditoría activa:</strong> Todas las importaciones/exportaciones se registran y notifican a los administradores.
+            </div>
+
+            <!-- Selector de módulo -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Módulo:</label>
+                    <select id="importExportModule" style="width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: var(--text-primary); font-size: 14px;">
+                        <option value="">Seleccionar módulo...</option>
+                        <option value="contactos">Contactos</option>
+                        <option value="inventario_automatizacion">Inventario Automatización</option>
+                        <option value="inventario_electronica">Inventario Electrónica</option>
+                        <option value="ordenes_compra">Órdenes de Compra</option>
+                        <option value="ordenes_reparacion">Órdenes de Reparación</option>
+                        <option value="ordenes_venta">Órdenes de Venta</option>
+                        <option value="bom_automatizacion">BOM Automatización</option>
+                        <option value="gastos_viaje">Gastos de Viaje</option>
+                        <option value="formulas_costos">Fórmulas de Costos</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Acción:</label>
+                    <div style="display: flex; gap: 8px; margin-top: 10px;">
+                        <button class="btn-ssepi btn-ventas" id="btnExportar" style="flex: 1;">
+                            <i class="fas fa-download"></i> Exportar CSV
+                        </button>
+                        <label class="btn-ssepi btn-secondary" style="flex: 1; cursor: pointer; text-align: center;">
+                            <i class="fas fa-upload"></i> Importar CSV
+                            <input type="file" id="btnImportar" accept=".csv" style="display: none;">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estado de la operación -->
+            <div id="importExportStatus" style="display: none; padding: 16px; border-radius: 6px; margin-top: 16px;"></div>
+
+            <!-- Historial de auditoría -->
+            <div style="margin-top: 24px;">
+                <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-history"></i>
+                    Bitácora de Import/Export (últimos 7 días)
+                </h3>
+                <div id="auditHistoryContainer">
+                    <table class="lista-table" id="auditHistoryTable">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Usuario</th>
+                                <th>Módulo</th>
+                                <th>Acción</th>
+                                <th>Registros</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditHistoryBody">
+                            <tr><td colspan="6" style="text-align: center; padding: 40px;">Cargando historial...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
     </main>
 
     <!-- MODAL: EDITAR ROL DE USUARIO -->
@@ -644,6 +720,219 @@
         }
 
         // ================================================
+        // IMPORTAR / EXPORTAR CON AUDITORÍA
+        // ================================================
+        const MODULE_TABLES = {
+            contactos: 'contactos',
+            inventario_automatizacion: 'inventario',
+            inventario_electronica: 'inventario',
+            ordenes_compra: 'ordenes_compra',
+            ordenes_reparacion: 'ordenes_reparacion',
+            ordenes_venta: 'ordenes_venta',
+            bom_automatizacion: 'bom_automatizacion',
+            gastos_viaje: 'gastos_viaje',
+            formulas_costos: 'formulas_costos'
+        };
+
+        async function loadAuditHistory() {
+            try {
+                const { data, error } = await window.supabase
+                    .from('audit_logs')
+                    .select('*')
+                    .in('action', ['import', 'export'])
+                    .order('timestamp', { ascending: false })
+                    .limit(50);
+
+                if (error) throw error;
+
+                const tbody = document.getElementById('auditHistoryBody');
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-secondary);">No hay registros de import/export en los últimos 7 días</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.map(log => {
+                    const statusClass = log.errors_count > 0 ? 'status-error' : 'status-success';
+                    const statusText = log.errors_count > 0 ? `Error (${log.errors_count})` : 'Exitoso';
+                    const actionClass = log.action === 'import' ? 'status-info' : 'status-success';
+
+                    return `
+                        <tr>
+                            <td>${new Date(log.timestamp).toLocaleString()}</td>
+                            <td>${log.user_email || '—'}</td>
+                            <td>${log.module || 'general'}</td>
+                            <td><span class="status-badge ${actionClass}">${log.action.toUpperCase()}</span></td>
+                            <td>${log.records_processed || 0}</td>
+                            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('[Audit] Error cargando historial:', error);
+                document.getElementById('auditHistoryBody').innerHTML =
+                    '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #c62828;">Error: ' + error.message + '</td></tr>';
+            }
+        }
+
+        async function logAuditAction(action, module, recordsProcessed, errorsCount, fileName, details) {
+            try {
+                const profile = await authService.getCurrentProfile();
+                await window.supabase.from('audit_logs').insert({
+                    action: action,
+                    module: module,
+                    user_id: profile?.auth_user_id,
+                    user_email: profile?.email,
+                    records_processed: recordsProcessed,
+                    errors_count: errorsCount,
+                    file_name: fileName,
+                    details: details,
+                    severity: errorsCount > 0 ? 'warning' : 'info',
+                    ip_address: '0.0.0.0',
+                    user_agent: navigator.userAgent,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (error) {
+                console.error('[Audit] Error registrando acción:', error);
+            }
+        }
+
+        async function exportarCSV() {
+            const module = document.getElementById('importExportModule').value;
+            if (!module) {
+                showImportExportStatus('Selecciona un módulo primero', 'error');
+                return;
+            }
+
+            const statusDiv = document.getElementById('importExportStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.style.background = '#e3f2fd';
+            statusDiv.style.border = '1px solid #2196f3';
+            statusDiv.style.color = '#0d47a1';
+            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exportando datos...';
+
+            try {
+                const tableName = MODULE_TABLES[module];
+                if (!tableName) throw new Error('Tabla no encontrada para el módulo ' + module);
+
+                const { data, error } = await window.supabase
+                    .from(tableName)
+                    .select('*');
+
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    showImportExportStatus('No hay datos para exportar en este módulo', 'warning');
+                    await logAuditAction('export', module, 0, 0, null, 'Sin datos para exportar');
+                    return;
+                }
+
+                // Convertir a CSV
+                const headers = Object.keys(data[0]).join(',');
+                const rows = data.map(row =>
+                    Object.values(row).map(val =>
+                        val === null ? '' : (typeof val === 'object' ? JSON.stringify(val) : String(val).replace(/"/g, '""'))
+                    ).map(v => `"${v}"`).join(',')
+                );
+                const csv = [headers, ...rows].join('\n');
+
+                // Descargar archivo
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${module}_${new Date().toISOString().split('T')[0]}.csv`;
+                link.click();
+
+                showImportExportStatus(`Exportación exitosa: ${data.length} registros`, 'success');
+                await logAuditAction('export', module, data.length, 0, null, 'Exportación completada');
+                loadAuditHistory();
+            } catch (error) {
+                showImportExportStatus('Error al exportar: ' + error.message, 'error');
+                await logAuditAction('export', module, 0, 1, null, error.message);
+            }
+        }
+
+        async function importarCSV(file) {
+            const module = document.getElementById('importExportModule').value;
+            if (!module) {
+                showImportExportStatus('Selecciona un módulo primero', 'error');
+                return;
+            }
+
+            const statusDiv = document.getElementById('importExportStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.style.background = '#e3f2fd';
+            statusDiv.style.border = '1px solid #2196f3';
+            statusDiv.style.color = '#0d47a1';
+            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando archivo...';
+
+            try {
+                const tableName = MODULE_TABLES[module];
+                if (!tableName) throw new Error('Tabla no encontrada para el módulo ' + module);
+
+                const text = await file.text();
+                const lines = text.split('\n').filter(l => l.trim());
+                if (lines.length < 2) throw new Error('Archivo CSV vacío o inválido');
+
+                const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                const records = [];
+                let errors = 0;
+                const errorMessages = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    try {
+                        const values = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+                        const cleanValues = values.map(v => v.replace(/^"|"$/g, '').replace(/""/g, '"'));
+
+                        const row = {};
+                        headers.forEach((h, idx) => {
+                            row[h] = cleanValues[idx] || null;
+                        });
+
+                        // Eliminar campo id si está vacío para que sea autogenerado
+                        if (!row.id || row.id.trim() === '') delete row.id;
+
+                        records.push(row);
+                    } catch (e) {
+                        errors++;
+                        errorMessages.push(`Línea ${i + 1}: ${e.message}`);
+                    }
+                }
+
+                if (records.length === 0) throw new Error('No hay registros válidos para importar');
+
+                // Insertar en Supabase
+                const { data, error } = await window.supabase
+                    .from(tableName)
+                    .insert(records);
+
+                if (error) throw error;
+
+                showImportExportStatus(`Importación exitosa: ${records.length} registros${errors > 0 ? `, ${errors} errores` : ''}`, 'success');
+                await logAuditAction('import', module, records.length, errors, file.name, errors > 0 ? errorMessages.join('; ') : 'Importación completada');
+                loadAuditHistory();
+            } catch (error) {
+                showImportExportStatus('Error al importar: ' + error.message, 'error');
+                await logAuditAction('import', module, 0, 1, file.name, error.message);
+            }
+        }
+
+        function showImportExportStatus(message, type) {
+            const statusDiv = document.getElementById('importExportStatus');
+            statusDiv.style.display = 'block';
+
+            const colors = {
+                success: { bg: '#d4edda', border: '#28a745', text: '#155724' },
+                error: { bg: '#f8d7da', border: '#dc3545', text: '#721c24' },
+                warning: { bg: '#fff3cd', border: '#ffc107', text: '#856404' }
+            };
+
+            const color = colors[type] || colors.success;
+            statusDiv.style.background = color.bg;
+            statusDiv.style.border = `1px solid ${color.border}`;
+            statusDiv.style.color = color.text;
+            statusDiv.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}"></i> ${message}`;
+        }
+
+        // ================================================
         // INIT
         // ================================================
         (async function init() {
@@ -653,6 +942,7 @@
             await loadUsuarios();
             await loadUsuariosSelector();
             await loadPermisos('ventas');
+            await loadAuditHistory();
 
             // Event listeners - Permisos por Rol
             document.getElementById('rolSelector').addEventListener('change', (e) => {
@@ -677,6 +967,14 @@
 
             // Editar rol
             document.getElementById('btnConfirmarRol').addEventListener('click', confirmarCambioRol);
+
+            // Import/Export
+            document.getElementById('btnExportar').addEventListener('click', exportarCSV);
+            document.getElementById('btnImportar').addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    importarCSV(e.target.files[0]);
+                }
+            });
         })();
     </script>
 </body>

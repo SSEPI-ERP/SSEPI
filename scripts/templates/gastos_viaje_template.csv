@@ -1,0 +1,2 @@
+id,cliente,concepto,monto,fecha,tipo,created_at
+,nombre cliente,viáticos/pasajes/hotel/alimentación,0.00,YYYY-MM-DD,nacional/internacional,YYYY-MM-DD

@@ -203,6 +203,104 @@
                 <div class="kpi-card"><div class="kpi-title">Clientes vinculados</div><div class="kpi-value" id="analisisTotalClientes">0</div></div>
             </div>
         </div>
+
+        <!-- SECCIÓN: BOM AUTOMATIZACIÓN -->
+        <div class="form-section" style="margin-top: 24px;">
+            <h3 class="section-title-form"><i class="fas fa-sitemap"></i> BOM Automatización</h3>
+            <p class="form-hint">Lista de materiales con costos desglosados (planta vs oficina). Solo visible para administradores y usuarios con modo dual activo.</p>
+
+            <!-- Filtros -->
+            <div class="filtros-bar" style="margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label style="font-weight: 600; font-size: 13px; color: var(--text-muted);">Categoría:</label>
+                    <select id="bomFiltroCategoria" class="form-control" style="max-width: 200px;">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label style="font-weight: 600; font-size: 13px; color: var(--text-muted);">Estado:</label>
+                    <select id="bomFiltroEstado" class="form-control" style="max-width: 150px;">
+                        <option value="">Todos</option>
+                        <option value="Activo">Activo</option>
+                        <option value="Inactivo">Inactivo</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-ssepi btn-ventas" id="btnBOMNuevo">
+                    <i class="fas fa-plus"></i> Nuevo Material
+                </button>
+                <button type="button" class="btn-ssepi btn-secondary" id="btnBOMRecargar">
+                    <i class="fas fa-sync"></i> Recargar
+                </button>
+            </div>
+
+            <!-- Tabla BOM -->
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaBOM">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Número de Parte</th>
+                            <th>Descripción</th>
+                            <th>Categoría</th>
+                            <th>Proveedor</th>
+                            <th>Costo Unit.</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaBOMBody">
+                        <tr><td colspan="8" style="text-align: center; padding: 40px;">Cargando BOM...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Resumen de costos -->
+            <div style="margin-top: 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+                <div class="kpi-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="kpi-title">Total Materiales</div>
+                    <div class="kpi-value" id="bomTotalMateriales">$0</div>
+                </div>
+                <div class="kpi-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <div class="kpi-title">Costo Planta</div>
+                    <div class="kpi-value" id="bomCostoPlanta">$0</div>
+                </div>
+                <div class="kpi-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <div class="kpi-title">Costo Oficina</div>
+                    <div class="kpi-value" id="bomCostoOficina">$0</div>
+                </div>
+                <div class="kpi-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                    <div class="kpi-title">Costo Total</div>
+                    <div class="kpi-value" id="bomCostoTotal">$0</div>
+                </div>
+            </div>
+
+            <!-- Servicios con desglose planta/oficina -->
+            <div style="margin-top: 24px;">
+                <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-concierge-bell"></i>
+                    Servicios de Automatización (Desglose Planta vs Oficina)
+                </h4>
+                <div class="resumen-table-wrap">
+                    <table class="lista-table" id="tablaServicios">
+                        <thead>
+                            <tr>
+                                <th>Servicio</th>
+                                <th>Área</th>
+                                <th>Costo Planta</th>
+                                <th>Costo Oficina</th>
+                                <th>Costo Total</th>
+                                <th>Horas Est.</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaServiciosBody">
+                            <tr><td colspan="8" style="text-align: center; padding: 40px;">Cargando servicios...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Modal Editar Calculadora -->
@@ -255,6 +353,73 @@
                 <button type="button" class="btn-ssepi" id="modalClienteGuardar"><i class="fas fa-save"></i> Guardar</button>
                 <button type="button" class="btn-ssepi btn-danger" id="modalClienteEliminar"><i class="fas fa-trash"></i> Eliminar</button>
                 <button type="button" class="btn-ssepi btn-secondary" id="modalClienteCancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar BOM -->
+    <div class="modal-backdrop calc-modal" id="modalBOM" aria-hidden="true">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header"><h4 id="modalBOMTitle">Editar material BOM</h4><button type="button" class="modal-close" id="modalBOMClose" aria-label="Cerrar">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="modalBOMId">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group"><label for="modalBOMItem">Item</label><input type="number" id="modalBOMItem" class="form-control"></div>
+                    <div class="form-group"><label for="modalBOMNumeroParte">Número de Parte</label><input type="text" id="modalBOMNumeroParte" class="form-control"></div>
+                </div>
+                <div class="form-group"><label for="modalBOMDescripcion">Descripción</label><textarea id="modalBOMDescripcion" class="form-control" rows="2"></textarea></div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group"><label for="modalBOMCategoria">Categoría</label><input type="text" id="modalBOMCategoria" class="form-control"></div>
+                    <div class="form-group"><label for="modalBOMProveedor">Proveedor</label><input type="text" id="modalBOMProveedor" class="form-control"></div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group"><label for="modalBOMPrecio">Precio Unitario</label><input type="number" step="0.01" id="modalBOMPrecio" class="form-control"></div>
+                    <div class="form-group"><label for="modalBOMMoneda">Moneda</label>
+                        <select id="modalBOMMoneda" class="form-control">
+                            <option value="MXN">MXN</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group"><label for="modalBOMEstado">Estado</label>
+                    <select id="modalBOMEstado" class="form-control">
+                        <option value="Activo">Activo</option>
+                        <option value="Inactivo">Inactivo</option>
+                    </select>
+                </div>
+                <div class="form-group"><label for="modalBOMLink">Link</label><input type="text" id="modalBOMLink" class="form-control" placeholder="https://..."></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi" id="modalBOMGuardar"><i class="fas fa-save"></i> Guardar</button>
+                <button type="button" class="btn-ssepi btn-danger" id="modalBOMEliminar"><i class="fas fa-trash"></i> Eliminar</button>
+                <button type="button" class="btn-ssepi btn-secondary" id="modalBOMCancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Servicio -->
+    <div class="modal-backdrop calc-modal" id="modalServicio" aria-hidden="true">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header"><h4 id="modalServicioTitle">Editar servicio</h4><button type="button" class="modal-close" id="modalServicioClose" aria-label="Cerrar">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="modalServicioId">
+                <div class="form-group"><label for="modalServicioNombre">Nombre del Servicio</label><input type="text" id="modalServicioNombre" class="form-control"></div>
+                <div class="form-group"><label for="modalServicioDescripcion">Descripción</label><textarea id="modalServicioDescripcion" class="form-control" rows="2"></textarea></div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group"><label for="modalServicioArea">Área</label><input type="text" id="modalServicioArea" class="form-control"></div>
+                    <div class="form-group"><label for="modalServicioTipo">Tipo</label><input type="text" id="modalServicioTipo" class="form-control"></div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group"><label for="modalServicioCostoPlanta">Costo Planta ($)</label><input type="number" step="0.01" id="modalServicioCostoPlanta" class="form-control"></div>
+                    <div class="form-group"><label for="modalServicioCostoOficina">Costo Oficina ($)</label><input type="number" step="0.01" id="modalServicioCostoOficina" class="form-control"></div>
+                </div>
+                <div class="form-group"><label for="modalServicioHoras">Horas Estimadas</label><input type="number" step="0.25" id="modalServicioHoras" class="form-control"></div>
+                <div class="form-group"><label><input type="checkbox" id="modalServicioActivo" checked> Activo</label></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi" id="modalServicioGuardar"><i class="fas fa-save"></i> Guardar</button>
+                <button type="button" class="btn-ssepi btn-danger" id="modalServicioEliminar"><i class="fas fa-trash"></i> Eliminar</button>
+                <button type="button" class="btn-ssepi btn-secondary" id="modalServicioCancelar">Cancelar</button>
             </div>
         </div>
     </div>
