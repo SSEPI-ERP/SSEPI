@@ -605,8 +605,20 @@ const MotoresModule = (function() {
         _renderPrioritySupplierBarMotores();
     }
 
-    function _abrirNuevaOrden() {
+    async function _abrirNuevaOrden() {
         motoresDraftSessionKey = null;
+
+        // Buscar cotizaciones pendientes de Ventas para Motores
+        const cotizacionesPendientes = await _buscarCotizacionesPendientes();
+        if (cotizacionesPendientes.length > 0) {
+            const seleccion = await _mostrarSelectorCotizaciones(cotizacionesPendientes, 'Motores');
+            if (seleccion) {
+                await _cargarOrdenDesdeCotizacion(seleccion);
+                return;
+            }
+        }
+
+        // Crear orden en blanco si no hay cotizaciones o usuario cancela
         isNewOrder = true;
         currentOrder = null;
         orderId = null;
@@ -624,6 +636,143 @@ const MotoresModule = (function() {
         document.getElementById('wsModal').classList.add('active');
         document.getElementById('fechaInicioDisplay').innerText = new Date().toLocaleString();
         _renderPrioritySupplierBarMotores();
+    }
+
+    async function _buscarCotizacionesPendientes() {
+        const supabaseClient = _supabase();
+        if (!supabaseClient) return [];
+
+        const { data, error } = await supabaseClient
+            .from('cotizaciones')
+            .select('*')
+            .eq('estado', 'aprobada')
+            .in('departamento', ['Motores', 'Servicios de Motores'])
+            .is('orden_origen_id', null)
+            .order('fecha', { ascending: false })
+            .limit(10);
+
+        if (error) {
+            console.error('[Motores] Error buscando cotizaciones:', error);
+            return [];
+        }
+        return data || [];
+    }
+
+    function _mostrarSelectorCotizaciones(cotizaciones, departamento) {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'modal active';
+            modal.innerHTML = `
+                <div class="modal-backdrop"></div>
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Cotizaciones Pendientes de ${departamento}</h3>
+                            <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted">Selecciona una cotización para cargar los datos automáticamente o crea una orden en blanco.</p>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Folio</th>
+                                            <th>Cliente</th>
+                                            <th>Fecha</th>
+                                            <th>Total</th>
+                                            <th>Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${cotizaciones.map(c => `
+                                            <tr>
+                                                <td>${c.folio || '—'}</td>
+                                                <td>${c.cliente_nombre || c.contacto || '—'}</td>
+                                                <td>${c.fecha ? new Date(c.fecha).toLocaleDateString() : '—'}</td>
+                                                <td>$${(c.total || 0).toFixed(2)}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-primary" data-folio="${c.folio}">
+                                                        Cargar
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Crear en blanco</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Bind click events
+            modal.querySelectorAll('button[data-folio]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const folio = btn.dataset.folio;
+                    const cotizacion = cotizaciones.find(c => c.folio === folio);
+                    modal.remove();
+                    resolve(cotizacion);
+                });
+            });
+
+            // Handle backdrop click
+            modal.querySelector('.modal-backdrop').addEventListener('click', () => {
+                modal.remove();
+                resolve(null);
+            });
+        });
+    }
+
+    async function _cargarOrdenDesdeCotizacion(cotizacion) {
+        console.log('[Motores] Cargando cotización:', cotizacion.folio);
+
+        isNewOrder = true;
+        currentOrder = null;
+        orderId = null;
+        diagnosticoEnlaces = [];
+        diagnosticoInventario = [];
+        consumiblesUsados = [];
+        componentesInventario = [];
+        componentesCompra = [];
+        fechaInicioOrden = new Date().toISOString();
+        fechasEtapas = {};
+
+        _resetForm();
+
+        // Llenar campos con datos de la cotización
+        document.getElementById('inpFolio').value = ''; // Se generará uno nuevo
+        document.getElementById('inpClientRef').value = cotizacion.folio || '';
+
+        // Cargar cliente
+        const supabaseClient = _supabase();
+        if (supabaseClient && cotizacion.cliente_id) {
+            const { data } = await supabaseClient
+                .from('contactos')
+                .select('nombre')
+                .eq('id', cotizacion.cliente_id)
+                .single();
+            if (data) {
+                document.getElementById('selClient').value = data.nombre || '';
+            }
+        }
+
+        document.getElementById('inpDateTime').value = new Date().toISOString().slice(0, 16);
+        document.getElementById('inpFail').value = cotizacion.notas || '';
+        document.getElementById('internalNotes').value = cotizacion.notas_internas || '';
+
+        _generarFolio();
+        _populateClientSelect();
+        _irPaso(1);
+        document.getElementById('wsModal').classList.add('active');
+        document.getElementById('fechaInicioDisplay').innerText = new Date().toLocaleString();
+        _renderPrioritySupplierBarMotores();
+
+        console.log('[Motores] Orden cargada desde cotización', cotizacion.folio);
     }
 
     function _estadoToPaso(estado) {

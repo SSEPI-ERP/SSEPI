@@ -580,8 +580,20 @@ const ServiciosModule = (function() {
         _irPaso(currentStep);
     }
 
-    function _abrirNuevoProyecto() {
+    async function _abrirNuevoProyecto() {
         isNewProject = true;
+
+        // Buscar cotizaciones pendientes de Ventas para Automatización
+        const cotizacionesPendientes = await _buscarCotizacionesPendientes();
+        if (cotizacionesPendientes.length > 0) {
+            const seleccion = await _mostrarSelectorCotizaciones(cotizacionesPendientes, 'Automatización');
+            if (seleccion) {
+                await _cargarProyectoDesdeCotizacion(seleccion);
+                return;
+            }
+        }
+
+        // Crear proyecto en blanco si no hay cotizaciones o usuario cancela
         currentProject = null;
         projectId = null;
         fechaInicio = new Date().toISOString();
@@ -600,6 +612,132 @@ const ServiciosModule = (function() {
         _irPaso(1);
         const modal = document.getElementById('wsModal');
         if (modal) modal.classList.add('active');
+    }
+
+    async function _buscarCotizacionesPendientes() {
+        const supabaseClient = _supabase();
+        if (!supabaseClient) return [];
+
+        const { data, error } = await supabaseClient
+            .from('cotizaciones')
+            .select('*')
+            .eq('estado', 'aprobada')
+            .in('departamento', ['Automatización', 'Servicios de Automatización'])
+            .is('orden_origen_id', null)
+            .order('fecha', { ascending: false })
+            .limit(10);
+
+        if (error) {
+            console.error('[Automatización] Error buscando cotizaciones:', error);
+            return [];
+        }
+        return data || [];
+    }
+
+    function _mostrarSelectorCotizaciones(cotizaciones, departamento) {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'modal active';
+            modal.innerHTML = `
+                <div class="modal-backdrop"></div>
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Cotizaciones Pendientes de ${departamento}</h3>
+                            <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted">Selecciona una cotización para cargar los datos automáticamente o crea un proyecto en blanco.</p>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Folio</th>
+                                            <th>Cliente</th>
+                                            <th>Fecha</th>
+                                            <th>Total</th>
+                                            <th>Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${cotizaciones.map(c => `
+                                            <tr>
+                                                <td>${c.folio || '—'}</td>
+                                                <td>${c.cliente_nombre || c.contacto || '—'}</td>
+                                                <td>${c.fecha ? new Date(c.fecha).toLocaleDateString() : '—'}</td>
+                                                <td>$${(c.total || 0).toFixed(2)}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-primary" data-folio="${c.folio}">
+                                                        Cargar
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Crear en blanco</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Bind click events
+            modal.querySelectorAll('button[data-folio]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const folio = btn.dataset.folio;
+                    const cotizacion = cotizaciones.find(c => c.folio === folio);
+                    modal.remove();
+                    resolve(cotizacion);
+                });
+            });
+
+            // Handle backdrop click
+            modal.querySelector('.modal-backdrop').addEventListener('click', () => {
+                modal.remove();
+                resolve(null);
+            });
+        });
+    }
+
+    async function _cargarProyectoDesdeCotizacion(cotizacion) {
+        console.log('[Automatización] Cargando cotización:', cotizacion.folio);
+
+        isNewProject = true;
+        currentProject = null;
+        projectId = null;
+        fechaInicio = new Date().toISOString();
+        actividades = [];
+        materiales = [];
+        epicas = [];
+        apartados = [
+            { id: 'ap1', titulo: 'Formato de entrega', nota: '', archivos: [] },
+            { id: 'ap2', titulo: 'Manual de operación', nota: '', archivos: [] },
+            { id: 'ap3', titulo: 'Reporte de evidencias', nota: '', archivos: [] },
+            { id: 'ap4', titulo: 'Manuales eléctricos', nota: '', archivos: [] },
+            { id: 'ap5', titulo: 'Respaldos de programa', nota: '', archivos: [] }
+        ];
+
+        _resetForm();
+
+        // Llenar campos con datos de la cotización
+        document.getElementById('inpFolio').value = ''; // Se generará uno nuevo
+        document.getElementById('paso1_nombre').value = cotizacion.concepto || cotizacion.notas || '';
+        document.getElementById('paso1_cliente').value = cotizacion.cliente_nombre || '';
+        document.getElementById('paso1_fecha').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('paso1_notasGenerales').value = cotizacion.notas || '';
+        document.getElementById('paso1_notasInternas').value = cotizacion.notas_internas || '';
+
+        _generarFolio();
+        _irPaso(1);
+        const modal = document.getElementById('wsModal');
+        if (modal) modal.classList.add('active');
+
+        console.log('[Automatización] Proyecto cargado desde cotización', cotizacion.folio);
     }
 
     function _cargarDatosEnModal(proyecto) {

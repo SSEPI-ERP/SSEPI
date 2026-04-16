@@ -948,6 +948,53 @@ const VentasModule = (function() {
 
     function _generarHTMLCalculadora(compra, horasEstimadas) {
         const cliente = calculadoraClienteActual;
+        const rolActual = sessionStorage.getItem('ssepi_rol') || '';
+        const esAdmin = ['admin', 'automatizacion', 'electronica', 'superadmin'].includes(rolActual);
+
+        // Calcular total final para todos
+        const totalFinal = CostosEngine.calcularPrecioFinal({
+            km: Number(cliente.km) || 0,
+            horasViaje: Number(cliente.horas) || 0,
+            horasTaller: horasEstimadas,
+            costoRefacciones: 0
+        }).total;
+
+        // VISTA SIMPLIFICADA - Solo TOTAL FINAL para no admins
+        if (!esAdmin) {
+            return `
+                <div class="calculadora-section" style="background: linear-gradient(135deg, var(--c-ventas, #10b981), #059669); padding: 24px; border-radius: 12px; text-align: center;">
+                    <div style="color: white; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">
+                        <i class="fas fa-calculator"></i> Costo Final del Proyecto
+                    </div>
+                    <div style="color: white; font-size: 42px; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                        $${totalFinal.toFixed(2)}
+                    </div>
+                    <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin-top: 12px;">
+                        Incluye viáticos, mano de obra, refacciones e IVA
+                    </p>
+                </div>
+
+                <div class="calculadora-section" style="margin-top: 20px;">
+                    <div class="calculadora-titulo" style="background: var(--c-ventas, #10b981); color: white;">
+                        <i class="fas fa-boxes"></i> Refacciones y Componentes
+                    </div>
+                    <p style="color:var(--text-muted); font-size:12px; margin-bottom:12px;">
+                        Agrega refacciones desde el Inventario Maestro o componentes manualmente.
+                    </p>
+                    <table class="componentes-table">
+                        <thead><tr><th>Componente</th><th>Cantidad</th><th>Subtotal</th><th></th></tr></thead>
+                        <tbody id="componentesTableBody"></tbody>
+                    </table>
+                    <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:10px; margin-top:15px;">
+                        <input type="text" id="compNombre" placeholder="Componente" style="padding:8px;">
+                        <input type="number" id="compCantidad" value="1" min="1" style="padding:8px;">
+                        <button class="btn btn-sm btn-primary" onclick="ventasModule._agregarComponente()">Agregar</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // VISTA COMPLETA - Solo para admins
         const gasolina = CostosEngine.calcularCostoGasolina(cliente.km);
         const traslado = CostosEngine.calcularCostoTrasladoTecnico(cliente.horas);
         const gasolinaMasTraslado = CostosEngine.calcularGasolinaMasTraslado(cliente.km, cliente.horas);
@@ -957,8 +1004,12 @@ const VentasModule = (function() {
 
         return `
             <div class="calculadora-section">
-                <div class="calculadora-titulo"><i class="fas fa-truck"></i> Datos Logísticos (Viáticos y Traslados)</div>
-                <p style="color:var(--text-muted); font-size:12px; margin-bottom:12px;">Viáticos y traslados según kilómetros del cliente. Horas de viaje para costo técnico.</p>
+                <div class="calculadora-titulo" style="background: var(--c-ventas, #10b981); color: white;">
+                    <i class="fas fa-truck"></i> Datos Logísticos (Viáticos y Traslados)
+                </div>
+                <p style="color:var(--text-muted); font-size:12px; margin-bottom:12px;">
+                    Viáticos y traslados según kilómetros del cliente. Horas de viaje para costo técnico.
+                </p>
                 <div class="info-logistica" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
                     <label style="display:flex;align-items:center;gap:6px;">KM
                         <input type="number" id="inpLogisticaKm" min="0" step="0.1" value="${Number(cliente.km) || 0}" style="width:72px;padding:4px;" onchange="ventasModule._refreshLogisticaFromInputs()" oninput="ventasModule._refreshLogisticaFromInputs()">
@@ -972,8 +1023,12 @@ const VentasModule = (function() {
                 </div>
             </div>
             <div class="calculadora-section">
-                <div class="calculadora-titulo"><i class="fas fa-boxes"></i> Refacciones y Componentes</div>
-                <p style="color:var(--text-muted); font-size:12px; margin-bottom:12px;">Agrega refacciones desde el Inventario Maestro o componentes manualmente. Horas de ingeniería abajo.</p>
+                <div class="calculadora-titulo" style="background: var(--c-ventas, #10b981); color: white;">
+                    <i class="fas fa-boxes"></i> Refacciones y Componentes
+                </div>
+                <p style="color:var(--text-muted); font-size:12px; margin-bottom:12px;">
+                    Agrega refacciones desde el Inventario Maestro o componentes manualmente. Horas de ingeniería abajo.
+                </p>
                 <table class="componentes-table">
                     <thead><tr><th>Componente</th><th>Cantidad</th><th>Costo Unit.</th><th>Subtotal</th><th></th></tr></thead>
                     <tbody id="componentesTableBody"></tbody>
@@ -986,7 +1041,9 @@ const VentasModule = (function() {
                 </div>
             </div>
             <div class="calculadora-section">
-                <div class="calculadora-titulo"><i class="fas fa-chart-line"></i> Cálculo de Costos</div>
+                <div class="calculadora-titulo" style="background: var(--c-ventas, #10b981); color: white;">
+                    <i class="fas fa-chart-line"></i> Cálculo de Costos
+                </div>
                 <div class="costos-grid">
                     <div class="costo-item"><div class="costo-label">Gasolina + Ventas</div><div class="costo-value" id="valGasPlusSales">$${gasolinaMasTraslado.toFixed(2)}</div></div>
                     <div class="costo-item"><div class="costo-label">Mano de Obra</div><div class="costo-value"><input type="number" id="inpTechHours" value="${horasEstimadas}" onchange="ventasModule._recalcular()"></div></div>
@@ -1000,9 +1057,9 @@ const VentasModule = (function() {
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>CRÉDITO ${CostosEngine.CONFIG.credito}%</strong></span><span id="resCredit">$0.00</span></div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>IVA ${CostosEngine.CONFIG.iva}%</strong></span><span id="resIVA">$0.00</span></div>
                 </div>
-                <div class="total-box">
-                    <div class="label">TOTAL CON IVA</div>
-                    <div class="value" id="resTotal">$0.00</div>
+                <div class="total-box" style="background: linear-gradient(135deg, var(--c-ventas, #10b981), #059669); color: white; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: center;">
+                    <div class="label" style="font-size: 14px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">TOTAL CON IVA</div>
+                    <div class="value" id="resTotal" style="font-size: 36px; font-weight: 800;">$0.00</div>
                 </div>
             </div>
         `;
