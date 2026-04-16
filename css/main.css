@@ -1354,7 +1354,7 @@ main {
 
 /* ========== BOTONES GRADO INDUSTRIAL (.btn-ssepi) ========== */
 /* Transparentes, solo borde de color, texto var(--text-primary). Hover: sombra y translateY(-2px) */
-:where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn) {
+:where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .btn-success, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn) {
   background: transparent;
   border: 1px solid var(--accent);
   color: var(--text-primary);
@@ -1368,7 +1368,7 @@ main {
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-:where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn):hover {
+:where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .btn-success, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn):hover {
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
   transform: translateY(-2px);
   border-width: 2px;
@@ -1377,12 +1377,12 @@ main {
   border-color: var(--accent);
 }
 
-:where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn):active {
+:where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .btn-success, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn):active {
   transform: translateY(0);
 }
 
-:where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn)[disabled],
-:where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn).disabled {
+:where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .btn-success, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn)[disabled],
+:where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .btn-success, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn).disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -1412,6 +1412,12 @@ main {
 .btn-facturacion:hover { background: var(--c-facturacion); border-color: var(--c-facturacion); color: #fff; }
 .btn-analisis { border-color: var(--c-analisis); color: var(--text-primary); }
 .btn-analisis:hover { background: var(--c-analisis); border-color: var(--c-analisis); color: #fff; }
+
+/* Botones semánticos (colores fijos) */
+.btn-danger { border-color: #dc3545; color: var(--text-primary); }
+.btn-danger:hover { background: #dc3545; border-color: #dc3545; color: #fff; }
+.btn-success { border-color: #28a745; color: var(--text-primary); }
+.btn-success:hover { background: #28a745; border-color: #28a745; color: #fff; }
 
 :where(input, select, textarea) {
   background: var(--bg-card);

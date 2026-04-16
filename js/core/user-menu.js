@@ -22,11 +22,8 @@
             '<button type="button" class="user-menu-item" data-action="config"><i class="fas fa-user-cog"></i> Configuración</button>' +
             '<button type="button" class="user-menu-item" data-action="themeLight"><i class="fas fa-sun"></i> Modo claro</button>' +
             '<button type="button" class="user-menu-item" data-action="themeDark"><i class="fas fa-moon"></i> Modo oscuro</button>' +
-            '<button type="button" class="user-menu-item" data-action="users"><i class="fas fa-users-cog"></i> Configurador de usuarios</button>' +
-            '<button type="button" class="user-menu-item" data-action="logout"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>' +
             '<div class="user-menu-divider"></div>' +
-            '<button type="button" class="user-menu-item" data-action="resetErp"><i class="fas fa-trash-restore"></i> Reinicio ERP completo</button>' +
-            '<button type="button" class="user-menu-item" data-action="downloadSql"><i class="fas fa-database"></i> Descargar SQL</button>';
+            '<button type="button" class="user-menu-item" data-action="logout"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>';
         document.body.appendChild(wrap);
         dropdown = wrap;
         bindDropdownActions();
@@ -507,10 +504,7 @@
                 if (action === 'config') openConfigModal();
                 else if (action === 'themeLight') setTheme('light');
                 else if (action === 'themeDark') setTheme('dark');
-                else if (action === 'users') openUsersModal();
                 else if (action === 'logout') doLogout();
-                else if (action === 'resetErp') doResetErp();
-                else if (action === 'downloadSql') doDownloadSql();
             });
         });
     }
