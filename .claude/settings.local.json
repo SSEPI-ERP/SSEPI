@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node build-ssepi-adapted-import.mjs)"
+      "Bash(node build-ssepi-adapted-import.mjs)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Limpieza UI: menús simplificados y herramientas avanzadas en Configuración *)",
+      "Bash(git push *)"
     ]
   }
 }
