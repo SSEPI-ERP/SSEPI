@@ -1127,6 +1127,135 @@ const VentasModule = (function() {
         _recalcular();
     }
 
+    function _abrirRegistroViaticos() {
+        const cliente = calculadoraClienteActual;
+        if (!cliente) return;
+
+        const modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.innerHTML = `
+            <div class="modal-backdrop"></div>
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Registrar Viáticos - ${cliente.nombre}</h3>
+                        <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted">Ingresa los datos de viáticos para este cliente. Estos valores se guardarán en la base de datos.</p>
+                        <div style="display:grid; gap:16px; margin-top:20px;">
+                            <div>
+                                <label>Kilómetros (KM)</label>
+                                <input type="number" id="modalKmInput" min="0" step="0.1" value="0" style="width:100%; padding:10px; font-size:16px;">
+                                <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Distancia desde taller hasta el cliente.</p>
+                            </div>
+                            <div>
+                                <label>Horas de Viaje</label>
+                                <input type="number" id="modalHorasInput" min="0" step="0.5" value="0" style="width:100%; padding:10px; font-size:16px;">
+                                <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Tiempo estimado de traslado (ida).</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="ventasModule._guardarViaticosCliente()">Guardar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function _editarViaticosCliente() {
+        const cliente = calculadoraClienteActual;
+        if (!cliente) return;
+
+        const modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.innerHTML = `
+            <div class="modal-backdrop"></div>
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Editar Viáticos - ${cliente.nombre}</h3>
+                        <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted">Actualiza los datos de viáticos para este cliente.</p>
+                        <div style="display:grid; gap:16px; margin-top:20px;">
+                            <div>
+                                <label>Kilómetros (KM)</label>
+                                <input type="number" id="modalKmInput" min="0" step="0.1" value="${Number(cliente.km) || 0}" style="width:100%; padding:10px; font-size:16px;">
+                            </div>
+                            <div>
+                                <label>Horas de Viaje</label>
+                                <input type="number" id="modalHorasInput" min="0" step="0.5" value="${Number(cliente.horas) || 0}" style="width:100%; padding:10px; font-size:16px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="ventasModule._guardarViaticosCliente()">Guardar Cambios</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    async function _guardarViaticosCliente() {
+        const modal = document.querySelector('.modal.active');
+        if (!modal) return;
+
+        const kmInput = document.getElementById('modalKmInput');
+        const horasInput = document.getElementById('modalHorasInput');
+        const cliente = calculadoraClienteActual;
+
+        if (!cliente || !cliente.id) {
+            alert('Cliente no válido.');
+            return;
+        }
+
+        const km = parseFloat(kmInput?.value) || 0;
+        const horas = parseFloat(horasInput?.value) || 0;
+
+        const supabaseClient = _supabase();
+        if (!supabaseClient) {
+            alert('Error de conexión con la base de datos.');
+            return;
+        }
+
+        // Guardar en tabla contactos
+        const { data, error } = await supabaseClient
+            .from('contactos')
+            .update({ km: km, horas_viaje: horas })
+            .eq('id', cliente.id)
+            .select()
+            .single();
+
+        if (error) {
+            alert('Error al guardar: ' + (error.message || error));
+            return;
+        }
+
+        // Actualizar estado local
+        calculadoraClienteActual.km = km;
+        calculadoraClienteActual.horas = horas;
+
+        // Actualizar cliente en la lista local
+        const idx = contactos.findIndex(c => c.id === cliente.id);
+        if (idx >= 0) {
+            contactos[idx] = { ...contactos[idx], km: km, horas_viaje: horas };
+        }
+
+        modal.remove();
+
+        // Recargar la calculadora con los nuevos valores
+        _irPaso(2);
+
+        alert('Viáticos guardados correctamente para ' + (cliente.nombre || 'el cliente'));
+    }
+
     function _recalcular() {
         const inpTechHours = document.getElementById('inpTechHours');
         const inpUtilidadPct = document.getElementById('inpUtilidadPct');
@@ -2164,6 +2293,9 @@ const VentasModule = (function() {
         _eliminarComponente,
         _recalcular,
         _refreshLogisticaFromInputs,
+        _abrirRegistroViaticos,
+        _editarViaticosCliente,
+        _guardarViaticosCliente,
         _autorizarCotizacion,
         _rechazarCotizacion,
         _editarVenta,
