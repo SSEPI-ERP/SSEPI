@@ -40,8 +40,13 @@
     function loadClientes() {
         if (!supabase()) return Promise.resolve([]);
         return supabase().from('calculadora_clientes').select('*, calculadoras(nombre)').order('cliente_nombre').then(function(r) {
-            if (r.error) throw r.error;
+            if (r.error) {
+                console.warn('[Calculadoras] No se pudo cargar calculadora_clientes:', r.error.message);
+                clientesList = [];
+                return [];
+            }
             clientesList = r.data || [];
+            console.log('[Calculadoras] Clientes cargados:', clientesList.length);
             return clientesList;
         });
     }
