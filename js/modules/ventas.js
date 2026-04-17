@@ -1999,7 +1999,7 @@ const VentasModule = (function() {
     }
 
     // ==================== NUEVA COTIZACIÓN DIRECTA (Wizard 4 pasos) ====================
-    function _nuevaCotizacion() {
+    async function _nuevaCotizacion() {
         calculadoraComponentes = [];
         calculadoraClienteActual = null;
         compraActual = null;

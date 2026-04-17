@@ -64,6 +64,17 @@
         });
     }
 
+    // Tabulador de clientes (viáticos) - carga desde clientes_tabulador
+    var clientesTabulador = [];
+    function loadClientesTabulador() {
+        if (!supabase()) return Promise.resolve([]);
+        return supabase().from('clientes_tabulador').select('*').order('nombre_cliente').then(function(r) {
+            if (r.error) throw r.error;
+            clientesTabulador = r.data || [];
+            return clientesTabulador;
+        });
+    }
+
     function esc(s) {
         if (s == null || s === '') return '—';
         var t = String(s);
@@ -206,6 +217,56 @@
         tbody.querySelectorAll('[data-servicio-id]').forEach(function(btn) {
             btn.addEventListener('click', function() { openModalServicio(btn.getAttribute('data-servicio-id')); });
         });
+    }
+
+    // Renderizar tablas de viáticos (t1-t5)
+    function renderTabuladorViaticos() {
+        // t1: Taller Electrónica
+        renderTablaViatico('tablaViaticoT1Body', clientesTabulador, 'taller');
+        // t2: Laboratorio
+        renderTablaViatico('tablaViaticoT2Body', clientesTabulador, 'laboratorio');
+        // t3: Motores
+        renderTablaViatico('tablaViaticoT3Body', clientesTabulador, 'motores');
+        // t4: Automatización
+        renderTablaViatico('tablaViaticoT4Body', clientesTabulador, 'automatizacion');
+        // t5: Suministros
+        renderTablaViatico('tablaViaticoT5Body', clientesTabulador, 'suministros');
+    }
+
+    function renderTablaViatico(tbodyId, clientes, tipo) {
+        var tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+
+        if (!clientes || clientes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-secondary);">No hay datos - Ejecuta migración de clientes_tabulador</td></tr>';
+            return;
+        }
+
+        // Parámetros de costos
+        var gasolina = 24.50;
+        var rendimiento = 9.5;
+        var costoHoraTecnico = 104.16;
+
+        tbody.innerHTML = clientes.map(function(c) {
+            var km = Number(c.km) || 0;
+            var horas = Number(c.horas_viaje) || 0;
+            var litros = km > 0 ? km / rendimiento : 0;
+            var costoGasolina = litros * gasolina;
+            var costoHoraTecnicoTotal = horas * costoHoraTecnico;
+            var total = costoGasolina + costoHoraTecnicoTotal;
+
+            return '<tr>' +
+                '<td>' + esc(c.nombre_cliente) + '</td>' +
+                '<td style="text-align: right;">' + km.toFixed(1) + '</td>' +
+                '<td style="text-align: right;">' + (km * 2).toFixed(2) + '</td>' +
+                '<td style="text-align: right;">' + litros.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + gasolina.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + costoGasolina.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">' + horas.toFixed(0) + '</td>' +
+                '<td style="text-align: right;">$' + costoHoraTecnicoTotal.toFixed(2) + '</td>' +
+                '<td style="text-align: right; font-weight: bold;">$' + total.toFixed(2) + '</td>' +
+                '</tr>';
+        }).join('');
     }
 
     function fillBOMFiltros() {
@@ -1286,9 +1347,11 @@
             await loadCalculadoras();
             await loadCostos();
             await loadClientes();
+            await loadClientesTabulador();
             renderFunciones();
             renderCostos();
             renderClientes();
+            renderTabuladorViaticos();
             fillHojaCalcSelect();
             await loadHojaFilas();
             updateAnalisis();
@@ -1298,11 +1361,15 @@
             // Cargar BOM y Servicios (solo para admins)
             var profile = await auth().getCurrentProfile();
             if (profile && (profile.rol === 'admin' || profile.rol === 'superadmin')) {
-                await loadBOM();
-                await loadServicios();
-                renderBOM();
-                renderServicios();
-                fillBOMFiltros();
+                try {
+                    await loadBOM();
+                    await loadServicios();
+                    renderBOM();
+                    renderServicios();
+                    fillBOMFiltros();
+                } catch (bomErr) {
+                    console.warn('[Calculadoras] BOM/Servicios:', bomErr);
+                }
             }
         } catch (e) {
             console.warn('[Calculadoras] init:', e);
