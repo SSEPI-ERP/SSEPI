@@ -718,12 +718,16 @@ tr.inbound-unread td { font-weight: 500; }
     font-size: 12px;
 }
 
-/* Sidebar: enlaces solo con texto (sin iconos por sección) */
+/* Sidebar: iconos visibles */
 .sidebar-left .nav-item .icon-box {
-  display: none !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
 }
 .sidebar-left .nav-item {
-  gap: 0;
+  gap: 12px;
 }
 
 .nav-item {
@@ -921,9 +925,13 @@ tr.inbound-unread td { font-weight: 500; }
 }
 
 .icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 18px;
   width: 24px;
   text-align: center;
+  color: inherit;
 }
 
 /* Actividad (audit_logs) al pie del menú lateral */
