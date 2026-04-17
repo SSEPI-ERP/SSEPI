@@ -32,37 +32,6 @@ Ningún rol básico ve módulos `analisis_*` ni módulos asignados a otros roles
 - **facturacion**: `ventas`, `compras`, `facturas`, `vacaciones`
 - **contabilidad**: ve todo (`null`) — RLS limita escritura
 
-## Modo dual Normal ↔ Admin
-
-Usuarios con modo dual pueden alternar entre:
-
-- **Modo Admin**: ven todo (como admin).
-- **Modo Normal**: se comportan como su rol base acotado (sin análisis, sin módulos ajenos).
-
-### Mecanismo
-
-| Componente | Campo / clave | Descripción |
-|------------|---------------|-------------|
-| **Frontend (nav-by-role.js)** | `DUAL_MODE_USERS[email]` → rol base | Lista hardcodeada de emails con modo dual y su rol base en modo Normal. |
-| **Sesión (sessionStorage)** | `ssepi_mode` = `'normal'` \| `'admin'` | Estado actual del toggle. Default: `'admin'`. |
-| **Sesión (sessionStorage)** | `ssepi_rol` | Rol efectivo (se actualiza al cambiar modo). |
-| **Migración legacy** | `ssepi_norberto_empleado` → `ssepi_mode` | La clave antigua se migra automáticamente a la nueva. |
-| **Futuro (BD)** | `users.modo_dual` (boolean) | Pendiente: reemplazará la lista hardcodeada. |
-| **Futuro (BD)** | `users.rol_normal` (text) | Pendiente: reemplazará el valor en `DUAL_MODE_USERS`. |
-
-### Flujo del toggle
-
-1. Al cargar la página, `runWhenReady()` obtiene el perfil del usuario.
-2. Si `isDualModeUser(profile)` devuelve `true`, se inyecta el botón toggle.
-3. El botón cambia `sessionStorage.ssepi_mode` y recalcula el rol efectivo vía `getEffectiveRol()`.
-4. En modo Normal, `getEffectiveRol()` devuelve el rol base (ej. `automatizacion`); en modo Admin, devuelve `admin`.
-5. `applyNavByRoleFromCache()` oculta/muestra elementos según el rol efectivo.
-
-### Agregar un nuevo usuario con modo dual
-
-1. Agregar el email y rol base al mapa `DUAL_MODE_USERS` en `js/core/nav-by-role.js`.
-2. (Futuro) Insertar en `public.users` con `modo_dual = true` y `rol_normal = '<rol>'`.
-
 ## Flujo comercial
 
 - En Ventas, el paso 1 del cerebro crea la orden/proyecto con folio según departamento (SP-E / SP-M / SP-A).
