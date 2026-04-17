@@ -15,7 +15,11 @@
       "Bash(dir \"D:\\\\SSEPI\\\\js\\\\modules\\\\motores.js\" \"D:\\\\SSEPI\\\\js\\\\modules\\\\servicios.js\" \"D:\\\\SSEPI\\\\js\\\\modules\\\\configuracion.js\")",
       "Bash(node -e \"const fs=require\\('fs'\\); const html=fs.readFileSync\\('D:/SSEPI/scripts/migrations/SSEPI_DataViewer_Completo.html','utf8'\\); const match=html.match\\(/const D=\\(\\\\{[\\\\s\\\\S]*?\\\\}\\);/\\); if\\(match\\){const D=JSON.parse\\(match[1]\\); console.log\\('Tablas:', Object.keys\\(D\\)\\); Object.keys\\(D\\).forEach\\(k=>console.log\\(k+': '+D[k].data.length+' filas'\\)\\);}\")",
       "Bash(node *)",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "Bash(git -C D:/SSEPI show HEAD:js/core/nav-by-role.js)",
+      "Bash(git -C D:/SSEPI show HEAD:css/main.css)",
+      "Bash(git -C D:/SSEPI add -A)",
+      "Bash(git -C D:/SSEPI status)"
     ]
   }
 }
