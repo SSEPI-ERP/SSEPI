@@ -6,9 +6,9 @@
 // ================================================
 // CONFIGURACIÓN DE SUPABASE
 // ================================================
-
-const SUPABASE_URL = 'https://tu-proyecto.supabase.co';
-const SUPABASE_ANON_KEY = 'tu-anon-key';
+// Estas credenciales son las mismas que el ERP web usa
+const SUPABASE_URL = 'https://knzmdwjmrhcoytmebdwa.supabase.co';
+const SUPABASE_ANON_KEY = '***ANON_REMOVED***';
 
 // ================================================
 // ESTADO DE LA APLICACIÓN

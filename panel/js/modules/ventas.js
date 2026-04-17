@@ -2059,6 +2059,61 @@ const VentasModule = (function() {
     function _adjuntarEventosCalculadora() {
         document.getElementById('generarCotizacionBtn').onclick = _generarCotizacion;
         document.getElementById('enviarCotizacionBtn').onclick = _enviarCotizacionCliente;
+
+        // Agregar listeners para actualizar preview en tiempo real (paso 2 bloqueado)
+        const kmInput = document.getElementById('inpLogisticaKm');
+        const horasInput = document.getElementById('inpLogisticaHoras');
+        const horasTallerInput = document.getElementById('inpHorasTaller');
+
+        function _actualizarPreview() {
+            const km = parseFloat(kmInput?.value) || 0;
+            const horasViaje = parseFloat(horasInput?.value) || 0;
+            const horasTaller = parseFloat(horasTallerInput?.value) || 0;
+
+            // Actualizar valores del cliente
+            if (calculadoraClienteActual) {
+                calculadoraClienteActual.km = km;
+                calculadoraClienteActual.horas = horasViaje;
+            }
+
+            // Calcular costos actualizados
+            const gasolina = CostosEngine.calcularCostoGasolina(km);
+            const traslado = CostosEngine.calcularCostoTrasladoTecnico(horasViaje);
+            const gasPlus = CostosEngine.calcularGasolinaMasTraslado(km, horasViaje);
+            const manoObra = CostosEngine.calcularManoObra(horasTaller);
+            const gastosFijos = CostosEngine.calcularGastosFijos(horasTaller);
+            const camioneta = CostosEngine.calcularCostoCamioneta(horasViaje);
+
+            const totalFinal = CostosEngine.calcularPrecioFinal({
+                km,
+                horasViaje,
+                horasTaller,
+                costoRefacciones: 0
+            }).total;
+
+            // Actualizar elementos del preview
+            const elGasolina = document.getElementById('previewGasolina');
+            const elTraslado = document.getElementById('previewTraslado');
+            const elGasPlus = document.getElementById('previewGasPlus');
+            const elManoObra = document.getElementById('previewManoObra');
+            const elGastosFijos = document.getElementById('previewGastosFijos');
+            const elCamioneta = document.getElementById('previewCamioneta');
+            const elSubtotal = document.getElementById('previewSubtotal');
+            const elTotal = document.getElementById('previewTotal');
+
+            if (elGasolina) elGasolina.textContent = '$' + gasolina.toFixed(2);
+            if (elTraslado) elTraslado.textContent = '$' + traslado.toFixed(2);
+            if (elGasPlus) elGasPlus.textContent = '$' + gasPlus.toFixed(2);
+            if (elManoObra) elManoObra.textContent = '$' + manoObra.toFixed(2);
+            if (elGastosFijos) elGastosFijos.textContent = '$' + gastosFijos.toFixed(2);
+            if (elCamioneta) elCamioneta.textContent = '$' + camioneta.toFixed(2);
+            if (elSubtotal) elSubtotal.textContent = '$' + (totalFinal / 1.16).toFixed(2);
+            if (elTotal) elTotal.textContent = '$' + totalFinal.toFixed(2);
+        }
+
+        if (kmInput) kmInput.addEventListener('input', _actualizarPreview);
+        if (horasInput) horasInput.addEventListener('input', _actualizarPreview);
+        if (horasTallerInput) horasTallerInput.addEventListener('input', _actualizarPreview);
     }
 
     // ==================== GENERACIÓN DE COTIZACIÓN ====================
