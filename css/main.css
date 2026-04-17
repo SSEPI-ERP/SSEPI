@@ -772,6 +772,48 @@ tr.inbound-unread td { font-weight: 500; }
 .nav-item.active[href*="contabilidad"]::before { background: var(--c-contabilidad); }
 .nav-item.active[href*="analisis"]::before { background: var(--c-analisis); }
 .nav-item.active::before { background: var(--primary); }
+
+/* ========== NAV ACTIVO/DESHABILITADO (por rol) ========== */
+/* Módulos activos (visibles y permitidos por rol) - se muestran con estilo destacado */
+.nav-item.nav-active {
+  opacity: 1;
+  filter: brightness(1);
+}
+
+.nav-item.nav-active:hover {
+  background: var(--bg-hover);
+  color: var(--primary);
+}
+
+/* Módulos deshabilitados (no permitidos por rol) - atenuados */
+.nav-item.nav-disabled {
+  opacity: 0.4;
+  filter: grayscale(100%);
+  pointer-events: none;
+}
+
+/* Tarjetas de módulo activas/deshabilitadas */
+.card-module.nav-active {
+  opacity: 1;
+  filter: brightness(1);
+}
+
+.card-module.nav-disabled {
+  opacity: 0.3;
+  filter: grayscale(100%);
+  pointer-events: none;
+}
+
+/* KPIs activos/deshabilitados */
+.card-kpi.nav-active {
+  opacity: 1;
+}
+
+.card-kpi.nav-disabled {
+  opacity: 0.3;
+  filter: grayscale(100%);
+}
+
 .sidebar-left a[href*="taller"]:hover::before { background: var(--c-taller); }
 .sidebar-left a[href*="motores"]:hover::before { background: var(--c-motores); }
 .sidebar-left a[href*="ventas"]:hover::before { background: var(--c-ventas); }

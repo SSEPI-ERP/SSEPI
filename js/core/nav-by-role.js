@@ -144,8 +144,16 @@
         for (var i = 0; i < elements.length; i++) {
             elements[i].style.display = '';
             elements[i].removeAttribute('aria-hidden');
+            elements[i].classList.remove('nav-disabled');
         }
-        if (ROLE_MODULES[rol] === null) return;
+        if (ROLE_MODULES[rol] === null) {
+            // Admin ve todo - marcar todo como activo
+            elements = document.querySelectorAll(selector);
+            for (var i = 0; i < elements.length; i++) {
+                elements[i].classList.add('nav-active');
+            }
+            return;
+        }
         elements = document.querySelectorAll(selector);
         var profile = null;
         try {
@@ -156,7 +164,13 @@
             var moduleAny = el.getAttribute('data-module-any');
             var module = el.getAttribute('data-module');
             if (moduleAny) {
-                if (!allowedForModule(rol, null, moduleAny)) hide(el);
+                if (!allowedForModule(rol, null, moduleAny)) {
+                    hide(el);
+                    el.classList.add('nav-disabled');
+                    el.classList.remove('nav-active');
+                } else {
+                    el.classList.add('nav-active');
+                }
                 continue;
             }
             if (module) {
@@ -164,11 +178,15 @@
                 var userPerm = getUserModulePermissionSync(module);
                 if (userPerm === false) {
                     hide(el);
+                    el.classList.add('nav-disabled');
+                    el.classList.remove('nav-active');
                     continue;
                 }
                 // 2. Verificar módulos especiales (calculadoras, configuracion)
                 if (!canSeeSpecialModule(rol, module, profile)) {
                     hide(el);
+                    el.classList.add('nav-disabled');
+                    el.classList.remove('nav-active');
                     // Si es el submenú de configuración, también ocultar el ul.nav-submenu asociado
                     if (module === 'configuracion' && el.classList.contains('nav-item-has-submenu')) {
                         var submenu = el.nextElementSibling;
@@ -178,7 +196,12 @@
                     }
                 } else if (!allowedForModule(rol, module, null)) {
                     hide(el);
+                    el.classList.add('nav-disabled');
+                    el.classList.remove('nav-active');
                 } else {
+                    // Módulo visible - marcar como activo
+                    el.classList.add('nav-active');
+                    el.classList.remove('nav-disabled');
                     // Si el elemento es visible y es un submenú de configuración, asegurar que el submenu pueda desplegarse
                     if (module === 'configuracion' && el.classList.contains('nav-item-has-submenu')) {
                         var submenu = el.nextElementSibling;
