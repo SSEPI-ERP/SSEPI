@@ -18,16 +18,16 @@
     var ROLE_MODULES = {
         admin: null,              // null = ve todo (incluye análisis general)
         superadmin: null,         // null = ve todo
-        ventas:              ['ventas', 'inventario', 'contactos', 'vacaciones'],
-        administracion:      ['compras', 'facturas', 'contabilidad', 'pagos_nomina', 'inventario', 'contactos', 'vacaciones'],
-        taller:              ['ordenes_taller', 'inventario', 'vacaciones'],
-        motores:             ['ordenes_motores', 'inventario', 'vacaciones'],
-        automatizacion:      ['proyectos_automatizacion', 'inventario', 'vacaciones', 'configuracion', 'actividades_automatizacion'],
-        ventas_sin_compras:  ['ventas', 'inventario', 'contactos', 'vacaciones'],
-        compras:             ['compras', 'inventario', 'vacaciones'],
-        facturacion:         ['ventas', 'compras', 'facturas', 'vacaciones'],
+        ventas:              ['ventas', 'inventario', 'contactos', 'vacaciones', 'analisis_ventas'],
+        administracion:      ['compras', 'facturas', 'contabilidad', 'pagos_nomina', 'inventario', 'contactos', 'vacaciones', 'analisis_compras'],
+        taller:              ['ordenes_taller', 'inventario', 'vacaciones', 'analisis_taller'],
+        motores:             ['ordenes_motores', 'inventario', 'vacaciones', 'analisis_motores'],
+        automatizacion:      ['proyectos_automatizacion', 'inventario', 'vacaciones', 'configuracion', 'actividades_automatizacion', 'analisis_automatizacion', 'analisis_proyectos'],
+        ventas_sin_compras:  ['ventas', 'inventario', 'contactos', 'vacaciones', 'analisis_ventas'],
+        compras:             ['compras', 'inventario', 'vacaciones', 'analisis_compras'],
+        facturacion:         ['ventas', 'compras', 'facturas', 'vacaciones', 'analisis_ventas'],
         contabilidad:        null,  // null = ve todo (incluye análisis)
-        electronica:         ['ordenes_taller', 'inventario', 'vacaciones', 'configuracion'],
+        electronica:         ['ordenes_taller', 'inventario', 'vacaciones', 'configuracion', 'analisis_taller'],
         configuracion:       null
     };
 
