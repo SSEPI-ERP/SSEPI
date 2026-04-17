@@ -12,8 +12,11 @@ mkdirSync(OUTPUT, { recursive: true });
 
 // 1. Build del landing
 console.log('🔨 Building landing...');
-execSync('pnpm run build', {
-  cwd: join(ROOT, 'landing'),
+// Usar npm en lugar de pnpm para compatibilidad con Vercel
+execSync('npm install --prefix landing', {
+  stdio: 'inherit'
+});
+execSync('npm run build --prefix landing', {
   stdio: 'inherit'
 });
 
