@@ -1120,6 +1120,22 @@ main {
   height: calc(100vh - var(--header-h));
 }
 
+/* Marca de agua del logo SSEPI en todos los módulos */
+main::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 280px;
+  height: 280px;
+  background: url('/panel/assets/logo-ssepi.png') no-repeat center center;
+  background-size: contain;
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* ========== LAYOUT MÓDULOS (filtros + KPIs + sección) ========== */
 .filtros-bar {
   background: var(--bg-panel);
