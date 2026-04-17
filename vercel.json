@@ -77,7 +77,7 @@
       "destination": "/panel/login.html"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!panel|assets).*)",
       "destination": "/index.html"
     }
   ]
