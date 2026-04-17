@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="/assets/logo-ssepi.png">
+    <link rel="icon" type="image/png" href="/panel/assets/logo-ssepi.png">
     <title>SSEPI · Actividades Automatización</title>
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/modules/actividades.css">
+    <link rel="stylesheet" href="/panel/css/main.css">
+    <link rel="stylesheet" href="/panel/css/modules/actividades.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script type="module" src="/js/core/supabase-config.js"></script>
-    <script type="module" src="/js/core/security-middleware.js"></script>
-    <script type="module" src="/js/core/auth-service.js"></script>
-    <script type="module" src="/js/core/data-service.js"></script>
-    <script src="/js/core/theme-clock.js"></script>
-    <script src="/js/core/user-menu.js"></script>
-    <script src="/js/core/nav-by-role.js"></script>
-    <script type="module" src="/js/modules/actividades.js"></script>
+    <script type="module" src="/panel/js/core/supabase-config.js"></script>
+    <script type="module" src="/panel/js/core/security-middleware.js"></script>
+    <script type="module" src="/panel/js/core/auth-service.js"></script>
+    <script type="module" src="/panel/js/core/data-service.js"></script>
+    <script src="/panel/js/core/theme-clock.js"></script>
+    <script src="/panel/js/core/user-menu.js"></script>
+    <script src="/panel/js/core/nav-by-role.js"></script>
+    <script type="module" src="/panel/js/modules/actividades.js"></script>
 </head>
 <body class="page-actividades nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -48,12 +48,12 @@
     <!-- SIDEBAR -->
     <nav class="sidebar-left" id="sidebar">
         <div class="menu-category">AUTOMATIZACIÓN</div>
-        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Proyectos</a>
-        <a href="/pages/ssepi_actividades.html" class="nav-item active" data-module="actividades_automatizacion"><span class="icon-box"><i class="fas fa-calendar-week"></i></span> Actividades</a>
+        <a href="/panel/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Proyectos</a>
+        <a href="/panel/pages/ssepi_actividades.html" class="nav-item active" data-module="actividades_automatizacion"><span class="icon-box"><i class="fas fa-calendar-week"></i></span> Actividades</a>
         <div class="menu-category">EXTERNOS</div>
         <a href="#" class="nav-item" target="_blank" rel="noopener" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
         <div class="menu-category">PERSONAL</div>
-        <a href="/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+        <a href="/panel/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
     </nav>
 
     <!-- MAIN -->
