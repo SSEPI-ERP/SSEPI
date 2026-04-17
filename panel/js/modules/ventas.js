@@ -2484,13 +2484,15 @@ const VentasModule = (function() {
             return '<option value="' + c.id + '" data-nombre="' + (c.nombre || c.empresa || '') + '" data-km="' + (c.km || 0) + '" data-email="' + (c.email || '') + '" data-telefono="' + (c.telefono || '') + '" data-rfc="' + (c.rfc || '') + '">' + (c.nombre || c.empresa || c.email || 'Sin nombre') + '</option>';
         }).join('');
         const hoy = new Date().toISOString().split('T')[0];
+        var sinClientes = contactosList.length === 0;
 
         return `
             <div class="calculadora-section">
                 <div class="calculadora-titulo"><i class="fas fa-clipboard-list"></i> Paso 1: Datos del Cliente</div>
                 <p id="wizardPaso1Error" style="display:none; font-size:13px; color:#c62828; margin:0 0 12px 0;" role="alert"></p>
+                ${sinClientes ? '<div class="alert a-warn" style="margin-bottom:12px;">⚠️ No hay clientes registrados. <a href="/panel/pages/ssepi_contactos.html" target="_blank" style="color:var(--c-ventas);font-weight:600;">Crear cliente en Contactos →</a></div>' : ''}
                 <div class="editor-item" style="margin-bottom:14px;">
-                    <p id="wizardFolioAyuda" style="font-size:13px; color:var(--text-secondary); margin:0;">Elige departamento para generar orden.</p>
+                    <p id="wizardFolioAyuda" style="font-size:13px; color:var(--text-secondary); margin:0;">${sinClientes ? 'Primero crea un cliente en Contactos.' : 'Elige departamento para generar orden.'}</p>
                 </div>
                 <div class="editor-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                     <div class="editor-item">
@@ -2630,7 +2632,8 @@ const VentasModule = (function() {
             const clienteId = clienteSelect?.value;
 
             // VALIDACIÓN DE CAMPOS REQUERIDOS
-            if (!clienteId) { _wizardSetPaso1Error('❌ Selecciona un cliente.'); return; }
+            console.log('[Ventas] Validación paso 1:', { clienteId, fechaIn: fechaIn?.value, nombreProducto, falla, dept, contactosCount: contactos.length });
+            if (!clienteId) { _wizardSetPaso1Error('❌ Selecciona un cliente. Si no hay clientes, créalos en Contactos primero.'); return; }
             if (!fechaIn?.value) { _wizardSetPaso1Error('❌ Indica la fecha de ingreso.'); return; }
             if (!nombreProducto) { _wizardSetPaso1Error('❌ Ingresa el nombre del producto (requerido para continuar).'); return; }
             if (!falla) { _wizardSetPaso1Error('❌ Describe la falla o el requerimiento.'); return; }
