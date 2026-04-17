@@ -649,6 +649,35 @@
     gap: 4px;
 }
 
+/* Etiqueta de vinculación con orden operativa (Taller/Motores/Proyectos) */
+.card-vinculacion {
+    margin-bottom: 10px;
+}
+
+.vinculacion-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #E3F2FD 0%, #E8F5E9 100%);
+    border: 1px solid #B3E5FC;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #0277BD;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s;
+}
+
+.vinculacion-badge:hover {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    border-color: #0288D1;
+}
+
+.vinculacion-badge span {
+    font-size: 14px;
+}
+
 /* ========== GRÁFICA ========== */
 .grafica-container {
     background: var(--bg-panel);
@@ -984,6 +1013,203 @@
     color: var(--status-danger-text);
 }
 
+/* ========== TABS PRINCIPALES (Operativo / Comercial / Gráfica) ========== */
+.ventas-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0;
+}
+
+.ventas-tab {
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ventas-tab:hover {
+    color: var(--c-ventas);
+    background: var(--c-ventas-light);
+    border-bottom-color: var(--c-ventas-light);
+}
+
+.ventas-tab.active {
+    color: var(--c-ventas);
+    border-bottom-color: var(--c-ventas);
+    background: linear-gradient(to bottom, var(--c-ventas-light), transparent);
+}
+
+/* ========== HISTORIA COMERCIAL ========== */
+.historia-comercial-container {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-card);
+}
+
+.comercial-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+}
+
+.comercial-tab {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.comercial-tab:hover {
+    background: var(--c-ventas-light);
+    border-color: var(--c-ventas);
+    color: var(--c-ventas);
+}
+
+.comercial-tab.active {
+    background: var(--c-ventas);
+    border-color: var(--c-ventas);
+    color: white;
+}
+
+.comercial-header {
+    margin-bottom: 16px;
+}
+
+.comercial-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+}
+
+.comercial-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.comercial-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+}
+
+.comercial-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.comercial-card:hover {
+    box-shadow: var(--shadow-hover);
+    border-color: var(--c-ventas);
+    transform: translateY(-2px);
+}
+
+.comercial-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.comercial-folio {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--c-ventas);
+    background: var(--c-ventas-light);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.comercial-estado {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.comercial-estado.pendiente {
+    background: var(--status-warning-bg);
+    color: var(--status-warning-text);
+}
+
+.comercial-estado.enviado {
+    background: var(--status-info-bg);
+    color: var(--status-info-text);
+}
+
+.comercial-estado.autorizado {
+    background: var(--status-success-bg);
+    color: var(--status-success-text);
+}
+
+.comercial-estado.facturado {
+    background: #E8EAF6;
+    color: #3F51B5;
+}
+
+.comercial-card-body {
+    margin-bottom: 12px;
+}
+
+.comercial-cliente {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.comercial-total {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 15px;
+}
+
+.comercial-card-footer {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    margin-top: 10px;
+}
+
+.comercial-card-footer small {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ========== MEDIA QUERIES ========== */
 @media (max-width: 1200px) {
     .kpi-grid {
         grid-template-columns: repeat(2, 1fr);

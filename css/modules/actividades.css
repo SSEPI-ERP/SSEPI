@@ -1,0 +1,470 @@
+/* ================================================
+   ARCHIVO: actividades.css
+   DESCRIPCIÓN: Estilos para módulo Actividades Automatización
+   ================================================ */
+
+:root {
+    --c-actividades: #00796B;  /* Teal */
+    --c-actividades-light: #E0F2F1;
+    --c-actividades-dark: #004D40;
+}
+
+/* ========== FILTROS SUPERIORES ========== */
+.page-actividades .filtros-superiores {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-header);
+}
+
+/* ========== VISTA SEMANAL ========== */
+.semana-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-header);
+}
+
+.semana-titulo {
+    flex: 1;
+}
+
+.semana-titulo h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+}
+
+.semana-titulo p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.btn-semana {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-primary);
+}
+
+.btn-semana:hover {
+    background: var(--c-actividades-light);
+    border-color: var(--c-actividades);
+    color: var(--c-actividades);
+}
+
+/* ========== GRID SEMANAL ========== */
+.grid-semanal {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.dia-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 200px;
+    transition: all 0.2s;
+}
+
+.dia-card:hover {
+    box-shadow: var(--shadow-hover);
+    border-color: var(--c-actividades);
+}
+
+.dia-card.sin-actividades {
+    opacity: 0.6;
+    background: var(--bg-hover);
+}
+
+.dia-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+}
+
+.dia-nombre {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.dia-fecha {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.dia-actividades {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.actividad-mini {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.actividad-mini:hover {
+    background: var(--c-actividades-light);
+    border-color: var(--c-actividades);
+}
+
+.actividad-mini-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.actividad-tecnico {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--c-actividades-dark);
+}
+
+.actividad-estado {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.actividad-estado.pendiente {
+    background: #FFF3E0;
+    color: #E65100;
+}
+
+.actividad-estado.en_progreso {
+    background: #E3F2FD;
+    color: #0277BD;
+}
+
+.actividad-estado.completado {
+    background: #E8F5E9;
+    color: #2E7D32;
+}
+
+.actividad-estado.revisado {
+    background: #E8EAF6;
+    color: #3F51B5;
+}
+
+.actividad-resumen {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.actividad-archivo-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
+
+/* ========== LISTA DE ACTIVIDADES ========== */
+.actividades-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.actividad-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.actividad-card:hover {
+    box-shadow: var(--shadow-hover);
+    border-color: var(--c-actividades);
+}
+
+.actividad-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.actividad-card-icon.pdf {
+    background: #FFEBEE;
+    color: #C62828;
+}
+
+.actividad-card-icon.doc {
+    background: #E3F2FD;
+    color: #1565C0;
+}
+
+.actividad-card-icon.sin-archivo {
+    background: #F5F5F5;
+    color: #9E9E9E;
+}
+
+.actividad-card-body {
+    flex: 1;
+}
+
+.actividad-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.actividad-card-titulo {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.actividad-card-estado {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.actividad-card-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.actividad-card-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.actividad-card-resumen {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    line-height: 1.5;
+}
+
+/* ========== MODAL ========== */
+#actividadModal .modal-body,
+#verActividadModal .modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+#actividadModal .form-group label,
+#verActividadModal .form-group label {
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+#actividadModal .form-control,
+#verActividadModal .form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    transition: border-color 0.2s;
+}
+
+#actividadModal .form-control:focus,
+#verActividadModal .form-control:focus {
+    outline: none;
+    border-color: var(--c-actividades);
+}
+
+#actividadModal textarea.form-control {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* ========== VER ACTIVIDAD DETALLE ========== */
+.ver-actividad-seccion {
+    margin-bottom: 20px;
+}
+
+.ver-actividad-seccion h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.ver-actividad-content {
+    background: var(--bg-hover);
+    border-radius: 6px;
+    padding: 12px;
+}
+
+.ver-actividad-archivo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-card);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+}
+
+.ver-actividad-archivo-icon {
+    font-size: 32px;
+}
+
+.ver-actividad-archivo-icon.pdf {
+    color: #C62828;
+}
+
+.ver-actividad-archivo-icon.doc {
+    color: #1565C0;
+}
+
+.ver-actividad-archivo-info {
+    flex: 1;
+}
+
+.ver-actividad-archivo-nombre {
+    font-weight: 600;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.ver-actividad-archivo-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.ver-actividad-historial {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.historial-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.historial-item:last-child {
+    border-bottom: none;
+}
+
+.historial-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.historial-body {
+    flex: 1;
+}
+
+.historial-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.historial-evento {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-primary);
+}
+
+.historial-fecha {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.historial-descripcion {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ========== ESTADOS ========== */
+.estado-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.estado-badge.pendiente {
+    background: #FFF3E0;
+    color: #E65100;
+}
+
+.estado-badge.en_progreso {
+    background: #E3F2FD;
+    color: #0277BD;
+}
+
+.estado-badge.completado {
+    background: #E8F5E9;
+    color: #2E7D32;
+}
+
+.estado-badge.revisado {
+    background: #E8EAF6;
+    color: #3F51B5;
+}

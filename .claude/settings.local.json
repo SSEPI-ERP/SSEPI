@@ -20,7 +20,8 @@
       "Bash(git -C D:/SSEPI show HEAD:css/main.css)",
       "Bash(git -C D:/SSEPI add -A)",
       "Bash(git -C D:/SSEPI status)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(dir \"D:\\\\SSEPI\" /b)"
     ]
   }
 }

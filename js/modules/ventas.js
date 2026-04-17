@@ -585,9 +585,63 @@ const VentasModule = (function() {
         });
     }
 
+    /**
+     * Inserta un evento en orden_historial para auditar cambios en cotizaciones/ventas/órdenes.
+     * @param {string} tipo - 'cotizacion' | 'venta' | 'taller' | 'motor' | 'proyecto'
+     * @param {string} id - ID del registro
+     * @param {string} evento - Tipo de evento: 'creacion', 'cambio_estado', 'folio_generado', 'compra_vinculada', etc.
+     * @param {string} descripcion - Descripción legible del evento
+     * @param {string} csrfToken - Token de autenticación
+     */
+    async function _insertarEventoHistorial(tipo, id, evento, descripcion, csrfToken) {
+        if (!window.supabase) return;
+
+        const columnMap = {
+            'cotizacion': 'cotizacion_id',
+            'venta': 'cotizacion_id',
+            'taller': 'orden_taller_id',
+            'motor': 'orden_motor_id',
+            'proyecto': 'proyecto_id',
+            'automatizacion': 'proyecto_id'
+        };
+        const columnName = columnMap[tipo] || 'cotizacion_id';
+
+        const row = {
+            [columnName]: id,
+            evento,
+            descripcion,
+            creado_por: (await authService.getCurrentProfile())?.id || null
+        };
+
+        try {
+            const { data, error } = await window.supabase
+                .from('orden_historial')
+                .insert(row)
+                .select()
+                .single();
+
+            if (error) {
+                console.warn('[Ventas] Error insertando evento en historial:', error);
+            } else {
+                console.log(`[Ventas] Evento registrado en historial: ${evento} para ${tipo} ${id}`);
+                // Disparar actualización del timeline si el modal está abierto
+                const modalAbierto = document.getElementById('historialModal');
+                if (modalAbierto && modalAbierto.classList.contains('active')) {
+                    _mostrarHistorial(id, tipo);
+                }
+            }
+            return data;
+        } catch (error) {
+            console.error('[Ventas] _insertarEventoHistorial:', error);
+            return null;
+        }
+    }
+
     function _setupRealtime() {
         const supabase = _supabase();
         if (!supabase) return;
+
+        // Realtime para ventas
         const subVentas = supabase
             .channel('ventas_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ventas' }, payload => {
@@ -602,6 +656,7 @@ const VentasModule = (function() {
             .subscribe();
         subscriptions.push(subVentas);
 
+        // Realtime para cotizaciones
         const subCotizaciones = supabase
             .channel('cotizaciones_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'cotizaciones' }, payload => {
@@ -613,6 +668,7 @@ const VentasModule = (function() {
             .subscribe();
         subscriptions.push(subCotizaciones);
 
+        // Realtime para compras
         const subCompras = supabase
             .channel('compras_ventas')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'compras' }, payload => {
@@ -621,6 +677,64 @@ const VentasModule = (function() {
             })
             .subscribe();
         subscriptions.push(subCompras);
+
+        // Realtime para ordenes_taller (sincronización con Ventas)
+        const subTaller = supabase
+            .channel('taller_realtime_ventas')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes_taller' }, payload => {
+                _loadTaller().then(() => {
+                    _renderSolicitudesTaller();
+                    _applyFilters(); // Refrescar kanban por si hay cambios de estado
+                });
+            })
+            .subscribe();
+        subscriptions.push(subTaller);
+
+        // Realtime para ordenes_motores (sincronización con Ventas)
+        const subMotores = supabase
+            .channel('motores_realtime_ventas')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes_motores' }, payload => {
+                _loadMotores().then(() => {
+                    _renderSolicitudesTaller();
+                    _applyFilters();
+                });
+            })
+            .subscribe();
+        subscriptions.push(subMotores);
+
+        // Realtime para proyectos_automatizacion (sincronización con Ventas)
+        const subProyectos = supabase
+            .channel('proyectos_realtime_ventas')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'proyectos_automatizacion' }, payload => {
+                _loadProyectos().then(() => {
+                    _renderSolicitudesTaller();
+                    _applyFilters();
+                });
+            })
+            .subscribe();
+        subscriptions.push(subProyectos);
+
+        // Realtime para orden_historial (actualizar timeline cuando llegue nuevo evento)
+        const subHistorial = supabase
+            .channel('historial_realtime')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orden_historial' }, payload => {
+                // Verificar si el evento es relevante para una cotización/venta visible
+                const nueva = payload.new;
+                const idAfectado = nueva.cotizacion_id || nueva.orden_taller_id || nueva.orden_motor_id || nueva.proyecto_id;
+                if (idAfectado) {
+                    // Refresh del feed lateral
+                    _addToFeed('📝', `Nuevo evento en historial: ${nueva.evento}`);
+                    // Si el modal de historial está abierto para este ID, refrescar
+                    const modalAbierto = document.getElementById('historialModal');
+                    if (modalAbierto && modalAbierto.classList.contains('active')) {
+                        // Determinar tipo basado en qué campo tiene el ID
+                        const tipo = nueva.cotizacion_id ? 'cotizacion' : nueva.orden_taller_id ? 'taller' : nueva.orden_motor_id ? 'motor' : 'proyecto';
+                        _mostrarHistorial(idAfectado, tipo);
+                    }
+                }
+            })
+            .subscribe();
+        subscriptions.push(subHistorial);
     }
 
     // ==================== FILTROS Y VISTAS ====================
@@ -671,6 +785,11 @@ const VentasModule = (function() {
         else if (vistaActual === 'lista') _renderLista(filtered);
         else if (vistaActual === 'grafica') _renderGrafica(filtered);
 
+        // Renderizar Historia Comercial si hay cotizaciones cargadas (independiente de la vista)
+        if (cotizaciones && cotizaciones.length > 0) {
+            _renderHistoriaComercial();
+        }
+
         _updateKPIs(filtered);
     }
 
@@ -682,7 +801,7 @@ const VentasModule = (function() {
         });
     }
 
-    function _renderKanban(items) {
+    async function _renderKanban(items) {
         const container = document.getElementById('kanbanContainer');
         if (!container) return;
 
@@ -696,62 +815,74 @@ const VentasModule = (function() {
         const entregado = items.filter(i => i.estado === 'entregado' || (i.tipo !== 'cotizacion' && i.estatus_pago === 'Pendiente'));
         const pagado = items.filter(i => i.estatus_pago === 'Pagado' || i.estado === 'pagado');
 
+        // Renderizar tarjetas asíncronamente para cargar folios vinculados
+        const [cardsRegistro, cardsDiagnostico, cardsCotizacion, cardsAutorizado, cardsCompra, cardsEjecucion, cardsEntregado, cardsPagado] = await Promise.all([
+            _renderKanbanCardsAsync(registro),
+            _renderKanbanCardsAsync(diagnostico),
+            _renderKanbanCardsAsync(cotizacion),
+            _renderKanbanCardsAsync(autorizado),
+            _renderKanbanCardsAsync(compra),
+            _renderKanbanCardsAsync(ejecucion),
+            _renderKanbanCardsAsync(entregado),
+            _renderKanbanCardsAsync(pagado)
+        ]);
+
         let html = `
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #9e9e9e;">
                     <span>📝 Registro</span>
                     <span class="badge" style="background: #9e9e9e;">${registro.length}</span>
                 </div>
-                <div class="kanban-cards">${_renderKanbanCards(registro)}</div>
+                <div class="kanban-cards">${cardsRegistro}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #2196f3;">
                     <span>🔍 Diagnóstico</span>
                     <span class="badge" style="background: #2196f3;">${diagnostico.length}</span>
                 </div>
-                <div class="kanban-cards">${_renderKanbanCards(diagnostico)}</div>
+                <div class="kanban-cards">${cardsDiagnostico}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #ff9800;">
                     <span>💰 Cotización</span>
                     <span class="badge" style="background: #ff9800;">${cotizacion.length}</span>
                 </div>
-                <div class="kanban-cards">${_renderKanbanCards(cotizacion)}</div>
+                <div class="kanban-cards">${cardsCotizacion}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #4caf50;">
                     <span>✅ Autorizado</span>
                     <span class="badge" style="background: #4caf50;">${autorizado.length}</span>
                 </div>
-                <div class="kanban-cards">${_renderKanbanCards(autorizado)}</div>
+                <div class="kanban-cards">${cardsAutorizado}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #9c27b0;">
                     <span>🛒 En Compra</span>
                     <span class="badge" style="background: #9c27b0;">${compra.length}</span>
                 </div>
-                <div class="kanban-cards">${_renderKanbanCards(compra)}</div>
+                <div class="kanban-cards">${cardsCompra}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #ff5722;">
                     <span>⚙️ En Ejecución</span>
                     <span class="badge" style="background: #ff5722;">${ejecucion.length}</span>
                 </div>
-                <div class="kanban-cards">${_renderKanbanCards(ejecucion)}</div>
+                <div class="kanban-cards">${cardsEjecucion}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #00bcd4;">
                     <span>📦 Entregado</span>
                     <span class="badge" style="background: #00bcd4;">${entregado.length}</span>
                 </div>
-                <div class="kanban-cards">${_renderKanbanCards(entregado)}</div>
+                <div class="kanban-cards">${cardsEntregado}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #4caf50;">
                     <span>💵 Pagado</span>
                     <span class="badge" style="background: #4caf50;">${pagado.length}</span>
                 </div>
-                <div class="kanban-cards">${_renderKanbanCards(pagado)}</div>
+                <div class="kanban-cards">${cardsPagado}</div>
             </div>
         `;
         container.innerHTML = html;
@@ -760,7 +891,121 @@ const VentasModule = (function() {
         });
     }
 
+    /**
+     * Obtiene el folio de la orden operativa vinculada a una cotización.
+     * Busca en taller, motores o proyectos según el origen.
+     */
+    async function _getFolioOrdenVinculada(cotizacion) {
+        if (!cotizacion.orden_origen_id || !window.supabase) return null;
+
+        try {
+            // Intentar en ordenes_taller
+            if (cotizacion.origen === 'taller') {
+                const { data } = await window.supabase
+                    .from('ordenes_taller')
+                    .select('folio')
+                    .eq('id', cotizacion.orden_origen_id)
+                    .single();
+                if (data?.folio) return { tipo: 'taller', folio: data.folio };
+            }
+
+            // Intentar en ordenes_motores
+            if (cotizacion.origen === 'motor' || cotizacion.origen === 'motores') {
+                const { data } = await window.supabase
+                    .from('ordenes_motores')
+                    .select('folio')
+                    .eq('id', cotizacion.orden_origen_id)
+                    .single();
+                if (data?.folio) return { tipo: 'motor', folio: data.folio };
+            }
+
+            // Intentar en proyectos_automatizacion
+            if (cotizacion.origen === 'automatizacion' || cotizacion.origen === 'proyecto' || cotizacion.origen === 'proyectos') {
+                const { data } = await window.supabase
+                    .from('proyectos_automatizacion')
+                    .select('folio')
+                    .eq('id', cotizacion.orden_origen_id)
+                    .single();
+                if (data?.folio) return { tipo: 'proyecto', folio: data.folio };
+            }
+
+            // Búsqueda genérica si no hay origen claro
+            for (const tabla of ['ordenes_taller', 'ordenes_motores', 'proyectos_automatizacion']) {
+                const { data } = await window.supabase
+                    .from(tabla)
+                    .select('folio')
+                    .eq('id', cotizacion.orden_origen_id)
+                    .single();
+                if (data?.folio) {
+                    const tipoMap = { ordenes_taller: 'taller', ordenes_motores: 'motor', proyectos_automatizacion: 'proyecto' };
+                    return { tipo: tipoMap[tabla], folio: data.folio };
+                }
+            }
+        } catch (e) {
+            console.warn('[Ventas] Error obteniendo folio vinculado:', e);
+        }
+        return null;
+    }
+
+    /**
+     * Renderiza las tarjetas del Kanban con etiqueta de "Creada en Taller/Motor/Proyecto" si aplica.
+     * Función asíncrona para poder consultar los folios vinculados.
+     */
+    async function _renderKanbanCardsAsync(items) {
+        if (items.length === 0) return '<div style="text-align:center; padding:20px; color:var(--text-muted);">Sin elementos</div>';
+
+        // Precargar folios vinculados para todas las cotizaciones
+        const foliosVinculados = await Promise.all(
+            items.map(async item => {
+                if (item.tipo === 'cotizacion' && item.orden_origen_id) {
+                    return await _getFolioOrdenVinculada(item);
+                }
+                return null;
+            })
+        );
+
+        const iconos = {
+            'taller': '🔬',
+            'motor': '🏭',
+            'proyecto': '🤖'
+        };
+
+        const etiquetas = {
+            'taller': 'Laboratorio',
+            'motor': 'Motores',
+            'proyecto': 'Automatización'
+        };
+
+        return items.map((item, idx) => {
+            const folioVinculado = foliosVinculados[idx];
+            const etiquetaHtml = folioVinculado
+                ? `<div class="vinculacion-badge" title="Orden creada en ${etiquetas[folioVinculado.tipo]}: ${folioVinculado.folio}">
+                    <span>${iconos[folioVinculado.tipo]}</span> ${etiquetas[folioVinculado.tipo]}: ${folioVinculado.folio}
+                   </div>`
+                : '';
+
+            return `
+                <div class="kanban-card" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}">
+                    <div class="card-header">
+                        <span class="folio">${item.folio || item.id.slice(-6)}</span>
+                    </div>
+                    ${etiquetaHtml ? `<div class="card-vinculacion">${etiquetaHtml}</div>` : ''}
+                    <div class="card-body">
+                        <div class="cliente">${item.cliente || 'Cliente'}</div>
+                        <div class="total">$${(item.total || 0).toFixed(2)}</div>
+                    </div>
+                    <div class="card-footer">
+                        <small>${item.fecha ? new Date(item.fecha).toLocaleDateString() : ''}</small>
+                        <small>${item.vendedor || ''}</small>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
     function _renderKanbanCards(items) {
+        // Wrapper síncrono para compatibilidad - se llama desde _renderKanban
+        // Para versión con folios vinculados, usar _renderKanbanCardsAsync
         if (items.length === 0) return '<div style="text-align:center; padding:20px; color:var(--text-muted);">Sin elementos</div>';
         return items.map(item => `
             <div class="kanban-card" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}">
@@ -2025,6 +2270,88 @@ const VentasModule = (function() {
         _addToFeed('📧', `Cotización reenviada`);
     }
 
+    // ==================== REGISTRO RÁPIDO DE COTIZACIÓN ====================
+    async function _abrirRegistroRapido() {
+        const modal = document.getElementById('registroRapidoModal');
+        if (!modal) return;
+
+        // Limpiar campos
+        document.getElementById('rrCliente').value = '';
+        document.getElementById('rrEmail').value = '';
+        document.getElementById('rrTelefono').value = '';
+        document.getElementById('rrFalla').value = '';
+        document.getElementById('rrDepartamento').value = '';
+        document.getElementById('rrPrioridad').value = 'Normal';
+
+        modal.classList.add('active');
+    }
+
+    async function _guardarRegistroRapido() {
+        const cliente = document.getElementById('rrCliente').value.trim();
+        const email = document.getElementById('rrEmail').value.trim();
+        const telefono = document.getElementById('rrTelefono').value.trim();
+        const falla = document.getElementById('rrFalla').value.trim();
+        const departamento = document.getElementById('rrDepartamento').value.trim();
+        const prioridad = document.getElementById('rrPrioridad').value.trim();
+
+        if (!cliente || !falla || !departamento) {
+            alert('❗ Cliente, falla y departamento son obligatorios.');
+            return;
+        }
+
+        const folio = `COT-${Date.now().toString().slice(-6)}`;
+        const profile = await authService.getCurrentProfile();
+
+        const cotizacionData = {
+            folio,
+            tipo: 'cotizacion',
+            cliente,
+            email: email || '',
+            telefono: telefono || '',
+            rfc: '',
+            fecha: new Date().toISOString().split('T')[0],
+            items: [{
+                descripcion: falla,
+                cantidad: 1,
+                precio_unitario: 0,
+                importe: 0
+            }],
+            subtotal: 0,
+            iva: 0,
+            total: 0,
+            estado: 'registro',
+            origen: 'directo',
+            orden_origen_id: null,
+            cerebro_registro: {
+                departamento,
+                prioridad,
+                falla_reportada: falla,
+                origen_cotizacion: 'directo'
+            },
+            vendedor: profile?.nombre || 'Ventas',
+            fecha_creacion: new Date().toISOString()
+        };
+
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            const inserted = await cotizacionesService.insert(cotizacionData, csrfToken);
+
+            // Registrar evento en orden_historial: creación de cotización rápida
+            if (inserted?.id) {
+                await _insertarEventoHistorial('cotizacion', inserted.id, 'creacion', `Cotización rápida ${folio} creada en Registro`, csrfToken);
+            }
+
+            alert('✅ Cotización guardada en 📝 Registro. Folio: ' + folio);
+            _addToFeed('💾', `Cotización ${folio} guardada en Registro`);
+            document.getElementById('registroRapidoModal').classList.remove('active');
+            await _loadCotizaciones();
+            _applyFilters();
+        } catch (error) {
+            console.error(error);
+            alert('Error al guardar: ' + error.message);
+        }
+    }
+
     // ==================== NUEVA COTIZACIÓN DIRECTA (Wizard 4 pasos) ====================
     async function _nuevaCotizacion() {
         calculadoraComponentes = [];
@@ -2452,6 +2779,19 @@ const VentasModule = (function() {
         try {
             const inserted = await cotizacionesService.insert(cotizacionData, csrfToken);
             await _syncFolioTrasCotizacion(inserted, cotizacionData, calculadoraComponentes, csrfToken);
+
+            // Registrar evento en orden_historial: creación de cotización
+            if (inserted?.id) {
+                await _insertarEventoHistorial('cotizacion', inserted.id, 'creacion', `Cotización ${folio} creada desde Ventas`, csrfToken);
+
+                // Si hay orden operativa vinculada, registrar evento de vinculación
+                if (compraActual?.vinculacion) {
+                    const tipoOrden = compraActual._origen || 'taller';
+                    const folioOperativo = ventasWizardCerebro?.folio_operativo || 'N/A';
+                    await _insertarEventoHistorial('cotizacion', inserted.id, 'compra_vinculada', `Vinculada con orden de ${tipoOrden}: ${folioOperativo}`, csrfToken);
+                }
+            }
+
             alert('✅ Cotización guardada. Folio: ' + folio);
             _addToFeed('💾', `Cotización ${folio} guardada`);
             document.getElementById('calculadoraModal').classList.remove('active');
@@ -2508,6 +2848,19 @@ const VentasModule = (function() {
                 const html = '<p>Hola ' + cliente + ',</p><p>Adjuntamos la cotización <strong>' + folio + '</strong> por un total de <strong>' + totalStr + '</strong>.</p><p>Quedamos atentos.</p><p>— SSEPI Ventas</p>';
                 window.emailService.send(email.trim(), 'Cotización SSEPI - ' + folio, html, undefined, fromVendedor).then(r => { if (r.error) console.warn('Correo:', r.error); });
             }
+
+            // Registrar evento en orden_historial: creación y envío de cotización
+            if (inserted?.id) {
+                await _insertarEventoHistorial('cotizacion', inserted.id, 'creacion', `Cotización ${folio} creada desde Ventas`, csrfToken);
+                await _insertarEventoHistorial('cotizacion', inserted.id, 'cotizacion_enviada', `Cotización enviada a ${email}`, csrfToken);
+
+                if (compraActual?.vinculacion) {
+                    const tipoOrden = compraActual._origen || 'taller';
+                    const folioOperativo = ventasWizardCerebro?.folio_operativo || 'N/A';
+                    await _insertarEventoHistorial('cotizacion', inserted.id, 'compra_vinculada', `Vinculada con orden de ${tipoOrden}: ${folioOperativo}`, csrfToken);
+                }
+            }
+
             alert('✅ Cotización guardada y enviada. Folio: ' + folio);
             _addToFeed('📧', `Cotización ${folio} enviada a ${cliente}`);
             document.getElementById('calculadoraModal').classList.remove('active');
@@ -2543,6 +2896,26 @@ const VentasModule = (function() {
         var toggleMenu = document.getElementById('toggleMenu');
         if (toggleMenu) toggleMenu.addEventListener('click', _toggleMenu);
         /* #themeBtn lo gestiona theme-clock.js */
+
+        // Registro rápido de cotización
+        var btnRegistroRapido = document.getElementById('btnNuevaCotizacionRapida');
+        if (btnRegistroRapido) btnRegistroRapido.addEventListener('click', _abrirRegistroRapido);
+
+        var closeRegistroRapido = document.getElementById('closeRegistroRapidoModal');
+        if (closeRegistroRapido) closeRegistroRapido.addEventListener('click', function () {
+            var m = document.getElementById('registroRapidoModal');
+            if (m) m.classList.remove('active');
+        });
+
+        var cancelRegistroRapido = document.getElementById('cancelRegistroRapidoBtn');
+        if (cancelRegistroRapido) cancelRegistroRapido.addEventListener('click', function () {
+            var m = document.getElementById('registroRapidoModal');
+            if (m) m.classList.remove('active');
+        });
+
+        var guardarRegistroRapido = document.getElementById('guardarRegistroRapidoBtn');
+        if (guardarRegistroRapido) guardarRegistroRapido.addEventListener('click', _guardarRegistroRapido);
+
         var newCotizacionBtn = document.getElementById('newCotizacionBtn');
         if (newCotizacionBtn) newCotizacionBtn.addEventListener('click', _nuevaCotizacion);
 
@@ -2656,6 +3029,177 @@ const VentasModule = (function() {
             vistaGrafica.classList.add('active');
             _applyFilters();
         });
+
+        // Setup de tabs de Historia Comercial (Operativo/Comercial/Gráfica y Pendientes/Emitidas)
+        _setupHistoriaComercialTabs();
+    }
+
+    // ==================== HISTORIA COMERCIAL (Pendientes vs Emitidas) ====================
+    let comercialTabActual = 'pendientes';
+
+    function _renderHistoriaComercial() {
+        const container = document.getElementById('historiaComercialContainer');
+        if (!container) return;
+
+        // Obtener todas las cotizaciones
+        const todas = Array.isArray(cotizaciones) ? cotizaciones : [];
+
+        // Definir "emitida": enviada, autorizada, o con venta cerrada
+        const estadosPendientes = ['registro', 'Nuevo', 'diagnostico', 'en_diagnostico', 'cotizacion', 'pendiente_autorizacion_ventas'];
+        const estadosEmitidas = ['autorizado', 'autorizada_por_ventas', 'compra', 'en_compra', 'ejecucion', 'en_ejecucion', 'entregado', 'pagado'];
+
+        const pendientes = todas.filter(c => estadosPendientes.includes(c.estado));
+        const emitidas = todas.filter(c => estadosEmitidas.includes(c.estado));
+
+        if (comercialTabActual === 'pendientes') {
+            _renderComercialPanel('pendientesGrid', pendientes, 'pendiente');
+        } else {
+            _renderComercialPanel('emitidasGrid', emitidas, 'emitida');
+        }
+    }
+
+    function _renderComercialPanel(gridId, items, tipo) {
+        const grid = document.getElementById(gridId);
+        if (!grid) return;
+
+        if (items.length === 0) {
+            grid.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--text-muted);">
+                    <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+                    <p>No hay cotizaciones ${tipo === 'pendiente' ? 'pendientes' : 'emitidas'} en este período.</p>
+                </div>
+            `;
+            return;
+        }
+
+        grid.innerHTML = items.map(item => {
+            const estadoClass = _getEstadoComercialClass(item.estado);
+            const estadoLabel = _getEstadoComercialLabel(item.estado);
+            const fecha = item.fecha_creacion || item.fecha || '';
+            const fechaStr = fecha ? new Date(fecha).toLocaleDateString('es-MX') : '--/--/----';
+
+            return `
+                <div class="comercial-card" data-id="${item.id}" data-tipo="cotizacion">
+                    <div class="comercial-card-header">
+                        <span class="comercial-folio">${item.folio || item.id.slice(-6)}</span>
+                        <span class="comercial-estado ${estadoClass}">${estadoLabel}</span>
+                    </div>
+                    <div class="comercial-card-body">
+                        <div class="comercial-cliente">${item.cliente || 'Cliente'}</div>
+                        <div class="comercial-total">$${(item.total || 0).toFixed(2)}</div>
+                    </div>
+                    <div class="comercial-card-footer">
+                        <small><i class="fas fa-calendar"></i> ${fechaStr}</small>
+                        <small><i class="fas fa-user"></i> ${item.vendedor || 'Ventas'}</small>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Bind click events
+        grid.querySelectorAll('.comercial-card').forEach(card => {
+            card.addEventListener('click', () => _abrirDetalle(card.dataset.id, card.dataset.tipo));
+        });
+    }
+
+    function _getEstadoComercialClass(estado) {
+        const map = {
+            'registro': 'pendiente',
+            'Nuevo': 'pendiente',
+            'diagnostico': 'pendiente',
+            'en_diagnostico': 'pendiente',
+            'cotizacion': 'pendiente',
+            'pendiente_autorizacion_ventas': 'pendiente',
+            'autorizado': 'autorizado',
+            'autorizada_por_ventas': 'autorizado',
+            'compra': 'enviado',
+            'en_compra': 'enviado',
+            'ejecucion': 'enviado',
+            'en_ejecucion': 'enviado',
+            'entregado': 'facturado',
+            'pagado': 'facturado'
+        };
+        return map[estado] || 'pendiente';
+    }
+
+    function _getEstadoComercialLabel(estado) {
+        const map = {
+            'registro': '📝 Registro',
+            'Nuevo': '📝 Nuevo',
+            'diagnostico': '🔍 Diagnóstico',
+            'en_diagnostico': '🔍 En Diagnóstico',
+            'cotizacion': '💰 Cotizando',
+            'pendiente_autorizacion_ventas': '⏳ Por Autorizar',
+            'autorizado': '✅ Autorizado',
+            'autorizada_por_ventas': '✅ Autorizada',
+            'compra': '🛒 En Compra',
+            'en_compra': '🛒 Comprando',
+            'ejecucion': '⚙️ En Ejecución',
+            'en_ejecucion': '⚙️ Ejecutando',
+            'entregado': '📦 Entregado',
+            'pagado': '💵 Pagado'
+        };
+        return map[estado] || estado;
+    }
+
+    function _setupHistoriaComercialTabs() {
+        // Tabs principales (Operativo / Comercial / Gráfica)
+        document.querySelectorAll('.ventas-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabName = this.dataset.tab;
+
+                // Update active state
+                document.querySelectorAll('.ventas-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+
+                // Show/hide containers
+                const kanban = document.getElementById('kanbanContainer');
+                const lista = document.getElementById('listaContainer');
+                const comercial = document.getElementById('historiaComercialContainer');
+                const grafica = document.getElementById('graficaContainer');
+
+                kanban.style.display = 'none';
+                lista.style.display = 'none';
+                comercial.style.display = 'none';
+                grafica.style.display = 'none';
+
+                if (tabName === 'operativo') {
+                    kanban.style.display = 'flex';
+                    vistaActual = 'kanban';
+                    _applyFilters();
+                } else if (tabName === 'comercial') {
+                    comercial.style.display = 'block';
+                    _renderHistoriaComercial();
+                } else if (tabName === 'grafica') {
+                    grafica.style.display = 'block';
+                    vistaActual = 'grafica';
+                    _applyFilters();
+                }
+            });
+        });
+
+        // Tabs comerciales (Pendientes / Emitidas)
+        document.querySelectorAll('.comercial-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                comercialTabActual = this.dataset.comercial;
+
+                document.querySelectorAll('.comercial-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+
+                const pendientesPanel = document.getElementById('comercialPendientes');
+                const emitidasPanel = document.getElementById('comercialEmitidas');
+
+                if (comercialTabActual === 'pendientes') {
+                    pendientesPanel.style.display = 'block';
+                    emitidasPanel.style.display = 'none';
+                } else {
+                    pendientesPanel.style.display = 'none';
+                    emitidasPanel.style.display = 'block';
+                }
+
+                _renderHistoriaComercial();
+            });
+        });
     }
 
     function _toggleMenu() {
@@ -2743,6 +3287,9 @@ const VentasModule = (function() {
     // ==================== EXPOSICIÓN PÚBLICA ====================
     return {
         init,
+        _nuevaCotizacion,
+        _abrirRegistroRapido,
+        _guardarRegistroRapido,
         _abrirCalculadora,
         _agregarComponente,
         _eliminarComponente,
@@ -2763,7 +3310,10 @@ const VentasModule = (function() {
         _mostrarHistorial,
         _verOrdenTaller,
         _editarOrdenTaller,
-        _eliminarOrdenTaller
+        _eliminarOrdenTaller,
+        _insertarEventoHistorial,  // Expuesto para otros módulos que registren eventos
+        _getFolioOrdenVinculada,   // Utilidad para obtener folios vinculados
+        _renderKanbanCardsAsync    // Render asíncrono con etiquetas de vinculación
     };
 })();
 
