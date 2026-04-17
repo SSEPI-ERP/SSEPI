@@ -640,20 +640,22 @@ const VentasModule = (function() {
             filtered = filtered.filter(item => item.vendedor === filtroVendedor);
         }
         if (filtroEstado !== 'todos') {
-            if (filtroEstado === 'Pendiente') {
-                filtered = filtered.filter(item =>
-                    (item.tipo === 'cotizacion' && (item.estado === 'pendiente_autorizacion_ventas' || !item.estado)) ||
-                    (item.tipo !== 'cotizacion' && item.estatus_pago === 'Pendiente')
-                );
-            } else if (filtroEstado === 'Autorizado') {
-                filtered = filtered.filter(item =>
-                    (item.tipo === 'cotizacion' && item.estado === 'autorizada_por_ventas') ||
-                    (item.tipo !== 'cotizacion' && item.estatus_pago === 'Pagado')
-                );
-            } else if (filtroEstado === 'Rechazadas') {
-                filtered = filtered.filter(item =>
-                    item.tipo === 'cotizacion' && item.estado === 'rechazada_por_ventas'
-                );
+            if (filtroEstado === 'registro') {
+                filtered = filtered.filter(item => item.estado === 'registro' || item.estado === 'Nuevo');
+            } else if (filtroEstado === 'diagnostico') {
+                filtered = filtered.filter(item => item.estado === 'diagnostico' || item.estado === 'en_diagnostico');
+            } else if (filtroEstado === 'cotizacion') {
+                filtered = filtered.filter(item => item.estado === 'cotizacion' || item.estado === 'pendiente_autorizacion_ventas');
+            } else if (filtroEstado === 'autorizado') {
+                filtered = filtered.filter(item => item.estado === 'autorizado' || item.estado === 'autorizada_por_ventas');
+            } else if (filtroEstado === 'compra') {
+                filtered = filtered.filter(item => item.estado === 'compra' || item.estado === 'en_compra');
+            } else if (filtroEstado === 'ejecucion') {
+                filtered = filtered.filter(item => item.estado === 'ejecucion' || item.estado === 'en_ejecucion');
+            } else if (filtroEstado === 'entregado') {
+                filtered = filtered.filter(item => item.estado === 'entregado' || item.estatus_pago === 'Pendiente');
+            } else if (filtroEstado === 'pagado') {
+                filtered = filtered.filter(item => item.estatus_pago === 'Pagado' || item.estado === 'pagado');
             }
         }
         if (filtroBuscar) {
@@ -683,31 +685,73 @@ const VentasModule = (function() {
     function _renderKanban(items) {
         const container = document.getElementById('kanbanContainer');
         if (!container) return;
-        const cotizaciones = items.filter(i => i.tipo === 'cotizacion' && i.estatus_pago !== 'Pagado');
-        const pendientes = items.filter(i => i.tipo !== 'cotizacion' && i.estatus_pago === 'Pendiente');
-        const pagadas = items.filter(i => i.tipo !== 'cotizacion' && i.estatus_pago === 'Pagado');
+
+        // Nuevos estatus para kanban
+        const registro = items.filter(i => i.estado === 'registro' || i.estado === 'Nuevo');
+        const diagnostico = items.filter(i => i.estado === 'diagnostico' || i.estado === 'en_diagnostico');
+        const cotizacion = items.filter(i => i.estado === 'cotizacion' || i.estado === 'pendiente_autorizacion_ventas');
+        const autorizado = items.filter(i => i.estado === 'autorizado' || i.estado === 'autorizada_por_ventas');
+        const compra = items.filter(i => i.estado === 'compra' || i.estado === 'en_compra');
+        const ejecucion = items.filter(i => i.estado === 'ejecucion' || i.estado === 'en_ejecucion');
+        const entregado = items.filter(i => i.estado === 'entregado' || (i.tipo !== 'cotizacion' && i.estatus_pago === 'Pendiente'));
+        const pagado = items.filter(i => i.estatus_pago === 'Pagado' || i.estado === 'pagado');
 
         let html = `
             <div class="kanban-column">
-                <div class="kanban-header" style="border-bottom-color: #ff9800;">
-                    <span>📄 Cotizaciones</span>
-                    <span class="badge" style="background: #ff9800;">${cotizaciones.length}</span>
+                <div class="kanban-header" style="border-bottom-color: #9e9e9e;">
+                    <span>📝 Registro</span>
+                    <span class="badge" style="background: #9e9e9e;">${registro.length}</span>
                 </div>
-                <div class="kanban-cards">${_renderKanbanCards(cotizaciones)}</div>
+                <div class="kanban-cards">${_renderKanbanCards(registro)}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #2196f3;">
-                    <span>⏳ Pendientes</span>
-                    <span class="badge" style="background: #2196f3;">${pendientes.length}</span>
+                    <span>🔍 Diagnóstico</span>
+                    <span class="badge" style="background: #2196f3;">${diagnostico.length}</span>
                 </div>
-                <div class="kanban-cards">${_renderKanbanCards(pendientes)}</div>
+                <div class="kanban-cards">${_renderKanbanCards(diagnostico)}</div>
+            </div>
+            <div class="kanban-column">
+                <div class="kanban-header" style="border-bottom-color: #ff9800;">
+                    <span>💰 Cotización</span>
+                    <span class="badge" style="background: #ff9800;">${cotizacion.length}</span>
+                </div>
+                <div class="kanban-cards">${_renderKanbanCards(cotizacion)}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #4caf50;">
-                    <span>✅ Pagadas</span>
-                    <span class="badge" style="background: #4caf50;">${pagadas.length}</span>
+                    <span>✅ Autorizado</span>
+                    <span class="badge" style="background: #4caf50;">${autorizado.length}</span>
                 </div>
-                <div class="kanban-cards">${_renderKanbanCards(pagadas)}</div>
+                <div class="kanban-cards">${_renderKanbanCards(autorizado)}</div>
+            </div>
+            <div class="kanban-column">
+                <div class="kanban-header" style="border-bottom-color: #9c27b0;">
+                    <span>🛒 En Compra</span>
+                    <span class="badge" style="background: #9c27b0;">${compra.length}</span>
+                </div>
+                <div class="kanban-cards">${_renderKanbanCards(compra)}</div>
+            </div>
+            <div class="kanban-column">
+                <div class="kanban-header" style="border-bottom-color: #ff5722;">
+                    <span>⚙️ En Ejecución</span>
+                    <span class="badge" style="background: #ff5722;">${ejecucion.length}</span>
+                </div>
+                <div class="kanban-cards">${_renderKanbanCards(ejecucion)}</div>
+            </div>
+            <div class="kanban-column">
+                <div class="kanban-header" style="border-bottom-color: #00bcd4;">
+                    <span>📦 Entregado</span>
+                    <span class="badge" style="background: #00bcd4;">${entregado.length}</span>
+                </div>
+                <div class="kanban-cards">${_renderKanbanCards(entregado)}</div>
+            </div>
+            <div class="kanban-column">
+                <div class="kanban-header" style="border-bottom-color: #4caf50;">
+                    <span>💵 Pagado</span>
+                    <span class="badge" style="background: #4caf50;">${pagado.length}</span>
+                </div>
+                <div class="kanban-cards">${_renderKanbanCards(pagado)}</div>
             </div>
         `;
         container.innerHTML = html;
@@ -1874,7 +1918,6 @@ const VentasModule = (function() {
             return;
         }
 
-        // Mapeo de tipo a columna de BD
         const columnMap = {
             'cotizacion': 'cotizacion_id',
             'venta': 'cotizacion_id',
@@ -1888,67 +1931,82 @@ const VentasModule = (function() {
         try {
             const { data, error } = await window.supabase
                 .from('orden_historial')
-                .select(`
-                    *,
-                    creado_por_usuario:usuarios (nombre, email)
-                `)
+                .select(`*, creado_por_usuario:usuarios (nombre, email)`)
                 .eq(columnName, id)
                 .order('creado_en', { ascending: false });
 
             if (error) throw error;
-
             const events = data || [];
+            const item = [...ventas, ...cotizaciones].find(i => i.id === id);
+            const estadoActual = item?.estado || item?.estatus_pago || 'registro';
 
-            if (events.length === 0) {
-                body.innerHTML = `
-                    <div style="text-align:center; padding:40px; color:var(--text-secondary);">
-                        <i class="fas fa-history" style="font-size:48px; margin-bottom:16px; opacity:0.5;"></i>
-                        <p>No hay eventos registrados en el historial.</p>
-                    </div>
-                `;
-            } else {
-                body.innerHTML = `
-                    <div style="max-height:60vh; overflow-y:auto;">
-                        ${events.map(e => {
-                            const fecha = new Date(e.creado_en).toLocaleString('es-MX');
-                            const usuario = e.creado_por_usuario?.nombre || e.creado_por_usuario?.email?.split('@')[0] || 'Sistema';
-                            const iconMap = {
-                                'creacion': '🆕',
-                                'cotizacion_guardada': '💾',
-                                'cotizacion_enviada': '📧',
-                                'cotizacion_autorizada': '✅',
-                                'cotizacion_rechazada': '❌',
-                                'cambio_estado': '🔄',
-                                'costo_agregado': '💰',
-                                'compra_vinculada': '🔗',
-                                'folio_generado': '📄',
-                                'venta_cerrada': '💵'
-                            };
-                            const icon = iconMap[e.evento] || '📝';
-                            return `
-                                <div style="padding:12px 16px; border-bottom:1px solid var(--border); display:flex; gap:12px; align-items:flex-start;">
-                                    <span style="font-size:20px;">${icon}</span>
-                                    <div style="flex:1;">
-                                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                                            <strong style="color:var(--c-ventas);">${e.evento.replace(/_/g, ' ').toUpperCase()}</strong>
-                                            <span style="font-size:12px; color:var(--text-secondary);">${fecha}</span>
-                                        </div>
-                                        <p style="margin:4px 0; color:var(--text-secondary);">${e.descripcion || ''}</p>
-                                        <span style="font-size:11px; color:var(--text-muted);">Por: ${usuario}</span>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                `;
-            }
-
+            body.innerHTML = `
+                ${_renderTimeline(estadoActual)}
+                <div style="margin-top:24px;">
+                    <h4 style="margin-bottom:16px; color:var(--text-primary);"><i class="fas fa-history"></i> Historial de Eventos</h4>
+                    ${events.length === 0 ? `
+                        <div style="text-align:center; padding:40px; color:var(--text-secondary);">
+                            <i class="fas fa-history" style="font-size:48px; margin-bottom:16px; opacity:0.5;"></i>
+                            <p>No hay eventos registrados.</p>
+                        </div>
+                    ` : `
+                        <div style="max-height:50vh; overflow-y:auto;">
+                            ${events.map(e => {
+                                const fecha = new Date(e.creado_en).toLocaleString('es-MX');
+                                const usuario = e.creado_por_usuario?.nombre || e.creado_por_usuario?.email?.split('@')[0] || 'Sistema';
+                                const iconMap = {
+                                    'creacion': '🆕', 'cotizacion_guardada': '💾', 'cotizacion_enviada': '📧',
+                                    'cotizacion_autorizada': '✅', 'cotizacion_rechazada': '❌', 'cambio_estado': '🔄',
+                                    'costo_agregado': '💰', 'compra_vinculada': '🔗', 'folio_generado': '📄', 'venta_cerrada': '💵'
+                                };
+                                const icon = iconMap[e.evento] || '📝';
+                                return `<div style="padding:12px 16px; border-bottom:1px solid var(--border); display:flex; gap:12px; align-items:flex-start;">
+                                    <span style="font-size:20px;">${icon}</span><div style="flex:1;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <strong style="color:var(--c-ventas);">${e.evento.replace(/_/g, ' ').toUpperCase()}</strong>
+                                        <span style="font-size:12px; color:var(--text-secondary);">${fecha}</span>
+                                    </div><p style="margin:4px 0; color:var(--text-secondary);">${e.descripcion || ''}</p>
+                                    <span style="font-size:11px; color:var(--text-muted);">Por: ${usuario}</span></div></div>`;
+                            }).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
             modal.classList.add('active');
         } catch (error) {
             console.error('[Ventas] mostrarHistorial:', error);
-            body.innerHTML = `<p style="color:#c62828;">Error al cargar historial: ${error.message}</p>`;
+            body.innerHTML = `<p style="color:#c62828;">Error: ${error.message}</p>`;
             modal.classList.add('active');
         }
+    }
+
+    function _renderTimeline(estadoActual) {
+        const pasos = [
+            { id: 'registro', icono: '📝', label: 'Registro' },
+            { id: 'diagnostico', icono: '🔍', label: 'Diagnóstico' },
+            { id: 'cotizacion', icono: '💰', label: 'Cotización' },
+            { id: 'autorizado', icono: '✅', label: 'Autorizado' },
+            { id: 'compra', icono: '🛒', label: 'Compra' },
+            { id: 'ejecucion', icono: '⚙️', label: 'Ejecución' },
+            { id: 'entregado', icono: '📦', label: 'Entregado' },
+            { id: 'pagado', icono: '💵', label: 'Pagado' }
+        ];
+        const ordenMap = {
+            'registro': 0, 'Nuevo': 0, 'diagnostico': 1, 'en_diagnostico': 1,
+            'cotizacion': 2, 'pendiente_autorizacion_ventas': 2,
+            'autorizado': 3, 'autorizada_por_ventas': 3,
+            'compra': 4, 'en_compra': 4, 'ejecucion': 5, 'en_ejecucion': 5,
+            'entregado': 6, 'pagado': 7
+        };
+        const indiceActual = ordenMap[estadoActual] ?? 0;
+
+        return `<div class="timeline-container"><div class="timeline">
+            <div class="timeline-progress" style="width: ${(indiceActual / (pasos.length - 1)) * 100}%;"></div>
+            ${pasos.map((paso, idx) => {
+                let clase = idx < indiceActual ? 'completed' : (idx === indiceActual ? 'active current' : '');
+                return `<div class="timeline-step ${clase}"><div class="timeline-icon">${paso.icono}</div>
+                    <div class="timeline-label">${paso.label}</div></div>`;
+            }).join('')}</div></div>`;
     }
 
     function _abrirDetalle(id, tipo) {
