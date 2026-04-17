@@ -4,19 +4,30 @@
 (function () {
     'use strict';
 
+    /**
+     * Roles básicos NO ven módulos 'analisis_*' ni 'analisis' general.
+     * Solo admin/superadmin/contabilidad ven análisis general.
+     * Los análisis específicos (analisis_ventas, analisis_taller, etc.) se muestran dentro de cada área.
+     */
+    /**
+     * Roles básicos NO ven módulos 'analisis_*' ni 'analisis' general.
+     * Solo admin/superadmin/contabilidad ven análisis general.
+     * Los análisis específicos (analisis_ventas, analisis_taller, etc.) se muestran dentro de cada área.
+     * 'actividades_automatizacion' es exclusivo del rol automatizacion y admin.
+     */
     var ROLE_MODULES = {
-        admin: null,
-        superadmin: null,
-        ventas:              ['ventas', 'inventario', 'contactos', 'vacaciones', 'analisis'],
-        administracion:      ['compras', 'facturas', 'contabilidad', 'pagos_nomina', 'inventario', 'contactos', 'vacaciones', 'analisis'],
-        taller:              ['ordenes_taller', 'inventario', 'vacaciones', 'analisis'],
-        motores:             ['ordenes_motores', 'inventario', 'vacaciones', 'analisis'],
-        automatizacion:      ['proyectos_automatizacion', 'inventario', 'vacaciones', 'analisis', 'configuracion'],
-        ventas_sin_compras:  ['ventas', 'inventario', 'contactos', 'vacaciones', 'analisis'],
-        compras:             ['compras', 'inventario', 'vacaciones', 'analisis'],
-        facturacion:         ['ventas', 'compras', 'facturas', 'vacaciones', 'analisis'],
-        contabilidad:        null,
-        electronica:         ['ordenes_taller', 'inventario', 'vacaciones', 'analisis', 'configuracion'],
+        admin: null,              // null = ve todo (incluye análisis general)
+        superadmin: null,         // null = ve todo
+        ventas:              ['ventas', 'inventario', 'contactos', 'vacaciones'],
+        administracion:      ['compras', 'facturas', 'contabilidad', 'pagos_nomina', 'inventario', 'contactos', 'vacaciones'],
+        taller:              ['ordenes_taller', 'inventario', 'vacaciones'],
+        motores:             ['ordenes_motores', 'inventario', 'vacaciones'],
+        automatizacion:      ['proyectos_automatizacion', 'inventario', 'vacaciones', 'configuracion', 'actividades_automatizacion'],
+        ventas_sin_compras:  ['ventas', 'inventario', 'contactos', 'vacaciones'],
+        compras:             ['compras', 'inventario', 'vacaciones'],
+        facturacion:         ['ventas', 'compras', 'facturas', 'vacaciones'],
+        contabilidad:        null,  // null = ve todo (incluye análisis)
+        electronica:         ['ordenes_taller', 'inventario', 'vacaciones', 'configuracion'],
         configuracion:       null
     };
 

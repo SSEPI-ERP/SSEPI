@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/assets/logo-ssepi.png">
+    <title>SSEPI · Actividades Automatización</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/modules/actividades.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="/js/core/supabase-config.js"></script>
+    <script type="module" src="/js/core/security-middleware.js"></script>
+    <script type="module" src="/js/core/auth-service.js"></script>
+    <script type="module" src="/js/core/data-service.js"></script>
+    <script src="/js/core/theme-clock.js"></script>
+    <script src="/js/core/user-menu.js"></script>
+    <script src="/js/core/nav-by-role.js"></script>
+    <script type="module" src="/js/modules/actividades.js"></script>
+</head>
+<body class="page-actividades nav-loading">
+    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
+
+    <!-- HEADER -->
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <img src="/assets/logo-ssepi.png" alt="SSEPI" class="brand-logo">
+                <div>
+                    <div class="brand-text">ACTIVIDADES AUTOMATIZACIÓN</div>
+                    <div class="brand-sub">Bitácora semanal · Archivos · Historial</div>
+                </div>
+            </div>
+            <a href="/panel.html" class="home-link"><i class="fas fa-house"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <div class="user-pill" id="userMenu">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">AUTOMATIZACIÓN</div>
+        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Proyectos</a>
+        <a href="/pages/ssepi_actividades.html" class="nav-item active" data-module="actividades_automatizacion"><span class="icon-box"><i class="fas fa-calendar-week"></i></span> Actividades</a>
+        <div class="menu-category">EXTERNOS</div>
+        <a href="#" class="nav-item" target="_blank" rel="noopener" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+    </nav>
+
+    <!-- MAIN -->
+    <main>
+        <!-- FILTROS SUPERIORES -->
+        <div class="filtros-superiores">
+            <div class="filtro-grupo">
+                <label>Semana:</label>
+                <input type="date" id="filtroSemanaInicio">
+            </div>
+            <div class="filtro-grupo">
+                <label>Técnico:</label>
+                <select id="filtroTecnico">
+                    <option value="todos">Todos</option>
+                </select>
+            </div>
+            <div class="filtro-grupo">
+                <label>Estado:</label>
+                <select id="filtroEstado">
+                    <option value="todos">Todos</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="en_progreso">En Progreso</option>
+                    <option value="completado">Completado</option>
+                    <option value="revisado">Revisado</option>
+                </select>
+            </div>
+            <div class="filtro-grupo">
+                <label>Buscar:</label>
+                <input type="text" id="filtroBuscar" placeholder="Palabra clave">
+            </div>
+            <button class="btn-filtro" id="aplicarFiltrosBtn"><i class="fas fa-search"></i> Aplicar</button>
+        </div>
+
+        <!-- VISTA SEMANAL -->
+        <div class="semana-header">
+            <button class="btn-semana" id="semanaAnterior"><i class="fas fa-chevron-left"></i></button>
+            <div class="semana-titulo">
+                <h2 id="semanaActualTitulo">Semana del XX al XX</h2>
+                <p id="semanaSubtitulo">Lunes a Sábado</p>
+            </div>
+            <button class="btn-semana" id="semanaSiguiente"><i class="fas fa-chevron-right"></i></button>
+            <button class="btn-ssepi btn-primario" id="btnNuevaActividad" style="margin-left: auto;">
+                <i class="fas fa-plus"></i> Nueva Actividad
+            </button>
+        </div>
+
+        <!-- GRID SEMANAL (Lunes a Sábado) -->
+        <div class="grid-semanal" id="gridSemanal">
+            <!-- Se llena dinámicamente con JS -->
+        </div>
+
+        <!-- HISTORIAL / LISTADO -->
+        <div class="panel" style="margin-top: 24px;">
+            <h2><i class="fas fa-history"></i> Historial de Actividades</h2>
+            <div class="actividades-lista" id="actividadesLista"></div>
+        </div>
+    </main>
+
+    <!-- MODAL: NUEVA/EDITAR ACTIVIDAD -->
+    <div class="modal-backdrop" id="actividadModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-calendar-day"></i> <span id="actividadModalTitle">Nueva Actividad</span></h3>
+                <button class="modal-close" id="closeActividadModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Fecha <span style="color: #c62828;">*</span></label>
+                    <input type="date" id="actFecha" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Técnico <span style="color: #c62828;">*</span></label>
+                    <select id="actTecnico" class="form-control">
+                        <option value="">Seleccionar...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Resumen de actividades <span style="color: #c62828;">*</span></label>
+                    <textarea id="actResumen" class="form-control" rows="4" placeholder="Describe las actividades realizadas..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Archivos (PDF, DOC, DOCX)</label>
+                    <input type="file" id="actArchivo" class="form-control" accept=".pdf,.doc,.docx">
+                    <small style="color: var(--text-muted);">Peso máximo: 5MB</small>
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select id="actEstado" class="form-control">
+                        <option value="pendiente">Pendiente</option>
+                        <option value="en_progreso">En Progreso</option>
+                        <option value="completado">Completado</option>
+                        <option value="revisado">Revisado</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi btn-secondary" id="cancelActividadBtn">Cancelar</button>
+                <button type="button" class="btn-ssepi btn-primario" id="guardarActividadBtn">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: VER ACTIVIDAD -->
+    <div class="modal-backdrop" id="verActividadModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-file-alt"></i> Detalle de Actividad</h3>
+                <button class="modal-close" id="closeVerActividadModal">&times;</button>
+            </div>
+            <div class="modal-body" id="verActividadBody">
+                <!-- Contenido dinámico -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi btn-secondary" id="closeVerActividadBtn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', function () {
+            (async function () {
+                var deadline = Date.now() + 8000;
+                while (!window.securityMiddleware || !window.authService) {
+                    if (Date.now() > deadline) {
+                        console.error('SSEPI: securityMiddleware o authService no disponibles.');
+                        return;
+                    }
+                    await new Promise(function (r) { setTimeout(r, 50); });
+                }
+                try {
+                    await window.securityMiddleware.initSecurity();
+                } catch (e) {
+                    console.warn('SSEPI security init:', e);
+                }
+                var user;
+                try {
+                    user = await window.authService.requireAuth('/');
+                } catch (e) {
+                    console.error('SSEPI auth:', e);
+                    return;
+                }
+                if (user) {
+                    try {
+                        var profile = await window.authService.getCurrentProfile();
+                        var nameEl = document.getElementById('userName');
+                        var avatarEl = document.getElementById('userAvatar');
+                        if (nameEl) nameEl.innerText = (profile && profile.nombre && profile.nombre.split(' ')[0]) || 'Admin';
+                        if (avatarEl) avatarEl.innerText = (profile && profile.nombre && profile.nombre[0]) ? profile.nombre[0].toUpperCase() : 'A';
+                    } catch (e) {
+                        console.warn('Perfil:', e);
+                    }
+                    if (typeof window.actividadesModule !== 'undefined' && window.actividadesModule.init) {
+                        try {
+                            await window.actividadesModule.init();
+                        } catch (err) {
+                            console.error('Actividades init error:', err);
+                            alert('Error al iniciar Actividades. Revisa la consola (F12).');
+                        }
+                    } else {
+                        console.error('window.actividadesModule no está definido.');
+                        alert('El módulo de Actividades no cargó. Revisa la consola (F12).');
+                    }
+                }
+            })();
+        });
+    </script>
+</body>
+</html>

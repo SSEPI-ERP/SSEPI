@@ -77,7 +77,6 @@
         <a href="/pages/ssepi_import_viewer.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-file-upload"></i></span> Importar datos</a>
         <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
         <a href="/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
-        <a href="/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
         <a href="/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
         <div class="menu-category">EXTERNOS</div>
         <a href="#" class="nav-item" target="_blank" rel="noopener" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
@@ -167,6 +166,19 @@
             </div>
         </div>
 
+        <!-- PANEL: Registro Rápido de Cotización -->
+        <div class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 style="margin: 0;"><i class="fas fa-clipboard-list"></i> Registro Rápido</h2>
+                <button type="button" class="btn-ssepi btn-ventas" id="btnNuevaCotizacionRapida">
+                    <i class="fas fa-plus"></i> Nueva Cotización
+                </button>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
+                Crea una cotización directamente que aparecerá en 📝 Registro del kanban.
+            </p>
+        </div>
+
         <!-- PANEL: Solicitudes de Taller Pendientes -->
         <div class="panel">
             <h2><i class="fas fa-tools"></i> Solicitudes de Taller Pendientes</h2>
@@ -185,6 +197,13 @@
             <button class="btn-ssepi btn-ventas" id="newCotizacionBtn"><i class="fas fa-plus"></i> Nueva Cotización</button>
         </div>
 
+        <!-- Tabs: Historial Operativo vs Historia Comercial -->
+        <div class="ventas-tabs">
+            <button class="ventas-tab active" data-tab="operativo"><i class="fas fa-clipboard-list"></i> Kanban Operativo</button>
+            <button class="ventas-tab" data-tab="comercial"><i class="fas fa-chart-line"></i> Historia Comercial</button>
+            <button class="ventas-tab" data-tab="grafica"><i class="fas fa-chart-bar"></i> Gráfica</button>
+        </div>
+
         <!-- Contenedores de vistas -->
         <div id="kanbanContainer" class="kanban-container"></div>
         <div id="listaContainer" class="lista-container">
@@ -193,6 +212,33 @@
                 <tbody id="tablaVentasBody"></tbody>
             </table>
         </div>
+
+        <!-- HISTORIA COMERCIAL: Pendientes vs Emitidas -->
+        <div id="historiaComercialContainer" class="historia-comercial-container" style="display: none;">
+            <div class="comercial-tabs">
+                <button class="comercial-tab active" data-comercial="pendientes"><i class="fas fa-clock"></i> Pendientes</button>
+                <button class="comercial-tab" data-comercial="emitidas"><i class="fas fa-check-circle"></i> Emitidas</button>
+            </div>
+
+            <!-- Panel: Pendientes -->
+            <div id="comercialPendientes" class="comercial-panel">
+                <div class="comercial-header">
+                    <h3><i class="fas fa-hourglass-half"></i> Cotizaciones Pendientes</h3>
+                    <p class="comercial-desc">Por autorizar, por enviar, por pago</p>
+                </div>
+                <div class="comercial-grid" id="pendientesGrid"></div>
+            </div>
+
+            <!-- Panel: Emitidas -->
+            <div id="comercialEmitidas" class="comercial-panel" style="display: none;">
+                <div class="comercial-header">
+                    <h3><i class="fas fa-paper-plane"></i> Cotizaciones Emitidas</h3>
+                    <p class="comercial-desc">Enviadas, autorizadas, cerradas, facturadas</p>
+                </div>
+                <div class="comercial-grid" id="emitidasGrid"></div>
+            </div>
+        </div>
+
         <div id="graficaContainer" class="grafica-container">
             <div class="grafica-header">
                 <h3><i class="fas fa-chart-bar"></i> Ingresos Proyectados vs Ventas Cerradas</h3>
@@ -216,6 +262,56 @@
             </div>
         </div>
     </aside>
+
+    <!-- MODAL: REGISTRO RÁPIDO DE COTIZACIÓN -->
+    <div class="modal-backdrop" id="registroRapidoModal">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-clipboard-list"></i> Nueva Cotización Rápida</h3>
+                <button class="modal-close" id="closeRegistroRapidoModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="rrCliente">Cliente <span style="color: #c62828;">*</span></label>
+                    <input type="text" id="rrCliente" class="form-control" placeholder="Nombre del cliente">
+                </div>
+                <div class="form-group">
+                    <label for="rrEmail">Email</label>
+                    <input type="email" id="rrEmail" class="form-control" placeholder="cliente@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="rrTelefono">Teléfono</label>
+                    <input type="tel" id="rrTelefono" class="form-control" placeholder="(55) 1234 5678">
+                </div>
+                <div class="form-group">
+                    <label for="rrFalla">Falla / Servicio solicitado <span style="color: #c62828;">*</span></label>
+                    <textarea id="rrFalla" class="form-control" rows="3" placeholder="Describe la falla o servicio requerido"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="rrDepartamento">Departamento <span style="color: #c62828;">*</span></label>
+                    <select id="rrDepartamento" class="form-control">
+                        <option value="">Seleccionar...</option>
+                        <option value="Taller Electrónica">🔬 Laboratorio (Electrónica)</option>
+                        <option value="Taller Motores">🏭 Motores</option>
+                        <option value="Automatización">🤖 Automatización</option>
+                        <option value="Proyectos">📋 Proyectos</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="rrPrioridad">Prioridad</label>
+                    <select id="rrPrioridad" class="form-control">
+                        <option value="Normal">Normal</option>
+                        <option value="Alta">Alta</option>
+                        <option value="Urgente">Urgente</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi btn-secondary" id="cancelRegistroRapidoBtn">Cancelar</button>
+                <button type="button" class="btn-ssepi btn-ventas" id="guardarRegistroRapidoBtn"><i class="fas fa-save"></i> Guardar en Registro</button>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL: CALCULADORA DE COSTOS (Wizard 4 pasos) -->
     <div class="modal-backdrop" id="calculadoraModal">
