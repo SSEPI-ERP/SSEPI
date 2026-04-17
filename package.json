@@ -2,6 +2,7 @@
   "name": "ssepi-erp",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "SSEPI ERP - frontend estático con Supabase",
   "scripts": {
     "create-users": "node scripts/create-users-seed.js",
@@ -18,5 +19,22 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vite": "^6.0.3",
+    "tailwindcss": "^4.0.0",
+    "lucide-react": "^0.468.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.15.0",
+    "wouter": "^3.3.5",
+    "@tanstack/react-query": "^5.62.0",
+    "recharts": "^2.15.2",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^2.6.0"
   }
 }
