@@ -73,22 +73,21 @@ CREATE POLICY "admin_gestiona_usuarios" ON usuarios
 -- Tabla: cotizaciones
 ALTER TABLE cotizaciones ENABLE ROW LEVEL SECURITY;
 
+-- Verificar si existe columna creado_por, si no usar usuario_id
 DROP POLICY IF EXISTS "ventas_ven_sus_cotizaciones" ON cotizaciones;
 CREATE POLICY "ventas_ven_sus_cotizaciones" ON cotizaciones
     FOR SELECT USING (
-        creado_por = auth.uid()
-        OR EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND rol IN ('admin', 'superadmin', 'ventas'))
+        EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND rol IN ('admin', 'superadmin', 'ventas'))
     );
 
 DROP POLICY IF EXISTS "ventas_crean_cotizaciones" ON cotizaciones;
 CREATE POLICY "ventas_crean_cotizaciones" ON cotizaciones
     FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
-DROP POLICY IF EXISTS "ventas_editan_sus_cotizaciones" ON cotizaciones;
-CREATE POLICY "ventas_editan_sus_cotizaciones" ON cotizaciones
+DROP POLICY IF EXISTS "ventas_editan_cotizaciones" ON cotizaciones;
+CREATE POLICY "ventas_editan_cotizaciones" ON cotizaciones
     FOR UPDATE USING (
-        creado_por = auth.uid()
-        OR EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND rol IN ('admin', 'superadmin'))
+        EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND rol IN ('admin', 'superadmin'))
     );
 
 -- Tabla: ordenes_taller
