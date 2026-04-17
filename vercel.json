@@ -1,0 +1,18 @@
+{
+  "buildCommand": "node scripts/vercel-build.js",
+  "outputDirectory": "vercel-output",
+  "rewrites": [
+    {
+      "source": "/panel/:path*",
+      "destination": "/panel/:path*"
+    },
+    {
+      "source": "/assets/:path*",
+      "destination": "/assets/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
