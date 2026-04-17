@@ -2030,6 +2030,111 @@ input:checked + .slider:before {
 }
 
 /* ================================================
+   LÍNEA DE TIEMPO (TIMELINE) DE ESTATUS
+   ================================================ */
+.timeline-container {
+    padding: 20px 0;
+    margin: 16px 0;
+}
+
+.timeline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    max-width: 100%;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--border);
+    z-index: 1;
+}
+
+.timeline-progress {
+    position: absolute;
+    top: 20px;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--c-ventas), var(--c-stock));
+    z-index: 2;
+    transition: width 0.5s ease;
+}
+
+.timeline-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 3;
+    min-width: 80px;
+}
+
+.timeline-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 3px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+    margin-bottom: 8px;
+}
+
+.timeline-step.active .timeline-icon {
+    background: linear-gradient(135deg, var(--c-ventas), var(--c-ventas));
+    border-color: var(--c-ventas);
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+    transform: scale(1.1);
+}
+
+.timeline-step.completed .timeline-icon {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-color: #10b981;
+    color: white;
+}
+
+.timeline-step.current .timeline-icon {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4); }
+    50% { box-shadow: 0 0 0 12px rgba(255, 152, 0, 0); }
+}
+
+.timeline-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: center;
+    letter-spacing: 0.5px;
+    transition: color 0.3s ease;
+}
+
+.timeline-step.active .timeline-label,
+.timeline-step.completed .timeline-label {
+    color: var(--text-primary);
+}
+
+.timeline-date {
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* ================================================
    MODALES DE CONFIRMACIÓN Y ERROR
    ================================================ */
 .ssepi-modal-overlay {
