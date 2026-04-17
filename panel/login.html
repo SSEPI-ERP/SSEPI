@@ -9,8 +9,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script type="module" src="/js/core/supabase-config.js"></script>
-    <script type="module" src="/js/core/auth-service.js"></script>
+    <script type="module">
+        // Inicializar Supabase directamente
+        const SUPABASE_URL = 'https://knzmdwjmrhcoytmebdwa.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtuem1kd2ptcmhjb3l0bWViZHdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwNDk5NzAsImV4cCI6MjA4NzYyNTk3MH0.y9AEScz9PWu3Tqnd-7R7fxf0smvVCosZF0edLg2j31A';
+
+        window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+                autoRefreshToken: true,
+                persistSession: true,
+                detectSessionInUrl: true,
+                flowType: 'pkce'
+            }
+        });
+
+        console.log('✅ Supabase inicializado para login');
+    </script>
     <style>
         * {
             margin: 0;
@@ -193,86 +207,104 @@
         </div>
     </div>
 
-    <script>
-        (function() {
-            const form = document.getElementById('loginForm');
-            const emailInput = document.getElementById('email');
-            const passwordInput = document.getElementById('password');
-            const loginBtn = document.getElementById('loginBtn');
-            const loginBtnText = document.getElementById('loginBtnText');
-            const errorDiv = document.getElementById('loginError');
-            const passwordToggle = document.getElementById('passwordToggle');
+    <script type="module">
+        // Elementos del DOM
+        const form = document.getElementById('loginForm');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginBtnText = document.getElementById('loginBtnText');
+        const errorDiv = document.getElementById('loginError');
+        const passwordToggle = document.getElementById('passwordToggle');
 
-            // Toggle password visibility
-            passwordToggle.addEventListener('click', function() {
-                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                passwordInput.setAttribute('type', type);
-                this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
-            });
+        // Toggle password visibility
+        passwordToggle.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+        });
 
-            // Check if already logged in
-            async function checkExistingSession() {
-                if (window.supabase) {
-                    const { data: { session } } = await window.supabase.auth.getSession();
-                    if (session) {
-                        window.location.href = '/panel/panel.html';
-                    }
+        // Check if already logged in
+        async function checkExistingSession() {
+            if (window.supabase) {
+                const { data: { session } } = await window.supabase.auth.getSession();
+                if (session) {
+                    window.location.href = '/panel/panel.html';
                 }
             }
-            checkExistingSession();
+        }
+        checkExistingSession();
 
-            // Handle form submission
-            form.addEventListener('submit', async function(e) {
-                e.preventDefault();
+        // Handle form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
 
-                const email = emailInput.value.trim();
-                const password = passwordInput.value;
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
 
-                // UI loading state
-                loginBtn.disabled = true;
-                loginBtnText.innerHTML = '<span class="loading-spinner"></span>Verificando...';
-                errorDiv.classList.remove('show');
+            // UI loading state
+            loginBtn.disabled = true;
+            loginBtnText.innerHTML = '<span class="loading-spinner"></span>Verificando...';
+            errorDiv.classList.remove('show');
 
-                try {
-                    const result = await window.authService.login(email, password);
+            try {
+                // Login directo con Supabase
+                const { data, error } = await window.supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
 
-                    if (result.requiresMFA) {
-                        // Redirigir a verificación MFA si es necesario
-                        window.location.href = '/panel/panel.html?mfa=' + result.userId;
-                        return;
-                    }
+                if (error) throw error;
 
-                    // Login exitoso - guardar perfil y redirigir
-                    const profile = await window.authService.getCurrentProfile();
-                    if (profile) {
-                        sessionStorage.setItem('ssepi_rol', profile.rol);
-                        sessionStorage.setItem('ssepi_profile', JSON.stringify(profile));
+                // Login exitoso - guardar sesión y redirigir
+                if (data.user) {
+                    // Obtener perfil del usuario desde la tabla usuarios
+                    try {
+                        const { data: perfil } = await window.supabase
+                            .from('usuarios')
+                            .select('rol, nombre, departamento')
+                            .eq('auth_user_id', data.user.id)
+                            .single();
+
+                        if (perfil) {
+                            sessionStorage.setItem('ssepi_rol', perfil.rol);
+                            sessionStorage.setItem('ssepi_profile', JSON.stringify({
+                                id: data.user.id,
+                                email: data.user.email,
+                                nombre: perfil.nombre || data.user.email?.split('@')[0],
+                                rol: perfil.rol || 'ventas',
+                                departamento: perfil.departamento
+                            }));
+                        }
+                    } catch (e) {
+                        console.warn('No se pudo cargar el perfil:', e);
+                        sessionStorage.setItem('ssepi_rol', 'ventas');
                     }
 
                     window.location.href = '/panel/panel.html';
-                } catch (error) {
-                    console.error('Login error:', error);
-                    let errorMessage = 'Error al iniciar sesión. Verifica tus credenciales.';
-
-                    if (error.message) {
-                        if (error.message.includes('Invalid login credentials')) {
-                            errorMessage = 'Correo o contraseña incorrectos.';
-                        } else if (error.message.includes('Email not confirmed')) {
-                            errorMessage = 'Debes confirmar tu correo electrónico.';
-                        } else if (error.message.includes('Too many requests')) {
-                            errorMessage = 'Demasiados intentos. Intenta más tarde.';
-                        } else {
-                            errorMessage = error.message;
-                        }
-                    }
-
-                    errorDiv.textContent = errorMessage;
-                    errorDiv.classList.add('show');
-                    loginBtn.disabled = false;
-                    loginBtnText.textContent = 'Iniciar sesión';
                 }
-            });
-        })();
+            } catch (error) {
+                console.error('Login error:', error);
+                let errorMessage = 'Error al iniciar sesión. Verifica tus credenciales.';
+
+                if (error.message) {
+                    if (error.message.includes('Invalid login credentials')) {
+                        errorMessage = 'Correo o contraseña incorrectos.';
+                    } else if (error.message.includes('Email not confirmed')) {
+                        errorMessage = 'Debes confirmar tu correo electrónico.';
+                    } else if (error.message.includes('Too many requests')) {
+                        errorMessage = 'Demasiados intentos. Intenta más tarde.';
+                    } else {
+                        errorMessage = error.message;
+                    }
+                }
+
+                errorDiv.textContent = errorMessage;
+                errorDiv.classList.add('show');
+                loginBtn.disabled = false;
+                loginBtnText.textContent = 'Iniciar sesión';
+            }
+        });
     </script>
 </body>
 </html>
