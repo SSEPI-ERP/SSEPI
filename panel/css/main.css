@@ -2088,6 +2088,144 @@ input:checked + .slider:before {
 }
 
 /* ================================================
+   ICONOS EN TABLAS Y ELEMENTOS UI
+   ================================================ */
+
+/* Iconos en cabeceras de tablas */
+.table-header-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.table-header-icon i {
+    color: var(--primary);
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+/* Iconos en celdas de tablas */
+.cell-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cell-with-icon i {
+    font-size: 16px;
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+/* Iconos por tipo de dato en tablas */
+.icon-cliente i { color: var(--c-contact); }
+.icon-empresa i { color: var(--c-taller); }
+.icon-email i { color: var(--c-compras); }
+.icon-telefono i { color: var(--c-ventas); }
+.icon-estado i { color: var(--c-stock); }
+.icon-fecha i { color: var(--c-proyectos); }
+.icon-monto i { color: var(--c-finanzas); }
+.icon-folio i { color: var(--c-analisis); }
+
+/* Badges con icono */
+.badge-with-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-with-icon i {
+    font-size: 12px;
+}
+
+/* Acciones en tablas con iconos */
+.table-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.table-action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+}
+
+.table-action-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.table-action-btn.btn-view:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.table-action-btn.btn-edit:hover {
+    background: #fbbf24;
+    color: white;
+}
+
+.table-action-btn.btn-delete:hover {
+    background: #ef4444;
+    color: white;
+}
+
+/* ================================================
+   MEJORAS VISUALES CON LOGO SSEPI
+   ================================================ */
+
+/* Logo como marca de agua en paneles */
+.logo-watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Logo en headers de módulos */
+.module-logo-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    border-radius: var(--border-radius-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.module-logo-header img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.module-logo-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+/* ================================================
    LÍNEA DE TIEMPO (TIMELINE) DE ESTATUS
    ================================================ */
 .timeline-container {
@@ -2423,4 +2561,103 @@ input:checked + .slider:before {
 .btn-remove.btn-sm {
     padding: 4px 8px;
     font-size: 11px;
+}
+
+/* ================================================
+   TOAST NOTIFICATIONS
+   ================================================ */
+.toast-notification {
+    background: var(--bg-panel);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    border-left: 5px solid var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 300px;
+    max-width: 450px;
+    animation: slideInRight 0.3s ease;
+    z-index: 10000;
+}
+
+.toast-notification.toast-success {
+    border-left-color: #10b981;
+}
+
+.toast-notification.toast-error {
+    border-left-color: #ef4444;
+}
+
+.toast-notification.toast-warning {
+    border-left-color: #f59e0b;
+}
+
+.toast-notification.toast-info {
+    border-left-color: var(--primary);
+}
+
+.toast-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.toast-success .toast-icon { color: #10b981; }
+.toast-error .toast-icon { color: #ef4444; }
+.toast-warning .toast-icon { color: #f59e0b; }
+.toast-info .toast-icon { color: var(--primary); }
+
+.toast-message {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.toast-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.toast-notification.hiding {
+    animation: slideOutRight 0.3s ease forwards;
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
 }

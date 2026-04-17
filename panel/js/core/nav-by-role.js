@@ -104,6 +104,11 @@
             }
             return false;
         }
+        if (moduleName === 'analisis_general') {
+            // Solo admin, superadmin y contabilidad ven análisis general
+            if (rol === 'admin' || rol === 'superadmin' || rol === 'contabilidad') return true;
+            return false;
+        }
         return true;
     }
 
@@ -193,13 +198,13 @@
                     el.classList.remove('nav-active');
                     continue;
                 }
-                // 2. Verificar módulos especiales (calculadoras, configuracion)
+                // 2. Verificar módulos especiales (calculadoras, configuracion, analisis_general)
                 if (!canSeeSpecialModule(rol, module, profile)) {
                     hide(el);
                     el.classList.add('nav-disabled');
                     el.classList.remove('nav-active');
-                    // Si es el submenú de configuración, también ocultar el ul.nav-submenu asociado
-                    if (module === 'configuracion' && el.classList.contains('nav-item-has-submenu')) {
+                    // Si es el submenú de configuración o análisis, también ocultar el ul.nav-submenu asociado
+                    if ((module === 'configuracion' || module === 'analisis_general') && el.classList.contains('nav-item-has-submenu')) {
                         var submenu = el.nextElementSibling;
                         if (submenu && submenu.classList.contains('nav-submenu')) {
                             submenu.style.display = 'none';
