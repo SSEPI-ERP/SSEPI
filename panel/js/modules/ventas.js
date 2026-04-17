@@ -2737,14 +2737,22 @@ const VentasModule = (function() {
 
             const contacto = contactos.find(c => String(c.id) === String(clienteId));
             const optLabel = (clienteSelect?.selectedOptions?.[0]?.textContent || '').trim();
+            const dataNombre = clienteSelect?.selectedOptions?.[0]?.getAttribute('data-nombre') || '';
             let clienteNombre = '';
-            if (contacto) {
+
+            // Prioridad: 1) data-nombre attribute, 2) contacto de BD, 3) texto del option
+            if (dataNombre && dataNombre !== 'Sin nombre') {
+                clienteNombre = dataNombre;
+            } else if (contacto) {
                 clienteNombre = (contacto.nombre || contacto.empresa || contacto.email || 'Cliente').trim() || 'Cliente';
             } else if (optLabel && optLabel !== '-- Seleccionar cliente --') {
                 clienteNombre = optLabel === 'Sin nombre' ? 'Cliente' : optLabel;
             } else {
                 clienteNombre = 'Cliente';
             }
+
+            console.log('[Ventas] Cliente seleccionado:', { clienteId, clienteNombre, dataNombre, optLabel, hayContacto: !!contacto });
+
             if (contacto) {
                 // Priorizar datos de BD (km y horas_viaje) sobre tabulador hardcoded
                 const kmDesdeBD = contacto.km || contacto.horas_viaje ? contacto.km : 0;
@@ -2769,6 +2777,8 @@ const VentasModule = (function() {
                     producto: nombreProducto
                 };
             }
+
+            console.log('[Ventas] calculadoraClienteActual:', calculadoraClienteActual);
 
             let origenCot = 'directo';
             if (dept === 'Taller Electrónica') origenCot = 'taller';
@@ -2866,8 +2876,26 @@ const VentasModule = (function() {
     }
 
     function _nombreClienteWizardResuelto() {
+        // 1. Primero intentar con el nombre ya guardado en calculadoraClienteActual
         let n = (calculadoraClienteActual?.nombre || '').trim();
         if (n) return n;
+
+        // 2. Intentar obtener desde el select directamente
+        const clienteSelect = document.getElementById('wizardClienteSelect');
+        if (clienteSelect && clienteSelect.value) {
+            const selectedOption = clienteSelect.selectedOptions?.[0];
+            if (selectedOption) {
+                // Obtener nombre desde data-nombre attribute o textContent
+                n = selectedOption.getAttribute('data-nombre') || selectedOption.textContent || '';
+                n = n.trim() || '';
+                if (n && n !== '-- Seleccionar cliente --' && n !== 'Sin nombre') {
+                    if (calculadoraClienteActual) calculadoraClienteActual.nombre = n;
+                    return n;
+                }
+            }
+        }
+
+        // 3. Buscar en el array de contactos por ID
         const cid = calculadoraClienteActual?.contactoId ?? calculadoraClienteActual?.id;
         if (cid != null && Array.isArray(contactos) && contactos.length) {
             const c = contactos.find(x => String(x.id) === String(cid));
@@ -2877,6 +2905,15 @@ const VentasModule = (function() {
                 return n;
             }
         }
+
+        // 4. Fallback: intentar con el texto del select
+        if (clienteSelect && clienteSelect.selectedOptions?.[0]) {
+            n = clienteSelect.selectedOptions[0].textContent?.trim() || '';
+            if (n && n !== '-- Seleccionar cliente --') {
+                return n;
+            }
+        }
+
         return '';
     }
 
