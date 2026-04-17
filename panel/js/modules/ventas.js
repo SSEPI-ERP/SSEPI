@@ -2134,13 +2134,14 @@ const VentasModule = (function() {
                     if (r.error) console.warn('Correo no enviado:', r.error);
                 });
             }
-            alert('✅ Cotización guardada y enviada para autorización');
+            // Mostrar toast de éxito
+            _showToast('✅ Cotización guardada y enviada para autorización', 'success');
             _addToFeed('📧', `Cotización ${folio} enviada a ${cliente}`);
             document.getElementById('cotizacionModal').classList.remove('active');
             document.getElementById('calculadoraModal').classList.remove('active');
         } catch (error) {
             console.error(error);
-            alert('Error al guardar cotización: ' + error.message);
+            _showToast('Error al guardar cotización: ' + error.message, 'error');
         }
     }
 
@@ -2374,7 +2375,8 @@ const VentasModule = (function() {
                 await _insertarEventoHistorial('cotizacion', inserted.id, 'creacion', `Cotización rápida ${folio} creada en Registro`, csrfToken);
             }
 
-            alert('✅ Cotización guardada en 📝 Registro. Folio: ' + folio);
+            // Mostrar toast de éxito
+            _showToast('✅ Cotización guardada en Kanban. Folio: ' + folio, 'success');
             _addToFeed('💾', `Cotización ${folio} guardada en Registro`);
             document.getElementById('registroRapidoModal').classList.remove('active');
             await _loadCotizaciones();
@@ -2825,14 +2827,15 @@ const VentasModule = (function() {
                 }
             }
 
-            alert('✅ Cotización guardada. Folio: ' + folio);
+            // Mostrar toast de éxito
+            _showToast('✅ Cotización guardada. Folio: ' + folio, 'success');
             _addToFeed('💾', `Cotización ${folio} guardada`);
             document.getElementById('calculadoraModal').classList.remove('active');
             await _loadCotizaciones();
             _applyFilters();
         } catch (error) {
             console.error(error);
-            alert('Error al guardar: ' + error.message);
+            _showToast('Error al guardar: ' + error.message, 'error');
         }
     }
 
@@ -2904,6 +2907,44 @@ const VentasModule = (function() {
             console.error(error);
             alert('Error al guardar: ' + error.message);
         }
+    }
+
+    // ==================== TOAST NOTIFICATIONS ====================
+    function _showToast(mensaje, tipo = 'info') {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast-notification toast-${tipo}`;
+
+        const iconos = {
+            success: 'fa-check-circle',
+            error: 'fa-exclamation-circle',
+            warning: 'fa-exclamation-triangle',
+            info: 'fa-info-circle'
+        };
+
+        toast.innerHTML = `
+            <i class="fas ${iconos[tipo] || iconos.info} toast-icon"></i>
+            <span class="toast-message">${mensaje}</span>
+            <button class="toast-close"><i class="fas fa-times"></i></button>
+        `;
+
+        container.appendChild(toast);
+
+        // Cerrar al hacer click en X
+        toast.querySelector('.toast-close').addEventListener('click', () => {
+            toast.classList.add('hiding');
+            setTimeout(() => toast.remove(), 300);
+        });
+
+        // Auto-cerrar después de 5 segundos
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.classList.add('hiding');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 5000);
     }
 
     // ==================== FEED ====================
