@@ -517,18 +517,21 @@ const VentasModule = (function() {
                 {},
                 { orderBy: 'fecha_cotizacion', ascending: false, page: 0, pageSize: 400 }
             ) || [];
+            console.log('[Ventas] cotizaciones cargadas:', cotizaciones.length, cotizaciones.slice(0, 2));
         } catch (e) {
             try {
                 cotizaciones = await cotizacionesService.select(
                     {},
                     { orderBy: 'fecha', ascending: false, page: 0, pageSize: 400 }
                 ) || [];
+                console.log('[Ventas] cotizaciones (fecha):', cotizaciones.length);
             } catch (e2) {
                 try {
                     cotizaciones = await cotizacionesService.select(
                         {},
                         { orderBy: 'fecha_creacion', ascending: false, page: 0, pageSize: 400 }
                     ) || [];
+                    console.log('[Ventas] cotizaciones (fecha_creacion):', cotizaciones.length);
                 } catch (e3) {
                     console.warn('[Ventas] Error cargando cotizaciones:', e3);
                     cotizaciones = [];
@@ -800,7 +803,14 @@ const VentasModule = (function() {
         _syncChipEstado();
         // Kanban operativo = solo cotizaciones (no filas de `ventas` ni órdenes de otros módulos con estado "Nuevo").
         if (vistaActual === 'kanban') {
-            const soloCot = filtered.filter((i) => i.tipo === 'cotizacion');
+            // Filtro más permisivo: incluye cotizaciones o items sin tipo pero con campos de cotización
+            const soloCot = filtered.filter((i) => {
+                if (i.tipo === 'cotizacion') return true;
+                // Si no tiene tipo pero tiene campos típicos de cotización, también es cotización
+                if (!i.tipo && (i.cerebro_registro || i.origen === 'ventas_wizard')) return true;
+                return false;
+            });
+            console.log('[Ventas] Kanban:', { total: filtered.length, cotizaciones: soloCot.length, data: soloCot.slice(0, 3) });
             _renderKanban(soloCot);
         } else if (vistaActual === 'lista') _renderLista(filtered);
         else if (vistaActual === 'grafica') _renderGrafica(filtered);
