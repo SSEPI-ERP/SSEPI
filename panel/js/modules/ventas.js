@@ -2111,6 +2111,7 @@ const VentasModule = (function() {
             rfc,
             fecha: new Date().toISOString().split('T')[0],
             items,
+            tipo: 'cotizacion',
             subtotal: items.reduce((s, i) => s + i.importe, 0),
             iva: total * 0.16 / 1.16,
             total,
@@ -2347,6 +2348,7 @@ const VentasModule = (function() {
                 precio_unitario: 0,
                 importe: 0
             }],
+            tipo: 'cotizacion',
             subtotal: 0,
             iva: 0,
             total: 0,
@@ -2859,6 +2861,7 @@ const VentasModule = (function() {
             rfc: calculadoraClienteActual?.rfc || '',
             fecha: new Date().toISOString().split('T')[0],
             items,
+            tipo: 'cotizacion',
             subtotal: items.reduce((s, i) => s + i.importe, 0),
             iva: total * 0.16 / 1.16,
             total,
