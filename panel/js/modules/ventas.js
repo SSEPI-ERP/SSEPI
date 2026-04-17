@@ -1389,7 +1389,7 @@ const VentasModule = (function() {
             if (orden) horasEstimadas = orden.horas_estimadas || 0;
         }
 
-        const clienteNombre = compra.vinculacion?.nombre || '';
+        const clienteNombre = (compra.vinculacion?.nombre || '').trim() || 'Cliente';
 
         // Cargar clientes desde BD si está vacío
         if (tabuladorTaller.clientes.length === 0) {
@@ -1417,64 +1417,104 @@ const VentasModule = (function() {
         const rolActual = sessionStorage.getItem('ssepi_rol') || '';
         const esAdmin = ['admin', 'automatizacion', 'electronica', 'superadmin'].includes(rolActual);
 
-        // Calcular total final para todos
+        // Verificar si hay orden de compras vinculada (para desbloquear)
+        const hayOrdenCompras = compra?.vinculacion?.orden_compras_id || compra?.orden_compras_id || false;
+
+        // Calcular costos en tiempo real
+        const gasolina = CostosEngine.calcularCostoGasolina(cliente.km || 0);
+        const traslado = CostosEngine.calcularCostoTrasladoTecnico(cliente.horas || 0);
+        const gasolinaMasTraslado = CostosEngine.calcularGasolinaMasTraslado(cliente.km || 0, cliente.horas || 0);
+        const manoObraBase = CostosEngine.calcularManoObra(horasEstimadas || 0);
+        const gastosFijosBase = CostosEngine.calcularGastosFijos(horasEstimadas || 0);
+        const camionetaBase = CostosEngine.calcularCostoCamioneta(cliente.horas || 0);
+
+        // Calcular total final
         const totalFinal = CostosEngine.calcularPrecioFinal({
             km: Number(cliente.km) || 0,
             horasViaje: Number(cliente.horas) || 0,
-            horasTaller: horasEstimadas,
+            horasTaller: horasEstimadas || 0,
             costoRefacciones: 0
         }).total;
 
-        // VISTA SIMPLIFICADA - Solo TOTAL FINAL para no admins
-        if (!esAdmin) {
+        // Estado de bloqueo
+        const bloqueado = !hayOrdenCompras;
+
+        // VISTA DE PREVIEW BLOQUEADO - Paso 2 en espera de compras
+        if (bloqueado) {
             return `
-                <div class="calculadora-section" style="background: linear-gradient(135deg, var(--c-ventas, #10b981), #059669); padding: 24px; border-radius: 12px; text-align: center;">
+                <div class="calculadora-section" style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 24px; border-radius: 12px; text-align: center; margin-bottom: 20px;">
                     <div style="color: white; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">
-                        <i class="fas fa-calculator"></i> Costo Final del Proyecto
+                        <i class="fas fa-hourglass-half"></i> En Espera de Orden de Compras
                     </div>
-                    <div style="color: white; font-size: 42px; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                        $${totalFinal.toFixed(2)}
-                    </div>
-                    <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin-top: 12px;">
-                        Incluye viáticos, mano de obra, refacciones e IVA
+                    <p style="color: rgba(255,255,255,0.9); font-size: 13px; margin-top: 8px;">
+                        Esta sección se desbloqueará cuando se genere la orden de compras/materiales
                     </p>
                 </div>
 
-                <div class="calculadora-section" style="margin-top: 20px;">
-                    <div class="calculadora-titulo" style="background: var(--c-ventas, #10b981); color: white;">
-                        <i class="fas fa-boxes"></i> Refacciones y Componentes
+                <div class="calculadora-section" style="background: var(--bg-panel); border: 1px solid var(--border); padding: 20px; border-radius: 12px;">
+                    <div class="calculadora-titulo" style="background: var(--c-taller); color: white; margin-bottom: 16px;">
+                        <i class="fas fa-gas-pump"></i> Preview de Costos en Tiempo Real
                     </div>
-                    <p style="color:var(--text-muted); font-size:12px; margin-bottom:12px;">
-                        Agrega refacciones desde el Inventario Maestro o componentes manualmente.
-                    </p>
-                    <table class="componentes-table">
-                        <thead><tr><th>Componente</th><th>Cantidad</th><th>Subtotal</th><th></th></tr></thead>
-                        <tbody id="componentesTableBody"></tbody>
-                    </table>
-                    <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:10px; margin-top:15px;">
-                        <input type="text" id="compNombre" placeholder="Componente" style="padding:8px;">
-                        <input type="number" id="compCantidad" value="1" min="1" style="padding:8px;">
-                        <button class="btn btn-sm btn-primary" onclick="ventasModule._agregarComponente()">Agregar</button>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px;">
+                        <div style="background: #1a3a3a; padding: 16px; border-radius: 8px; text-align: center;">
+                            <div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Gasolina</div>
+                            <div style="color: var(--c-ventas); font-size: 24px; font-weight: 700;" id="previewGasolina">$${gasolina.toFixed(2)}</div>
+                            <div style="color: var(--text-secondary); font-size: 10px; margin-top: 4px;">${(cliente.km || 0).toFixed(1)} km</div>
+                        </div>
+                        <div style="background: #1a3a3a; padding: 16px; border-radius: 8px; text-align: center;">
+                            <div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Traslado Técnico</div>
+                            <div style="color: var(--c-taller); font-size: 24px; font-weight: 700;" id="previewTraslado">$${traslado.toFixed(2)}</div>
+                            <div style="color: var(--text-secondary); font-size: 10px; margin-top: 4px;">${(cliente.horas || 0).toFixed(1)} hrs</div>
+                        </div>
+                        <div style="background: #1a3a3a; padding: 16px; border-radius: 8px; text-align: center;">
+                            <div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Gasolina + Traslado</div>
+                            <div style="color: var(--c-automatizacion); font-size: 24px; font-weight: 700;" id="previewGasPlus">$${gasolinaMasTraslado.toFixed(2)}</div>
+                        </div>
+                        <div style="background: #1a3a3a; padding: 16px; border-radius: 8px; text-align: center;">
+                            <div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Mano de Obra</div>
+                            <div style="color: var(--c-inventario); font-size: 24px; font-weight: 700;" id="previewManoObra">$${manoObraBase.toFixed(2)}</div>
+                            <div style="color: var(--text-secondary); font-size: 10px; margin-top: 4px;">${horasEstimadas || 0} hrs taller</div>
+                        </div>
+                    </div>
+
+                    <div style="background: #0f1f1f; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: var(--text-muted); font-size: 12px;">Gastos Fijos</span>
+                            <span style="color: var(--text); font-weight: 600;" id="previewGastosFijos">$${gastosFijosBase.toFixed(2)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: var(--text-muted); font-size: 12px;">Camioneta</span>
+                            <span style="color: var(--text); font-weight: 600;" id="previewCamioneta">$${camionetaBase.toFixed(2)}</span>
+                        </div>
+                        <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-muted); font-size: 12px; text-transform: uppercase;">Subtotal Estimado</span>
+                                <span style="color: var(--text); font-weight: 700;" id="previewSubtotal">$${(totalFinal / 1.16).toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="total-box" style="background: linear-gradient(135deg, var(--c-ventas), #059669); padding: 20px; border-radius: 8px; text-align: center;">
+                        <div style="color: white; font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Total Estimado (con IVA)</div>
+                        <div style="color: white; font-size: 36px; font-weight: 800;" id="previewTotal">$${totalFinal.toFixed(2)}</div>
+                    </div>
+
+                    <div style="margin-top: 20px; padding: 16px; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 12px; color: #ffc107; font-size: 13px;">
+                            <i class="fas fa-lock"></i>
+                            <span>Sección bloqueada - Los costos se actualizarán automáticamente cuando se genere la orden de compras</span>
+                        </div>
                     </div>
                 </div>
-                <button type="button" class="btn btn-sm btn-primary" onclick="ventasModule._abrirEditorCostos()" style="margin-top: 16px; width: 100%; background: linear-gradient(135deg, #6b7280, #4b5563);">
-                    <i class="fas fa-table"></i> Ver Tablas de Costos y Gastos Fijos
-                </button>
             `;
         }
 
-        // VISTA COMPLETA - Solo para admins
-        const gasolina = CostosEngine.calcularCostoGasolina(cliente.km);
-        const traslado = CostosEngine.calcularCostoTrasladoTecnico(cliente.horas);
-        const gasolinaMasTraslado = CostosEngine.calcularGasolinaMasTraslado(cliente.km, cliente.horas);
-        const manoObraBase = CostosEngine.calcularManoObra(horasEstimadas);
-        const gastosFijosBase = CostosEngine.calcularGastosFijos(horasEstimadas);
-        const camionetaBase = CostosEngine.calcularCostoCamioneta(cliente.horas);
-
+        // VISTA COMPLETA DESBLOQUEADA - Cuando hay orden de compras
         return `
             <div class="calculadora-section" style="background: linear-gradient(135deg, var(--c-ventas, #10b981), #059669); padding: 24px; border-radius: 12px; text-align: center;">
                 <div style="color: white; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">
-                    <i class="fas fa-calculator"></i> Costo Final del Proyecto
+                    <i class="fas fa-check-circle"></i> Orden de Compras Generada - Costo Final
                 </div>
                 <div style="color: white; font-size: 42px; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
                     $${totalFinal.toFixed(2)}
@@ -1483,6 +1523,7 @@ const VentasModule = (function() {
                     Incluye viáticos, mano de obra, refacciones e IVA
                 </p>
             </div>
+
             <div class="calculadora-section" style="margin-top: 20px;">
                 <div class="calculadora-titulo" style="background: var(--c-ventas, #10b981); color: white;">
                     <i class="fas fa-boxes"></i> Refacciones y Componentes
@@ -2639,16 +2680,23 @@ const VentasModule = (function() {
             if (!falla) { _wizardSetPaso1Error('❌ Describe la falla o el requerimiento.'); return; }
             if (!dept) { _wizardSetPaso1Error('❌ Selecciona el departamento que recibe el caso.'); return; }
 
-            const contacto = contactos.find(c => c.id === clienteId);
-            const clienteNombre = contacto
-                ? (contacto.nombre || contacto.empresa || contacto.email || 'Cliente')
-                : '';
+            const contacto = contactos.find(c => String(c.id) === String(clienteId));
+            const optLabel = (clienteSelect?.selectedOptions?.[0]?.textContent || '').trim();
+            let clienteNombre = '';
+            if (contacto) {
+                clienteNombre = (contacto.nombre || contacto.empresa || contacto.email || 'Cliente').trim() || 'Cliente';
+            } else if (optLabel && optLabel !== '-- Seleccionar cliente --') {
+                clienteNombre = optLabel === 'Sin nombre' ? 'Cliente' : optLabel;
+            } else {
+                clienteNombre = 'Cliente';
+            }
             if (contacto) {
                 // Priorizar datos de BD (km y horas_viaje) sobre tabulador hardcoded
                 const kmDesdeBD = contacto.km || contacto.horas_viaje ? contacto.km : 0;
                 const horasDesdeBD = contacto.horas_viaje || 0;
 
                 calculadoraClienteActual = {
+                    contactoId: clienteId,
                     nombre: clienteNombre,
                     km: kmDesdeBD,
                     horas: horasDesdeBD,
@@ -2658,7 +2706,13 @@ const VentasModule = (function() {
                     producto: nombreProducto
                 };
             } else {
-                calculadoraClienteActual = { nombre: clienteNombre, km: 0, horas: 0, producto: nombreProducto };
+                calculadoraClienteActual = {
+                    contactoId: clienteId,
+                    nombre: clienteNombre,
+                    km: 0,
+                    horas: 0,
+                    producto: nombreProducto
+                };
             }
 
             let origenCot = 'directo';
@@ -2756,8 +2810,23 @@ const VentasModule = (function() {
         if (enviarWizard) enviarWizard.onclick = _enviarCotizacionDesdeWizard;
     }
 
+    function _nombreClienteWizardResuelto() {
+        let n = (calculadoraClienteActual?.nombre || '').trim();
+        if (n) return n;
+        const cid = calculadoraClienteActual?.contactoId ?? calculadoraClienteActual?.id;
+        if (cid != null && Array.isArray(contactos) && contactos.length) {
+            const c = contactos.find(x => String(x.id) === String(cid));
+            if (c) {
+                n = (c.nombre || c.empresa || c.email || 'Cliente').trim() || 'Cliente';
+                if (calculadoraClienteActual) calculadoraClienteActual.nombre = n;
+                return n;
+            }
+        }
+        return '';
+    }
+
     function _descargarPDFDesdeWizard() {
-        const cliente = calculadoraClienteActual?.nombre || '';
+        const cliente = _nombreClienteWizardResuelto();
         const totalStr = document.getElementById('resTotal')?.innerText || '$0';
         const total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
         const rfc = calculadoraClienteActual?.rfc || 'XAXX010101000';
@@ -2779,7 +2848,7 @@ const VentasModule = (function() {
     }
 
     async function _guardarCotizacionDesdeWizard() {
-        const cliente = calculadoraClienteActual?.nombre || '';
+        const cliente = _nombreClienteWizardResuelto();
         const totalStr = document.getElementById('resTotal')?.innerText || '0';
         const total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
         if (!cliente) { alert('Falta el nombre del cliente.'); return; }

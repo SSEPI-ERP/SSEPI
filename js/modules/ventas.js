@@ -1379,7 +1379,7 @@ const VentasModule = (function() {
             if (orden) horasEstimadas = orden.horas_estimadas || 0;
         }
 
-        const clienteNombre = compra.vinculacion?.nombre || '';
+        const clienteNombre = (compra.vinculacion?.nombre || '').trim() || 'Cliente';
 
         // Cargar clientes desde BD si está vacío
         if (tabuladorTaller.clientes.length === 0) {
@@ -2622,16 +2622,23 @@ const VentasModule = (function() {
             if (!falla) { _wizardSetPaso1Error('❌ Describe la falla o el requerimiento.'); return; }
             if (!dept) { _wizardSetPaso1Error('❌ Selecciona el departamento que recibe el caso.'); return; }
 
-            const contacto = contactos.find(c => c.id === clienteId);
-            const clienteNombre = contacto
-                ? (contacto.nombre || contacto.empresa || contacto.email || 'Cliente')
-                : '';
+            const contacto = contactos.find(c => String(c.id) === String(clienteId));
+            const optLabel = (clienteSelect?.selectedOptions?.[0]?.textContent || '').trim();
+            let clienteNombre = '';
+            if (contacto) {
+                clienteNombre = (contacto.nombre || contacto.empresa || contacto.email || 'Cliente').trim() || 'Cliente';
+            } else if (optLabel && optLabel !== '-- Seleccionar cliente --') {
+                clienteNombre = optLabel === 'Sin nombre' ? 'Cliente' : optLabel;
+            } else {
+                clienteNombre = 'Cliente';
+            }
             if (contacto) {
                 // Priorizar datos de BD (km y horas_viaje) sobre tabulador hardcoded
                 const kmDesdeBD = contacto.km || contacto.horas_viaje ? contacto.km : 0;
                 const horasDesdeBD = contacto.horas_viaje || 0;
 
                 calculadoraClienteActual = {
+                    contactoId: clienteId,
                     nombre: clienteNombre,
                     km: kmDesdeBD,
                     horas: horasDesdeBD,
@@ -2641,7 +2648,13 @@ const VentasModule = (function() {
                     producto: nombreProducto
                 };
             } else {
-                calculadoraClienteActual = { nombre: clienteNombre, km: 0, horas: 0, producto: nombreProducto };
+                calculadoraClienteActual = {
+                    contactoId: clienteId,
+                    nombre: clienteNombre,
+                    km: 0,
+                    horas: 0,
+                    producto: nombreProducto
+                };
             }
 
             let origenCot = 'directo';
@@ -2739,8 +2752,23 @@ const VentasModule = (function() {
         if (enviarWizard) enviarWizard.onclick = _enviarCotizacionDesdeWizard;
     }
 
+    function _nombreClienteWizardResuelto() {
+        let n = (calculadoraClienteActual?.nombre || '').trim();
+        if (n) return n;
+        const cid = calculadoraClienteActual?.contactoId ?? calculadoraClienteActual?.id;
+        if (cid != null && Array.isArray(contactos) && contactos.length) {
+            const c = contactos.find(x => String(x.id) === String(cid));
+            if (c) {
+                n = (c.nombre || c.empresa || c.email || 'Cliente').trim() || 'Cliente';
+                if (calculadoraClienteActual) calculadoraClienteActual.nombre = n;
+                return n;
+            }
+        }
+        return '';
+    }
+
     function _descargarPDFDesdeWizard() {
-        const cliente = calculadoraClienteActual?.nombre || '';
+        const cliente = _nombreClienteWizardResuelto();
         const totalStr = document.getElementById('resTotal')?.innerText || '$0';
         const total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
         const rfc = calculadoraClienteActual?.rfc || 'XAXX010101000';
@@ -2762,7 +2790,7 @@ const VentasModule = (function() {
     }
 
     async function _guardarCotizacionDesdeWizard() {
-        const cliente = calculadoraClienteActual?.nombre || '';
+        const cliente = _nombreClienteWizardResuelto();
         const totalStr = document.getElementById('resTotal')?.innerText || '0';
         const total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
         if (!cliente) { alert('Falta el nombre del cliente.'); return; }
