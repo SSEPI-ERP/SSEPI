@@ -718,6 +718,14 @@ tr.inbound-unread td { font-weight: 500; }
     font-size: 12px;
 }
 
+/* Sidebar: enlaces solo con texto (sin iconos por sección) */
+.sidebar-left .nav-item .icon-box {
+  display: none !important;
+}
+.sidebar-left .nav-item {
+  gap: 0;
+}
+
 .nav-item {
   display: flex;
   align-items: center;

@@ -372,7 +372,7 @@
             var s = document.createElement('script');
             s.id = 'ssepiNavActivityBootstrap';
             s.type = 'module';
-            s.src = '/js/core/nav-activity-bootstrap.js';
+            s.src = '/panel/js/core/nav-activity-bootstrap.js';
             document.head.appendChild(s);
         } catch (e) {}
     }

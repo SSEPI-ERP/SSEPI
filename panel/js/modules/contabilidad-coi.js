@@ -158,13 +158,13 @@ async function loadInbox() {
             tipo: 'Taller',
             folio: o.folio || (o.id ? String(o.id).slice(-6) : '—'),
             estado: 'Por facturar/timbrar',
-            actionHtml: _actionBtnHtml('Abrir facturación', '/pages/ssepi_facturacion.html'),
+            actionHtml: _actionBtnHtml('Abrir facturación', '/panel/pages/ssepi_facturacion.html'),
         }));
         (motoresRep || []).slice(0, 10).forEach(o => rows.push({
             tipo: 'Motores',
             folio: o.folio || (o.id ? String(o.id).slice(-6) : '—'),
             estado: 'Por facturar/timbrar',
-            actionHtml: _actionBtnHtml('Abrir facturación', '/pages/ssepi_facturacion.html'),
+            actionHtml: _actionBtnHtml('Abrir facturación', '/panel/pages/ssepi_facturacion.html'),
         }));
 
         // Facturas timbradas (ya registradas): se envían a COI por cola (factura) cuando exista bridge
@@ -275,7 +275,7 @@ function _bindCoiPanel() {
     if (refreshLogBtn) refreshLogBtn.addEventListener('click', () => loadSyncLog());
 
     const goFactBtn = document.getElementById('coiInboxGoFacturacionBtn');
-    if (goFactBtn) goFactBtn.addEventListener('click', () => { window.location.href = '/pages/ssepi_facturacion.html'; });
+    if (goFactBtn) goFactBtn.addEventListener('click', () => { window.location.href = '/panel/pages/ssepi_facturacion.html'; });
     const refreshInboxBtn = document.getElementById('coiInboxRefreshBtn');
     if (refreshInboxBtn) refreshInboxBtn.addEventListener('click', () => loadInbox());
 

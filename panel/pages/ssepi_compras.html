@@ -304,7 +304,7 @@
                     await new Promise(r => setTimeout(r, 50));
                 }
                 await window.securityMiddleware.initSecurity();
-                const user = await window.authService.requireAuth('/');
+                const user = await window.authService.requireAuth('/panel/login.html');
                 if (user) {
                     try {
                         const profile = await window.authService.getCurrentProfile();

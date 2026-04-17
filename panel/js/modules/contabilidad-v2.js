@@ -85,21 +85,21 @@ function _syncExternalModuleLinks() {
         const el = document.getElementById(id);
         if (el) el.href = path;
     };
-    setHref('contabLinkFacturacion', `/pages/ssepi_facturacion.html${qFactEmit}`);
-    setHref('contabLinkVentas', `/pages/ssepi_ventas.html${qVentas}`);
-    setHref('contabLinkCompras', `/pages/ssepi_compras.html${qCompras}`);
-    setHref('contabLinkCobranza', `/pages/ssepi_ventas.html${qVentasPend}`);
+    setHref('contabLinkFacturacion', `/panel/pages/ssepi_facturacion.html${qFactEmit}`);
+    setHref('contabLinkVentas', `/panel/pages/ssepi_ventas.html${qVentas}`);
+    setHref('contabLinkCompras', `/panel/pages/ssepi_compras.html${qCompras}`);
+    setHref('contabLinkCobranza', `/panel/pages/ssepi_ventas.html${qVentasPend}`);
     const nomParams = new URLSearchParams();
     const { desde, hasta, cat } = _getFilterInputs();
     if (desde) nomParams.set('desde', desde);
     if (hasta) nomParams.set('hasta', hasta);
     if (cat && cat !== 'todos') nomParams.set('departamento', cat);
     nomParams.set('tab', 'nomina');
-    setHref('contabLinkNomina', `/pages/ssepi_contabilidad.html?${nomParams.toString()}`);
-    setHref('contabDupFacturacion', `/pages/ssepi_facturacion.html${qFactEmit}`);
-    setHref('contabDupCompras', `/pages/ssepi_compras.html${qCompras}`);
-    setHref('contabDupCobranza', `/pages/ssepi_ventas.html${qVentasPend}`);
-    setHref('contabLinkInventario', '/pages/ssepi_productos.html');
+    setHref('contabLinkNomina', `/panel/pages/ssepi_contabilidad.html?${nomParams.toString()}`);
+    setHref('contabDupFacturacion', `/panel/pages/ssepi_facturacion.html${qFactEmit}`);
+    setHref('contabDupCompras', `/panel/pages/ssepi_compras.html${qCompras}`);
+    setHref('contabDupCobranza', `/panel/pages/ssepi_ventas.html${qVentasPend}`);
+    setHref('contabLinkInventario', '/panel/pages/ssepi_productos.html');
 }
 
 function _inDateRange(iso, desde, hasta) {
@@ -170,7 +170,7 @@ async function _renderVentasFacturas() {
                 <td>${_escape(_fmtMoney(f.total || 0))}</td>
                 <td>${_escape(_trimDisplay(f.estatus) || '—')}</td>
                 <td>
-                    <a class="btn-ssepi btn-ssepi--sm" href="/pages/ssepi_facturacion.html${q}"><i class="fas fa-external-link-alt"></i></a>
+                    <a class="btn-ssepi btn-ssepi--sm" href="/panel/pages/ssepi_facturacion.html${q}"><i class="fas fa-external-link-alt"></i></a>
                 </td>
             </tr>
         `).join('');
@@ -211,7 +211,7 @@ async function _renderCompras() {
                 <td>${_escape(c.estado != null ? String(c.estado) : '—')}</td>
                 <td>
                     <button type="button" class="btn-ssepi btn-ssepi--sm" onclick="window.contabilidadV2Module.pagarCompra('${idEsc}')"><i class="fas fa-money-bill-wave"></i></button>
-                    <a class="btn-ssepi btn-ssepi--sm" href="/pages/ssepi_compras.html${q}"><i class="fas fa-external-link-alt"></i></a>
+                    <a class="btn-ssepi btn-ssepi--sm" href="/panel/pages/ssepi_compras.html${q}"><i class="fas fa-external-link-alt"></i></a>
                 </td>
             </tr>
         `;

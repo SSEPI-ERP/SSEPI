@@ -35,7 +35,7 @@
         <div class="header-left">
             <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
             <div class="brand-container">
-                <img src="/assets/logo-ssepi.png" alt="SSEPI" class="brand-logo">
+                <img src="/panel/assets/logo-ssepi.png" alt="SSEPI" class="brand-logo">
                 <div>
                     <div class="brand-text">CENTRO DE CONTROL DE VENTAS</div>
                     <div class="brand-sub">Dinero que entra · Cotizaciones · Facturación</div>
@@ -106,26 +106,26 @@
                 <label>Estado:</label>
                 <select id="filtroEstado">
                     <option value="todos">Todos</option>
-                    <option value="registro">📝 Registro</option>
-                    <option value="diagnostico">🔍 Diagnóstico</option>
-                    <option value="cotizacion">💰 Cotización</option>
-                    <option value="autorizado">✅ Autorizado</option>
-                    <option value="compra">🛒 En Compra</option>
-                    <option value="ejecucion">⚙️ En Ejecución</option>
-                    <option value="entregado">📦 Entregado</option>
-                    <option value="pagado">💵 Pagado</option>
+                    <option value="registro">Registro</option>
+                    <option value="diagnostico">Diagnóstico</option>
+                    <option value="cotizacion">Cotización</option>
+                    <option value="autorizado">Autorizado</option>
+                    <option value="compra">En Compra</option>
+                    <option value="ejecucion">En Ejecución</option>
+                    <option value="entregado">Entregado</option>
+                    <option value="pagado">Pagado</option>
                 </select>
             </div>
             <div class="filtro-chips">
                 <button type="button" class="chip-filtro active" data-estado="todos">Todos</button>
-                <button type="button" class="chip-filtro" data-estado="registro">📝 Registro</button>
-                <button type="button" class="chip-filtro" data-estado="diagnostico">🔍 Diagnóstico</button>
-                <button type="button" class="chip-filtro" data-estado="cotizacion">💰 Cotización</button>
-                <button type="button" class="chip-filtro" data-estado="autorizado">✅ Autorizado</button>
-                <button type="button" class="chip-filtro" data-estado="compra">🛒 En Compra</button>
-                <button type="button" class="chip-filtro" data-estado="ejecucion">⚙️ En Ejecución</button>
-                <button type="button" class="chip-filtro" data-estado="entregado">📦 Entregado</button>
-                <button type="button" class="chip-filtro" data-estado="pagado">💵 Pagado</button>
+                <button type="button" class="chip-filtro" data-estado="registro">Registro</button>
+                <button type="button" class="chip-filtro" data-estado="diagnostico">Diagnóstico</button>
+                <button type="button" class="chip-filtro" data-estado="cotizacion">Cotización</button>
+                <button type="button" class="chip-filtro" data-estado="autorizado">Autorizado</button>
+                <button type="button" class="chip-filtro" data-estado="compra">En Compra</button>
+                <button type="button" class="chip-filtro" data-estado="ejecucion">En Ejecución</button>
+                <button type="button" class="chip-filtro" data-estado="entregado">Entregado</button>
+                <button type="button" class="chip-filtro" data-estado="pagado">Pagado</button>
             </div>
             <div class="filtro-grupo">
                 <label>Buscar:</label>
@@ -502,7 +502,7 @@
                 }
                 var user;
                 try {
-                    user = await window.authService.requireAuth('/');
+                    user = await window.authService.requireAuth('/panel/login.html');
                 } catch (e) {
                     console.error('SSEPI auth:', e);
                     return;

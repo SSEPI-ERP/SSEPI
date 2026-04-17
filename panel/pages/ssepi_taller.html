@@ -221,18 +221,18 @@
                     </div>
                 </div>
                 <div class="ws-header-actions">
-                <a href="/panel/assets/ejemplo-orden-reparacion-SP-E0687.pdf" class="btn-secondary ws-print-btn" target="_blank" rel="noopener" title="Formato de referencia (SP-E0687)"><i class="fas fa-file-pdf"></i> Ejemplo PDF</a>
+                <a href="/panel/assets/ejemplo-orden-reparacion-SP-E0687.pdf" class="btn-secondary ws-print-btn" target="_blank" rel="noopener" title="Formato de referencia (SP-E0687)">Ejemplo PDF</a>
                 <button type="button" class="btn-secondary ws-print-btn" id="btnVistaPreviaOrdenTaller" title="Abre vista previa; desde el navegador Imprimir → Guardar como PDF">
-                    <i class="fas fa-eye"></i> Vista previa
+                    Vista previa
                 </button>
                 <button type="button" class="btn-secondary ws-print-btn" id="btnImprimirOrdenTaller" title="Abre e inicia el cuadro de impresión (PDF)">
-                    <i class="fas fa-print"></i> Imprimir / PDF
+                    Imprimir / PDF
                 </button>
                 </div>
-                <div class="ws-gnrl" id="wsGnrlBox" aria-label="General (Odoo) y acciones ERP">
+                <div class="ws-gnrl" id="wsGnrlBox" style="display:none" aria-label="Resumen de notas generales (visible en fase Entregado / Facturado)">
                     <div class="ws-gnrl-head">
-                        <span class="ws-gnrl-label">GNRL (Odoo)</span>
-                        <button type="button" class="ws-gnrl-edit" id="wsGoGeneralBtn" title="Ir a Notas generales">Editar</button>
+                        <span class="ws-gnrl-label">Notas generales</span>
+                        <button type="button" class="ws-gnrl-edit" id="wsGoGeneralBtn" title="Ir a notas generales en la orden">Editar</button>
                     </div>
                     <div class="ws-gnrl-text" id="wsGnrlText">—</div>
                 </div>
@@ -496,7 +496,7 @@
                     await new Promise(r => setTimeout(r, 50));
                 }
                 await window.securityMiddleware.initSecurity();
-                const user = await window.authService.requireAuth('/');
+                const user = await window.authService.requireAuth('/panel/login.html');
                 if (user) {
                     try {
                         const profile = await window.authService.getCurrentProfile();

@@ -52,7 +52,7 @@
             var rolesPermitidos = ['admin', 'superadmin', 'automatizacion', 'electronica'];
             if (!p || !rolesPermitidos.includes(p.rol)) {
                 alert('Acceso denegado. Solo administradores y roles autorizados pueden configurar permisos.');
-                window.location.href = '/panel.html';
+                window.location.href = '/panel/panel.html';
                 return;
             }
             loadUsuarios();

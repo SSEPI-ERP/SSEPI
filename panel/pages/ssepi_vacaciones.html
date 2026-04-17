@@ -183,7 +183,7 @@
                     await new Promise(function(r) { setTimeout(r, 50); });
                 }
                 await window.securityMiddleware.initSecurity();
-                await window.authService.requireAuth('/panel.html');
+                await window.authService.requireAuth('/panel/login.html');
                 var profile = await window.authService.getCurrentProfile();
                 if (profile) {
                     document.getElementById('userName').innerText = profile.nombre ? profile.nombre.split(' ')[0] : 'Usuario';
