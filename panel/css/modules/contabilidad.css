@@ -1,0 +1,869 @@
+/* Módulo Contabilidad — panel SSEPI COI (escritorio + motor local) */
+/* Tres columnas en el body: nav | contenido | bitácora (el aside es hijo de body, no de main). */
+@media (min-width: 901px) {
+    body.page-contabilidad {
+        grid-template-columns: var(--sidebar-w) minmax(0, 1fr) minmax(260px, 320px);
+    }
+    body.page-contabilidad.sidebar-closed {
+        grid-template-columns: 70px minmax(0, 1fr) minmax(260px, 320px);
+    }
+    body.page-contabilidad > nav.sidebar-left {
+        grid-column: 1;
+        grid-row: 2;
+    }
+    body.page-contabilidad > main {
+        grid-column: 2;
+        grid-row: 2;
+        max-width: none;
+        margin: 0;
+        width: 100%;
+        min-width: 0;
+    }
+    body.page-contabilidad > aside.sidebar-right {
+        grid-column: 3;
+        grid-row: 2;
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - var(--header-h, 70px));
+        max-height: calc(100vh - var(--header-h, 70px));
+        border-left: 2px solid rgba(185, 28, 28, 0.22);
+        position: relative;
+        top: 0;
+        overflow: hidden;
+    }
+    body.page-contabilidad > aside.sidebar-right .feed-list {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+    }
+}
+
+/* La bitácora no debe ocultarse en Contabilidad al mismo breakpoint que el resto del ERP */
+@media (max-width: 1200px) {
+    body.page-contabilidad > aside.sidebar-right {
+        display: flex !important;
+    }
+}
+
+.page-contabilidad main {
+    padding: 0 1.25rem 2.5rem;
+}
+
+.page-contabilidad .coi-panel {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    align-items: start;
+}
+
+.page-contabilidad .contab-lede-card {
+    min-width: 0;
+}
+
+.page-contabilidad .contab-inv-card {
+    min-width: 0;
+}
+
+.page-contabilidad .feed-dot {
+    border-color: var(--c-contabilidad, #b91c1c);
+    background: var(--c-contabilidad, #b91c1c);
+}
+
+@media (max-width: 1100px) {
+    .page-contabilidad .coi-panel {
+        grid-template-columns: 1fr;
+    }
+    .page-contabilidad .contab-inv-card {
+        grid-column: 1;
+    }
+}
+
+@media (max-width: 900px) {
+    body.page-contabilidad {
+        grid-template-columns: var(--sidebar-w) 1fr;
+    }
+    body.page-contabilidad.sidebar-closed {
+        grid-template-columns: 70px 1fr;
+    }
+    body.page-contabilidad > aside.sidebar-right {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        max-height: 42vh;
+        border-left: none;
+        border-top: 2px solid rgba(185, 28, 28, 0.22);
+    }
+    body.page-contabilidad > main {
+        grid-column: 2;
+    }
+}
+
+.contab-hero-sub {
+    margin: 0.35rem 0 0;
+    font-size: 1rem;
+    color: var(--text-secondary, #64748b);
+    font-weight: 500;
+}
+
+.contab-lede-card {
+    border-radius: 16px;
+    background: linear-gradient(165deg, rgba(185, 28, 28, 0.06) 0%, var(--bg-panel, #fff) 42%);
+    border-color: rgba(185, 28, 28, 0.2);
+}
+
+.contab-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.contab-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0;
+}
+
+.contab-field label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary, #64748b);
+}
+
+.contab-field--grow {
+    flex: 1 1 200px;
+}
+
+.contab-input-date {
+    max-width: 11rem;
+}
+
+.contab-apply-btn {
+    align-self: flex-end;
+    margin-top: 1.15rem;
+}
+
+.contab-mod-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+    margin-bottom: 0.9rem;
+}
+
+@media (min-width: 960px) {
+    .contab-mod-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.contab-mod-card {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.72rem 0.9rem;
+    border-radius: 12px;
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--bg-panel, #fff);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+}
+
+.contab-mod-card:hover {
+    border-color: rgba(185, 28, 28, 0.45);
+    box-shadow: 0 4px 14px rgba(185, 28, 28, 0.12);
+    transform: translateY(-1px);
+}
+
+.contab-mod-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(185, 28, 28, 0.12);
+    color: var(--c-contabilidad, #b91c1c);
+    flex-shrink: 0;
+}
+
+.contab-mod-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.contab-mod-title {
+    font-weight: 800;
+    font-size: 1.02rem;
+    color: var(--text-primary, #1e293b);
+}
+
+.contab-mod-sub {
+    font-size: 0.88rem;
+    color: var(--text-muted, #94a3b8);
+    line-height: 1.25;
+}
+
+.contab-mod-go {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted, #94a3b8);
+    opacity: 0.85;
+}
+
+.contab-mod-card:hover .contab-mod-go {
+    color: var(--c-contabilidad, #b91c1c);
+    opacity: 1;
+}
+
+.contab-pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.contab-pill.btn-ssepi {
+    border-radius: 999px;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    background: transparent;
+    border: 1px solid var(--border, #cbd5e1);
+    color: var(--text-secondary, #64748b);
+}
+
+.contab-pill.btn-ssepi:hover {
+    border-color: rgba(185, 28, 28, 0.4);
+    color: var(--c-contabilidad, #b91c1c);
+}
+
+.contab-pill.btn-ssepi.active {
+    background: var(--c-contabilidad, #b91c1c);
+    border-color: var(--c-contabilidad, #b91c1c);
+    color: #fff;
+}
+
+.btn-ssepi.btn-ssepi--sm {
+    padding: 0.28rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1;
+    border-radius: 8px;
+}
+
+body[data-theme="dark"] .contab-lede-card {
+    background: linear-gradient(165deg, rgba(185, 28, 28, 0.12) 0%, var(--bg-panel, #1e293b) 45%);
+    border-color: rgba(185, 28, 28, 0.28);
+}
+
+body[data-theme="dark"] .contab-mod-card {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+body[data-theme="dark"] .contab-mod-card:hover {
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+.coi-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.coi-card {
+    background: var(--bg-panel, #fff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 12px;
+    padding: 1.35rem 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.coi-card h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary, #1e293b);
+}
+
+.coi-card h2 i {
+    margin-right: 0.35rem;
+    color: var(--c-contabilidad, #b91c1c);
+}
+
+.coi-muted {
+    color: var(--text-secondary, #64748b);
+    font-size: 0.92rem;
+    line-height: 1.5;
+    margin: 0 0 1rem;
+}
+
+.coi-code {
+    background: var(--bg-muted, #f1f5f9);
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 0.85rem;
+    overflow-x: auto;
+    margin: 0 0 1rem;
+    border: 1px solid var(--border, #e2e8f0);
+}
+
+.coi-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+/* Botones de acciones: ocupar el ancho disponible y evitar huecos */
+.coi-actions .btn-ssepi,
+.coi-actions a.btn-ssepi,
+.coi-actions button.btn-ssepi {
+    flex: 1 1 220px;
+    justify-content: center;
+}
+
+.coi-status-line {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary, #64748b);
+}
+
+.coi-status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.coi-status-pending { background: #94a3b8; }
+.coi-status-on { background: #22c55e; box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25); }
+.coi-status-off { background: #ef4444; }
+
+.coi-form-row {
+    margin-bottom: 1rem;
+}
+
+.coi-form-row label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    color: var(--text-secondary, #64748b);
+}
+
+.coi-input {
+    width: 100%;
+    max-width: 420px;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: var(--bg-input, #fff);
+    color: var(--text-primary, #1e293b);
+}
+
+.coi-card-accent {
+    border-color: rgba(185, 28, 28, 0.35);
+    background: rgba(185, 28, 28, 0.04);
+}
+
+body[data-theme="dark"] .coi-card {
+    box-shadow: none;
+}
+
+body[data-theme="dark"] .coi-code {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.coi-inbox-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+.coi-inbox-kpi {
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px;
+    padding: 0.85rem 0.95rem;
+    background: var(--bg-muted, #f8fafc);
+}
+
+.coi-inbox-kpi-title {
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-secondary, #64748b);
+}
+
+.coi-inbox-kpi-value {
+    font-size: 1.35rem;
+    font-weight: 900;
+    margin-top: 0.25rem;
+    color: var(--text-primary, #1e293b);
+}
+
+.coi-inbox-kpi-sub {
+    font-size: 0.82rem;
+    margin-top: 0.2rem;
+    color: var(--text-muted, #94a3b8);
+}
+
+@media (max-width: 900px) {
+    .coi-inbox-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Flujo híbrido */
+.coi-flow-strip {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--bg-panel, #fff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 12px;
+    margin-bottom: 0.25rem;
+}
+
+.coi-flow-step {
+    font-size: 0.88rem;
+    color: var(--text-secondary, #64748b);
+    max-width: 220px;
+    text-align: center;
+    line-height: 1.35;
+}
+
+.coi-flow-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: var(--c-contabilidad, #b91c1c);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 800;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+}
+
+.coi-flow-arrow {
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.9rem;
+}
+
+.coi-card-highlight {
+    border-color: rgba(185, 28, 28, 0.45);
+    background: linear-gradient(135deg, rgba(185, 28, 28, 0.06) 0%, var(--bg-panel, #fff) 40%);
+}
+
+.coi-hint-banner {
+    font-size: 0.85rem;
+    color: var(--text-secondary, #64748b);
+    background: rgba(234, 179, 8, 0.12);
+    border: 1px solid rgba(234, 179, 8, 0.35);
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}
+
+.coi-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 8px;
+}
+
+.coi-log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+}
+
+.coi-log-table th,
+.coi-log-table td {
+    padding: 0.55rem 0.65rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.coi-log-table th {
+    font-weight: 700;
+    color: var(--text-secondary, #64748b);
+    background: var(--bg-muted, #f8fafc);
+    white-space: nowrap;
+}
+
+.coi-log-table tbody tr:hover {
+    background: rgba(185, 28, 28, 0.04);
+}
+
+.coi-log-loading,
+.coi-log-empty {
+    text-align: center;
+    color: var(--text-muted, #94a3b8);
+    padding: 1.5rem 1rem !important;
+}
+
+.coi-code-inline {
+    font-size: 0.75rem;
+    background: var(--bg-muted, #f1f5f9);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+}
+
+.coi-src {
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: var(--c-contabilidad, #b91c1c);
+}
+
+.coi-badge {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.contab-tab {
+    display: none;
+}
+
+.contab-tab.active {
+    display: block;
+}
+
+.coi-badge-ok {
+    background: rgba(34, 197, 94, 0.18);
+    color: #15803d;
+}
+
+.coi-badge-skip {
+    background: rgba(148, 163, 184, 0.25);
+    color: #475569;
+}
+
+.coi-badge-err {
+    background: rgba(239, 68, 68, 0.18);
+    color: #b91c1c;
+}
+
+.contab-kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.65rem;
+    margin-bottom: 1.1rem;
+}
+
+.contab-kpi-chip {
+    border-radius: 12px;
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--bg-panel, #fff);
+    padding: 0.65rem 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.contab-kpi-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted, #94a3b8);
+}
+
+.contab-kpi-chip strong {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--c-contabilidad, #b91c1c);
+    letter-spacing: -0.02em;
+}
+
+body[data-theme="dark"] .contab-kpi-chip {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 768px) {
+    .coi-flow-arrow {
+        display: none;
+    }
+}
+
+/* ========== Nómina (página dedicada) ========== */
+.page-nomina .feed-dot {
+    border-color: var(--c-contabilidad, #b91c1c);
+    background: var(--c-contabilidad, #b91c1c);
+}
+
+/* Layout 3 columnas: nav | contenido | bitácora (igual que Contabilidad) */
+@media (min-width: 901px) {
+    body.page-nomina {
+        grid-template-columns: var(--sidebar-w) minmax(0, 1fr) minmax(260px, 320px);
+    }
+    body.page-nomina.sidebar-closed {
+        grid-template-columns: 70px minmax(0, 1fr) minmax(260px, 320px);
+    }
+    body.page-nomina > nav.sidebar-left {
+        grid-column: 1;
+        grid-row: 2;
+    }
+    body.page-nomina > main {
+        grid-column: 2;
+        grid-row: 2;
+        max-width: none;
+        margin: 0;
+        width: 100%;
+        min-width: 0;
+    }
+    body.page-nomina > aside.sidebar-right {
+        grid-column: 3;
+        grid-row: 2;
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - var(--header-h, 70px));
+        max-height: calc(100vh - var(--header-h, 70px));
+        border-left: 2px solid rgba(185, 28, 28, 0.22);
+        position: relative;
+        top: 0;
+        overflow: hidden;
+    }
+    body.page-nomina > aside.sidebar-right .feed-list {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+    }
+}
+
+.page-nomina main {
+    padding: 0 1rem 1.5rem;
+    max-width: none;
+    margin: 0;
+}
+
+.nom-hero {
+    margin-bottom: 0.65rem;
+}
+
+.nom-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.nom-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.65rem;
+}
+
+.nom-kpi-card {
+    border-radius: 14px;
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--bg-panel, #fff);
+    padding: 1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.nom-kpi-card--accent {
+    border-color: rgba(185, 28, 28, 0.35);
+    background: linear-gradient(145deg, rgba(185, 28, 28, 0.06), var(--bg-panel, #fff));
+}
+
+.nom-kpi-label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted, #94a3b8);
+}
+
+.nom-kpi-card strong {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text-primary, #0f172a);
+    letter-spacing: -0.03em;
+}
+
+.nom-kpi-card--accent strong {
+    color: var(--c-contabilidad, #b91c1c);
+}
+
+.nom-kpi-hint {
+    font-size: 0.72rem;
+    color: var(--text-muted, #94a3b8);
+}
+
+.nom-card {
+    border-radius: 16px;
+}
+
+.nom-toolbar {
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    align-items: flex-end;
+}
+
+.nom-btn-primary {
+    background: var(--c-contabilidad, #b91c1c) !important;
+    border-color: var(--c-contabilidad, #b91c1c) !important;
+    color: #fff !important;
+    margin-left: auto;
+}
+
+.nom-table th,
+.nom-table td {
+    vertical-align: middle;
+}
+
+.nom-estado {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: rgba(34, 197, 94, 0.15);
+    color: #15803d;
+}
+
+.nom-estado--borrador {
+    background: rgba(148, 163, 184, 0.25);
+    color: #475569;
+}
+
+.nom-estado--programado {
+    background: rgba(59, 130, 246, 0.18);
+    color: #1d4ed8;
+}
+
+.nom-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: rgba(15, 23, 42, 0.45);
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.nom-modal-backdrop.nom-modal-visible {
+    display: flex;
+}
+
+.nom-modal {
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    background: var(--bg-panel, #fff);
+    border: 1px solid var(--border, #e2e8f0);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+}
+
+.nom-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.15rem;
+    border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.nom-modal-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.nom-modal-close {
+    border: none;
+    background: transparent;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: var(--text-muted, #64748b);
+    line-height: 1;
+}
+
+.nom-modal-body {
+    padding: 1rem 1.15rem;
+    overflow-y: auto;
+}
+
+.nom-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem 1rem;
+}
+
+.nom-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.nom-field label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted, #64748b);
+}
+
+.nom-field--full {
+    grid-column: 1 / -1;
+}
+
+.nom-input-total {
+    font-weight: 800;
+    background: var(--bg-hover, #f1f5f9) !important;
+}
+
+.nom-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    padding: 1rem 1.15rem;
+    border-top: 1px solid var(--border, #e2e8f0);
+}
+
+@media (max-width: 560px) {
+    .nom-form-grid {
+        grid-template-columns: 1fr;
+    }
+    .nom-btn-primary {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+body[data-theme="dark"] .nom-kpi-card,
+body[data-theme="dark"] .nom-modal {
+    background: rgba(0, 0, 0, 0.25);
+}

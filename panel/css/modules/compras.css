@@ -1,0 +1,711 @@
+/* ================================================
+   ARCHIVO: compras.css
+   DESCRIPCIÓN: Estilos específicos para el módulo de Compras
+   ESTILO: Basado en el diseño original, con paleta neutra (azul corporativo)
+   ================================================ */
+
+:root {
+    --c-compras: #7b1fa2;
+    --c-compras-light: #f3e5f5;
+    --c-compras-dark: #4a148c;
+    --accent: var(--c-compras);
+}
+
+/* ========== FILTROS SUPERIORES ========== */
+.filtros-superiores {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 25px;
+    margin-bottom: 25px;
+    box-shadow: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: center;
+}
+
+.filtro-grupo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-body);
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.filtro-grupo label {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.filtro-grupo input,
+.filtro-grupo select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.btn-filtro {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-filtro:hover {
+    background: var(--c-compras);
+    color: white;
+    border-color: var(--c-compras);
+}
+
+/* Vistas Kanban/Lista/Gráfica con color del módulo */
+.vistas button.active {
+    background: var(--c-compras);
+    border-color: var(--c-compras);
+    color: #fff;
+}
+
+/* ========== KPIs ========== */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 25px;
+    margin-bottom: 30px;
+}
+.kpi-grid .kpi-card {
+    border-left: 4px solid var(--c-compras);
+}
+.kpi-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: none;
+    border-top: 5px solid var(--c-compras);
+    border-left: 4px solid var(--c-compras);
+    transition: 0.2s;
+}
+
+.kpi-card:hover {
+    transform: translateY(-3px);
+}
+
+.kpi-grid .kpi-card .kpi-icon,
+.kpi-grid .kpi-card .kpi-title i {
+    color: var(--c-compras);
+}
+.kpi-icon {
+    font-size: 28px;
+    color: var(--c-compras);
+    margin-bottom: 15px;
+}
+
+.kpi-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.kpi-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 5px 0;
+}
+
+/* ========== PANEL DE PROVEEDORES ========== */
+.panel-proveedores {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: none;
+}
+
+.panel-proveedores h2 {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.proveedores-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.proveedor-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: 0.2s;
+}
+
+.proveedor-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--c-compras);
+}
+
+.proveedor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.proveedor-nombre {
+    font-weight: 900;
+    color: var(--c-compras);
+    font-size: 16px;
+}
+
+.proveedor-rfc {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.proveedor-contacto {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.proveedor-email {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.proveedor-acciones {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* ========== PANEL DE SOLICITUDES ========== */
+.panel-solicitudes {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: none;
+}
+
+.panel-solicitudes h2 {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.solicitudes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+.solicitud-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: 0.2s;
+}
+
+.solicitud-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--c-compras);
+}
+
+.solicitud-header {
+    display: flex;
+    justify-content: space-between;
+}
+
+.solicitud-folio {
+    font-weight: 900;
+    color: var(--c-compras);
+    font-size: 14px;
+}
+
+.solicitud-cliente {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.solicitud-tipo {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.solicitud-acciones {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* ========== TABLA DE ÓRDENES ========== */
+.lista-container {
+    background: var(--bg-panel);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    display: none;
+    box-shadow: none;
+}
+
+.lista-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: auto;
+}
+
+.lista-table th {
+    background: var(--bg-hover);
+    padding: 12px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 2px solid var(--c-compras);
+    white-space: nowrap;
+}
+
+.lista-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.lista-table tr:hover td {
+    background: var(--c-compras-light);
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.estado-1 {
+    background: rgba(255,152,0,0.15);
+    color: #e65100;
+}
+.estado-2 {
+    background: rgba(33,150,243,0.15);
+    color: #0d47a1;
+}
+.estado-3 {
+    background: rgba(76,175,80,0.15);
+    color: #1b5e20;
+}
+.estado-4 {
+    background: rgba(156,39,176,0.15);
+    color: #4a148c;
+}
+.estado-5 {
+    background: rgba(96,125,139,0.15);
+    color: #37474f;
+}
+
+/* ========== KANBAN ========== */
+.kanban-container {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    padding: 10px 0 20px;
+}
+
+.kanban-column {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    min-width: 300px;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: none;
+}
+
+.kanban-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+}
+
+.kanban-header .badge {
+    color: white;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+}
+
+.kanban-cards {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 400px;
+}
+
+.kanban-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: 0.2s;
+    box-shadow: none;
+    border-left: 3px solid var(--c-compras);
+}
+
+.kanban-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--c-compras);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.folio {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--c-compras);
+}
+
+.card-body {
+    margin-bottom: 12px;
+}
+
+.proveedor {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.total {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.card-footer {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px dashed var(--border);
+    padding-top: 8px;
+}
+
+/* ========== GRÁFICA ========== */
+.grafica-container {
+    background: var(--bg-panel);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    padding: 20px;
+    min-height: 400px;
+    height: 400px;
+    display: none;
+    box-shadow: none;
+}
+
+.grafica-container canvas {
+    max-height: 360px;
+    width: 100% !important;
+}
+
+/* ========== MODALES ========== */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(5px);
+}
+
+.modal-backdrop.active {
+    display: flex;
+}
+
+.modal {
+    background: var(--bg-panel);
+    border-radius: 24px;
+    width: 100%;
+    max-width: 1200px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    border: 2px solid var(--c-compras);
+    animation: slideUp 0.3s;
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 20px 30px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, var(--c-compras) 0%, var(--c-compras-dark) 100%);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    font-size: 20px;
+    font-weight: 900;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-close {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.modal-close:hover {
+    background: rgba(255,255,255,0.3);
+    transform: rotate(90deg);
+}
+
+.modal-body {
+    padding: 30px;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    padding: 20px 30px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    background: rgba(0,82,204,0.02);
+}
+
+/* ========== DETALLE DE ORDEN ========== */
+.detalle-section {
+    background: var(--bg-hover);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+    border: 1px solid var(--border);
+}
+
+.detalle-section h4 {
+    color: var(--c-compras);
+    margin-bottom: 15px;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.detalle-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+}
+
+.items-table th {
+    background: var(--bg-hover);
+    padding: 10px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    border-bottom: 2px solid var(--border);
+}
+
+.items-table td {
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.items-table a {
+    color: var(--c-compras);
+    text-decoration: none;
+}
+
+.items-table a:hover {
+    text-decoration: underline;
+}
+
+.total-final {
+    text-align: right;
+    font-size: 16px;
+    font-weight: 700;
+    margin-top: 15px;
+}
+
+.paso-item {
+    border-bottom: 1px solid var(--border);
+    padding: 8px 0;
+}
+
+/* ========== FORMULARIO NUEVA ORDEN ========== */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.input-group.required label::after {
+    content: " *";
+    color: var(--c-danger);
+}
+
+.input-group input,
+.input-group select,
+.input-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    background: var(--bg-panel);
+    color: var(--text-primary);
+}
+
+.input-group input:focus,
+.input-group select:focus {
+    border-color: var(--c-compras);
+    outline: none;
+}
+
+.items-table input {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+}
+
+.btn-add-row {
+    background: #ffffff;
+    border: 1.5px dashed var(--c-compras);
+    color: var(--c-compras);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: 0.15s;
+}
+
+.btn-add-row:hover {
+    background: var(--c-compras);
+    color: #ffffff;
+}
+
+/* ========== UTILIDADES ========== */
+.btn-remove {
+    background: none;
+    border: none;
+    color: var(--c-danger);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+}
+
+.btn-remove:hover {
+    background: var(--c-danger);
+    color: white;
+    border-radius: 4px;
+}
+
+@media (max-width: 1200px) {
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .kanban-container {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .kpi-grid {
+        grid-template-columns: 1fr;
+    }
+    .filtros-superiores {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
