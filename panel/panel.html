@@ -8,7 +8,6 @@
     <link rel="shortcut icon" type="image/png" href="/panel/assets/logo-ssepi.png">
     <link rel="stylesheet" href="/panel/css/main.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
@@ -27,7 +26,7 @@
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
     <header>
         <div class="header-left">
-            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <button class="toggle-btn" id="toggleMenu">&#9776;</button>
             <div class="brand-container">
                 <img src="/panel/assets/logo-ssepi.png" alt="SSEPI" class="brand-logo">
                 <div>
@@ -35,15 +34,15 @@
                     <div class="brand-sub">Centro de Comando</div>
                 </div>
             </div>
-            <a href="/panel/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+            <a href="/panel/panel.html" class="home-link">&#8962; Panel Principal</a>
         </div>
         <div class="header-right">
             <div class="notification-badge">
-                <i class="fas fa-bell"></i>
+                <span>&#128276;</span>
                 <span class="badge-count" id="notificacionesBadge">0</span>
             </div>
             <div class="live-clock" id="clock">00:00:00</div>
-            <button class="theme-btn" id="themeBtn" type="button" aria-label="Cambiar a modo oscuro" title="Modo claro (clic para oscuro)"><i class="fas fa-moon"></i></button>
+            <button class="theme-btn" id="themeBtn" type="button" aria-label="Cambiar a modo oscuro" title="Modo claro (clic para oscuro)">&#9790;</button>
             <div class="user-pill" id="userMenu">
                 <div class="avatar-circle" id="userAvatar">A</div>
                 <span id="userName">Admin</span>
@@ -87,22 +86,22 @@
 
         <div class="kpi-dashboard">
             <div class="card-kpi kpi-1" data-module-any="ventas,compras">
-                <div class="kpi-header"><span class="kpi-title">Ventas del Mes</span><i class="fas fa-money-bill-wave kpi-icon"></i></div>
+                <div class="kpi-header"><span class="kpi-title">Ventas del Mes</span><span class="kpi-icon">&#128176;</span></div>
                 <div class="kpi-value" id="kpiVentasMes">$0</div>
                 <div class="kpi-subtitle">Ingresos por ventas</div>
             </div>
             <div class="card-kpi kpi-2" data-module-any="ordenes_taller,ordenes_motores">
-                <div class="kpi-header"><span class="kpi-title">Tareas Taller</span><i class="fas fa-microchip kpi-icon"></i></div>
+                <div class="kpi-header"><span class="kpi-title">Tareas Taller</span><span class="kpi-icon">&#128268;</span></div>
                 <div class="kpi-value" id="kpiTareasTaller">0</div>
                 <div class="kpi-subtitle">Órdenes pendientes</div>
             </div>
             <div class="card-kpi kpi-3" data-module="inventario">
-                <div class="kpi-header"><span class="kpi-title">Valor Inventario</span><i class="fas fa-boxes kpi-icon"></i></div>
+                <div class="kpi-header"><span class="kpi-title">Valor Inventario</span><span class="kpi-icon">&#128230;</span></div>
                 <div class="kpi-value" id="kpiValorInventario">$0</div>
                 <div class="kpi-subtitle">Capital en stock</div>
             </div>
             <div class="card-kpi kpi-4" data-module="compras">
-                <div class="kpi-header"><span class="kpi-title">Compras Pendientes</span><i class="fas fa-shopping-cart kpi-icon"></i></div>
+                <div class="kpi-header"><span class="kpi-title">Compras Pendientes</span><span class="kpi-icon">&#128722;</span></div>
                 <div class="kpi-value" id="kpiComprasPendientes">0</div>
                 <div class="kpi-subtitle">Por recibir</div>
             </div>
@@ -110,87 +109,70 @@
 
         <div class="modules-grid">
             <a href="/panel/pages/ssepi_taller.html" class="card-module card-taller" data-module="ordenes_taller">
-                <div class="card-big-icon"><i class="fas fa-microchip"></i></div>
                 <div class="card-title">Laboratorio</div>
                 <div class="card-desc">Diagnóstico y reparación</div>
             </a>
             <a href="/panel/pages/ssepi_motores.html" class="card-module card-motores" data-module="ordenes_motores">
-                <div class="card-big-icon"><i class="fas fa-industry"></i></div>
                 <div class="card-title">Motores</div>
                 <div class="card-desc">Reparación de motores</div>
             </a>
             <a href="/panel/pages/ssepi_servicios.html" class="card-module card-automatizacion" data-module="proyectos_automatizacion">
-                <div class="card-big-icon"><i class="fas fa-robot"></i></div>
                 <div class="card-title">Automatización</div>
                 <div class="card-desc">Ingeniería y control</div>
             </a>
             <a href="/panel/pages/ssepi_proyectos.html" class="card-module card-proyectos" data-module="proyectos_automatizacion">
-                <div class="card-big-icon"><i class="fas fa-drafting-compass"></i></div>
                 <div class="card-title">Proyectos</div>
                 <div class="card-desc">Gestión de proyectos</div>
             </a>
             <a href="/panel/pages/ssepi_ventas.html" class="card-module card-ventas" data-module="ventas">
-                <div class="card-big-icon"><i class="fas fa-file-invoice-dollar"></i></div>
                 <div class="card-title">Ventas</div>
                 <div class="card-desc">Cotizaciones y facturación</div>
             </a>
             <a href="/panel/pages/ssepi_compras.html" class="card-module card-compras" data-module="compras">
-                <div class="card-big-icon"><i class="fas fa-shopping-cart"></i></div>
                 <div class="card-title">Compras</div>
                 <div class="card-desc">Proveedores y adquisiciones</div>
             </a>
             <a href="/panel/pages/ssepi_analisis.html" class="card-module card-analisis" data-module-any="ventas,compras,ordenes_taller,ordenes_motores,proyectos_automatizacion,admin">
-                <div class="card-big-icon"><i class="fas fa-chart-pie"></i></div>
                 <div class="card-title">Análisis</div>
                 <div class="card-desc">Métricas de todos los departamentos</div>
             </a>
             <a href="/panel/pages/ssepi_contactos.html" class="card-module card-contact" data-module="contactos">
-                <div class="card-big-icon"><i class="fas fa-address-book"></i></div>
                 <div class="card-title">Contactos</div>
                 <div class="card-desc">Clientes y proveedores</div>
             </a>
             <a href="/panel/pages/ssepi_facturacion.html" class="card-module card-facturacion" data-module="facturas">
-                <div class="card-big-icon"><i class="fas fa-file-invoice"></i></div>
                 <div class="card-title">Facturación</div>
                 <div class="card-desc">Seguimiento integral</div>
             </a>
             <a href="/panel/pages/ssepi_contabilidad.html" class="card-module card-contabilidad" data-module="contabilidad">
-                <div class="card-big-icon"><i class="fas fa-coins"></i></div>
                 <div class="card-title">Contabilidad</div>
                 <div class="card-desc">Balance y finanzas</div>
             </a>
             <a href="/panel/pages/ssepi_import_viewer.html" class="card-module card-contabilidad" data-module="contabilidad">
-                <div class="card-big-icon"><i class="fas fa-file-upload"></i></div>
                 <div class="card-title">Importar datos</div>
                 <div class="card-desc">Excel o CSV a contactos e inventario</div>
             </a>
             <a href="/panel/pages/ssepi_productos.html" class="card-module card-stock" data-module="inventario">
-                <div class="card-big-icon"><i class="fas fa-boxes"></i></div>
                 <div class="card-title">Inventario</div>
                 <div class="card-desc">Control de stock</div>
             </a>
             <a href="/panel/pages/ssepi_nomina.html" class="card-module card-contabilidad" data-module="pagos_nomina">
-                <div class="card-big-icon"><i class="fas fa-users"></i></div>
                 <div class="card-title">Nómina</div>
                 <div class="card-desc">Pagos y períodos</div>
             </a>
             <a href="/panel/pages/ssepi_analisis.html" class="card-module card-analisis" data-module="ventas">
-                <div class="card-big-icon"><i class="fas fa-chart-line"></i></div>
                 <div class="card-title">Análisis</div>
                 <div class="card-desc">KPIs y reportes</div>
             </a>
             <a href="/panel/pages/ssepi_paginas.html" class="card-module card-web" data-module="paginas">
-                <div class="card-big-icon"><i class="fas fa-globe"></i></div>
                 <div class="card-title">Sitio Web</div>
                 <div class="card-desc">Portal público</div>
             </a>
             <a href="/panel/pages/ssepi_vacaciones.html" class="card-module card-vacaciones" data-module="vacaciones">
-                <div class="card-big-icon"><i class="fas fa-umbrella-beach"></i></div>
                 <div class="card-title">Vacaciones</div>
                 <div class="card-desc">Solicitar vacaciones y ver calendario</div>
             </a>
             <a href="/panel/pages/ssepi_calculadoras.html" class="card-module card-calculadoras" data-module="calculadoras">
-                <div class="card-big-icon"><i class="fas fa-calculator"></i></div>
                 <div class="card-title">Calculadoras</div>
                 <div class="card-desc">Funciones, costos y clientes (admin)</div>
             </a>

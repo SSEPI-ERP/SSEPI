@@ -1500,29 +1500,6 @@ main {
 .card-module.card-analisis:hover { border-color: var(--c-analisis); }
 .card-module.card-web:hover { border-color: var(--c-web); }
 
-.card-module.card-taller .card-big-icon { color: var(--c-taller); }
-.card-module.card-motores .card-big-icon { color: var(--c-motores); }
-.card-module.card-automatizacion .card-big-icon { color: var(--c-automatizacion); }
-.card-module.card-proyectos .card-big-icon { color: var(--c-proyectos); }
-.card-module.card-ventas .card-big-icon { color: var(--c-ventas); }
-.card-module.card-compras .card-big-icon { color: var(--c-compras); }
-.card-module.card-stock .card-big-icon { color: var(--c-stock); }
-.card-module.card-contact .card-big-icon { color: var(--c-contact); }
-.card-module.card-facturacion .card-big-icon { color: var(--c-facturacion); }
-.card-module.card-contabilidad .card-big-icon { color: var(--c-contabilidad); }
-.card-module.card-analisis .card-big-icon { color: var(--c-analisis); }
-.card-module.card-web .card-big-icon { color: var(--c-web); }
-
-.card-big-icon {
-  font-size: 42px;
-  color: var(--primary);
-  margin-bottom: 12px;
-  transition: transform 0.2s ease;
-}
-
-.card-module:hover .card-big-icon {
-  transform: scale(1.08);
-}
 
 .card-title {
   font-weight: 700;
