@@ -299,6 +299,7 @@ const VentasModule = (function() {
     let subscriptions = [];
 
     // Tabuladores (datos fijos para cálculos logísticos)
+    // NOTA: Los valores reales se cargan desde BD (gastos_fijos, parametros_costos, clientes_tabulador)
     const tabuladorTaller = {
         variables: {
             gasolina: 24.50,
@@ -310,16 +311,7 @@ const VentasModule = (function() {
             credito: 3,
             iva: 16
         },
-        clientes: [
-            { nombre: "ANGUIPLAST", km: 234, horas: 6, direccion: "Libramiento Norte Km. 2, Arandas, JAL", rfc: "ANG101215PG0", contacto: "Ing. Compras" },
-            { nombre: "BOLSAS DE LOS ALTOS", km: 226, horas: 5, direccion: "Carr. Tepatitlán - Arandas, JAL", rfc: "BAL050101AA1", contacto: "Lic. Adquisición" },
-            { nombre: "ECOBOLSAS", km: 216, horas: 5, direccion: "Parque Industrial León, GTO", rfc: "ECO990202BB2", contacto: "Gerente Planta" },
-            { nombre: "BADER TABACHINES", km: 17.2, horas: 2, direccion: "Blvd. J. Clouthier, León, GTO", rfc: "BAD880303CC3", contacto: "Mantenimiento" },
-            { nombre: "BODYCOTE", km: 90.6, horas: 3, direccion: "Silao, Guanajuato Puerto Interior", rfc: "BOD770404DD4", contacto: "Ing. Proyectos" },
-            { nombre: "COFICAB", km: 80, horas: 3, direccion: "Puerto Interior, Silao, GTO", rfc: "COF660505EE5", contacto: "Ing. Eléctrico" },
-            { nombre: "CONDUMEX", km: 90.6, horas: 3, direccion: "Silao, GTO", rfc: "CON550606FF6", contacto: "Compras" },
-            { nombre: "ECSA", km: 32, horas: 2, direccion: "León, GTO", rfc: "ECS440707GG7", contacto: "Admin" }
-        ]
+        clientes: []  // Se carga dinámicamente desde clientes_tabulador
     };
 
     const tabuladorAutomatizacion = {
@@ -356,6 +348,16 @@ const VentasModule = (function() {
     // ==================== INICIALIZACIÓN ====================
     async function init() {
         console.log('✅ [Ventas] Conectado');
+
+        // Cargar configuración de costos desde BD
+        try {
+            await CostosEngine.loadFromDatabase();
+            tabuladorTaller.clientes = await _cargarClientesTabulador();
+            console.log('✅ Costos y clientes cargados desde BD');
+        } catch (e) {
+            console.warn('[Ventas] Error cargando costos desde BD:', e);
+        }
+
         _bindEvents();
         _setVistaInicial();
         try {
@@ -1054,7 +1056,7 @@ const VentasModule = (function() {
     }
 
     // ==================== CALCULADORA DE COSTOS ====================
-    function _abrirCalculadora(compraId) {
+    async function _abrirCalculadora(compraId) {
         const compra = solicitudesTaller.find(s => s.id === compraId);
         if (!compra) return;
 
@@ -1068,6 +1070,12 @@ const VentasModule = (function() {
         }
 
         const clienteNombre = compra.vinculacion?.nombre || '';
+
+        // Cargar clientes desde BD si está vacío
+        if (tabuladorTaller.clientes.length === 0) {
+            tabuladorTaller.clientes = await _cargarClientesTabulador();
+        }
+
         const clienteTabulador = tabuladorTaller.clientes.find(c => c.nombre === clienteNombre);
         calculadoraClienteActual = {
             nombre: clienteNombre,
@@ -1079,7 +1087,7 @@ const VentasModule = (function() {
         wizardPaso = 2;
 
         const modal = document.getElementById('calculadoraModal');
-        _renderWizardPaso(2);
+        await _renderWizardPaso(2);
         modal.classList.add('active');
         _bindWizardEvents();
     }
@@ -1129,6 +1137,9 @@ const VentasModule = (function() {
                         <button class="btn btn-sm btn-primary" onclick="ventasModule._agregarComponente()">Agregar</button>
                     </div>
                 </div>
+                <button type="button" class="btn btn-sm btn-primary" onclick="ventasModule._abrirEditorCostos()" style="margin-top: 16px; width: 100%; background: linear-gradient(135deg, #6b7280, #4b5563);">
+                    <i class="fas fa-table"></i> Ver Tablas de Costos y Gastos Fijos
+                </button>
             `;
         }
 
@@ -1199,6 +1210,9 @@ const VentasModule = (function() {
                     <div class="label" style="font-size: 14px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">TOTAL CON IVA</div>
                     <div class="value" id="resTotal" style="font-size: 36px; font-weight: 800;">$0.00</div>
                 </div>
+                <button type="button" class="btn btn-sm btn-primary" onclick="ventasModule._abrirEditorCostos()" style="margin-top: 16px; width: 100%;">
+                    <i class="fas fa-cog"></i> Ver/Editar Tablas de Costos y Gastos Fijos
+                </button>
             </div>
         `;
     }
@@ -1392,6 +1406,270 @@ const VentasModule = (function() {
         _irPaso(2);
 
         alert('Viáticos guardados correctamente para ' + (cliente.nombre || 'el cliente'));
+    }
+
+    // ==================== CARGA DE COSTOS DESDE BD ====================
+    /** Carga parámetros de costos desde parametros_costos */
+    async function _cargarParametrosCostos() {
+        try {
+            const { data, error } = await window.supabase
+                .from('parametros_costos')
+                .select('clave, valor');
+            if (error || !data) return tabuladorTaller.variables;
+
+            const params = {};
+            data.forEach(p => {
+                if (p.clave === 'gasolina') params.gasolina = Number(p.valor);
+                if (p.clave === 'rendimiento') params.rendimiento = Number(p.valor);
+                if (p.clave === 'costo_tecnico') params.costoTecnico = Number(p.valor);
+                if (p.clave === 'gastos_fijos_hora') params.gastosFijosHora = Number(p.valor);
+                if (p.clave === 'camioneta_hora') params.camionetaHora = Number(p.valor);
+                if (p.clave === 'utilidad') params.utilidad = Number(p.valor);
+                if (p.clave === 'credito') params.credito = Number(p.valor);
+                if (p.clave === 'iva') params.iva = Number(p.valor);
+            });
+            return params;
+        } catch (e) {
+            console.warn('[Ventas] Error cargando parámetros:', e);
+            return tabuladorTaller.variables;
+        }
+    }
+
+    /** Carga gastos fijos desde gastos_fijos */
+    async function _cargarGastosFijos() {
+        try {
+            const { data, error } = await window.supabase
+                .from('gastos_fijos')
+                .select('id, nombre, monto, activo')
+                .eq('activo', true)
+                .order('nombre');
+            if (error || !data) return [];
+            return data.filter(g => g.nombre && g.monto !== null);
+        } catch (e) {
+            console.warn('[Ventas] Error cargando gastos fijos:', e);
+            return [];
+        }
+    }
+
+    /** Carga clientes tabulador desde clientes_tabulador */
+    async function _cargarClientesTabulador() {
+        try {
+            const { data, error } = await window.supabase
+                .from('clientes_tabulador')
+                .select('nombre_cliente, km, horas_viaje')
+                .order('nombre_cliente');
+            if (error || !data) return [];
+            return data.map(c => ({
+                nombre: c.nombre_cliente,
+                km: Number(c.km) || 0,
+                horas: Number(c.horas_viaje) || 0
+            }));
+        } catch (e) {
+            console.warn('[Ventas] Error cargando clientes:', e);
+            return [];
+        }
+    }
+
+    /** Abre modal para editar gastos fijos y parámetros */
+    async function _abrirEditorCostos() {
+        const [parametros, gastosFijos, clientes] = await Promise.all([
+            _cargarParametrosCostos(),
+            _cargarGastosFijos(),
+            _cargarClientesTabulador()
+        ]);
+
+        const totalGastosFijos = gastosFijos.reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
+        const gastoFijoHora = (totalGastosFijos / 160).toFixed(2); // 160 hrs/mes
+
+        const modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.innerHTML = `
+            <div class="modal-backdrop"></div>
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header" style="background: linear-gradient(135deg, var(--c-ventas), #059669); color: white;">
+                        <h3><i class="fas fa-calculator"></i> Configuración de Costos</h3>
+                        <button type="button" class="btn-close" style="filter: brightness(0) invert(1);" onclick="this.closest('.modal').remove()"></button>
+                    </div>
+                    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                        <div style="display: grid; gap: 24px;">
+                            <!-- PARÁMETROS -->
+                            <div>
+                                <h4 style="color: var(--c-ventas); margin-bottom: 12px; font-size: 16px;">
+                                    <i class="fas fa-cog"></i> Parámetros de Costos
+                                </h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                                    <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px;">
+                                        <label style="font-size: 12px; color: var(--text-secondary);">Gasolina ($/L)</label>
+                                        <input type="number" id="paramGasolina" step="0.01" value="${parametros.gasolina}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="gasolina">
+                                    </div>
+                                    <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px;">
+                                        <label style="font-size: 12px; color: var(--text-secondary);">Rendimiento (km/L)</label>
+                                        <input type="number" id="paramRendimiento" step="0.1" value="${parametros.rendimiento}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="rendimiento">
+                                    </div>
+                                    <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px;">
+                                        <label style="font-size: 12px; color: var(--text-secondary);">Costo Técnico ($/hr)</label>
+                                        <input type="number" id="paramCostoTecnico" step="0.01" value="${parametros.costoTecnico}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="costo_tecnico">
+                                    </div>
+                                    <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px;">
+                                        <label style="font-size: 12px; color: var(--text-secondary);">Camioneta ($/hr)</label>
+                                        <input type="number" id="paramCamioneta" step="0.01" value="${parametros.camionetaHora}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="camioneta_hora">
+                                    </div>
+                                    <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px;">
+                                        <label style="font-size: 12px; color: var(--text-secondary);">Utilidad (%)</label>
+                                        <input type="number" id="paramUtilidad" step="0.1" value="${parametros.utilidad}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="utilidad">
+                                    </div>
+                                    <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px;">
+                                        <label style="font-size: 12px; color: var(--text-secondary);">Crédito (%)</label>
+                                        <input type="number" id="paramCredito" step="0.1" value="${parametros.credito}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="credito">
+                                    </div>
+                                    <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px;">
+                                        <label style="font-size: 12px; color: var(--text-secondary);">IVA (%)</label>
+                                        <input type="number" id="paramIva" step="0.1" value="${parametros.iva}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="iva">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- GASTOS FIJOS -->
+                            <div>
+                                <h4 style="color: var(--c-ventas); margin-bottom: 12px; font-size: 16px;">
+                                    <i class="fas fa-file-invoice-dollar"></i> Gastos Fijos Mensuales
+                                    <span style="float: right; font-size: 12px; color: var(--text-muted);">Total: $${totalGastosFijos.toFixed(2)} → $${gastoFijoHora}/hr</span>
+                                </h4>
+                                <table class="tabla-dinamica" style="width: 100%; font-size: 13px;">
+                                    <thead>
+                                        <tr>
+                                            <th>Concepto</th>
+                                            <th style="width: 120px;">Monto Mensual</th>
+                                            <th style="width: 80px;">Activo</th>
+                                            <th style="width: 60px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="gastosFijosBody">
+                                        ${gastosFijos.map(g => `
+                                            <tr data-id="${g.id}">
+                                                <td><input type="text" value="${g.nombre}" class="gasto-nombre" style="width: 100%; padding: 6px;"></td>
+                                                <td><input type="number" value="${g.monto}" step="0.01" class="gasto-monto" style="width: 100%; padding: 6px;"></td>
+                                                <td><input type="checkbox" class="gasto-activo" ${g.activo ? 'checked' : ''}></td>
+                                                <td><button class="btn-remove btn-sm" onclick="ventasModule._eliminarGastoFijo('${g.id}', this)"><i class="fas fa-trash"></i></button></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                                <button class="btn btn-sm btn-primary" onclick="ventasModule._agregarGastoFijo()" style="margin-top: 8px;">
+                                    <i class="fas fa-plus"></i> Agregar Gasto
+                                </button>
+                            </div>
+
+                            <!-- CLIENTES TABULADOR -->
+                            <div>
+                                <h4 style="color: var(--c-ventas); margin-bottom: 12px; font-size: 16px;">
+                                    <i class="fas fa-map-marker-alt"></i> Clientes (Viáticos)
+                                </h4>
+                                <div style="max-height: 200px; overflow-y: auto;">
+                                    <table class="tabla-dinamica" style="width: 100%; font-size: 13px;">
+                                        <thead>
+                                            <tr>
+                                                <th>Cliente</th>
+                                                <th style="width: 80px;">KM</th>
+                                                <th style="width: 80px;">Horas</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${clientes.map(c => `
+                                                <tr>
+                                                    <td>${c.nombre}</td>
+                                                    <td>${c.km}</td>
+                                                    <td>${c.horas}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">
+                                    * Para editar clientes, ve al módulo de Contactos
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="ventasModule._guardarConfiguracionCostos()">
+                            <i class="fas fa-save"></i> Guardar Cambios
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    async function _agregarGastoFijo() {
+        const tbody = document.getElementById('gastosFijosBody');
+        if (!tbody) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="text" placeholder="Nuevo concepto" class="gasto-nombre" style="width: 100%; padding: 6px;"></td>
+            <td><input type="number" value="0" step="0.01" class="gasto-monto" style="width: 100%; padding: 6px;"></td>
+            <td><input type="checkbox" class="gasto-activo" checked></td>
+            <td><button class="btn-remove btn-sm" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    async function _eliminarGastoFijo(id, btn) {
+        if (!confirm('¿Eliminar este gasto fijo?')) return;
+        try {
+            // Marcar como inactivo en lugar de eliminar (soft delete)
+            const { error } = await window.supabase.from('gastos_fijos').update({ activo: false }).eq('id', id);
+            if (error) throw error;
+            btn.closest('tr').remove();
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    async function _guardarConfiguracionCostos() {
+        // Guardar parámetros
+        const parametros = {};
+        ['gasolina', 'rendimiento', 'costo_tecnico', 'camioneta_hora', 'utilidad', 'credito', 'iva'].forEach(key => {
+            const input = document.querySelector(`[data-param="${key}"]`);
+            if (input) parametros[key] = parseFloat(input.value) || 0;
+        });
+
+        // Actualizar parametros_costos usando upsert directo
+        for (const [clave, valor] of Object.entries(parametros)) {
+            const descripcion = 'Actualizado desde calculadora';
+            await window.supabase
+                .from('parametros_costos')
+                .upsert({ clave, valor, descripcion }, { onConflict: 'clave' })
+                .eq('clave', clave);
+        }
+
+        // Guardar gastos fijos
+        const rows = document.querySelectorAll('#gastosFijosBody tr');
+        for (const tr of rows) {
+            const id = tr.dataset.id;
+            const nombre = tr.querySelector('.gasto-nombre')?.value;
+            const monto = parseFloat(tr.querySelector('.gasto-monto')?.value) || 0;
+            const activo = tr.querySelector('.gasto-activo')?.checked;
+
+            if (id) {
+                await window.supabase.from('gastos_fijos').update({ nombre, monto, activo }).eq('id', id);
+            } else {
+                await window.supabase.from('gastos_fijos').insert({ nombre, monto, activo });
+            }
+        }
+
+        // Actualizar CostosEngine con nuevos valores
+        const nuevosParametros = await _cargarParametrosCostos();
+        CostosEngine.applyConfig(nuevosParametros);
+
+        alert('Configuración guardada. Los cálculos se actualizarán automáticamente.');
+        document.querySelector('.modal.active')?.remove();
+
+        // Recalcular si hay calculadora abierta
+        _recalcular();
     }
 
     function _recalcular() {
@@ -1733,7 +2011,7 @@ const VentasModule = (function() {
             alert('No se pudo abrir el wizard. Recarga la página.');
             return;
         }
-        _renderWizardPaso(1);
+        await _renderWizardPaso(1);
         modal.classList.add('active');
         _bindWizardEvents();
     }
@@ -1747,7 +2025,7 @@ const VentasModule = (function() {
         };
     }
 
-    function _renderWizardPaso(paso) {
+    async function _renderWizardPaso(paso) {
         wizardPaso = paso;
         var titles = _getWizardTitles();
         var titleEl = document.getElementById('wizardModalTitle');
@@ -1758,6 +2036,17 @@ const VentasModule = (function() {
         var body = document.getElementById('calculadoraBody');
         if (!body) return;
         if (paso === 1) {
+            // Recargar contactos desde BD para tener lista actualizada
+            if (window.supabase) {
+                try {
+                    const { data } = await window.supabase
+                        .from('contactos')
+                        .select('*')
+                        .eq('tipo', 'client')
+                        .order('nombre');
+                    if (data) contactos = data;
+                } catch (e) { console.warn('[Ventas] Error recargando contactos:', e); }
+            }
             body.innerHTML = _renderWizardPaso1();
             _attachWizardPaso1();
         } else if (paso === 2) {
@@ -2046,12 +2335,12 @@ const VentasModule = (function() {
             };
         }
         if (wizardPaso === 4) return;
-        _renderWizardPaso(wizardPaso + 1);
+        (async () => { await _renderWizardPaso(wizardPaso + 1); })();
     }
 
     function _wizardAnterior() {
         if (wizardPaso <= 1) return;
-        _renderWizardPaso(wizardPaso - 1);
+        (async () => { await _renderWizardPaso(wizardPaso - 1); })();
     }
 
     function _bindWizardEvents() {
@@ -2441,6 +2730,10 @@ const VentasModule = (function() {
         _abrirRegistroViaticos,
         _editarViaticosCliente,
         _guardarViaticosCliente,
+        _abrirEditorCostos,
+        _agregarGastoFijo,
+        _eliminarGastoFijo,
+        _guardarConfiguracionCostos,
         _autorizarCotizacion,
         _rechazarCotizacion,
         _editarVenta,

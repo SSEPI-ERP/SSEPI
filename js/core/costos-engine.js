@@ -107,10 +107,38 @@ export const CostosEngine = (function() {
         Object.assign(CONFIG, partial);
     }
 
+    /** Carga configuración desde parametros_costos en BD */
+    async function loadFromDatabase() {
+        try {
+            if (!window.supabase) return CONFIG;
+            const { data, error } = await window.supabase
+                .from('parametros_costos')
+                .select('clave, valor');
+            if (error || !data) return CONFIG;
+
+            const params = {};
+            data.forEach(p => {
+                const key = p.clave === 'costo_tecnico' ? 'costoTecnico' :
+                           p.clave === 'gastos_fijos_hora' ? 'gastosFijosHora' :
+                           p.clave === 'camioneta_hora' ? 'camionetaHora' :
+                           p.clave;
+                if (key in CONFIG) {
+                    params[key] = Number(p.valor);
+                }
+            });
+            applyConfig(params);
+            return CONFIG;
+        } catch (e) {
+            console.warn('[CostosEngine] Error cargando desde BD:', e);
+            return CONFIG;
+        }
+    }
+
     // ==================== API PÚBLICA ====================
     return {
         CONFIG,
         applyConfig,
+        loadFromDatabase,
         calcularLitros,
         calcularCostoGasolina,
         calcularCostoTrasladoTecnico,
