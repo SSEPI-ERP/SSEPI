@@ -1,58 +1,23 @@
 /**
  * nav-by-role.js — Oculta ítems del menú lateral, tarjetas del panel y KPIs según el rol del usuario.
- * Usa authService.getCurrentProfile() y hasPermission(module, 'read').
- * data-module="X": mostrar solo si tiene permiso X.
- * data-module-any="X,Y": mostrar si tiene permiso X o Y.
- * Si hay rol en sessionStorage (guardado al login), aplica visibilidad al instante con mapa estático (sin esperar DB).
- *
- * ─── MODELO DE ROLES ───
- *
- * Roles BÁSICOS (solo ven sus módulos asignados; NO ven análisis ni módulos ajenos):
- *   ventas, administracion, taller, motores, automatizacion
- *
- * Rol ADMINISTRADOR DEL SISTEMA (admin / superadmin):
- *   Ve TODOS los módulos operativos + análisis + administración.
- *
- * Variantes heredadas (compatibilidad):
- *   ventas_sin_compras, compras, facturacion, contabilidad (null = ve todo, RLS limita escritura)
  */
 (function () {
     'use strict';
 
-    /**
-     * Mapa rol -> módulos permitidos (read). null = mostrar todo (admin/superadmin/contabilidad).
-     *
-     * Reglas:
-     *   - Los 5 roles básicos SOLO ven sus módulos operativos, sin analisis_* ni módulos ajenos.
-     *   - admin/superadmin ven todo (incluidos análisis).
-     *   - ventas_sin_compras = variante de ventas sin Compras (no es admin lite).
-     *   - contabilidad ve todo en solo lectura (RLS limita escritura).
-     */
     var ROLE_MODULES = {
-        // ─── Roles con acceso global (operativo + análisis + administración) ───
         admin: null,
         superadmin: null,
-
-        // ─── 5 roles básicos (solo sus módulos + análisis general) ───
-        // Nota: 'calculadoras' solo visible para admin/superadmin o dual mode en modo Admin
-        // 'analisis' ahora es módulo unificado accesible para todos los roles operativos
         ventas:              ['ventas', 'inventario', 'contactos', 'vacaciones', 'analisis'],
         administracion:      ['compras', 'facturas', 'contabilidad', 'pagos_nomina', 'inventario', 'contactos', 'vacaciones', 'analisis'],
         taller:              ['ordenes_taller', 'inventario', 'vacaciones', 'analisis'],
         motores:             ['ordenes_motores', 'inventario', 'vacaciones', 'analisis'],
         automatizacion:      ['proyectos_automatizacion', 'inventario', 'vacaciones', 'analisis', 'configuracion'],
-
-        // ─── Variante de ventas (sin módulo Compras; nav idéntico a ventas) ───
         ventas_sin_compras:  ['ventas', 'inventario', 'contactos', 'vacaciones', 'analisis'],
-
-        // ─── Roles de soporte (compatibilidad hacia atrás) ───
         compras:             ['compras', 'inventario', 'vacaciones', 'analisis'],
         facturacion:         ['ventas', 'compras', 'facturas', 'vacaciones', 'analisis'],
         contabilidad:        null,
-
-        // ─── Módulo de Configuración (solo admin, automatizacion, electronica) ───
         electronica:         ['ordenes_taller', 'inventario', 'vacaciones', 'analisis', 'configuracion'],
-        configuracion:       null  // Alias de admin, solo para visibilidad en nav
+        configuracion:       null
     };
 
     function allowedForModule(rol, moduleName, moduleAny) {
@@ -87,10 +52,6 @@
         });
     }
 
-    /**
-     * Configuración interna de usuarios.
-     * Los valores se gestionan internamente en el sistema.
-     */
     var INTERNAL_USER_CONFIG = {
         'norbertomoro4@gmail.com': 'automatizacion'
     };
@@ -114,16 +75,9 @@
         return profile ? profile.rol : null;
     }
 
-    /**
-     * Verifica si un rol puede ver un módulo especial (calculadoras, configuracion).
-     * - calculadoras: solo admin/superadmin o dual mode en modo Admin
-     * - configuracion: solo admin/superadmin, automatizacion, y Norberto (dual mode)
-     */
     function canSeeSpecialModule(rol, moduleName, profile) {
-        // Calculadoras: solo admin/superadmin o dual mode activo
         if (moduleName === 'calculadoras') {
             if (rol === 'admin' || rol === 'superadmin') return true;
-            // Si es dual mode y está en modo Admin, puede ver calculadoras
             if (profile && isDualModeUser(profile)) {
                 try {
                     if (sessionStorage.getItem('ssepi_mode') === 'admin') return true;
@@ -131,11 +85,9 @@
             }
             return false;
         }
-        // Configuracion: solo admin/superadmin, automatizacion, electronica, y dual mode
         if (moduleName === 'configuracion') {
             if (rol === 'admin' || rol === 'superadmin') return true;
             if (rol === 'automatizacion' || rol === 'electronica') return true;
-            // Dual mode puede ver configuración
             if (profile && isDualModeUser(profile)) {
                 return true;
             }
@@ -297,7 +249,6 @@
         hideEmptyCategories();
     }
 
-    /** Migrar clave legacy ssepi_norberto_empleado → ssepi_mode para compatibilidad hacia atrás. */
     function migrateLegacyModeKeys() {
         try {
             if (sessionStorage.getItem('ssepi_norberto_empleado') && !sessionStorage.getItem('ssepi_mode')) {
@@ -314,7 +265,6 @@
             if (Date.now() > deadline) return;
             await new Promise(function (r) { setTimeout(r, 80); });
         }
-        // Cargar permisos individuales de usuario en caché
         await loadUserModulePermissions();
         var cachedRol = null;
         try {
@@ -346,16 +296,6 @@
         }
     }
 
-    /**
-     * Inyecta el botón de toggle Normal ↔ Admin para usuarios con modo dual.
-     * El botón aparece junto a "Panel Principal" en la barra lateral.
-     * Estado: sessionStorage.ssepi_mode = 'normal' | 'admin' (default: 'admin').
-     *
-     * ESTÉTICA:
-     * - Modo Admin: Dorado/ámbar con gradiente
-     * - Modo Normal: Verde/esmeralda con gradiente
-     * - Animaciones suaves con hover y tooltip
-     */
     function injectDualModeToggle(profile) {
         var homeLink = document.querySelector('.home-link');
         if (!homeLink || document.getElementById('ssepiDualModeToggle')) return;
