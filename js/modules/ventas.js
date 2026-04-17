@@ -1152,68 +1152,37 @@ const VentasModule = (function() {
         const camionetaBase = CostosEngine.calcularCostoCamioneta(cliente.horas);
 
         return `
-            <div class="calculadora-section">
-                <div class="calculadora-titulo" style="background: var(--c-ventas, #10b981); color: white;">
-                    <i class="fas fa-truck"></i> Datos Logísticos (Viáticos y Traslados)
+            <div class="calculadora-section" style="background: linear-gradient(135deg, var(--c-ventas, #10b981), #059669); padding: 24px; border-radius: 12px; text-align: center;">
+                <div style="color: white; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">
+                    <i class="fas fa-calculator"></i> Costo Final del Proyecto
                 </div>
-                <p style="color:var(--text-muted); font-size:12px; margin-bottom:12px;">
-                    Viáticos y traslados según kilómetros del cliente. Horas de viaje para costo técnico.
+                <div style="color: white; font-size: 42px; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                    $${totalFinal.toFixed(2)}
+                </div>
+                <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin-top: 12px;">
+                    Incluye viáticos, mano de obra, refacciones e IVA
                 </p>
-                <div class="info-logistica" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
-                    <label style="display:flex;align-items:center;gap:6px;">KM
-                        <input type="number" id="inpLogisticaKm" min="0" step="0.1" value="${Number(cliente.km) || 0}" style="width:72px;padding:4px;" onchange="ventasModule._refreshLogisticaFromInputs()" oninput="ventasModule._refreshLogisticaFromInputs()">
-                    </label>
-                    <div>GASOLINA: <strong id="lblLogisticaGasolina">$${gasolina.toFixed(2)}</strong></div>
-                    <div>TRASLADO: <strong id="lblLogisticaTraslado">$${traslado.toFixed(2)}</strong></div>
-                    <div>GAS+VENTAS: <strong id="lblLogisticaGasPlus">$${gasolinaMasTraslado.toFixed(2)}</strong></div>
-                    <label style="display:flex;align-items:center;gap:6px;">HRS VIAJE
-                        <input type="number" id="inpLogisticaHoras" min="0" step="0.5" value="${Number(cliente.horas) || 0}" style="width:72px;padding:4px;" onchange="ventasModule._refreshLogisticaFromInputs()" oninput="ventasModule._refreshLogisticaFromInputs()">
-                    </label>
-                </div>
             </div>
-            <div class="calculadora-section">
+            <div class="calculadora-section" style="margin-top: 20px;">
                 <div class="calculadora-titulo" style="background: var(--c-ventas, #10b981); color: white;">
                     <i class="fas fa-boxes"></i> Refacciones y Componentes
                 </div>
                 <p style="color:var(--text-muted); font-size:12px; margin-bottom:12px;">
-                    Agrega refacciones desde el Inventario Maestro o componentes manualmente. Horas de ingeniería abajo.
+                    Agrega refacciones desde el Inventario Maestro o componentes manualmente.
                 </p>
                 <table class="componentes-table">
-                    <thead><tr><th>Componente</th><th>Cantidad</th><th>Costo Unit.</th><th>Subtotal</th><th></th></tr></thead>
+                    <thead><tr><th>Componente</th><th>Cantidad</th><th>Subtotal</th><th></th></tr></thead>
                     <tbody id="componentesTableBody"></tbody>
                 </table>
-                <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:10px; margin-top:15px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:10px; margin-top:15px;">
                     <input type="text" id="compNombre" placeholder="Componente" style="padding:8px;">
                     <input type="number" id="compCantidad" value="1" min="1" style="padding:8px;">
-                    <input type="number" id="compCosto" value="0" step="0.01" style="padding:8px;">
                     <button class="btn btn-sm btn-primary" onclick="ventasModule._agregarComponente()">Agregar</button>
                 </div>
             </div>
-            <div class="calculadora-section">
-                <div class="calculadora-titulo" style="background: var(--c-ventas, #10b981); color: white;">
-                    <i class="fas fa-chart-line"></i> Cálculo de Costos
-                </div>
-                <div class="costos-grid">
-                    <div class="costo-item"><div class="costo-label">Gasolina + Ventas</div><div class="costo-value" id="valGasPlusSales">$${gasolinaMasTraslado.toFixed(2)}</div></div>
-                    <div class="costo-item"><div class="costo-label">Mano de Obra</div><div class="costo-value"><input type="number" id="inpTechHours" value="${horasEstimadas}" onchange="ventasModule._recalcular()"></div></div>
-                    <div class="costo-item"><div class="costo-label">Gastos Fijos</div><div class="costo-value" id="valFixedCosts">$${gastosFijosBase.toFixed(2)}</div></div>
-                    <div class="costo-item"><div class="costo-label">Refacciones</div><div class="costo-value"><input type="number" id="inpParts" value="0" onchange="ventasModule._recalcular()"></div></div>
-                    <div class="costo-item"><div class="costo-label">Camioneta</div><div class="costo-value" id="valTruck">$${camionetaBase.toFixed(2)}</div></div>
-                </div>
-                <div style="background:#f5f5f5; padding:20px; border-radius:8px; margin-top:20px;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>GASTOS GENERALES</strong></span><span id="resGeneralExpenses">$0.00</span></div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; color:var(--c-ventas);"><span><strong>UTILIDAD ${CostosEngine.CONFIG.utilidad}%</strong></span><span id="resUtility">$0.00</span></div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>CRÉDITO ${CostosEngine.CONFIG.credito}%</strong></span><span id="resCredit">$0.00</span></div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>IVA ${CostosEngine.CONFIG.iva}%</strong></span><span id="resIVA">$0.00</span></div>
-                </div>
-                <div class="total-box" style="background: linear-gradient(135deg, var(--c-ventas, #10b981), #059669); color: white; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: center;">
-                    <div class="label" style="font-size: 14px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">TOTAL CON IVA</div>
-                    <div class="value" id="resTotal" style="font-size: 36px; font-weight: 800;">$0.00</div>
-                </div>
-                <button type="button" class="btn btn-sm btn-primary" onclick="ventasModule._abrirEditorCostos()" style="margin-top: 16px; width: 100%;">
-                    <i class="fas fa-cog"></i> Ver/Editar Tablas de Costos y Gastos Fijos
-                </button>
-            </div>
+            <button type="button" class="btn btn-sm btn-primary" onclick="ventasModule._abrirEditorCostos()" style="margin-top: 16px; width: 100%; background: linear-gradient(135deg, #6b7280, #4b5563);">
+                <i class="fas fa-table"></i> Ver Tablas de Costos y Gastos Fijos
+            </button>
         `;
     }
 
@@ -2098,13 +2067,7 @@ const VentasModule = (function() {
 
         return `
             <div class="calculadora-section">
-                <div class="calculadora-titulo"><i class="fas fa-clipboard-list"></i> Paso 1: Registro y Generación de Orden</div>
-                <p style="color:var(--text-secondary); margin-bottom:16px;">
-                    <i class="fas fa-info-circle"></i> Registra los datos del cliente y producto. Al continuar se genera la orden en Taller/Motores/Automatización para diagnóstico.
-                </p>
-                <div class="info-box" style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px; margin-bottom: 16px; border-radius: 4px;">
-                    <strong>Flujo:</strong> Este registro crea la orden → Taller diagnostica → Compras revisa materiales → Regresa a Ventas para cotizar.
-                </div>
+                <div class="calculadora-titulo"><i class="fas fa-clipboard-list"></i> Paso 1: Datos del Cliente</div>
                 <p id="wizardPaso1Error" style="display:none; font-size:13px; color:#c62828; margin:0 0 12px 0;" role="alert"></p>
                 <div class="editor-item" style="margin-bottom:14px;">
                     <p id="wizardFolioAyuda" style="font-size:13px; color:var(--text-secondary); margin:0;">Elige departamento para generar orden.</p>

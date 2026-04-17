@@ -207,10 +207,6 @@
                 </button>
             </div>
 
-            <div style="margin-top: 16px; padding: 12px; background: var(--bg-hover); border-radius: 6px; font-size: 13px; color: var(--text-secondary);">
-                <i class="fas fa-info-circle"></i>
-                <strong>Nota:</strong> Los módulos marcados con <span style="color: #f59e0b;">⚠️</span> requieren atención (ej. calculadoras solo para admins).
-            </div>
         </section>
 
         <!-- SECCIÓN 5: IMPORTAR/EXPORTAR CSV -->
@@ -606,7 +602,7 @@
         // ================================================
         const MODULOS_PARA_USUARIOS = [
             { id: 'ventas', nombre: 'Ventas' },
-            { id: 'ordenes_taller', nombre: 'Laboratorio (Taller)' },
+            { id: 'ordenes_taller', nombre: 'Taller' },
             { id: 'ordenes_motores', nombre: 'Motores' },
             { id: 'proyectos_automatizacion', nombre: 'Automatización' },
             { id: 'compras', nombre: 'Compras' },
@@ -616,8 +612,8 @@
             { id: 'pagos_nomina', nombre: 'Nómina' },
             { id: 'contactos', nombre: 'Contactos' },
             { id: 'vacaciones', nombre: 'Vacaciones' },
-            { id: 'calculadoras', nombre: 'Calculadoras', especial: true },
-            { id: 'configuracion', nombre: 'Configuración', especial: true }
+            { id: 'calculadoras', nombre: 'Calculadoras' },
+            { id: 'configuracion', nombre: 'Configuración' }
         ];
 
         let usuariosLista = [];
@@ -682,14 +678,11 @@
             tbody.innerHTML = MODULOS_PARA_USUARIOS.map(m => {
                 const enabled = permisosUsuarioActuales.has(m.id)
                     ? permisosUsuarioActuales.get(m.id)
-                    : esAdmin; // Por defecto, admin tiene todos activos
-
-                const warningIcon = m.especial ? ' ⚠️' : '';
-                const warningNote = m.especial ? ' (Requiere rol admin)' : '';
+                    : esAdmin;
 
                 return `
                     <tr>
-                        <td>${m.nombre}${warningIcon}</td>
+                        <td>${m.nombre}</td>
                         <td style="text-align: center;">
                             <label class="switch">
                                 <input type="checkbox" data-module="${m.id}" ${enabled ? 'checked' : ''} ${esAdmin ? 'disabled' : ''}>
@@ -697,7 +690,7 @@
                             </label>
                         </td>
                         <td style="text-align: center; color: var(--text-secondary); font-size: 12px;">
-                            ${esAdmin ? 'Admin (todos activos)' : (enabled ? 'Activo' : 'Inactivo')}${warningNote}
+                            ${enabled ? 'Activo' : 'Inactivo'}
                         </td>
                     </tr>
                 `;
