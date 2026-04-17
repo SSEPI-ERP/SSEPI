@@ -165,29 +165,6 @@
             </div>
         </section>
 
-        <!-- SECCIÓN 3: MODO DUAL -->
-        <section class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 24px;">
-            <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-user-shield" style="color: var(--c-ventas);"></i>
-                Modo Dual (Normal ↔ Admin)
-            </h2>
-            <p style="color: var(--text-secondary); margin-bottom: 16px;">
-                Usuarios con modo dual pueden alternar entre su rol base (Normal) y admin (ve todo).
-                Actualmente configurado en <code style="background: var(--bg-hover); padding: 2px 6px; border-radius: 4px;">js/core/nav-by-role.js</code>
-            </p>
-
-            <div id="dualModeContainer">
-                <p style="color: var(--text-muted); font-size: 13px;">
-                    <strong>Nota:</strong> Para agregar usuarios con modo dual, editar el mapa <code>DUAL_MODE_USERS</code> en <code>nav-by-role.js</code>.
-                    En el futuro, esto se migrará a la BD (campos <code>users.modo_dual</code> y <code>users.rol_normal</code>).
-                </p>
-                <pre style="background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 6px; font-size: 12px; overflow-x: auto;">
-<code style="font-family: 'Cascadia Code', 'Fira Code', monospace;">var DUAL_MODE_USERS = {
-  'norbertomoro4@gmail.com': 'automatizacion'
-  // Agregar más: 'email@ejemplo.com': 'rol_base'
-};</code></pre>
-            </div>
-        </section>
 
         <!-- SECCIÓN 4: PERMISOS POR USUARIO (SWITCHES) -->
         <section id="modulos-usuario" class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px;">
@@ -433,7 +410,7 @@
             try {
                 const { data, error } = await window.supabase
                     .from('usuarios')
-                    .select('auth_user_id, email, nombre, rol, telefono, created_at');
+                    .select('auth_user_id, email, nombre, rol, telefono');
 
                 if (error) throw error;
 
