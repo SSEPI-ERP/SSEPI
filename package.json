@@ -36,6 +36,7 @@
     "recharts": "^2.15.2",
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.6.0",
-    "terser": "^5.46.1"
+    "terser": "^5.46.1",
+    "javascript-obfuscator": "^5.4.1"
   }
 }
