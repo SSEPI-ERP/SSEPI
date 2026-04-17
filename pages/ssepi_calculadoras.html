@@ -155,6 +155,32 @@
         </div>
 
         <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-map-marker-alt"></i> Tabulador de Viáticos (Clientes por KM)</h3>
+            <p class="form-hint">Agrega clientes con KM de distancia y horas de viaje. Los costos se calculan automáticamente usando: Gasolina $24.50/L, Rendimiento 9.5 km/L, Costo técnico $104.16/hr.</p>
+            <div class="filtros-bar" style="margin-bottom:10px">
+                <button type="button" class="btn-ssepi btn-ventas" id="btnNuevoTabuladorCliente"><i class="fas fa-plus"></i> Agregar cliente al tabulador</button>
+            </div>
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaClientesTabulador">
+                    <thead>
+                        <tr>
+                            <th>Empresa</th>
+                            <th style="text-align: right;">KM (ida)</th>
+                            <th style="text-align: right;">Hrs viaje</th>
+                            <th style="text-align: right;">$ Gasolina</th>
+                            <th style="text-align: right;">$ Técnico</th>
+                            <th style="text-align: right;">TOTAL</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaClientesTabuladorBody">
+                        <tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-secondary);">Cargando tabulador...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-section">
             <h3 class="section-title-form"><i class="fas fa-table"></i> Hoja tipo Excel (por calculadora)</h3>
             <p class="form-hint">Filas con <strong>concepto</strong>, texto de <strong>fórmula</strong> (referencia / Excel) y <strong>valor</strong> numérico. «Solo valor» ignora la fórmula a efectos de lectura en pantalla. Importa desde Excel si la hoja incluye columnas concepto, fórmula/formula y valor.</p>
             <div class="filtros-bar" style="margin-bottom:10px;flex-wrap:wrap;gap:8px">
@@ -309,7 +335,8 @@
                     <i class="fas fa-map-marker-alt"></i> Tablas de Viáticos por Departamento
                 </h3>
                 <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
-                    Datos de clientes_tabulador: KM, litros, gasolina ($24.50/L), rendimiento (9.5 km/L), horas de viaje, costo técnico ($104.16/hr)
+                    <strong>Fórmulas automáticas (CostosEngine):</strong> Litros = KM ÷ 9.5 | $ Gasolina = Litros × $24.50 | $ Técnico = Hrs × $104.16 | Total = Gasolina + Técnico
+                    <br>Agrega clientes en la sección «Tabulador de Viáticos» para que aparezcan en estas tablas.
                 </p>
 
                 <!-- T1: Laboratorio -->
@@ -500,6 +527,39 @@
                 <button type="button" class="btn-ssepi" id="modalClienteGuardar"><i class="fas fa-save"></i> Guardar</button>
                 <button type="button" class="btn-ssepi btn-danger" id="modalClienteEliminar"><i class="fas fa-trash"></i> Eliminar</button>
                 <button type="button" class="btn-ssepi btn-secondary" id="modalClienteCancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tabulador Cliente (clientes_tabulador) -->
+    <div class="modal-backdrop calc-modal" id="modalTabuladorCliente" aria-hidden="true">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h4 id="modalTabuladorTitle">Agregar cliente al tabulador</h4>
+                <button type="button" class="modal-close" id="modalTabuladorClose" aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="modalTabuladorId">
+                <div class="form-group">
+                    <label for="modalTabuladorNombre">Empresa / Cliente</label>
+                    <input type="text" id="modalTabuladorNombre" class="form-control" placeholder="Nombre del cliente">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label for="modalTabuladorKm">Distancia (KM)</label>
+                        <input type="number" id="modalTabuladorKm" class="form-control" step="0.1" min="0" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="modalTabuladorHoras">Hrs viaje (ida)</label>
+                        <input type="number" id="modalTabuladorHoras" class="form-control" step="0.25" min="0" placeholder="0">
+                    </div>
+                </div>
+                <div id="tabuladorPreview" style="margin-top: 16px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi" id="modalTabuladorGuardar"><i class="fas fa-save"></i> Guardar</button>
+                <button type="button" class="btn-ssepi btn-danger" id="modalTabuladorEliminar"><i class="fas fa-trash"></i> Eliminar</button>
+                <button type="button" class="btn-ssepi btn-secondary" id="modalTabuladorCancelar">Cancelar</button>
             </div>
         </div>
     </div>

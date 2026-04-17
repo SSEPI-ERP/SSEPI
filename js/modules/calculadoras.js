@@ -242,31 +242,57 @@
             return;
         }
 
-        // Parámetros de costos
-        var gasolina = 24.50;
-        var rendimiento = 9.5;
-        var costoHoraTecnico = 104.16;
-
         tbody.innerHTML = clientes.map(function(c) {
             var km = Number(c.km) || 0;
             var horas = Number(c.horas_viaje) || 0;
-            var litros = km > 0 ? km / rendimiento : 0;
-            var costoGasolina = litros * gasolina;
-            var costoHoraTecnicoTotal = horas * costoHoraTecnico;
-            var total = costoGasolina + costoHoraTecnicoTotal;
+
+            // Usar CostosEngine para cálculos consistentes
+            var litros = window.CostosEngine ? window.CostosEngine.calcularLitros(km) : (km > 0 ? km / 9.5 : 0);
+            var costoGasolina = window.CostosEngine ? window.CostosEngine.calcularCostoGasolina(km) : (litros * 24.50);
+            var costoTecnico = window.CostosEngine ? window.CostosEngine.calcularCostoTrasladoTecnico(horas) : (horas * 104.16);
+            var total = costoGasolina + costoTecnico;
 
             return '<tr>' +
                 '<td>' + esc(c.nombre_cliente) + '</td>' +
                 '<td style="text-align: right;">' + km.toFixed(1) + '</td>' +
                 '<td style="text-align: right;">' + (km * 2).toFixed(2) + '</td>' +
                 '<td style="text-align: right;">' + litros.toFixed(2) + '</td>' +
-                '<td style="text-align: right;">$' + gasolina.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + (window.CostosEngine ? window.CostosEngine.CONFIG.gasolina.toFixed(2) : '24.50') + '</td>' +
                 '<td style="text-align: right;">$' + costoGasolina.toFixed(2) + '</td>' +
                 '<td style="text-align: right;">' + horas.toFixed(0) + '</td>' +
-                '<td style="text-align: right;">$' + costoHoraTecnicoTotal.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + costoTecnico.toFixed(2) + '</td>' +
                 '<td style="text-align: right; font-weight: bold;">$' + total.toFixed(2) + '</td>' +
                 '</tr>';
         }).join('');
+    }
+
+    // Renderizar tabla de clientes del tabulador (para gestión)
+    function renderClientesTabuladorTabla() {
+        var tbody = document.getElementById('tablaClientesTabuladorBody');
+        if (!tbody) return;
+
+        if (!clientesTabulador || clientesTabulador.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No hay clientes en el tabulador</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = clientesTabulador.map(function(c) {
+            return '<tr>' +
+                '<td>' + esc(c.nombre_cliente) + '</td>' +
+                '<td style="text-align: right;">' + (c.km || 0).toFixed(1) + '</td>' +
+                '<td style="text-align: right;">' + (c.horas_viaje || 0).toFixed(0) + '</td>' +
+                '<td style="text-align: right;">$' + (window.CostosEngine ? window.CostosEngine.calcularCostoGasolina(c.km).toFixed(2) : '0.00') + '</td>' +
+                '<td style="text-align: right;">$' + (window.CostosEngine ? window.CostosEngine.calcularCostoTrasladoTecnico(c.horas_viaje).toFixed(2) : '0.00') + '</td>' +
+                '<td style="text-align: right; font-weight: bold;">$' + ((window.CostosEngine ? window.CostosEngine.calcularCostoGasolina(c.km) : 0) + (window.CostosEngine ? window.CostosEngine.calcularCostoTrasladoTecnico(c.horas_viaje) : 0)).toFixed(2) + '</td>' +
+                '<td><button type="button" class="btn-ssepi btn-edit" data-tabulador-id="' + esc(c.id) + '"><i class="fas fa-edit"></i> Editar</button></td>' +
+                '</tr>';
+        }).join('');
+
+        tbody.querySelectorAll('[data-tabulador-id]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                openModalTabuladorCliente(btn.getAttribute('data-tabulador-id'));
+            });
+        });
     }
 
     function fillBOMFiltros() {
@@ -705,7 +731,7 @@
         if (modal) { modal.classList.remove('active'); modal.setAttribute('aria-hidden', 'true'); }
     }
 
-    // --- Modal Cliente ---
+    // --- Modal Cliente (calculadora_clientes) ---
     function openModalCliente(id) {
         var title = document.getElementById('modalClienteTitle');
         var modal = document.getElementById('modalCliente');
@@ -734,6 +760,139 @@
         }
         modal.classList.add('active');
         modal.setAttribute('aria-hidden', 'false');
+    }
+
+    // --- Modal Tabulador Cliente (clientes_tabulador) ---
+    function openModalTabuladorCliente(id) {
+        var title = document.getElementById('modalTabuladorTitle');
+        var modal = document.getElementById('modalTabuladorCliente');
+        var idInp = document.getElementById('modalTabuladorId');
+        var nombre = document.getElementById('modalTabuladorNombre');
+        var kmInput = document.getElementById('modalTabuladorKm');
+        var horasInput = document.getElementById('modalTabuladorHoras');
+        var preview = document.getElementById('tabuladorPreview');
+        var delBtn = document.getElementById('modalTabuladorEliminar');
+
+        if (!modal || !idInp) return;
+
+        if (id) {
+            var cl = clientesTabulador.find(function(x) { return x.id === id; });
+            if (!cl) return;
+            title.textContent = 'Editar cliente en tabulador';
+            idInp.value = cl.id;
+            nombre.value = cl.nombre_cliente || '';
+            kmInput.value = cl.km || '';
+            horasInput.value = cl.horas_viaje || '';
+            delBtn.style.display = 'inline-flex';
+        } else {
+            title.textContent = 'Agregar cliente al tabulador';
+            idInp.value = '';
+            nombre.value = '';
+            kmInput.value = '';
+            horasInput.value = '';
+            delBtn.style.display = 'none';
+        }
+
+        // Actualizar preview de cálculos
+        if (preview) {
+            preview.innerHTML = '<p style="color: var(--text-secondary); font-size: 13px;">Ingresa KM para ver cálculos automáticos</p>';
+        }
+
+        // Event listener para cálculos en tiempo real
+        if (kmInput) {
+            kmInput.addEventListener('input', function() {
+                actualizarPreviewTabulador(kmInput, horasInput, preview);
+            });
+        }
+        if (horasInput) {
+            horasInput.addEventListener('input', function() {
+                actualizarPreviewTabulador(kmInput, horasInput, preview);
+            });
+        }
+
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function actualizarPreviewTabulador(kmInput, horasInput, previewEl) {
+        if (!previewEl || !window.CostosEngine) return;
+
+        var km = Number(kmInput.value) || 0;
+        var horas = Number(horasInput.value) || 0;
+
+        var litros = window.CostosEngine.calcularLitros(km);
+        var costoGasolina = window.CostosEngine.calcularCostoGasolina(km);
+        var costoTecnico = window.CostosEngine.calcularCostoTrasladoTecnico(horas);
+        var total = costoGasolina + costoTecnico;
+
+        previewEl.innerHTML = '<div style="background: var(--bg-subtle); padding: 12px; border-radius: 8px; font-size: 13px;">' +
+            '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">' +
+            '<div><strong>KM:</strong> ' + km.toFixed(1) + ' km</div>' +
+            '<div><strong>×2:</strong> ' + (km * 2).toFixed(2) + ' km (ida y vuelta)</div>' +
+            '<div><strong>Litros:</strong> ' + litros.toFixed(2) + ' L</div>' +
+            '<div><strong>$ Gasolina:</strong> $' + costoGasolina.toFixed(2) + '</div>' +
+            '<div><strong>Hrs viaje:</strong> ' + horas.toFixed(0) + ' hrs</div>' +
+            '<div><strong>$ Técnico:</strong> $' + costoTecnico.toFixed(2) + '</div>' +
+            '<div style="grid-column: span 2; text-align: right; font-weight: bold; font-size: 15px; color: var(--c-ventas);"><strong>TOTAL VIÁTICO:</strong> $' + total.toFixed(2) + '</div>' +
+            '</div></div>';
+    }
+
+    function saveModalTabuladorCliente() {
+        var idInp = document.getElementById('modalTabuladorId');
+        var nombre = document.getElementById('modalTabuladorNombre');
+        var kmInput = document.getElementById('modalTabuladorKm');
+        var horasInput = document.getElementById('modalTabuladorHoras');
+
+        var id = (idInp && idInp.value) ? idInp.value.trim() : '';
+        var nom = (nombre && nombre.value) ? nombre.value.trim() : '';
+        var km = Number(kmInput && kmInput.value ? kmInput.value : 0);
+        var horas = Number(horasInput && horasInput.value ? horasInput.value : 0);
+
+        if (!nom) { alert('El nombre del cliente es obligatorio.'); return; }
+
+        var payload = {
+            nombre_cliente: nom,
+            km: km,
+            horas_viaje: horas,
+            actualizado_en: new Date().toISOString()
+        };
+
+        var prom;
+        if (id) {
+            prom = supabase().from('clientes_tabulador').update(payload).eq('id', id);
+        } else {
+            delete payload.actualizado_en;
+            prom = supabase().from('clientes_tabulador').insert(payload);
+        }
+
+        prom.then(function(r) {
+            if (r.error) throw r.error;
+            closeModalTabuladorCliente();
+            loadClientesTabulador().then(function() {
+                renderTabuladorViaticos();
+                renderClientesTabuladorTabla();
+            });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+    }
+
+    function deleteModalTabuladorCliente() {
+        var idInp = document.getElementById('modalTabuladorId');
+        var id = idInp && idInp.value ? idInp.value.trim() : '';
+        if (!id || !confirm('¿Eliminar este cliente del tabulador?')) return;
+
+        supabase().from('clientes_tabulador').delete().eq('id', id).then(function(r) {
+            if (r.error) throw r.error;
+            closeModalTabuladorCliente();
+            loadClientesTabulador().then(function() {
+                renderTabuladorViaticos();
+                renderClientesTabuladorTabla();
+            });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+    }
+
+    function closeModalTabuladorCliente() {
+        var modal = document.getElementById('modalTabuladorCliente');
+        if (modal) { modal.classList.remove('active'); modal.setAttribute('aria-hidden', 'true'); }
     }
     function saveModalCliente() {
         var idInp = document.getElementById('modalClienteId');
@@ -1309,6 +1468,14 @@
         document.getElementById('modalClienteEliminar') && document.getElementById('modalClienteEliminar').addEventListener('click', deleteModalCliente);
         document.getElementById('modalClienteCancelar') && document.getElementById('modalClienteCancelar').addEventListener('click', closeModalCliente);
 
+        // Tabulador Cliente Event listeners
+        var btnNuevoTabulador = document.getElementById('btnNuevoTabuladorCliente');
+        if (btnNuevoTabulador) btnNuevoTabulador.addEventListener('click', function() { openModalTabuladorCliente(null); });
+        document.getElementById('modalTabuladorClose') && document.getElementById('modalTabuladorClose').addEventListener('click', closeModalTabuladorCliente);
+        document.getElementById('modalTabuladorGuardar') && document.getElementById('modalTabuladorGuardar').addEventListener('click', saveModalTabuladorCliente);
+        document.getElementById('modalTabuladorEliminar') && document.getElementById('modalTabuladorEliminar').addEventListener('click', deleteModalTabuladorCliente);
+        document.getElementById('modalTabuladorCancelar') && document.getElementById('modalTabuladorCancelar').addEventListener('click', closeModalTabuladorCliente);
+
         // BOM Event listeners
         if (document.getElementById('btnBOMNuevo')) document.getElementById('btnBOMNuevo').addEventListener('click', function() { openModalBOM(null); });
         if (document.getElementById('btnBOMRecargar')) document.getElementById('btnBOMRecargar').addEventListener('click', function() { loadBOM().then(renderBOM).then(fillBOMFiltros); });
@@ -1347,6 +1514,7 @@
             renderCostos();
             renderClientes();
             renderTabuladorViaticos();
+            renderClientesTabuladorTabla();
             fillHojaCalcSelect();
             await loadHojaFilas();
             updateAnalisis();
