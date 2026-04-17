@@ -1,0 +1,351 @@
+/* ================================================
+   SSEPI-NEXT Data Viewer - Styles
+   ================================================ */
+
+:root {
+  --c-bg: #050a0a;
+  --c-bg-secondary: #0a1414;
+  --c-bg-tertiary: #0f1f1f;
+  --c-text: #e0f0f0;
+  --c-text-muted: #88aaaa;
+  --c-ventas: #ff6b6b;
+  --c-taller: #4ecdc4;
+  --c-motores: #45b7d1;
+  --c-automatizacion: #96ceb4;
+  --c-inventario: #d4a574;
+  --c-contactos: #a8a8a8;
+  --c-border: #1a3a3a;
+  --c-success: #00c853;
+  --c-warning: #ffc107;
+  --c-error: #ff5252;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--c-bg);
+  color: var(--c-text);
+  overflow: hidden;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* ==================== SIDEBAR ==================== */
+
+.sidebar {
+  width: 260px;
+  background: var(--c-bg-secondary);
+  border-right: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+}
+
+.logo-section {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(78, 205, 196, 0.3));
+}
+
+.logo-section h1 {
+  font-size: 1.5rem;
+  margin-top: 1rem;
+  color: var(--c-taller);
+}
+
+.subtitle {
+  font-size: 0.75rem;
+  color: var(--c-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.nav-menu {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.nav-item:hover {
+  background: var(--c-bg-tertiary);
+  border-color: var(--c-border);
+}
+
+.nav-item.active {
+  background: var(--c-bg-tertiary);
+  border-color: var(--c-taller);
+}
+
+.nav-item .icon {
+  font-size: 1.25rem;
+}
+
+.nav-item .label {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--c-border);
+  font-size: 0.8rem;
+  color: var(--c-text-muted);
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-warning);
+  animation: pulse 2s infinite;
+}
+
+.status-indicator.connected {
+  background: var(--c-success);
+}
+
+.status-indicator.error {
+  background: var(--c-error);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ==================== MAIN CONTENT ==================== */
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-bg-secondary);
+}
+
+.top-bar h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-refresh {
+  background: var(--c-bg-tertiary);
+  color: var(--c-text);
+  border: 1px solid var(--c-border);
+}
+
+.btn-refresh:hover {
+  background: var(--c-border);
+}
+
+.btn-export {
+  background: var(--c-taller);
+  color: var(--c-bg);
+}
+
+.btn-export:hover {
+  opacity: 0.9;
+}
+
+.btn .icon {
+  font-size: 1rem;
+}
+
+.content-area {
+  flex: 1;
+  overflow: auto;
+  padding: 2rem;
+}
+
+.view {
+  display: none;
+}
+
+.view.active {
+  display: block;
+}
+
+/* ==================== DASHBOARD CARDS ==================== */
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.card {
+  background: var(--c-bg-secondary);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.card h3 {
+  font-size: 0.875rem;
+  color: var(--c-text-muted);
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.card .value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.card .change {
+  font-size: 0.75rem;
+  color: var(--c-text-muted);
+  display: block;
+  margin-top: 0.5rem;
+}
+
+/* ==================== RECENT ACTIVITY ==================== */
+
+.recent-section {
+  background: var(--c-bg-secondary);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.recent-section h3 {
+  font-size: 1.125rem;
+  margin-bottom: 1rem;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--c-text-muted);
+  border-bottom: 1px solid var(--c-border);
+}
+
+tbody td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 0.9rem;
+}
+
+tbody tr:hover {
+  background: var(--c-bg-tertiary);
+}
+
+/* ==================== FILTERS BAR ==================== */
+
+.filters-bar {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.search-input,
+.filter-select {
+  padding: 0.625rem 1rem;
+  background: var(--c-bg-secondary);
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  color: var(--c-text);
+  font-size: 0.875rem;
+}
+
+.search-input {
+  flex: 1;
+  max-width: 400px;
+}
+
+.search-input:focus,
+.filter-select:focus {
+  outline: none;
+  border-color: var(--c-taller);
+}
+
+/* ==================== SCROLLBAR ==================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--c-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--c-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--c-taller);
+}

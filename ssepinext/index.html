@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSEPI-NEXT Data Viewer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo-section">
+        <img src="../panel/assets/logo-ssepi.png" alt="SSEPI" class="logo">
+        <h1>SSEPI-NEXT</h1>
+        <p class="subtitle">Data Viewer</p>
+      </div>
+
+      <nav class="nav-menu">
+        <div class="nav-item active" data-module="dashboard">
+          <span class="icon">📊</span>
+          <span class="label">Dashboard</span>
+        </div>
+        <div class="nav-item" data-module="ventas">
+          <span class="icon">🛒</span>
+          <span class="label">Ventas</span>
+        </div>
+        <div class="nav-item" data-module="taller">
+          <span class="icon">🔧</span>
+          <span class="label">Taller</span>
+        </div>
+        <div class="nav-item" data-module="motores">
+          <span class="icon">⚙️</span>
+          <span class="label">Motores</span>
+        </div>
+        <div class="nav-item" data-module="automatizacion">
+          <span class="icon">🤖</span>
+          <span class="label">Automatización</span>
+        </div>
+        <div class="nav-item" data-module="inventario">
+          <span class="icon">📦</span>
+          <span class="label">Inventario</span>
+        </div>
+        <div class="nav-item" data-module="contactos">
+          <span class="icon">👥</span>
+          <span class="label">Contactos</span>
+        </div>
+      </nav>
+
+      <div class="connection-status">
+        <div class="status-indicator" id="statusIndicator"></div>
+        <span id="statusText">Conectando...</span>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="top-bar">
+        <h2 id="pageTitle">Dashboard</h2>
+        <div class="actions">
+          <button class="btn btn-refresh" id="refreshBtn">
+            <span class="icon">🔄</span> Actualizar
+          </button>
+          <button class="btn btn-export" id="exportBtn">
+            <span class="icon">📥</span> Exportar
+          </button>
+        </div>
+      </header>
+
+      <div class="content-area">
+        <!-- Dashboard View -->
+        <div class="view active" id="view-dashboard">
+          <div class="cards-grid">
+            <div class="card">
+              <h3>Ventas Totales</h3>
+              <p class="value" id="dashVentasTotal">$0.00</p>
+              <span class="change">Este mes</span>
+            </div>
+            <div class="card">
+              <h3>Órdenes Activas</h3>
+              <p class="value" id="dashOrdenesActivas">0</p>
+              <span class="change">Taller + Motores + Auto</span>
+            </div>
+            <div class="card">
+              <h3>Clientes</h3>
+              <p class="value" id="dashClientes">0</p>
+              <span class="change">Total registrados</span>
+            </div>
+            <div class="card">
+              <h3>Productos</h3>
+              <p class="value" id="dashProductos">0</p>
+              <span class="change">En inventario</span>
+            </div>
+          </div>
+
+          <div class="recent-section">
+            <h3>Actividad Reciente</h3>
+            <div class="table-container">
+              <table id="recentTable">
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Folio</th>
+                    <th>Cliente</th>
+                    <th>Estado</th>
+                    <th>Fecha</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ventas View -->
+        <div class="view" id="view-ventas">
+          <div class="filters-bar">
+            <input type="text" class="search-input" placeholder="Buscar por folio o cliente..." id="ventasSearch">
+            <select class="filter-select" id="ventasStatus">
+              <option value="">Todos los estados</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="en_proceso">En Proceso</option>
+              <option value="completado">Completado</option>
+              <option value="entregado">Entregado</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </div>
+          <div class="table-container">
+            <table id="ventasTable">
+              <thead>
+                <tr>
+                  <th>Folio</th>
+                  <th>Cliente</th>
+                  <th>Producto/Servicio</th>
+                  <th>Estado</th>
+                  <th>Total</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Taller View -->
+        <div class="view" id="view-taller">
+          <div class="filters-bar">
+            <input type="text" class="search-input" placeholder="Buscar orden..." id="tallerSearch">
+            <select class="filter-select" id="tallerStatus">
+              <option value="">Todos los estados</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="en_reparacion">En Reparación</option>
+              <option value="esperando_repuesto">Esperando Repuesto</option>
+              <option value="terminado">Terminado</option>
+              <option value="entregado">Entregado</option>
+            </select>
+          </div>
+          <div class="table-container">
+            <table id="tallerTable">
+              <thead>
+                <tr>
+                  <th>Folio</th>
+                  <th>Equipo</th>
+                  <th>Cliente</th>
+                  <th>Estado</th>
+                  <th>Técnico</th>
+                  <th>Fecha Entrada</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Motores View -->
+        <div class="view" id="view-motores">
+          <div class="filters-bar">
+            <input type="text" class="search-input" placeholder="Buscar orden..." id="motoresSearch">
+          </div>
+          <div class="table-container">
+            <table id="motoresTable">
+              <thead>
+                <tr>
+                  <th>Folio</th>
+                  <th>Motor</th>
+                  <th>Cliente</th>
+                  <th>Estado</th>
+                  <th>Técnico</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Automatización View -->
+        <div class="view" id="view-automatizacion">
+          <div class="filters-bar">
+            <input type="text" class="search-input" placeholder="Buscar proyecto..." id="autoSearch">
+          </div>
+          <div class="table-container">
+            <table id="autoTable">
+              <thead>
+                <tr>
+                  <th>Folio</th>
+                  <th>Proyecto</th>
+                  <th>Cliente</th>
+                  <th>Estado</th>
+                  <th>Ingeniero</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Inventario View -->
+        <div class="view" id="view-inventario">
+          <div class="filters-bar">
+            <input type="text" class="search-input" placeholder="Buscar producto..." id="inventarioSearch">
+            <select class="filter-select" id="inventarioCategoria">
+              <option value="">Todas las categorías</option>
+            </select>
+          </div>
+          <div class="table-container">
+            <table id="inventarioTable">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Producto</th>
+                  <th>Categoría</th>
+                  <th>Stock</th>
+                  <th>Precio</th>
+                  <th>Ubicación</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Contactos View -->
+        <div class="view" id="view-contactos">
+          <div class="filters-bar">
+            <input type="text" class="search-input" placeholder="Buscar contacto..." id="contactosSearch">
+            <select class="filter-select" id="contactosTipo">
+              <option value="">Todos los tipos</option>
+              <option value="cliente">Cliente</option>
+              <option value="proveedor">Proveedor</option>
+              <option value="empleado">Empleado</option>
+            </select>
+          </div>
+          <div class="table-container">
+            <table id="contactosTable">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Tipo</th>
+                  <th>Email</th>
+                  <th>Teléfono</th>
+                  <th>Empresa</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="renderer.js"></script>
+</body>
+</html>
