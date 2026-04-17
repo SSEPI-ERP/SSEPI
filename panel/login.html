@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="/assets/logo-ssepi.png">
-    <link rel="shortcut icon" type="image/png" href="/assets/logo-ssepi.png">
+    <link rel="icon" type="image/png" href="/panel/assets/logo-ssepi.png">
+    <link rel="shortcut icon" type="image/png" href="/panel/assets/logo-ssepi.png">
     <title>SSEPI · Inicio de Sesión</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -47,6 +47,22 @@
             width: 100%;
             max-width: 420px;
             padding: 48px 40px;
+        }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #64748b;
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 16px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: background 0.2s, color 0.2s;
+        }
+        .back-btn:hover {
+            background: #f1f5f9;
+            color: #1e3a5f;
         }
         .login-header {
             text-align: center;
@@ -173,8 +189,11 @@
 </head>
 <body>
     <div class="login-container">
+        <a href="/" class="back-btn" title="Volver al inicio">
+            <i class="fas fa-arrow-left"></i> Regresar
+        </a>
         <div class="login-header">
-            <img src="/assets/logo-ssepi.png" alt="SSEPI" class="login-logo">
+            <img src="/panel/assets/logo-ssepi.png" alt="SSEPI" class="login-logo">
             <h1 class="login-title">Centro de Comando</h1>
             <p class="login-subtitle">Inicia sesión para continuar</p>
         </div>
