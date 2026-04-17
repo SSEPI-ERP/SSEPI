@@ -2469,7 +2469,7 @@ const VentasModule = (function() {
         var nextBtn = footer.querySelector('#wizardNextBtn');
         if (nextBtn) nextBtn.style.display = paso < 4 ? 'inline-block' : 'none';
         var guardarBtn = footer.querySelector('#guardarCotizacionWizardBtn');
-        if (guardarBtn) guardarBtn.style.display = paso === 4 ? 'inline-block' : 'none';
+        if (guardarBtn) guardarBtn.style.display = 'inline-block';
         var descargarPDFWizard = footer.querySelector('#descargarPDFWizardBtn');
         if (descargarPDFWizard) descargarPDFWizard.style.display = paso === 4 ? 'inline-block' : 'none';
         var generarBtn = footer.querySelector('#generarCotizacionBtn');
