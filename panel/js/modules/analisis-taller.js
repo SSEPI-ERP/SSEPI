@@ -220,7 +220,7 @@ const AnalisisTaller = (function() {
 
     function imprimirReporte() {
         const ventana = window.open('', '_blank');
-        ventana.document.write('<html><head><title>Reporte Análisis Laboratorio</title><link rel="stylesheet" href="/css/main.css"></head><body style="padding:20px;">');
+        ventana.document.write('<html><head><title>Reporte Análisis Laboratorio</title><link rel="stylesheet" href="/panel/css/main.css"></head><body style="padding:20px;">');
         ventana.document.write(getReporteHtml());
         ventana.document.write('</body></html>');
         ventana.document.close();

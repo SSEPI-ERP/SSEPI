@@ -192,7 +192,7 @@ const AnalisisVentas = (function() {
         if (pre && !pre.classList.contains('hidden')) {
             const content = document.getElementById('reportePreviewContent');
             const ventana = window.open('', '_blank');
-            ventana.document.write('<html><head><title>Reporte Análisis Ventas</title><link rel="stylesheet" href="/css/main.css"></head><body style="padding:20px;">');
+            ventana.document.write('<html><head><title>Reporte Análisis Ventas</title><link rel="stylesheet" href="/panel/css/main.css"></head><body style="padding:20px;">');
             ventana.document.write('<h2>Reporte Análisis Ventas</h2><p>Generado: ' + new Date().toLocaleString('es') + '</p>');
             if (content) ventana.document.write(content.innerHTML);
             ventana.document.write('</body></html>');

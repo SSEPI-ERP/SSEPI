@@ -421,14 +421,14 @@ export async function init() {
     }
     generateCSRFToken();
 
-    const user = await authService.requireAuth('/');
+    const user = await authService.requireAuth('/panel/login.html');
     if (!user) return;
 
     const profile = await authService.getCurrentProfile();
     const okRol = ['admin', 'superadmin', 'contabilidad'].includes(profile?.rol);
     if (!okRol) {
         alert('Esta herramienta es solo para administración / contabilidad.');
-        window.location.href = '/panel.html';
+        window.location.href = '/panel/panel.html';
         return;
     }
     try {

@@ -384,7 +384,7 @@
     </div>
 
     <script type="module">
-        import { authService } from '/js/core/auth-service.js';
+        import { authService } from '/panel/js/core/auth-service.js';
 
         // ================================================
         // VERIFICAR PERMISOS DE ADMIN
@@ -393,7 +393,7 @@
             const profile = await authService.getCurrentProfile();
             if (!profile || (profile.rol !== 'admin' && profile.rol !== 'superadmin')) {
                 alert('Acceso denegado. Solo administradores pueden configurar permisos.');
-                window.location.href = '/panel.html';
+                window.location.href = '/panel/panel.html';
                 return false;
             }
             return true;

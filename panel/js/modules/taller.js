@@ -1313,6 +1313,13 @@ const TallerModule = (function() {
         `).join('');
     }
 
+    /** Notas generales (resumen) solo en fase 5 (Entregado / Facturado), no fijas en cabecera. */
+    function _syncWsGnrlVisibility() {
+        const box = document.getElementById('wsGnrlBox');
+        if (!box) return;
+        box.style.display = currentStep === 5 ? '' : 'none';
+    }
+
     function _irPaso(paso) {
         if (paso < 1 || paso > 5) return;
         currentStep = paso;
@@ -1321,6 +1328,7 @@ const TallerModule = (function() {
         document.querySelectorAll('.ws-step-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelector(`.ws-step-btn[data-step="${paso}"]`).classList.add('active');
         _actualizarBotonesPaso();
+        _syncWsGnrlVisibility();
         if (paso === 2) {
             _renderDiagnosticoEnlaces();
             _renderDiagnosticoInventario();

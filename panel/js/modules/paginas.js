@@ -9,7 +9,7 @@ const PaginasModule = (function() {
   const paginasService = createDataService('web_paginas');
 
   async function init() {
-    await authService.requireAuth('/');
+    await authService.requireAuth('/panel/login.html');
     csrfToken = generateCSRFToken();
     bindUI();
     await cargarLista();
@@ -163,7 +163,7 @@ const PaginasModule = (function() {
     if (!frame) return;
     const doc = frame.contentDocument || frame.contentWindow.document;
     doc.open();
-    doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="/css/main.css"></head><body>${contenido}</body></html>`);
+    doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="/panel/css/main.css"></head><body>${contenido}</body></html>`);
     doc.close();
     toggleModal('previewModal', true);
   }

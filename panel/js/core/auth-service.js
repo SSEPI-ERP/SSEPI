@@ -111,7 +111,7 @@ export class AuthService {
   // ==================== SOLICITUD DE RESTABLECIMIENTO ====================
   async resetPassword(email) {
     const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + '/reset-password.html'
+      redirectTo: window.location.origin + '/panel/reset-password.html'
     });
     if (error) throw error;
   }
@@ -119,7 +119,7 @@ export class AuthService {
   /** Solicitar al usuario que cambie su contraseña: envía correo desde Supabase al email indicado. */
   async requestPasswordResetForUser(email) {
     const { error } = await this.supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password.html`
+      redirectTo: `${window.location.origin}/panel/reset-password.html`
     });
     if (error) throw error;
   }

@@ -344,7 +344,7 @@
                 }
                 let user = null;
                 try {
-                    user = await window.authService.requireAuth('/');
+                    user = await window.authService.requireAuth('/panel/login.html');
                 } catch (e) {
                     console.error('SSEPI auth:', e);
                     return;

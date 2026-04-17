@@ -738,24 +738,41 @@ const VentasModule = (function() {
     }
 
     // ==================== FILTROS Y VISTAS ====================
-    function _applyFilters() {
-        const list = [...(Array.isArray(ventas) ? ventas : []), ...(Array.isArray(cotizaciones) ? cotizaciones : [])];
-        let filtered = list;
+    /** Une ventas + cotizaciones marcando tipo para no mezclar órdenes operativas con el flujo comercial. */
+    function _mergeVentasCotizaciones() {
+        const v = (Array.isArray(ventas) ? ventas : []).map((r) => ({ ...r, tipo: r.tipo || 'venta' }));
+        const c = (Array.isArray(cotizaciones) ? cotizaciones : []).map((r) => ({ ...r, tipo: 'cotizacion' }));
+        return [...v, ...c];
+    }
 
-        if (filtroFechaInicio && filtroFechaFin) {
-            filtered = filtered.filter(item => {
-                const raw = item.fecha ?? item.fecha_cotizacion ?? item.fecha_creacion;
-                if (!raw) return true;
-                const f = new Date(raw);
-                return f >= filtroFechaInicio && f <= filtroFechaFin;
-            });
-        }
+    /** Compara solo la fecha local (evita que cotizaciones del último día del mes queden fuera por zona horaria). */
+    function _fechaItemEnRango(item) {
+        if (!filtroFechaInicio || !filtroFechaFin) return true;
+        const raw = item.fecha ?? item.fecha_cotizacion ?? item.fecha_creacion;
+        if (!raw) return true;
+        const t = new Date(raw);
+        if (Number.isNaN(t.getTime())) return true;
+        const d = new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime();
+        const a = new Date(filtroFechaInicio.getFullYear(), filtroFechaInicio.getMonth(), filtroFechaInicio.getDate()).getTime();
+        const b = new Date(filtroFechaFin.getFullYear(), filtroFechaFin.getMonth(), filtroFechaFin.getDate()).getTime();
+        return d >= a && d <= b;
+    }
+
+    function _applyFilters() {
+        let filtered = _mergeVentasCotizaciones();
+
+        filtered = filtered.filter(_fechaItemEnRango);
         if (filtroVendedor !== 'todos') {
             filtered = filtered.filter(item => item.vendedor === filtroVendedor);
         }
         if (filtroEstado !== 'todos') {
             if (filtroEstado === 'registro') {
-                filtered = filtered.filter(item => item.estado === 'registro' || item.estado === 'Nuevo');
+                filtered = filtered.filter((item) => {
+                    const e = String(item.estado || '').trim().toLowerCase();
+                    if (e === 'registro') return true;
+                    // "Nuevo" solo en cotizaciones; en `ventas` u otros módulos no debe colarse en este filtro
+                    return item.tipo === 'cotizacion' && e === 'nuevo';
+                });
             } else if (filtroEstado === 'diagnostico') {
                 filtered = filtered.filter(item => item.estado === 'diagnostico' || item.estado === 'en_diagnostico');
             } else if (filtroEstado === 'cotizacion') {
@@ -781,8 +798,11 @@ const VentasModule = (function() {
         }
 
         _syncChipEstado();
-        if (vistaActual === 'kanban') _renderKanban(filtered);
-        else if (vistaActual === 'lista') _renderLista(filtered);
+        // Kanban operativo = solo cotizaciones (no filas de `ventas` ni órdenes de otros módulos con estado "Nuevo").
+        if (vistaActual === 'kanban') {
+            const soloCot = filtered.filter((i) => i.tipo === 'cotizacion');
+            _renderKanban(soloCot);
+        } else if (vistaActual === 'lista') _renderLista(filtered);
         else if (vistaActual === 'grafica') _renderGrafica(filtered);
 
         // Renderizar Historia Comercial si hay cotizaciones cargadas (independiente de la vista)
@@ -806,14 +826,15 @@ const VentasModule = (function() {
         if (!container) return;
 
         // Nuevos estatus para kanban
-        const registro = items.filter(i => i.estado === 'registro' || i.estado === 'Nuevo');
-        const diagnostico = items.filter(i => i.estado === 'diagnostico' || i.estado === 'en_diagnostico');
-        const cotizacion = items.filter(i => i.estado === 'cotizacion' || i.estado === 'pendiente_autorizacion_ventas');
-        const autorizado = items.filter(i => i.estado === 'autorizado' || i.estado === 'autorizada_por_ventas');
-        const compra = items.filter(i => i.estado === 'compra' || i.estado === 'en_compra');
-        const ejecucion = items.filter(i => i.estado === 'ejecucion' || i.estado === 'en_ejecucion');
-        const entregado = items.filter(i => i.estado === 'entregado' || (i.tipo !== 'cotizacion' && i.estatus_pago === 'Pendiente'));
-        const pagado = items.filter(i => i.estatus_pago === 'Pagado' || i.estado === 'pagado');
+        const es = (i) => String(i.estado || '').trim().toLowerCase();
+        const registro = items.filter((i) => es(i) === 'registro' || es(i) === 'nuevo');
+        const diagnostico = items.filter((i) => es(i) === 'diagnostico' || es(i) === 'en_diagnostico');
+        const cotizacion = items.filter((i) => es(i) === 'cotizacion' || es(i) === 'pendiente_autorizacion_ventas');
+        const autorizado = items.filter((i) => es(i) === 'autorizado' || es(i) === 'autorizada_por_ventas');
+        const compra = items.filter((i) => es(i) === 'compra' || es(i) === 'en_compra');
+        const ejecucion = items.filter((i) => es(i) === 'ejecucion' || es(i) === 'en_ejecucion');
+        const entregado = items.filter((i) => es(i) === 'entregado' || (i.tipo !== 'cotizacion' && i.estatus_pago === 'Pendiente'));
+        const pagado = items.filter((i) => i.estatus_pago === 'Pagado' || es(i) === 'pagado');
 
         // Renderizar tarjetas asíncronamente para cargar folios vinculados
         const [cardsRegistro, cardsDiagnostico, cardsCotizacion, cardsAutorizado, cardsCompra, cardsEjecucion, cardsEntregado, cardsPagado] = await Promise.all([
@@ -830,56 +851,56 @@ const VentasModule = (function() {
         let html = `
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #9e9e9e;">
-                    <span>📝 Registro</span>
+                    <span>Registro</span>
                     <span class="badge" style="background: #9e9e9e;">${registro.length}</span>
                 </div>
                 <div class="kanban-cards">${cardsRegistro}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #2196f3;">
-                    <span>🔍 Diagnóstico</span>
+                    <span>Diagnóstico</span>
                     <span class="badge" style="background: #2196f3;">${diagnostico.length}</span>
                 </div>
                 <div class="kanban-cards">${cardsDiagnostico}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #ff9800;">
-                    <span>💰 Cotización</span>
+                    <span>Cotización</span>
                     <span class="badge" style="background: #ff9800;">${cotizacion.length}</span>
                 </div>
                 <div class="kanban-cards">${cardsCotizacion}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #4caf50;">
-                    <span>✅ Autorizado</span>
+                    <span>Autorizado</span>
                     <span class="badge" style="background: #4caf50;">${autorizado.length}</span>
                 </div>
                 <div class="kanban-cards">${cardsAutorizado}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #9c27b0;">
-                    <span>🛒 En Compra</span>
+                    <span>En Compra</span>
                     <span class="badge" style="background: #9c27b0;">${compra.length}</span>
                 </div>
                 <div class="kanban-cards">${cardsCompra}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #ff5722;">
-                    <span>⚙️ En Ejecución</span>
+                    <span>En Ejecución</span>
                     <span class="badge" style="background: #ff5722;">${ejecucion.length}</span>
                 </div>
                 <div class="kanban-cards">${cardsEjecucion}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #00bcd4;">
-                    <span>📦 Entregado</span>
+                    <span>Entregado</span>
                     <span class="badge" style="background: #00bcd4;">${entregado.length}</span>
                 </div>
                 <div class="kanban-cards">${cardsEntregado}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #4caf50;">
-                    <span>💵 Pagado</span>
+                    <span>Pagado</span>
                     <span class="badge" style="background: #4caf50;">${pagado.length}</span>
                 </div>
                 <div class="kanban-cards">${cardsPagado}</div>
