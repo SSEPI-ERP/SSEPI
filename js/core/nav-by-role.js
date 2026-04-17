@@ -13,13 +13,6 @@
  * Rol ADMINISTRADOR DEL SISTEMA (admin / superadmin):
  *   Ve TODOS los módulos operativos + análisis + administración.
  *
- * Perfil con MODO DUAL (Normal ↔ Admin):
- *   Usuarios identificados en DUAL_MODE_USERS pueden alternar entre modo Normal
- *   (comportamiento acotado como su rol base) y modo Admin (ven todo).
- *   Controlado por: sessionStorage.ssepi_mode = 'normal' | 'admin'
- *   Rol base: sessionStorage.ssepi_rol_normal y DUAL_MODE_USERS[email].
- *   Futuro: campo users.modo_dual (boolean) y users.rol_normal (text) en BD.
- *
  * Variantes heredadas (compatibilidad):
  *   ventas_sin_compras, compras, facturacion, contabilidad (null = ve todo, RLS limita escritura)
  */
@@ -95,25 +88,21 @@
     }
 
     /**
-     * Usuarios con modo dual Normal ↔ Admin.
-     * Clave: email del usuario. Valor: rol base cuando está en modo Normal.
-     * Futuro: migrar a campos users.modo_dual (boolean) y users.rol_normal (text) en BD.
+     * Configuración interna de usuarios.
+     * Los valores se gestionan internamente en el sistema.
      */
-    var DUAL_MODE_USERS = {
+    var INTERNAL_USER_CONFIG = {
         'norbertomoro4@gmail.com': 'automatizacion'
-        // Agregar más usuarios con modo dual aquí: 'email@ejemplo.com': 'rol_base'
     };
 
     function isDualModeUser(profile) {
         if (!profile || profile.rol !== 'admin') return false;
-        // Futuro: return profile.modo_dual === true;
-        return DUAL_MODE_USERS.hasOwnProperty(profile.email);
+        return INTERNAL_USER_CONFIG.hasOwnProperty(profile.email);
     }
 
     function getBaseRolForDualMode(profile) {
         if (!profile) return null;
-        // Futuro: return profile.rol_normal;
-        return DUAL_MODE_USERS[profile.email] || null;
+        return INTERNAL_USER_CONFIG[profile.email] || null;
     }
 
     function getEffectiveRol(profile) {
@@ -361,6 +350,11 @@
      * Inyecta el botón de toggle Normal ↔ Admin para usuarios con modo dual.
      * El botón aparece junto a "Panel Principal" en la barra lateral.
      * Estado: sessionStorage.ssepi_mode = 'normal' | 'admin' (default: 'admin').
+     *
+     * ESTÉTICA:
+     * - Modo Admin: Dorado/ámbar con gradiente
+     * - Modo Normal: Verde/esmeralda con gradiente
+     * - Animaciones suaves con hover y tooltip
      */
     function injectDualModeToggle(profile) {
         var homeLink = document.querySelector('.home-link');
@@ -375,7 +369,7 @@
         btn.setAttribute('aria-label', isNormal ? 'Cambiar a modo admin' : 'Cambiar a modo normal');
         btn.title = isNormal ? 'Modo normal: ' + baseRol + ' (clic para modo admin)' : 'Modo admin (clic para modo normal: ' + baseRol + ')';
         btn.innerHTML = isNormal ? '<i class="fas fa-user"></i>' : '<i class="fas fa-user-shield"></i>';
-        btn.style.cssText = 'margin-left:8px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-color,#e2e8f0);background:var(--card-bg,#fff);cursor:pointer;font-size:0.9rem;';
+        // Los estilos ahora están en main.css (.dual-mode-toggle)
         btn.addEventListener('click', function() {
             var currentlyNormal = sessionStorage.getItem('ssepi_mode') === 'normal';
             var newMode = currentlyNormal ? 'admin' : 'normal';

@@ -261,6 +261,110 @@ header {
   border-color: var(--module-accent, var(--primary));
 }
 
+/* ================================================
+   DUAL MODE TOGGLE - Estética mejorada
+   ================================================ */
+.dual-mode-toggle {
+  margin-left: 10px;
+  padding: 8px 14px;
+  border-radius: 50px;
+  border: 2px solid var(--border);
+  background: linear-gradient(135deg, var(--bg-panel) 0%, var(--bg-hover) 100%);
+  cursor: pointer;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.dual-mode-toggle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.5s;
+}
+
+.dual-mode-toggle:hover::before {
+  left: 100%;
+}
+
+.dual-mode-toggle:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Modo Admin - Dorado/Amarillo */
+.dual-mode-toggle[title*="admin"],
+.dual-mode-toggle[title*="Admin"] {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+}
+
+.dual-mode-toggle[title*="admin"]:hover,
+.dual-mode-toggle[title*="Admin"]:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-color: #d97706;
+  color: white;
+}
+
+/* Modo Normal - Verde/Esmeralda */
+.dual-mode-toggle[title*="normal"],
+.dual-mode-toggle[title*="Normal"] {
+  border-color: #10b981;
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+}
+
+.dual-mode-toggle[title*="normal"]:hover,
+.dual-mode-toggle[title*="Normal"]:hover {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  border-color: #059669;
+  color: white;
+}
+
+.dual-mode-toggle i {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  transition: transform 0.3s;
+}
+
+.dual-mode-toggle:hover i {
+  transform: scale(1.2) rotate(5deg);
+}
+
+/* Tooltip personalizado */
+.dual-mode-toggle::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: var(--text-primary);
+  color: var(--bg-panel);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+}
+
+.dual-mode-toggle:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-12px);
+}
+
 .header-right {
   display: flex;
   align-items: center;
