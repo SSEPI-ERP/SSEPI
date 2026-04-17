@@ -1546,72 +1546,72 @@ main {
   color: var(--text-primary);
 }
 
-/* ========== BOTONES GRADO INDUSTRIAL (.btn-ssepi) ========== */
-/* Minimalistas, borde sutil, hover suave */
+/* ========== BOTONES (.btn-ssepi) ========== */
+/* Botones modernos con colores vibrantes y tamaños generosos */
 :where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .btn-success, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn) {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-  border-radius: 6px;
-  padding: 9px 16px;
-  font-weight: 600;
-  font-size: 12px;
-  text-transform: none;
-  letter-spacing: 0;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  border: none;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 14px rgba(0, 82, 204, 0.3);
 }
 
 :where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .btn-success, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn):hover {
-  background: var(--primary);
-  color: #ffffff;
-  border-color: var(--primary);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 82, 204, 0.4);
+  filter: brightness(1.1);
 }
 
 :where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .btn-success, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn):active {
-  transform: translateY(0);
+  transform: translateY(-1px);
 }
 
 :where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .btn-success, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn)[disabled],
 :where(.btn, .btn-ssepi, .btn-primary, .btn-secondary, .btn-etapa, .btn-filtro, .btn-filter, .btn-add-row, .btn-generate-payment, .btn-import, .btn-apply, .btn-export, .btn-danger, .btn-success, .simulador-btn, .btn-guardar, .filtro-btn, .cat-btn).disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
-/* Clases de color por módulo para botones (borde) */
-.btn-taller { border-color: var(--c-taller); color: var(--text-primary); }
-.btn-taller:hover { background: var(--c-taller); border-color: var(--c-taller); color: #fff; }
-.btn-ventas { border-color: var(--c-ventas); color: var(--text-primary); }
-.btn-ventas:hover { background: var(--c-ventas); border-color: var(--c-ventas); color: #fff; }
-.btn-compras { border-color: var(--c-compras); color: var(--text-primary); }
-.btn-compras:hover { background: var(--c-compras); border-color: var(--c-compras); color: #fff; }
-.btn-finanzas { border-color: var(--c-finanzas); color: var(--text-primary); }
-.btn-finanzas:hover { background: var(--c-finanzas); border-color: var(--c-finanzas); color: #fff; }
-.btn-motores { border-color: var(--c-motores); color: var(--text-primary); }
-.btn-motores:hover { background: var(--c-motores); border-color: var(--c-motores); color: #fff; }
-.btn-automatizacion { border-color: var(--c-automatizacion); color: var(--text-primary); }
-.btn-automatizacion:hover { background: var(--c-automatizacion); border-color: var(--c-automatizacion); color: #fff; }
-.btn-proyectos { border-color: var(--c-proyectos); color: var(--text-primary); }
-.btn-proyectos:hover { background: var(--c-proyectos); border-color: var(--c-proyectos); color: #fff; }
-.btn-inventario { border-color: var(--c-stock); color: var(--text-primary); }
-.btn-inventario:hover { background: var(--c-stock); border-color: var(--c-stock); color: #fff; }
-.btn-contabilidad { border-color: var(--c-contabilidad); color: var(--text-primary); }
-.btn-contabilidad:hover { background: var(--c-contabilidad); border-color: var(--c-contabilidad); color: #fff; }
-.btn-contactos { border-color: var(--c-contact); color: var(--text-primary); }
-.btn-contactos:hover { background: var(--c-contact); border-color: var(--c-contact); color: #fff; }
-.btn-facturacion { border-color: var(--c-facturacion); color: var(--text-primary); }
-.btn-facturacion:hover { background: var(--c-facturacion); border-color: var(--c-facturacion); color: #fff; }
-.btn-analisis { border-color: var(--c-analisis); color: var(--text-primary); }
-.btn-analisis:hover { background: var(--c-analisis); border-color: var(--c-analisis); color: #fff; }
+/* Clases de color por módulo para botones (gradientes vibrantes) */
+.btn-taller { background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); box-shadow: 0 4px 14px rgba(0, 123, 255, 0.3); }
+.btn-taller:hover { filter: brightness(1.15); box-shadow: 0 8px 24px rgba(0, 123, 255, 0.4); }
+.btn-ventas { background: linear-gradient(135deg, #ff9800 0%, #e65100 100%); box-shadow: 0 4px 14px rgba(255, 152, 0, 0.3); }
+.btn-ventas:hover { filter: brightness(1.15); box-shadow: 0 8px 24px rgba(255, 152, 0, 0.4); }
+.btn-compras { background: linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%); box-shadow: 0 4px 14px rgba(156, 39, 176, 0.3); }
+.btn-compras:hover { filter: brightness(1.15); box-shadow: 0 8px 24px rgba(156, 39, 176, 0.4); }
+.btn-finanzas { background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%); box-shadow: 0 4px 14px rgba(46, 125, 50, 0.3); }
+.btn-finanzas:hover { filter: brightness(1.15); box-shadow: 0 8px 24px rgba(46, 125, 50, 0.4); }
+.btn-motores { background: linear-gradient(135deg, #546e7a 0%, #37474f 100%); box-shadow: 0 4px 14px rgba(84, 110, 122, 0.3); }
+.btn-motores:hover { filter: brightness(1.15); box-shadow: 0 8px 24px rgba(84, 110, 122, 0.4); }
+.btn-automatizacion { background: linear-gradient(135deg, #6f42c1 0%, #512da8 100%); box-shadow: 0 4px 14px rgba(111, 66, 193, 0.3); }
+.btn-automatizacion:hover { filter: brightness(1.15); box-shadow: 0 8px 24px rgba(111, 66, 193, 0.4); }
+.btn-proyectos { background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%); box-shadow: 0 4px 14px rgba(23, 162, 184, 0.3); }
+.btn-proyectos:hover { filter: brightness(1.15); box-shadow: 0 8px 24px rgba(23, 162, 184, 0.4); }
+.btn-inventario { background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); box-shadow: 0 4px 14px rgba(40, 167, 69, 0.3); }
+.btn-inventario:hover { filter: brightness(1.15); box-shadow: 0 8px 24px rgba(40, 167, 69, 0.4); }
+.btn-contabilidad { background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); box-shadow: 0 4px 14px rgba(185, 28, 28, 0.3); }
+.btn-contabilidad:hover { filter: brightness(1.15); box-shadow: 0 8px 24px rgba(185, 28, 28, 0.4); }
+.btn-contactos { background: linear-gradient(135deg, #dc3545 0%, #c62828 100%); box-shadow: 0 4px 14px rgba(220, 53, 69, 0.3); }
+.btn-contactos:hover { filter: brightness(1.15); box-shadow: 0 8px 24px rgba(220, 53, 69, 0.4); }
+.btn-facturacion { background: linear-gradient(135deg, #fd7e14 0%, #e35d0b 100%); box-shadow: 0 4px 14px rgba(253, 126, 20, 0.3); }
+.btn-facturacion:hover { filter: brightness(1.15); box-shadow: 0 8px 24px rgba(253, 126, 20, 0.4); }
+.btn-analisis { background: linear-gradient(135deg, #6610f2 0%, #520dc2 100%); box-shadow: 0 4px 14px rgba(102, 16, 242, 0.3); }
+.btn-analisis:hover { filter: brightness(1.15); box-shadow: 0 8px 24px rgba(102, 16, 242, 0.4); }
 
-/* Botones semánticos (colores fijos) */
-.btn-danger { border-color: #dc3545; color: var(--text-primary); }
-.btn-danger:hover { background: #dc3545; border-color: #dc3545; color: #fff; }
-.btn-success { border-color: #28a745; color: var(--text-primary); }
-.btn-success:hover { background: #28a745; border-color: #28a745; color: #fff; }
+/* Botones semánticos (colores fijos con gradiente) */
+.btn-danger { background: linear-gradient(135deg, #dc3545 0%, #b71c1c 100%); box-shadow: 0 4px 14px rgba(220, 53, 69, 0.3); }
+.btn-danger:hover { filter: brightness(1.15); box-shadow: 0 8px 24px rgba(220, 53, 69, 0.4); }
+.btn-success { background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); box-shadow: 0 4px 14px rgba(40, 167, 69, 0.3); }
+.btn-success:hover { filter: brightness(1.15); box-shadow: 0 8px 24px rgba(40, 167, 69, 0.4); }
 
 :where(input, select, textarea) {
   background: var(--bg-card);
