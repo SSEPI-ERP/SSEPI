@@ -932,7 +932,31 @@ tr.inbound-unread td { font-weight: 500; }
   width: 24px;
   text-align: center;
   color: inherit;
+  background: transparent;
 }
+
+/* Iconos con color por módulo en sidebar */
+.sidebar-left .nav-item[data-module="ordenes_taller"] .icon-box i { color: var(--c-taller); }
+.sidebar-left .nav-item[data-module="ordenes_motores"] .icon-box i { color: var(--c-motores); }
+.sidebar-left .nav-item[data-module="ventas"] .icon-box i { color: var(--c-ventas); }
+.sidebar-left .nav-item[data-module="compras"] .icon-box i { color: var(--c-compras); }
+.sidebar-left .nav-item[data-module="inventario"] .icon-box i { color: var(--c-stock); }
+.sidebar-left .nav-item[data-module="contactos"] .icon-box i { color: var(--c-contact); }
+.sidebar-left .nav-item[data-module="proyectos_automatizacion"] .icon-box i { color: var(--c-automatizacion); }
+.sidebar-left .nav-item[data-module="facturas"] .icon-box i { color: var(--c-facturacion); }
+.sidebar-left .nav-item[data-module="contabilidad"] .icon-box i { color: var(--c-contabilidad); }
+.sidebar-left .nav-item[data-module="pagos_nomina"] .icon-box i { color: var(--c-finanzas); }
+.sidebar-left .nav-item[data-module="analisis_general"] .icon-box i,
+.sidebar-left .nav-item[data-module="analisis_ventas"] .icon-box i,
+.sidebar-left .nav-item[data-module="analisis_taller"] .icon-box i,
+.sidebar-left .nav-item[data-module="analisis_motores"] .icon-box i,
+.sidebar-left .nav-item[data-module="analisis_automatizacion"] .icon-box i,
+.sidebar-left .nav-item[data-module="analisis_proyectos"] .icon-box i,
+.sidebar-left .nav-item[data-module="analisis_compras"] .icon-box i { color: var(--c-analisis); }
+.sidebar-left .nav-item[data-module="calculadoras"] .icon-box i { color: var(--c-analisis); }
+.sidebar-left .nav-item[data-module="vacaciones"] .icon-box i { color: var(--c-proyectos); }
+.sidebar-left .nav-item[data-module="paginas"] .icon-box i { color: var(--c-web); }
+.sidebar-left .nav-item[data-module="configuracion"] .icon-box i { color: var(--primary); }
 
 /* Actividad (audit_logs) al pie del menú lateral */
 .ssepi-nav-activity {
@@ -2085,6 +2109,39 @@ input:checked + .slider:before {
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 13px;
+}
+
+/* ================================================
+   LOGO SSEPI - MARCA DE AGUA
+   ================================================ */
+
+/* Marca de agua del logo en el fondo del panel */
+main::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 280px;
+  height: 280px;
+  background: url('/panel/assets/logo-ssepi.png') no-repeat center center;
+  background-size: contain;
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Logo en headers de cards */
+.card-logo-watermark {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  background: url('/panel/assets/logo-ssepi.png') no-repeat center center;
+  background-size: contain;
+  opacity: 0.15;
+  pointer-events: none;
 }
 
 /* ================================================
