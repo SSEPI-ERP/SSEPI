@@ -2972,25 +2972,6 @@ const VentasModule = (function() {
         if (toggleMenu) toggleMenu.addEventListener('click', _toggleMenu);
         /* #themeBtn lo gestiona theme-clock.js */
 
-        // Registro rápido de cotización
-        var btnRegistroRapido = document.getElementById('btnNuevaCotizacionRapida');
-        if (btnRegistroRapido) btnRegistroRapido.addEventListener('click', _abrirRegistroRapido);
-
-        var closeRegistroRapido = document.getElementById('closeRegistroRapidoModal');
-        if (closeRegistroRapido) closeRegistroRapido.addEventListener('click', function () {
-            var m = document.getElementById('registroRapidoModal');
-            if (m) m.classList.remove('active');
-        });
-
-        var cancelRegistroRapido = document.getElementById('cancelRegistroRapidoBtn');
-        if (cancelRegistroRapido) cancelRegistroRapido.addEventListener('click', function () {
-            var m = document.getElementById('registroRapidoModal');
-            if (m) m.classList.remove('active');
-        });
-
-        var guardarRegistroRapido = document.getElementById('guardarRegistroRapidoBtn');
-        if (guardarRegistroRapido) guardarRegistroRapido.addEventListener('click', _guardarRegistroRapido);
-
         var newCotizacionBtn = document.getElementById('newCotizacionBtn');
         if (newCotizacionBtn) newCotizacionBtn.addEventListener('click', _nuevaCotizacion);
 
