@@ -1,5 +1,5 @@
 // Build script para Vercel - Copia landing + panel al output
-import { copyFileSync, mkdirSync, rmSync, readdirSync, statSync, accessSync } from 'fs';
+import { copyFileSync, mkdirSync, rmSync, readdirSync, statSync, accessSync, existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { execSync } from 'child_process';
 
@@ -10,20 +10,27 @@ const OUTPUT = join(ROOT, 'vercel-output');
 try { rmSync(OUTPUT, { recursive: true }); } catch {}
 mkdirSync(OUTPUT, { recursive: true });
 
-// 1. Build del landing
+// 1. Build del landing (asumimos que npm install ya se ejecutó en Vercel)
 console.log('🔨 Building landing...');
-// Usar npm en lugar de pnpm para compatibilidad con Vercel
-execSync('npm install --prefix landing', {
-  stdio: 'inherit'
-});
-execSync('npm run build --prefix landing', {
-  stdio: 'inherit'
-});
+try {
+  execSync('npm run build --prefix landing', {
+    stdio: 'inherit',
+    env: { ...process.env, NODE_ENV: 'production' }
+  });
+} catch (error) {
+  console.error('❌ Error building landing:', error.message);
+  process.exit(1);
+}
 
 // 2. Copiar landing/dist a output
 console.log('📦 Copying landing...');
 const landingDist = join(ROOT, 'landing', 'dist');
-copyDir(landingDist, OUTPUT);
+if (existsSync(landingDist)) {
+  copyDir(landingDist, OUTPUT);
+} else {
+  console.error('❌ Landing dist not found:', landingDist);
+  process.exit(1);
+}
 
 // 3. Copiar panel a output/panel
 console.log('📦 Copying panel...');
@@ -35,7 +42,7 @@ copyDir(panelSrc, panelDest);
 // 4. Copiar assets (si existen fuera del landing)
 const assetsSrc = join(ROOT, 'assets');
 const assetsDest = join(OUTPUT, 'assets');
-if (exists(assetsSrc)) {
+if (existsSync(assetsSrc)) {
   console.log('📦 Copying assets...');
   mkdirSync(assetsDest, { recursive: true });
   copyDir(assetsSrc, assetsDest);
@@ -44,7 +51,8 @@ if (exists(assetsSrc)) {
 console.log('✅ Build completo!');
 
 function copyDir(src, dest) {
-  const entries = [...new Set([...readdirSync(src)])];
+  if (!existsSync(src)) return;
+  const entries = readdirSync(src);
   for (const entry of entries) {
     const srcPath = join(src, entry);
     const destPath = join(dest, entry);
@@ -56,8 +64,4 @@ function copyDir(src, dest) {
       copyFileSync(srcPath, destPath);
     }
   }
-}
-
-function exists(p) {
-  try { accessSync(p); return true; } catch { return false; }
 }
