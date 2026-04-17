@@ -73,6 +73,10 @@
       "destination": "/assets/:path*"
     },
     {
+      "source": "/panel/login.html",
+      "destination": "/panel/login.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
