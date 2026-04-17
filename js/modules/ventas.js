@@ -945,27 +945,112 @@ const VentasModule = (function() {
         alert('Función de edición en implementación. ID: ' + ordenTallerId);
     }
 
-    async function _eliminarOrdenTaller(compraId) {
+    function _eliminarOrdenTaller(compraId) {
         const compra = solicitudesTaller.find(s => s.id === compraId);
         if (!compra) return;
-        if (!confirm('¿Eliminar esta orden de Taller?\n\nFolio: ' + (compra.folio || compraId) + '\nCliente: ' + (compra.vinculacion?.nombre || 'N/A'))) return;
-        try {
-            const ordenTallerId = compra.vinculacion?.id;
-            if (ordenTallerId) {
-                const csrfToken = await authService.getCsrfToken();
-                const ok = await window.supabase.from('ordenes_taller').delete().eq('id', ordenTallerId);
-                if (ok.error) throw ok.error;
+        const folio = compra.folio || compra.id.slice(-6);
+        const cliente = compra.vinculacion?.nombre || 'N/A';
+        const equipo = compra.vinculacion?.equipo || '—';
+        _showDeleteConfirm(folio, cliente, equipo, async () => {
+            try {
+                const ordenTallerId = compra.vinculacion?.id;
+                if (ordenTallerId) {
+                    const { error: err1 } = await window.supabase.from('ordenes_taller').delete().eq('id', ordenTallerId);
+                    if (err1) throw err1;
+                }
+                const { error: err2 } = await window.supabase.from('compras').delete().eq('id', compraId);
+                if (err2) throw err2;
+                _addToFeed('🗑️', 'Orden eliminada: ' + folio);
+                await _loadCompras();
+                _renderSolicitudesTaller();
+            } catch (e) {
+                console.error(e);
+                _showErrorModal('Error al eliminar', e.message);
             }
-            const csrfToken2 = await authService.getCsrfToken();
-            const ok2 = await window.supabase.from('compras').delete().eq('id', compraId);
-            if (ok2.error) throw ok2.error;
-            _addToFeed('🗑️', 'Orden eliminada: ' + (compra.folio || compraId));
-            await _loadCompras();
-            _renderSolicitudesTaller();
-        } catch (e) {
-            console.error(e);
-            alert('Error al eliminar: ' + e.message);
-        }
+        });
+    }
+
+    function _showDeleteConfirm(folio, cliente, equipo, onConfirm) {
+        const existing = document.getElementById('ssepiDeleteConfirmModal');
+        if (existing) existing.remove();
+        const modal = document.createElement('div');
+        modal.id = 'ssepiDeleteConfirmModal';
+        modal.className = 'ssepi-modal-overlay';
+        modal.innerHTML = `
+            <div class="ssepi-delete-modal">
+                <div class="ssepi-modal-header">
+                    <div class="ssepi-modal-icon warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3 class="ssepi-modal-title">¿Eliminar orden ${folio}?</h3>
+                </div>
+                <div class="ssepi-modal-body">
+                    <div class="ssepi-info-row">
+                        <span class="ssepi-info-label">Cliente:</span>
+                        <span class="ssepi-info-value">${cliente}</span>
+                    </div>
+                    <div class="ssepi-info-row">
+                        <span class="ssepi-info-label">Equipo:</span>
+                        <span class="ssepi-info-value">${equipo}</span>
+                    </div>
+                    <p class="ssepi-warning-text">
+                        <i class="fas fa-triangle-exclamation"></i>
+                        Esta acción no se puede deshacer.
+                    </p>
+                </div>
+                <div class="ssepi-modal-footer">
+                    <button class="ssepi-btn ssepi-btn-cancel">Cancelar</button>
+                    <button class="ssepi-btn ssepi-btn-delete">Eliminar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        setTimeout(() => modal.classList.add('active'), 10);
+        modal.querySelector('.ssepi-btn-cancel').addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        });
+        modal.querySelector('.ssepi-btn-delete').addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+            onConfirm();
+        });
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+                setTimeout(() => modal.remove(), 300);
+            }
+        });
+    }
+
+    function _showErrorModal(title, message) {
+        const existing = document.getElementById('ssepiErrorModal');
+        if (existing) existing.remove();
+        const modal = document.createElement('div');
+        modal.id = 'ssepiErrorModal';
+        modal.className = 'ssepi-modal-overlay';
+        modal.innerHTML = `
+            <div class="ssepi-error-modal">
+                <div class="ssepi-modal-header">
+                    <div class="ssepi-modal-icon error">
+                        <i class="fas fa-circle-xmark"></i>
+                    </div>
+                    <h3 class="ssepi-modal-title">${title}</h3>
+                </div>
+                <div class="ssepi-modal-body">
+                    <p class="ssepi-error-message">${message}</p>
+                </div>
+                <div class="ssepi-modal-footer">
+                    <button class="ssepi-btn ssepi-btn-primary">Aceptar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        setTimeout(() => modal.classList.add('active'), 10);
+        modal.querySelector('.ssepi-btn-primary').addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        });
     }
 
     // ==================== CALCULADORA DE COSTOS ====================

@@ -864,21 +864,24 @@ const TallerModule = (function() {
         _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
     }
 
-    async function _eliminarOrden(id) {
+    function _eliminarOrden(id) {
         const orden = orders.find(o => o.id === id);
-        if (!orden) { alert('Orden no encontrada'); return; }
-        if (!confirm('¿Eliminar orden ' + (orden.folio || id) + '?\n\nCliente: ' + (orden.cliente_nombre || 'N/A') + '\nEquipo: ' + (orden.equipo || 'N/A'))) return;
-        try {
-            const csrfToken = await authService.getCsrfToken();
-            const { error } = await window.supabase.from('ordenes_taller').delete().eq('id', id);
-            if (error) throw error;
-            _addToFeed('🗑️', 'Orden eliminada: ' + (orden.folio || id));
-            await _loadOrders();
-            _applyFilters();
-        } catch (e) {
-            console.error(e);
-            alert('Error al eliminar: ' + e.message);
-        }
+        if (!orden) { _showErrorModal('Orden no encontrada', 'No se encontró la orden especificada.'); return; }
+        const folio = orden.folio || id.slice(-6);
+        const cliente = orden.cliente_nombre || 'N/A';
+        const equipo = orden.equipo || '—';
+        _showDeleteConfirm(folio, cliente, equipo, async () => {
+            try {
+                const { error } = await window.supabase.from('ordenes_taller').delete().eq('id', id);
+                if (error) throw error;
+                _addToFeed('🗑️', 'Orden eliminada: ' + folio);
+                await _loadOrders();
+                _applyFilters();
+            } catch (e) {
+                console.error(e);
+                _showErrorModal('Error al eliminar', e.message);
+            }
+        });
     }
 
     async function _abrirNuevaOrden() {
@@ -2371,6 +2374,90 @@ ${printScript}
             localStorage.setItem('theme', 'dark');
             btn.innerHTML = '<i class="fas fa-sun"></i>';
         }
+    }
+
+    // ==================== MODALES DE CONFIRMACIÓN Y ERROR ====================
+    function _showDeleteConfirm(folio, cliente, equipo, onConfirm) {
+        const existing = document.getElementById('ssepiDeleteConfirmModal');
+        if (existing) existing.remove();
+        const modal = document.createElement('div');
+        modal.id = 'ssepiDeleteConfirmModal';
+        modal.className = 'ssepi-modal-overlay';
+        modal.innerHTML = `
+            <div class="ssepi-delete-modal">
+                <div class="ssepi-modal-header">
+                    <div class="ssepi-modal-icon warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3 class="ssepi-modal-title">¿Eliminar orden ${folio}?</h3>
+                </div>
+                <div class="ssepi-modal-body">
+                    <div class="ssepi-info-row">
+                        <span class="ssepi-info-label">Cliente:</span>
+                        <span class="ssepi-info-value">${cliente}</span>
+                    </div>
+                    <div class="ssepi-info-row">
+                        <span class="ssepi-info-label">Equipo:</span>
+                        <span class="ssepi-info-value">${equipo}</span>
+                    </div>
+                    <p class="ssepi-warning-text">
+                        <i class="fas fa-triangle-exclamation"></i>
+                        Esta acción no se puede deshacer.
+                    </p>
+                </div>
+                <div class="ssepi-modal-footer">
+                    <button class="ssepi-btn ssepi-btn-cancel">Cancelar</button>
+                    <button class="ssepi-btn ssepi-btn-delete">Eliminar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        setTimeout(() => modal.classList.add('active'), 10);
+        modal.querySelector('.ssepi-btn-cancel').addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        });
+        modal.querySelector('.ssepi-btn-delete').addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+            onConfirm();
+        });
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+                setTimeout(() => modal.remove(), 300);
+            }
+        });
+    }
+
+    function _showErrorModal(title, message) {
+        const existing = document.getElementById('ssepiErrorModal');
+        if (existing) existing.remove();
+        const modal = document.createElement('div');
+        modal.id = 'ssepiErrorModal';
+        modal.className = 'ssepi-modal-overlay';
+        modal.innerHTML = `
+            <div class="ssepi-error-modal">
+                <div class="ssepi-modal-header">
+                    <div class="ssepi-modal-icon error">
+                        <i class="fas fa-circle-xmark"></i>
+                    </div>
+                    <h3 class="ssepi-modal-title">${title}</h3>
+                </div>
+                <div class="ssepi-modal-body">
+                    <p class="ssepi-error-message">${message}</p>
+                </div>
+                <div class="ssepi-modal-footer">
+                    <button class="ssepi-btn ssepi-btn-primary">Aceptar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        setTimeout(() => modal.classList.add('active'), 10);
+        modal.querySelector('.ssepi-btn-primary').addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        });
     }
 
     // ==================== LIMPIEZA ====================

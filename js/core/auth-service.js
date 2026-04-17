@@ -128,9 +128,9 @@ export class AuthService {
   async listProfiles() {
     // El proyecto puede usar: usuarios, users o profiles (compatibilidad).
     const candidates = [
-      { table: 'usuarios', select: 'auth_user_id, email, nombre, rol, telefono, created_at' },
-      { table: 'users', select: 'auth_user_id, email, nombre, rol, telefono, created_at' },
-      { table: 'profiles', select: 'id, email, nombre, rol, telefono, created_at' },
+      { table: 'usuarios', select: 'auth_user_id, email, nombre, rol, telefono' },
+      { table: 'users', select: 'auth_user_id, email, nombre, rol, telefono' },
+      { table: 'profiles', select: 'id, email, nombre, rol, telefono' },
     ];
     for (const c of candidates) {
       try {
@@ -147,7 +147,6 @@ export class AuthService {
           nombre: row.nombre,
           rol: row.rol,
           telefono: row.telefono ?? null,
-          created_at: row.created_at,
           auth_user_id: row.auth_user_id || row.id,
         }));
       } catch (_) {
