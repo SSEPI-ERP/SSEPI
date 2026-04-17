@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/assets/logo-ssepi.png">
+    <link rel="shortcut icon" type="image/png" href="/assets/logo-ssepi.png">
+    <title>SSEPI · Automatización Industrial</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/modules/servicios.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="/js/core/supabase-config.js"></script>
+    <script type="module" src="/js/core/security-middleware.js"></script>
+    <script type="module" src="/js/core/auth-service.js"></script>
+    <script type="module" src="/js/core/data-service.js"></script>
+    <script type="module" src="/js/core/costos-engine.js"></script>
+    <script type="module" src="/js/core/contactos-formulas.js"></script>
+    <script src="/js/core/theme-clock.js"></script>
+    <script src="/js/core/user-menu.js"></script>
+    <script src="/js/core/nav-by-role.js"></script>
+    <script src="/js/core/folio-formats.js"></script>
+    <script type="module" src="/js/modules/servicios.js"></script>
+</head>
+<body class="page-servicios nav-loading">
+    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <img src="/assets/logo-ssepi.png" alt="SSEPI" class="brand-logo">
+                <div>
+                    <div class="brand-text">AUTOMATIZACIÓN INDUSTRIAL</div>
+                    <div class="brand-sub">Ingeniería y Control</div>
+                </div>
+            </div>
+            <a href="/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <div class="notification-badge">
+                <i class="fas fa-bell"></i>
+                <span class="badge-count" id="notificacionesBadge">0</span>
+            </div>
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <div class="user-pill" id="userMenu">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
+        <a href="/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/pages/ssepi_servicios.html" class="nav-item active" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
+        <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/pages/ssepi_import_viewer.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-file-upload"></i></span> Importar datos</a>
+        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <a href="/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
+        <a href="/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <div class="menu-category">EXTERNOS</div>
+        <a href="#" class="nav-item" target="_blank" rel="noopener" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+    </nav>
+
+    <main>
+        <!-- Filtros superiores -->
+        <div class="filtros-bar">
+            <div class="filtro-grupo">
+                <label>Desde:</label>
+                <input type="date" id="filtroFechaInicio">
+            </div>
+            <div class="filtro-grupo">
+                <label>Hasta:</label>
+                <input type="date" id="filtroFechaFin">
+            </div>
+            <div class="filtro-grupo">
+                <label>Ingeniero:</label>
+                <select id="filtroIngeniero">
+                    <option value="todos">Todos</option>
+                </select>
+            </div>
+            <div class="filtro-grupo">
+                <label>Estado:</label>
+                <select id="filtroEstado">
+                    <option value="todos">Todos</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="progreso">En Progreso</option>
+                    <option value="completado">Completado</option>
+                </select>
+            </div>
+            <div class="filtro-grupo">
+                <label>Buscar:</label>
+                <input type="text" id="filtroBuscar" placeholder="Proyecto, cliente, folio">
+            </div>
+            <button class="btn-filtro" id="aplicarFiltrosBtn"><i class="fas fa-search"></i> Aplicar</button>
+            <div class="vistas">
+                <button id="vistaKanban" class="active"><i class="fas fa-columns"></i> Kanban</button>
+                <button id="vistaLista"><i class="fas fa-table"></i> Lista</button>
+                <button id="vistaGrafica"><i class="fas fa-chart-bar"></i> Gráfica</button>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-clipboard-list"></i></div>
+                <div class="kpi-title">Total Proyectos</div>
+                <div class="kpi-value" id="kpiTotal">0</div>
+            </div>
+            <div class="kpi-card orange">
+                <div class="kpi-icon"><i class="fas fa-clock"></i></div>
+                <div class="kpi-title">Pendientes</div>
+                <div class="kpi-value" id="kpiPendiente">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-cogs"></i></div>
+                <div class="kpi-title">En Progreso</div>
+                <div class="kpi-value" id="kpiProgreso">0</div>
+            </div>
+            <div class="kpi-card green">
+                <div class="kpi-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="kpi-title">Completados</div>
+                <div class="kpi-value" id="kpiCompletado">0</div>
+            </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="actions-header">
+            <h2 class="section-title"><i class="fas fa-robot"></i> Proyectos de Automatización</h2>
+            <button class="btn-ssepi btn-automatizacion" id="newProjectBtn"><i class="fas fa-plus"></i> Nuevo Proyecto</button>
+        </div>
+
+        <!-- Contenedores de vistas -->
+        <div id="kanbanContainer" class="kanban-container"></div>
+        <div id="listaContainer" class="lista-container"></div>
+        <div id="graficaContainer" class="grafica-container">
+            <canvas id="graficaCanvas"></canvas>
+        </div>
+    </main>
+
+    <!-- SIDEBAR DERECHO (FEED) -->
+    <aside class="sidebar-right">
+        <div class="history-header">
+            <span><i class="fas fa-history"></i> BITÁCORA</span>
+            <span class="notification-badge" id="feedCount">0</span>
+        </div>
+        <div class="feed-list" id="feedList">
+            <div class="feed-item">
+                <div class="feed-dot"></div>
+                <div class="feed-meta"><span style="color:var(--c-automatizacion);">SISTEMA</span><span>ahora</span></div>
+                <div class="feed-body">Módulo de automatización iniciado</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MODAL WORKSTATION (5 PASOS) -->
+    <div class="workstation-modal" id="wsModal">
+        <div class="ws-header">
+            <div class="ws-title-group">
+                <button class="btn-secondary" id="closeWsBtn"><i class="fas fa-arrow-left"></i> Volver</button>
+                <div>
+                    <div class="ws-title">AUTOMATIZACIÓN - 5 ETAPAS</div>
+                    <div class="ws-folio"><input type="text" id="inpFolio" class="ws-folio-input" readonly></div>
+                </div>
+            </div>
+            <div class="ws-steps">
+                <button class="ws-step-btn active" data-step="1">1. Levantamiento</button>
+                <button class="ws-step-btn" data-step="2">2. Ingeniería</button>
+                <button class="ws-step-btn" data-step="3">3. Materiales</button>
+                <button class="ws-step-btn" data-step="4">4. Desarrollo</button>
+                <button class="ws-step-btn" data-step="5">5. Entrega</button>
+            </div>
+        </div>
+
+        <div class="ws-body">
+            <div class="ws-content">
+                <!-- PASO 1: LEVANTAMIENTO -->
+                <div id="step-1" class="step-content active">
+                    <div class="form-section">
+                        <div class="section-title-form"><i class="fas fa-clipboard-list"></i> Levantamiento</div>
+                        <div class="form-grid">
+                            <div class="input-group required"><label>Nombre del Proyecto</label><input type="text" id="paso1_nombre"></div>
+                            <div class="input-group required"><label>Cliente</label><input type="text" id="paso1_cliente"></div>
+                            <div class="input-group required"><label>Fecha</label><input type="date" id="paso1_fecha"></div>
+                            <div class="input-group"><label>Vendedor</label><input type="text" id="paso1_vendedor"></div>
+                        </div>
+                        <div class="input-group"><label>Notas Generales</label><textarea id="paso1_notasGenerales" rows="3"></textarea></div>
+                        <div class="input-group"><label>Notas Internas</label><textarea id="paso1_notasInternas" rows="3"></textarea></div>
+                        <div style="display:flex; justify-content:flex-end;">
+                            <button class="btn-etapa" id="guardarPaso1"><i class="fas fa-save"></i> Guardar</button>
+                            <button class="btn-etapa" id="terminarEtapa1" data-etapa="1"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PASO 2: INGENIERÍA -->
+                <div id="step-2" class="step-content">
+                    <div class="form-section">
+                        <div class="section-title-form"><i class="fas fa-drafting-compass"></i> Ingeniería</div>
+                        <button class="btn-add-row" id="agregarActividad"><i class="fas fa-plus"></i> Agregar Actividad</button>
+                        <table class="actividades-table">
+                            <thead><tr><th>Área</th><th>Actividad</th><th>Tipo</th><th>Horas</th><th></th></tr></thead>
+                            <tbody id="actividadesBody"></tbody>
+                        </table>
+                        <button class="btn-primary" id="generarCronograma"><i class="fas fa-calendar-alt"></i> Generar Cronograma</button>
+                        <div id="ganttContainer" class="gantt-container" style="display:none;">
+                            <h4>Cronograma de Actividades</h4>
+                            <div id="ganttHeader" class="gantt-header"></div>
+                            <div id="ganttBody"></div>
+                            <button class="btn-secondary" id="exportarCronogramaPDF"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
+                        </div>
+                        <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+                            <button class="btn-etapa" id="terminarEtapa2" data-etapa="2"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PASO 3: MATERIALES -->
+                <div id="step-3" class="step-content">
+                    <div class="form-section">
+                        <div class="section-title-form"><i class="fas fa-boxes"></i> Materiales</div>
+                        <div class="form-section" style="margin-bottom:1rem;padding:0;border:none;">
+                            <div class="section-title-form" style="font-size:0.95rem;"><i class="fas fa-calculator"></i> Referencia de costos</div>
+                            <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 10px;">Suma de costo por línea (costo unitario editable o costo del SKU en inventario; carga con <code>node import.mjs inventario --apply</code> y el Excel <strong>inventario electronica ssepi</strong>) más traslado (km / camioneta) con parámetros de calculadoras en Supabase.</p>
+                            <div class="form-grid">
+                                <div class="input-group"><label>Km visita</label><input type="number" id="autoCostoKm" min="0" step="1" value="0"></div>
+                                <div class="input-group"><label>Horas camioneta</label><input type="number" id="autoCostoHrsCam" min="0" step="0.5" value="0"></div>
+                            </div>
+                            <button type="button" class="btn-ssepi btn-automatizacion" id="btnRecalcCostosServicios" style="margin-top:8px;"><i class="fas fa-sync-alt"></i> Actualizar estimación</button>
+                            <div id="serviciosCostosResumen" style="margin-top:12px;font-size:0.9rem;line-height:1.5;"></div>
+                        </div>
+                        <div id="autoPrioritySuppliers" class="auto-prio-host" aria-label="Tiendas componentes (prioridad)"></div>
+                        <div class="inventario-selector">
+                            <select id="inventarioSelect"><option value="">Seleccionar producto</option></select>
+                            <button class="btn-secondary" id="agregarDesdeInventario">Agregar</button>
+                        </div>
+                        <button class="btn-add-row" id="agregarMaterialManual"><i class="fas fa-plus"></i> Agregar Manual</button>
+                        <table class="materiales-table">
+                            <thead><tr><th>Nombre</th><th>Descripción</th><th>Cantidad</th><th>SKU</th><th>Costo u.</th><th>Subtotal</th><th></th></tr></thead>
+                            <tbody id="materialesBody"></tbody>
+                        </table>
+                        <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+                            <button class="btn-etapa" id="guardarMateriales"><i class="fas fa-save"></i> Guardar</button>
+                            <button class="btn-etapa" id="generarRequerimientoCompraBtn"><i class="fas fa-file-invoice"></i> Generar requerimiento</button>
+                            <button class="btn-etapa" id="terminarEtapa3" data-etapa="3"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PASO 4: DESARROLLO -->
+                <div id="step-4" class="step-content">
+                    <div class="form-section">
+                        <div class="section-title-form"><i class="fas fa-code"></i> Desarrollo</div>
+                        <div style="display:flex; gap:10px; margin-bottom:15px;">
+                            <input type="text" id="nuevaEpica" placeholder="Nueva épica..." style="flex:1; padding:8px;">
+                            <button class="btn-primary" id="crearEpica">Crear</button>
+                        </div>
+                        <div class="epicas-container" id="epicasContainer"></div>
+                        <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+                            <button class="btn-etapa" id="terminarEtapa4" data-etapa="4"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PASO 5: ENTREGA -->
+                <div id="step-5" class="step-content">
+                    <div class="form-section">
+                        <div class="section-title-form"><i class="fas fa-truck"></i> Entrega</div>
+                        <div class="entrega-informe-section">
+                            <div class="section-title-form"><i class="fas fa-file-upload"></i> Subir informe u orden de entrega</div>
+                            <p class="upload-hint">Adjunta el informe de lo realizado o la hoja de orden del proyecto.</p>
+                            <div class="upload-foto-controls">
+                                <input type="file" id="informeEntregaAutomatizacion" accept="image/*,.pdf">
+                                <span id="informeEntregaAutomatizacionNombre" class="file-name"></span>
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="input-group"><label>Resumen de lo realizado</label><textarea id="entregaResumenAutomatizacion" rows="3" placeholder="Qué se hizo en esta entrega"></textarea></div>
+                            <div class="input-group"><label>Responsable de entrega (quién lo hizo)</label><input type="text" id="entregaResponsableAutomatizacion" placeholder="Nombre del ingeniero/técnico"></div>
+                        </div>
+                        <div class="form-section firmas-entrega">
+                            <div class="section-title-form"><i class="fas fa-signature"></i> Firmas</div>
+                            <div class="firmas-container">
+                                <div class="firma-item">
+                                    <div><strong>Firma del Cliente</strong></div>
+                                    <input type="text" id="firmaClienteNombreAutomatizacion" placeholder="Nombre y fecha" class="firma-input">
+                                </div>
+                                <div class="firma-item">
+                                    <div><strong>Firma del Técnico</strong></div>
+                                    <input type="text" id="firmaTecnicoNombreAutomatizacion" placeholder="Nombre y fecha" class="firma-input">
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn-nuevo-apartado" id="crearNuevoApartado"><i class="fas fa-plus-circle"></i> Nuevo Apartado</button>
+                        <div class="apartados-grid" id="apartadosContainer"></div>
+                        <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+                            <button class="btn-etapa" id="completarEntregaBtn"><i class="fas fa-flag-checkered"></i> Completar entrega</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ws-footer">
+            <button class="btn-secondary" id="cancelWsBtn">Cancelar</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-secondary" id="prevStepBtn" style="display:none;">← Anterior</button>
+                <button class="btn-primary" id="nextStepBtn">Siguiente →</button>
+                <button class="btn-primary" id="saveProjectBtn">💾 Guardar Proyecto</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', () => {
+            (async function() {
+                const deadline = Date.now() + 8000;
+                while (!window.securityMiddleware || !window.authService) {
+                    if (Date.now() > deadline) {
+                        console.error('SSEPI: securityMiddleware o authService no disponibles.');
+                        return;
+                    }
+                    await new Promise(r => setTimeout(r, 50));
+                }
+                try {
+                    await window.securityMiddleware.initSecurity();
+                } catch (e) {
+                    console.warn('SSEPI security init:', e);
+                }
+                let user = null;
+                try {
+                    user = await window.authService.requireAuth('/');
+                } catch (e) {
+                    console.error('SSEPI auth:', e);
+                    return;
+                }
+                if (user) {
+                    try {
+                        const profile = await window.authService.getCurrentProfile();
+                        const nameEl = document.getElementById('userName');
+                        const avatarEl = document.getElementById('userAvatar');
+                        if (nameEl) nameEl.innerText = (profile?.nombre?.split(' ')[0]) || 'Admin';
+                        if (avatarEl) avatarEl.innerText = (profile?.nombre?.[0] || 'A').toUpperCase();
+                    } catch (e) {
+                        console.warn('Perfil:', e);
+                    }
+                }
+                // Esperar a que el módulo de Automatización esté disponible (scripts type="module" pueden terminar después del load)
+                const modDeadline = Date.now() + 3000;
+                while (!window.serviciosModule || typeof window.serviciosModule.init !== 'function') {
+                    if (Date.now() > modDeadline) {
+                        console.error('SSEPI: serviciosModule no disponible. Revisa que servicios.js cargue sin errores (F12).');
+                        return;
+                    }
+                    await new Promise(r => setTimeout(r, 50));
+                }
+                try {
+                    await window.serviciosModule.init();
+                } catch (e) {
+                    console.error('Automatización init:', e);
+                }
+            })();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/assets/logo-ssepi.png">
+    <link rel="shortcut icon" type="image/png" href="/assets/logo-ssepi.png">
+    <title>SSEPI · Importar datos (Excel / CSV)</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/modules/import-viewer.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script type="module" src="/js/core/supabase-config.js"></script>
+    <script type="module" src="/js/core/security-middleware.js"></script>
+    <script type="module" src="/js/core/auth-service.js"></script>
+    <script type="module" src="/js/core/data-service.js"></script>
+    <script src="/js/core/theme-clock.js"></script>
+    <script src="/js/core/user-menu.js"></script>
+    <script src="/js/core/nav-by-role.js"></script>
+    <script type="module" src="/js/modules/import-viewer.js"></script>
+</head>
+<body class="page-import-viewer nav-loading">
+    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu" type="button" aria-label="Menú"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <img src="/assets/logo-ssepi.png" alt="SSEPI" class="brand-logo">
+                <div>
+                    <div class="brand-text">IMPORTAR</div>
+                    <div class="brand-sub">Excel / CSV → Supabase</div>
+                </div>
+            </div>
+            <a href="/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <div class="notification-badge">
+                <i class="fas fa-bell"></i>
+                <span class="badge-count" id="notificacionesBadge">0</span>
+            </div>
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn" type="button" aria-label="Tema"><i class="fas fa-moon"></i></button>
+            <div class="user-pill" id="userMenu">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
+        <a href="/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
+        <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/pages/ssepi_import_viewer.html" class="nav-item active" data-module="contabilidad"><span class="icon-box"><i class="fas fa-file-upload"></i></span> Importar datos</a>
+        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <a href="/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
+        <a href="/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <div class="menu-category">EXTERNOS</div>
+        <a href="#" class="nav-item" target="_blank" rel="noopener" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+    </nav>
+
+    <main>
+        <div class="iv-toolbar">
+            <label class="btn-ssepi primary" for="ivFile"><i class="fas fa-folder-open"></i> Elegir Excel / CSV</label>
+            <input type="file" id="ivFile" accept=".xlsx,.xls,.csv" multiple>
+            <button type="button" class="btn-ssepi" id="ivExportCsv"><i class="fas fa-download"></i> Exportar pestaña a CSV</button>
+            <button type="button" class="btn-ssepi success" id="ivSaveContactos"><i class="fas fa-address-book"></i> Guardar pestaña → Contactos</button>
+            <span class="iv-toolbar-inv">
+                <button type="button" class="btn-ssepi success" id="ivSaveInventario"><i class="fas fa-boxes"></i> Guardar pestaña → Inventario</button>
+                <label for="ivInvCategoria" class="iv-inline-label">Categoría</label>
+                <select id="ivInvCategoria">
+                    <option value="refaccion">Refacción</option>
+                    <option value="electronica">Electrónica</option>
+                    <option value="herramienta">Herramienta</option>
+                    <option value="consumible">Consumible</option>
+                </select>
+            </span>
+        </div>
+        <p class="iv-hint">
+            Vista previa local: no se incrustan datos en el HTML. Use los botones de guardado para persistir en Supabase (misma API que Contactos e Inventario).
+            Las imágenes incrustadas en celdas de Excel no las lee SheetJS; si necesita logos, use una columna con URL https a la imagen.
+        </p>
+        <div id="ivTabs" class="iv-tabs" aria-label="Hojas importadas"></div>
+        <div id="ivPanels"></div>
+        <div id="ivLog" class="iv-log" role="log" aria-live="polite"></div>
+    </main>
+
+    <script type="module">
+        window.addEventListener('load', async () => {
+            const deadline = Date.now() + 8000;
+            while (!window.importViewerModule?.init) {
+                if (Date.now() > deadline) {
+                    console.error('SSEPI: importViewerModule no cargó.');
+                    return;
+                }
+                await new Promise((r) => setTimeout(r, 50));
+            }
+            await window.importViewerModule.init();
+            try {
+                const profile = await window.authService?.getCurrentProfile?.();
+                if (profile && window.applyNavByRole) await window.applyNavByRole(profile);
+            } catch (e) {}
+            document.body.classList.remove('nav-loading');
+            document.body.classList.add('nav-ready');
+        });
+    </script>
+</body>
+</html>

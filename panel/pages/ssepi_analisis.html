@@ -1,0 +1,407 @@
+<!-- pages/ssepi_analisis.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/assets/logo-ssepi.png">
+    <link rel="shortcut icon" type="image/png" href="/assets/logo-ssepi.png">
+    <title>SSEPI · Análisis y KPIs</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/modules/analisis.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="/js/core/supabase-config.js"></script>
+    <script type="module" src="/js/core/security-middleware.js"></script>
+    <script type="module" src="/js/core/auth-service.js"></script>
+    <script type="module" src="/js/core/data-service.js"></script>
+    <script type="module" src="/js/core/costos-engine.js"></script>
+    <script type="module" src="/js/core/contactos-formulas.js"></script>
+    <script src="/js/core/theme-clock.js"></script>
+    <script src="/js/core/user-menu.js"></script>
+    <script src="/js/core/nav-by-role.js"></script>
+    <!-- Sub-análisis dentro de Análisis (sin saturar menú) -->
+    <script type="module" src="/js/modules/analisis-compras.js"></script>
+    <script type="module" src="/js/modules/analisis-motores.js"></script>
+    <script type="module" src="/js/modules/analisis-automatizacion.js"></script>
+    <script type="module" src="/js/modules/analisis-proyectos.js"></script>
+    <script type="module" src="/js/modules/analisis.js"></script>
+</head>
+<body class="page-analisis nav-loading">
+    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <img src="/assets/logo-ssepi.png" alt="SSEPI" class="brand-logo">
+                <div>
+                    <div class="brand-text">ANÁLISIS Y KPI's</div>
+                    <div class="brand-sub">Inteligencia de Negocio</div>
+                </div>
+            </div>
+            <a href="/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <div class="notification-badge">
+                <i class="fas fa-bell"></i>
+                <span class="badge-count" id="notificacionesBadge">0</span>
+            </div>
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <div class="user-pill" id="userMenu">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <a href="/pages/ssepi_analisis.html" class="nav-item active" data-module-any="ventas,compras,ordenes_taller,ordenes_motores,proyectos_automatizacion,admin"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+    </nav>
+
+    <main>
+        <!-- NAVEGACIÓN A SUB-ANÁLISIS -->
+        <section class="analisis-nav-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <a href="/pages/ssepi_analisis_ventas.html" class="analisis-nav-card" style="padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); text-decoration: none; color: var(--text-primary); display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-chart-bar" style="font-size: 24px; color: var(--c-ventas);"></i>
+                <div>
+                    <div style="font-weight: 600; font-size: 14px;">Ventas</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Gráficas y reportes</div>
+                </div>
+            </a>
+            <a href="/pages/ssepi_analisis_compras.html" class="analisis-nav-card" style="padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); text-decoration: none; color: var(--text-primary); display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-shopping-cart" style="font-size: 24px; color: var(--c-compras);"></i>
+                <div>
+                    <div style="font-weight: 600; font-size: 14px;">Compras</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Proveedores y costos</div>
+                </div>
+            </a>
+            <a href="/pages/ssepi_analisis_taller.html" class="analisis-nav-card" style="padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); text-decoration: none; color: var(--text-primary); display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-microchip" style="font-size: 24px; color: var(--c-taller);"></i>
+                <div>
+                    <div style="font-weight: 600; font-size: 14px;">Laboratorio</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Reparados y entregados</div>
+                </div>
+            </a>
+            <a href="/pages/ssepi_analisis_motores.html" class="analisis-nav-card" style="padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); text-decoration: none; color: var(--text-primary); display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-industry" style="font-size: 24px; color: var(--c-motores);"></i>
+                <div>
+                    <div style="font-weight: 600; font-size: 14px;">Motores</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Estados y evolución</div>
+                </div>
+            </a>
+            <a href="/pages/ssepi_analisis_automatizacion.html" class="analisis-nav-card" style="padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); text-decoration: none; color: var(--text-primary); display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-robot" style="font-size: 24px; color: var(--c-automatizacion);"></i>
+                <div>
+                    <div style="font-weight: 600; font-size: 14px;">Automatización</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Proyectos y servicios</div>
+                </div>
+            </a>
+            <a href="/pages/ssepi_analisis_proyectos.html" class="analisis-nav-card" style="padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); text-decoration: none; color: var(--text-primary); display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-drafting-compass" style="font-size: 24px; color: var(--c-proyectos);"></i>
+                <div>
+                    <div style="font-weight: 600; font-size: 14px;">Proyectos</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Visitas y conversión</div>
+                </div>
+            </a>
+        </section>
+
+        <!-- Filtro temporal superior -->
+        <div class="filter-master">
+            <select id="timePreset">
+                <option value="today">📅 Hoy</option>
+                <option value="week" selected>📆 Esta semana</option>
+                <option value="month">🗓️ Este mes</option>
+                <option value="year">📈 Este año</option>
+                <option value="custom">🎛️ Rango personalizado</option>
+            </select>
+            <div class="custom-date-range" id="customRange" style="display: none;">
+                <input type="date" id="startDate" class="date-input">
+                <span style="color:var(--text-muted);">—</span>
+                <input type="date" id="endDate" class="date-input">
+            </div>
+            <button class="btn-apply" id="applyFilterBtn">
+                <i class="fas fa-bolt"></i> APLICAR
+            </button>
+        </div>
+
+        <!-- KPIs principales -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-title"><i class="fas fa-coins"></i> SALDO DE CAJA REAL</div>
+                <div class="kpi-value" id="kpiSaldoCaja">$0</div>
+                <div class="kpi-sub">Ingresos - Egresos (filtrados)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title"><i class="fas fa-crown"></i> VALOR DEL IMPERIO</div>
+                <div class="kpi-value" id="kpiValorImperio">$0</div>
+                <div class="kpi-sub">Caja + Inventario + Cuentas por cobrar</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title"><i class="fas fa-stopwatch"></i> ÍNDICE DE EFICIENCIA</div>
+                <div class="kpi-value" id="kpiEficiencia">0</div>
+                <div class="kpi-sub">Días promedio en taller</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title"><i class="fas fa-arrow-trend-up"></i> PROYECCIÓN UTILIDAD</div>
+                <div class="kpi-value" id="kpiProyeccionUtilidad">$0</div>
+                <div class="kpi-sub">Escenario actual</div>
+            </div>
+        </div>
+
+        <!-- Gráficas principales -->
+        <div class="grid-2col">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <span><i class="fas fa-chart-bar"></i> BALANCE MENSUAL</span>
+                    <span class="badge-gold">Ingresos vs Gastos</span>
+                </div>
+                <div class="chart-wrapper"><canvas id="balanceChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <span><i class="fas fa-chart-pie"></i> ¿EN QUÉ SE VA EL DINERO?</span>
+                    <span class="badge-gold">gastos por categoría</span>
+                </div>
+                <div class="chart-wrapper"><canvas id="gastosDoughnutChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Radar + Heatmap + Simulador -->
+        <div class="grid-3col">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <span><i class="fas fa-radar"></i> RENDIMIENTO TALLERES</span>
+                </div>
+                <div class="chart-wrapper"><canvas id="radarTalleresChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <span><i class="fas fa-map-marked-alt"></i> ACTIVIDAD POR CIUDAD</span>
+                    <span id="heatmapCiudadLabel">km totales</span>
+                </div>
+                <div id="heatmapCiudades" style="padding: 10px;"></div>
+            </div>
+            <div class="simulador-card">
+                <div class="chart-header">
+                    <span><i class="fas fa-flask"></i> SIMULADOR DE ESCENARIOS</span>
+                </div>
+                <div class="simulador-input-group">
+                    <input type="number" id="simuladorGasto" class="simulador-input" placeholder="Gasto futuro ($)" value="0">
+                    <button class="simulador-btn" id="simularBtn">SIMULAR</button>
+                </div>
+                <div class="simulador-resultado">
+                    <span>Utilidad proyectada:</span>
+                    <span id="utilidadProyectada" class="valor">$0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clientes VIP + Valor Inventario -->
+        <div class="grid-2col">
+            <div class="table-card">
+                <div class="chart-header">
+                    <span><i class="fas fa-star"></i> CLIENTES VIP POR VOLUMEN</span>
+                    <span id="vipCount" class="badge-gold">5</span>
+                </div>
+                <div id="vipContainer" class="vip-list"></div>
+            </div>
+            <div class="table-card">
+                <div class="chart-header">
+                    <span><i class="fas fa-warehouse"></i> CAPITAL PARADO</span>
+                    <span id="valorInventario" class="badge-gold">$0</span>
+                </div>
+                <div class="inventario-info">
+                    <div><span>Productos en stock:</span> <span id="totalProductos">0</span></div>
+                    <div><span>Valor de reposición:</span> <span id="valorReposicion">$0</span></div>
+                </div>
+                <button class="btn-export" id="exportPDFBtn">
+                    <i class="fas fa-file-pdf"></i> EXPORTAR REPORTE EJECUTIVO
+                </button>
+            </div>
+        </div>
+
+        <!-- Sub-análisis (módulos) -->
+        <div class="chart-card" style="margin-bottom: 26px;">
+            <div class="chart-header">
+                <span><i class="fas fa-layer-group"></i> ANÁLISIS POR MÓDULO</span>
+                <span class="badge-gold">sin saturar el menú</span>
+            </div>
+            <div class="subanalisis-switcher" id="subanalisisSwitcher">
+                <button class="btn-subanalisis active" data-panel="subanalisis-compras"><i class="fas fa-shopping-cart"></i> Compras</button>
+                <button class="btn-subanalisis" data-panel="subanalisis-motores"><i class="fas fa-industry"></i> Motores</button>
+                <button class="btn-subanalisis" data-panel="subanalisis-auto"><i class="fas fa-robot"></i> Automatización</button>
+                <button class="btn-subanalisis" data-panel="subanalisis-proyectos"><i class="fas fa-tools"></i> Proyectos</button>
+            </div>
+
+            <section class="subanalisis-panel active" id="subanalisis-compras">
+                <div class="welcome-header" style="margin-top: 6px;">
+                    <h2 style="margin:0;">Compras</h2>
+                    <p class="welcome-subtitle" style="margin-top:4px;">Resumen por estado y evolución mensual</p>
+                </div>
+                <div class="kpi-grid">
+                    <div class="kpi-card"><div class="kpi-title">Total</div><div class="kpi-value" id="kpiComprasTotal">—</div><div class="kpi-sub">Registros</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Pendientes</div><div class="kpi-value" id="kpiComprasPend">—</div><div class="kpi-sub">Estado 1-2</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Confirmadas</div><div class="kpi-value" id="kpiComprasConf">—</div><div class="kpi-sub">Estado 3</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Recibidas</div><div class="kpi-value" id="kpiComprasRec">—</div><div class="kpi-sub">Estado 4-5</div></div>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartComprasEstados"></canvas>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartComprasMes"></canvas>
+                </div>
+            </section>
+
+            <section class="subanalisis-panel" id="subanalisis-motores">
+                <div class="welcome-header" style="margin-top: 6px;">
+                    <h2 style="margin:0;">Motores</h2>
+                    <p class="welcome-subtitle" style="margin-top:4px;">Estados y evolución mensual</p>
+                </div>
+                <div class="kpi-grid">
+                    <div class="kpi-card"><div class="kpi-title">Total</div><div class="kpi-value" id="kpiMotoresTotal">—</div><div class="kpi-sub">Órdenes</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Pendientes</div><div class="kpi-value" id="kpiMotoresPend">—</div><div class="kpi-sub">Diag / espera</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Reparadas</div><div class="kpi-value" id="kpiMotoresRep">—</div><div class="kpi-sub">Listas</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Entregadas</div><div class="kpi-value" id="kpiMotoresEnt">—</div><div class="kpi-sub">Cerradas</div></div>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartMotoresEstados"></canvas>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartMotoresMes"></canvas>
+                </div>
+            </section>
+
+            <section class="subanalisis-panel" id="subanalisis-auto">
+                <div class="welcome-header" style="margin-top: 6px;">
+                    <h2 style="margin:0;">Automatización</h2>
+                    <p class="welcome-subtitle" style="margin-top:4px;">Pendientes / progreso / completados</p>
+                </div>
+                <div class="kpi-grid">
+                    <div class="kpi-card"><div class="kpi-title">Total</div><div class="kpi-value" id="kpiAutoTotal">—</div><div class="kpi-sub">Proyectos</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Pendientes</div><div class="kpi-value" id="kpiAutoPend">—</div><div class="kpi-sub">Backlog</div></div>
+                    <div class="kpi-card"><div class="kpi-title">En progreso</div><div class="kpi-value" id="kpiAutoProg">—</div><div class="kpi-sub">Ejecución</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Completados</div><div class="kpi-value" id="kpiAutoComp">—</div><div class="kpi-sub">Cerrados</div></div>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartAutoEstados"></canvas>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartAutoMes"></canvas>
+                </div>
+            </section>
+
+            <section class="subanalisis-panel" id="subanalisis-proyectos">
+                <div class="welcome-header" style="margin-top: 6px;">
+                    <h2 style="margin:0;">Proyectos / Soporte en planta</h2>
+                    <p class="welcome-subtitle" style="margin-top:4px;">Visitas y conversión a proyecto</p>
+                </div>
+                <div class="kpi-grid">
+                    <div class="kpi-card"><div class="kpi-title">Visitas</div><div class="kpi-value" id="kpiVisitas">—</div><div class="kpi-sub">Total</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Pendientes</div><div class="kpi-value" id="kpiVisPend">—</div><div class="kpi-sub">Agenda</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Convertidas</div><div class="kpi-value" id="kpiVisConv">—</div><div class="kpi-sub">A proyecto</div></div>
+                    <div class="kpi-card"><div class="kpi-title">Completadas</div><div class="kpi-value" id="kpiVisComp">—</div><div class="kpi-sub">Cerradas</div></div>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartVisitasEstados"></canvas>
+                </div>
+                <div class="chart-container" style="height:360px;margin-top:14px">
+                    <canvas id="chartVisitasMes"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <div class="sync-footer">
+            <span><i class="fas fa-database"></i> Supabase · datos en tiempo real</span>
+            <span id="lastSync">actualizado ahora</span>
+        </div>
+    </main>
+
+    <!-- SIDEBAR DERECHO (FEED) -->
+    <aside class="sidebar-right">
+        <div class="history-header">
+            <span><i class="fas fa-history"></i> BITÁCORA</span>
+            <span class="notification-badge" id="feedCount">0</span>
+        </div>
+        <div class="feed-list" id="feedList">
+            <div class="feed-item">
+                <div class="feed-dot"></div>
+                <div class="feed-meta"><span style="color:var(--c-analisis);">SISTEMA</span><span>ahora</span></div>
+                <div class="feed-body">Módulo de análisis iniciado</div>
+            </div>
+        </div>
+    </aside>
+
+    <script>
+        window.addEventListener('load', () => {
+            (async function() {
+                const deadline = Date.now() + 8000;
+                while (!window.securityMiddleware || !window.authService) {
+                    if (Date.now() > deadline) {
+                        console.error('SSEPI: securityMiddleware o authService no disponibles.');
+                        return;
+                    }
+                    await new Promise(r => setTimeout(r, 50));
+                }
+                try {
+                    await window.securityMiddleware.initSecurity();
+                } catch (e) {
+                    console.warn('SSEPI security init:', e);
+                }
+                let user = null;
+                try {
+                    user = await window.authService.requireAuth('/');
+                } catch (e) {
+                    console.error('SSEPI auth:', e);
+                    return;
+                }
+                if (user) {
+                    try {
+                        const profile = await window.authService.getCurrentProfile();
+                        const nameEl = document.getElementById('userName');
+                        const avatarEl = document.getElementById('userAvatar');
+                        if (nameEl) nameEl.innerText = (profile?.nombre?.split(' ')[0]) || 'Admin';
+                        if (avatarEl) avatarEl.innerText = (profile?.nombre?.[0] || 'A').toUpperCase();
+                    } catch (e) {
+                        console.warn('Perfil:', e);
+                    }
+                }
+                const modDeadline = Date.now() + 3000;
+                while (!window.analisisModule || typeof window.analisisModule.init !== 'function') {
+                    if (Date.now() > modDeadline) {
+                        console.error('SSEPI: analisisModule no disponible.');
+                        return;
+                    }
+                    await new Promise(r => setTimeout(r, 50));
+                }
+                try {
+                    await window.analisisModule.init();
+                } catch (e) {
+                    console.error('Análisis init:', e);
+                }
+            })();
+        });
+    </script>
+</body>
+</html>

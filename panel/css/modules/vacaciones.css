@@ -1,0 +1,247 @@
+/* Vacaciones: calendario y detalle por día */
+
+/* KPI días: más espacio y legibilidad */
+.kpi-grid-vacaciones .kpi-card-dias {
+    padding: 1.25rem 1.5rem;
+    min-height: 100px;
+}
+.kpi-grid-vacaciones .kpi-card-dias .kpi-title {
+    font-size: 0.8125rem;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.02em;
+}
+.kpi-grid-vacaciones .kpi-card-dias .kpi-values {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.kpi-grid-vacaciones .kpi-card-dias .kpi-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+.kpi-grid-vacaciones .kpi-card-dias .kpi-meta {
+    font-size: 0.875rem;
+    color: var(--text-muted, #64748b);
+    font-weight: 500;
+}
+
+.vacaciones-calendar-section .calendar-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.vacaciones-calendar-section .btn-cal {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+.vacaciones-calendar-section .btn-cal-anual {
+    padding: 12px 24px;
+}
+.vacaciones-calendar-section .cal-month-year {
+    font-weight: 600;
+    font-size: 1.125rem;
+    min-width: 200px;
+    text-align: center;
+}
+.cal-anual-controls .btn-cal {
+    min-height: 44px;
+    padding: 12px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.cal-anual-controls select {
+    min-height: 44px;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+}
+.cal-anual-controls label {
+    font-weight: 600;
+    font-size: 1rem;
+}
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 1rem;
+    max-width: 700px;
+}
+.cal-grid .cal-head {
+    padding: 0.4rem;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748b);
+}
+.cal-grid .cal-cell {
+    min-height: 56px;
+    padding: 4px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 6px;
+    background: var(--card-bg, #fff);
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+.cal-grid .cal-cell:hover {
+    background: var(--hover-bg, #f1f5f9);
+}
+.cal-grid .cal-cell.other-month {
+    opacity: 0.45;
+}
+.cal-grid .cal-cell.feriado {
+    background: var(--feriado-bg, #fef3c7);
+}
+.cal-grid .cal-cell.feriado-legal {
+    background: var(--feriado-legal-bg, #fef3c7);
+}
+.cal-grid .cal-cell.feriado-religioso {
+    background: var(--feriado-religioso-bg, #e0e7ff);
+}
+.cal-grid .cal-cell.feriado-suspension_labores {
+    background: var(--feriado-suspension-bg, #d1fae5);
+}
+.cal-grid .cal-cell .cal-feriado-label {
+    display: block;
+    font-size: 0.65rem;
+    line-height: 1.2;
+    color: var(--text-muted, #64748b);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+.cal-grid .cal-cell.has-vacaciones {
+    position: relative;
+}
+.cal-grid .cal-cell .cal-dots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 2px;
+}
+.cal-grid .cal-cell .cal-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+.cal-day-detail {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    background: var(--card-bg, #fff);
+    max-width: 400px;
+}
+.cal-day-detail.hidden {
+    display: none !important;
+}
+.cal-day-detail ul {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+}
+.cal-day-detail li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+.cal-day-detail li:last-child {
+    border-bottom: none;
+}
+.cal-day-detail .empleado-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+[data-theme="dark"] .cal-grid .cal-cell {
+    border-color: #334155;
+}
+[data-theme="dark"] .cal-grid .cal-cell.feriado,
+[data-theme="dark"] .cal-grid .cal-cell.feriado-legal {
+    background: #422006;
+}
+[data-theme="dark"] .cal-grid .cal-cell.feriado-religioso {
+    background: #312e81;
+}
+[data-theme="dark"] .cal-grid .cal-cell.feriado-suspension_labores {
+    background: #14532d;
+}
+
+/* Vista anual: todos los días del año por mes */
+.cal-anual-section {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    background: var(--card-bg, #fff);
+}
+.cal-anual-section.hidden {
+    display: none !important;
+}
+.cal-anual-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.cal-anual-controls select {
+    padding: 0.5rem 1rem;
+    min-height: 44px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    font-size: 1rem;
+}
+.cal-anual-grids {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+.cal-month-block {
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    padding: 0.75rem;
+    background: var(--card-bg, #fff);
+}
+.cal-month-block h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    color: var(--text-muted, #64748b);
+}
+.cal-month-block .cal-grid {
+    max-width: 100%;
+}
+.cal-month-block .cal-cell {
+    min-height: 36px;
+    font-size: 0.75rem;
+}
+.cal-month-block .cal-cell .cal-dot {
+    width: 6px;
+    height: 6px;
+}
+
+/* Lista de empleados: color en tabla */
+#tablaEmpleadosBody .empleado-color {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 0.5rem;
+}

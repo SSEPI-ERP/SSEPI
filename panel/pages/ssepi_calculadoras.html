@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/assets/logo-ssepi.png">
+    <link rel="shortcut icon" type="image/png" href="/assets/logo-ssepi.png">
+    <title>SSEPI · Calculadoras</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/modules/calculadoras.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script type="module" src="/js/core/supabase-config.js"></script>
+    <script type="module" src="/js/core/security-middleware.js"></script>
+    <script type="module" src="/js/core/auth-service.js"></script>
+    <script src="/js/core/theme-clock.js"></script>
+    <script src="/js/core/user-menu.js"></script>
+    <script src="/js/core/nav-by-role.js"></script>
+    <script type="module" src="/js/core/costos-engine.js"></script>
+    <script type="module" src="/js/modules/calculadoras.js"></script>
+</head>
+<body class="page-calculadoras nav-loading">
+    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <img src="/assets/logo-ssepi.png" alt="SSEPI" class="brand-logo">
+                <div>
+                    <div class="brand-text">CALCULADORAS</div>
+                    <div class="brand-sub">Funciones, costos e información de clientes (admin)</div>
+                </div>
+            </div>
+            <a href="/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn" type="button" aria-label="Cambiar tema"><i class="fas fa-moon"></i></button>
+            <div class="user-pill" id="userMenu">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Usuario</span>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
+        <a href="/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
+        <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/pages/ssepi_import_viewer.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-file-upload"></i></span> Importar datos</a>
+        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <a href="/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
+        <a href="/pages/ssepi_calculadoras.html" class="nav-item active" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <div class="menu-category">EXTERNOS</div>
+        <a href="/pages/ssepi_paginas.html" class="nav-item" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+    </nav>
+
+    <main>
+        <div class="form-section calc-sim-wrap">
+            <h3 class="section-title-form"><i class="fas fa-flask"></i> Simulador · Laboratorio (electrónica)</h3>
+            <p class="form-hint">Constantes de la calculadora <strong>Laboratorio (electrónica)</strong> en la tabla de costos. Misma lógica que ventas/taller (CostosEngine).</p>
+            <div class="calc-sim-grid">
+                <div class="calc-sim-field"><label for="labKm">Km (traslado)</label><input type="number" id="labKm" class="form-control" step="0.1" value="226" min="0"></div>
+                <div class="calc-sim-field"><label for="labHorasViaje">Horas viaje (opcional)</label><input type="number" id="labHorasViaje" class="form-control" step="0.25" value="" min="0" placeholder="Si vacío: km/50"></div>
+                <div class="calc-sim-field"><label for="labHorasTaller">Horas taller</label><input type="number" id="labHorasTaller" class="form-control" step="0.25" value="16" min="0"></div>
+                <div class="calc-sim-field"><label for="labRefacciones">Refacciones ($)</label><input type="number" id="labRefacciones" class="form-control" step="0.01" value="0" min="0"></div>
+            </div>
+            <button type="button" class="btn-ssepi" id="btnCalcLaboratorio"><i class="fas fa-calculator"></i> Calcular cotización</button>
+            <div id="labSimResult" class="calc-sim-result" aria-live="polite"></div>
+        </div>
+
+        <div class="form-section calc-sim-wrap">
+            <h3 class="section-title-form"><i class="fas fa-robot"></i> Simulador · Automatización</h3>
+            <p class="form-hint">Filas <strong>Tarifa:</strong> y parámetros <strong>auto:</strong> desde la calculadora Automatización (hoja AUTOMATIZACIÓN del Excel).</p>
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaSimAuto">
+                    <thead><tr><th>Servicio</th><th>Horas</th><th>$/h</th></tr></thead>
+                    <tbody id="simAutoBody"></tbody>
+                </table>
+            </div>
+            <div class="calc-sim-grid calc-sim-grid--2">
+                <div class="calc-sim-field"><label for="autoMateriales">Materiales ($)</label><input type="number" id="autoMateriales" class="form-control" step="0.01" value="0" min="0"></div>
+                <div class="calc-sim-field"><label for="autoViaticos">Viáticos ($)</label><input type="number" id="autoViaticos" class="form-control" step="0.01" value="0" min="0"></div>
+                <div class="calc-sim-field"><label for="autoHrCamioneta">Hr camioneta</label><input type="number" id="autoHrCamioneta" class="form-control" step="0.25" value="0" min="0"></div>
+                <div class="calc-sim-field"><label for="autoHrGastoGen">Horas gasto general</label><input type="number" id="autoHrGastoGen" class="form-control" step="0.25" value="0" min="0"></div>
+                <div class="calc-sim-field"><label for="autoGasolina">Gasolina / traslado ($)</label><input type="number" id="autoGasolina" class="form-control" step="0.01" value="" min="0" placeholder="Vacío = parámetro Excel"></div>
+                <div class="calc-sim-field"><label for="autoHrPlanta">Horas tiempo planta</label><input type="number" id="autoHrPlanta" class="form-control" step="0.25" value="0" min="0"></div>
+            </div>
+            <button type="button" class="btn-ssepi" id="btnCalcAutomatizacion"><i class="fas fa-calculator"></i> Calcular total</button>
+            <div id="autoSimResult" class="calc-sim-result" aria-live="polite"></div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-function"></i> Funciones de calculadora</h3>
+            <p class="form-hint">Configuración y funciones disponibles por calculadora.</p>
+            <div class="filtros-bar" style="margin-bottom:10px">
+                <button type="button" class="btn-ssepi" id="btnNuevaCalculadora"><i class="fas fa-plus"></i> Nueva calculadora</button>
+            </div>
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaFunciones">
+                    <thead>
+                        <tr><th>Nombre</th><th>Tipo</th><th>Funciones</th><th>Estado</th><th>Acciones</th></tr>
+                    </thead>
+                    <tbody id="tablaFuncionesBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-dollar-sign"></i> Costos</h3>
+            <p class="form-hint">Costos vinculados a calculadoras.</p>
+            <div class="filtros-bar" style="margin-bottom:10px">
+                <button type="button" class="btn-ssepi" id="btnNuevoCosto"><i class="fas fa-plus"></i> Nuevo costo</button>
+            </div>
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaCostos">
+                    <thead>
+                        <tr><th>Calculadora</th><th>Concepto</th><th>Costo</th><th>Moneda</th><th>Acciones</th></tr>
+                    </thead>
+                    <tbody id="tablaCostosBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-users"></i> Información de clientes</h3>
+            <p class="form-hint">Clientes asociados a calculadoras (desde BD o importación).</p>
+            <div class="filtros-bar" style="margin-bottom:10px">
+                <button type="button" class="btn-ssepi" id="btnNuevoCliente"><i class="fas fa-plus"></i> Nuevo cliente</button>
+            </div>
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaClientes">
+                    <thead>
+                        <tr><th>Calculadora</th><th>Cliente</th><th>Email</th><th>Acciones</th></tr>
+                    </thead>
+                    <tbody id="tablaClientesBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-map-marker-alt"></i> Tabulador de Viáticos (Clientes por KM)</h3>
+            <p class="form-hint">Agrega clientes con KM de distancia y horas de viaje. Los costos se calculan automáticamente usando: Gasolina $24.50/L, Rendimiento 9.5 km/L, Costo técnico $104.16/hr.</p>
+            <div class="filtros-bar" style="margin-bottom:10px">
+                <button type="button" class="btn-ssepi btn-ventas" id="btnNuevoTabuladorCliente"><i class="fas fa-plus"></i> Agregar cliente al tabulador</button>
+            </div>
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaClientesTabulador">
+                    <thead>
+                        <tr>
+                            <th>Empresa</th>
+                            <th style="text-align: right;">KM (ida)</th>
+                            <th style="text-align: right;">Hrs viaje</th>
+                            <th style="text-align: right;">$ Gasolina</th>
+                            <th style="text-align: right;">$ Técnico</th>
+                            <th style="text-align: right;">TOTAL</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaClientesTabuladorBody">
+                        <tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-secondary);">Cargando tabulador...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-table"></i> Hoja tipo Excel (por calculadora)</h3>
+            <p class="form-hint">Filas con <strong>concepto</strong>, texto de <strong>fórmula</strong> (referencia / Excel) y <strong>valor</strong> numérico. «Solo valor» ignora la fórmula a efectos de lectura en pantalla. Importa desde Excel si la hoja incluye columnas concepto, fórmula/formula y valor.</p>
+            <div class="filtros-bar" style="margin-bottom:10px;flex-wrap:wrap;gap:8px">
+                <label for="hojaCalcSelect" class="form-hint" style="margin:0;align-self:center">Calculadora:</label>
+                <select id="hojaCalcSelect" class="form-control" style="max-width:280px"></select>
+                <button type="button" class="btn-ssepi" id="btnHojaNuevaFila"><i class="fas fa-plus"></i> Nueva fila</button>
+                <button type="button" class="btn-ssepi btn-secondary" id="btnHojaRecargar"><i class="fas fa-sync"></i> Recargar</button>
+            </div>
+            <div class="resumen-table-wrap" style="overflow-x:auto">
+                <table class="lista-table" id="tablaHojaExcel">
+                    <thead>
+                        <tr><th>#</th><th>Concepto</th><th>Fórmula (texto)</th><th>Valor</th><th>Solo valor</th><th>Acciones</th></tr>
+                    </thead>
+                    <tbody id="tablaHojaExcelBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-file-excel"></i> Importar desde plantilla</h3>
+            <p class="form-hint">Usa la plantilla <strong>Plantilla de cotización (sale.order.template).xlsx</strong> desde la carpeta excel del proyecto. La hoja elegida importa <strong>calculadoras</strong> (columnas nombre/producto, etc.). Opcional: importar filas tipo Excel (concepto / fórmula / valor) desde una o todas las hojas hacia la calculadora seleccionada arriba en «Hoja tipo Excel».</p>
+            <div class="filtros-bar" style="flex-wrap:wrap;gap:10px;align-items:center">
+                <input type="file" id="excelFileCalculadoras" accept=".xlsx,.xls" style="display:none">
+                <button type="button" class="btn-ssepi" id="btnSeleccionarExcel"><i class="fas fa-upload"></i> Seleccionar archivo Excel</button>
+                <label for="importSheetSelect" class="form-hint" style="margin:0">Hoja (calculadoras):</label>
+                <select id="importSheetSelect" class="form-control" style="max-width:220px;display:none" aria-label="Hoja del Excel para vista previa e importación de calculadoras"></select>
+                <label class="form-hint" style="margin:0;display:flex;align-items:center;gap:6px;cursor:pointer">
+                    <input type="checkbox" id="importAllSheetsHoja"> Filas Excel en <strong>todas</strong> las hojas detectadas
+                </label>
+                <button type="button" class="btn-ssepi" id="btnProcesarImport" style="display:none"><i class="fas fa-check"></i> Agregar / Actualizar</button>
+            </div>
+            <div id="importPreview" class="import-preview"></div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-check-circle"></i> Validar calculadoras</h3>
+            <p class="form-hint">Comprueba que los datos importados y las calculadoras estén correctos.</p>
+            <button type="button" class="btn-ssepi" id="btnValidar"><i class="fas fa-search"></i> Validar</button>
+            <div id="validacionResultado" class="validacion-resultado"></div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title-form"><i class="fas fa-chart-bar"></i> Analizar</h3>
+            <p class="form-hint">Resumen y estado de las calculadoras.</p>
+            <div class="kpi-grid kpi-grid-calc">
+                <div class="kpi-card"><div class="kpi-title">Calculadoras</div><div class="kpi-value" id="analisisTotalCalc">0</div></div>
+                <div class="kpi-card"><div class="kpi-title">Costos registrados</div><div class="kpi-value" id="analisisTotalCostos">0</div></div>
+                <div class="kpi-card"><div class="kpi-title">Clientes vinculados</div><div class="kpi-value" id="analisisTotalClientes">0</div></div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN: BOM AUTOMATIZACIÓN -->
+        <div class="form-section" style="margin-top: 24px;">
+            <h3 class="section-title-form"><i class="fas fa-sitemap"></i> BOM Automatización</h3>
+            <p class="form-hint">Lista de materiales con costos desglosados (planta vs oficina). Solo visible para administradores y usuarios con modo dual activo.</p>
+
+            <!-- Filtros -->
+            <div class="filtros-bar" style="margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label style="font-weight: 600; font-size: 13px; color: var(--text-muted);">Categoría:</label>
+                    <select id="bomFiltroCategoria" class="form-control" style="max-width: 200px;">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label style="font-weight: 600; font-size: 13px; color: var(--text-muted);">Estado:</label>
+                    <select id="bomFiltroEstado" class="form-control" style="max-width: 150px;">
+                        <option value="">Todos</option>
+                        <option value="Activo">Activo</option>
+                        <option value="Inactivo">Inactivo</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-ssepi btn-ventas" id="btnBOMNuevo">
+                    <i class="fas fa-plus"></i> Nuevo Material
+                </button>
+                <button type="button" class="btn-ssepi btn-secondary" id="btnBOMRecargar">
+                    <i class="fas fa-sync"></i> Recargar
+                </button>
+            </div>
+
+            <!-- Tabla BOM -->
+            <div class="resumen-table-wrap">
+                <table class="lista-table" id="tablaBOM">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Número de Parte</th>
+                            <th>Descripción</th>
+                            <th>Categoría</th>
+                            <th>Proveedor</th>
+                            <th>Costo Unit.</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaBOMBody">
+                        <tr><td colspan="8" style="text-align: center; padding: 40px;">Cargando BOM...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Resumen de costos -->
+            <div style="margin-top: 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+                <div class="kpi-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="kpi-title">Total Materiales</div>
+                    <div class="kpi-value" id="bomTotalMateriales">$0</div>
+                </div>
+                <div class="kpi-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <div class="kpi-title">Costo Planta</div>
+                    <div class="kpi-value" id="bomCostoPlanta">$0</div>
+                </div>
+                <div class="kpi-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <div class="kpi-title">Costo Oficina</div>
+                    <div class="kpi-value" id="bomCostoOficina">$0</div>
+                </div>
+                <div class="kpi-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                    <div class="kpi-title">Costo Total</div>
+                    <div class="kpi-value" id="bomCostoTotal">$0</div>
+                </div>
+            </div>
+
+            <!-- Servicios con desglose planta/oficina -->
+            <div style="margin-top: 24px;">
+                <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-concierge-bell"></i>
+                    Servicios de Automatización (Desglose Planta vs Oficina)
+                </h4>
+                <div class="resumen-table-wrap">
+                    <table class="lista-table" id="tablaServicios">
+                        <thead>
+                            <tr>
+                                <th>Servicio</th>
+                                <th>Área</th>
+                                <th>Costo Planta</th>
+                                <th>Costo Oficina</th>
+                                <th>Costo Total</th>
+                                <th>Horas Est.</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaServiciosBody">
+                            <tr><td colspan="8" style="text-align: center; padding: 40px;">Cargando servicios...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TABLAS DE VIÁTICOS (t1-t5) -->
+            <div style="margin-top: 32px;">
+                <h3 class="section-title-form" style="margin-bottom: 20px;">
+                    <i class="fas fa-map-marker-alt"></i> Tablas de Viáticos por Departamento
+                </h3>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+                    <strong>Fórmulas automáticas (CostosEngine):</strong> Litros = KM ÷ 9.5 | $ Gasolina = Litros × $24.50 | $ Técnico = Hrs × $104.16 | Total = Gasolina + Técnico
+                    <br>Agrega clientes en la sección «Tabulador de Viáticos» para que aparezcan en estas tablas.
+                </p>
+
+                <!-- T1: Laboratorio -->
+                <div style="margin-bottom: 24px;">
+                    <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--c-taller);">
+                        <i class="fas fa-microchip"></i> T1 · Laboratorio (Electrónica)
+                    </h4>
+                    <div class="resumen-table-wrap">
+                        <table class="lista-table">
+                            <thead>
+                                <tr>
+                                    <th>Empresa</th>
+                                    <th style="text-align: right;">KM</th>
+                                    <th style="text-align: right;">×2</th>
+                                    <th style="text-align: right;">Litros</th>
+                                    <th style="text-align: right;">$/Gasolina</th>
+                                    <th style="text-align: right;">$ Gasolina</th>
+                                    <th style="text-align: right;">HRS</th>
+                                    <th style="text-align: right;">$ Dani</th>
+                                    <th style="text-align: right;">TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaViaticoT1Body">
+                                <tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--text-secondary);">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- T2: Motores -->
+                <div style="margin-bottom: 24px;">
+                    <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--c-motores);">
+                        <i class="fas fa-industry"></i> T2 · Motores
+                    </h4>
+                    <div class="resumen-table-wrap">
+                        <table class="lista-table">
+                            <thead>
+                                <tr>
+                                    <th>Empresa</th>
+                                    <th style="text-align: right;">KM</th>
+                                    <th style="text-align: right;">×2</th>
+                                    <th style="text-align: right;">Litros</th>
+                                    <th style="text-align: right;">$/Gasolina</th>
+                                    <th style="text-align: right;">$ Gasolina</th>
+                                    <th style="text-align: right;">HRS</th>
+                                    <th style="text-align: right;">$ Dani</th>
+                                    <th style="text-align: right;">TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaViaticoT2Body">
+                                <tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--text-secondary);">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- T3: Automatización -->
+                <div style="margin-bottom: 24px;">
+                    <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--c-automatizacion);">
+                        <i class="fas fa-robot"></i> T3 · Automatización
+                    </h4>
+                    <div class="resumen-table-wrap">
+                        <table class="lista-table">
+                            <thead>
+                                <tr>
+                                    <th>Empresa</th>
+                                    <th style="text-align: right;">KM</th>
+                                    <th style="text-align: right;">×2</th>
+                                    <th style="text-align: right;">Litros</th>
+                                    <th style="text-align: right;">$/Gasolina</th>
+                                    <th style="text-align: right;">$ Gasolina</th>
+                                    <th style="text-align: right;">HRS</th>
+                                    <th style="text-align: right;">$ Dani</th>
+                                    <th style="text-align: right;">TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaViaticoT3Body">
+                                <tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--text-secondary);">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- T4: Suministros -->
+                <div style="margin-bottom: 24px;">
+                    <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--c-compras);">
+                        <i class="fas fa-truck"></i> T4 · Suministros
+                    </h4>
+                    <div class="resumen-table-wrap">
+                        <table class="lista-table">
+                            <thead>
+                                <tr>
+                                    <th>Empresa</th>
+                                    <th style="text-align: right;">KM</th>
+                                    <th style="text-align: right;">×2</th>
+                                    <th style="text-align: right;">Litros</th>
+                                    <th style="text-align: right;">$/Gasolina</th>
+                                    <th style="text-align: right;">$ Gasolina</th>
+                                    <th style="text-align: right;">HRS</th>
+                                    <th style="text-align: right;">$ Dani</th>
+                                    <th style="text-align: right;">TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaViaticoT4Body">
+                                <tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--text-secondary);">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- T5: Proyectos -->
+                <div style="margin-bottom: 24px;">
+                    <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--c-proyectos);">
+                        <i class="fas fa-project-diagram"></i> T5 · Proyectos
+                    </h4>
+                    <div class="resumen-table-wrap">
+                        <table class="lista-table">
+                            <thead>
+                                <tr>
+                                    <th>Empresa</th>
+                                    <th style="text-align: right;">KM</th>
+                                    <th style="text-align: right;">×2</th>
+                                    <th style="text-align: right;">Litros</th>
+                                    <th style="text-align: right;">$/Gasolina</th>
+                                    <th style="text-align: right;">$ Gasolina</th>
+                                    <th style="text-align: right;">HRS</th>
+                                    <th style="text-align: right;">$ Dani</th>
+                                    <th style="text-align: right;">TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaViaticoT5Body">
+                                <tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--text-secondary);">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Editar Calculadora -->
+    <div class="modal-backdrop calc-modal" id="modalCalc" aria-hidden="true">
+        <div class="modal">
+            <div class="modal-header"><h4 id="modalCalcTitle">Editar calculadora</h4><button type="button" class="modal-close" id="modalCalcClose" aria-label="Cerrar">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="modalCalcId">
+                <div class="form-group"><label for="modalCalcNombre">Nombre</label><input type="text" id="modalCalcNombre" class="form-control"></div>
+                <div class="form-group"><label for="modalCalcTipo">Tipo</label><input type="text" id="modalCalcTipo" class="form-control" placeholder="ej. importado"></div>
+                <div class="form-group"><label for="modalCalcFunciones">Funciones</label><textarea id="modalCalcFunciones" class="form-control" rows="3"></textarea></div>
+                <div class="form-group"><label><input type="checkbox" id="modalCalcActivo" checked> Activa</label></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi" id="modalCalcGuardar"><i class="fas fa-save"></i> Guardar</button>
+                <button type="button" class="btn-ssepi btn-danger" id="modalCalcEliminar"><i class="fas fa-trash"></i> Eliminar</button>
+                <button type="button" class="btn-ssepi btn-secondary" id="modalCalcCancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    <!-- Modal Editar Costo -->
+    <div class="modal-backdrop calc-modal" id="modalCosto" aria-hidden="true">
+        <div class="modal">
+            <div class="modal-header"><h4 id="modalCostoTitle">Editar costo</h4><button type="button" class="modal-close" id="modalCostoClose" aria-label="Cerrar">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="modalCostoId">
+                <div class="form-group"><label for="modalCostoCalculadora">Calculadora</label><select id="modalCostoCalculadora" class="form-control"></select></div>
+                <div class="form-group"><label for="modalCostoConcepto">Concepto</label><input type="text" id="modalCostoConcepto" class="form-control"></div>
+                <div class="form-group"><label for="modalCostoCosto">Costo</label><input type="number" step="0.01" id="modalCostoCosto" class="form-control"></div>
+                <div class="form-group"><label for="modalCostoMoneda">Moneda</label><input type="text" id="modalCostoMoneda" class="form-control" value="MXN"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi" id="modalCostoGuardar"><i class="fas fa-save"></i> Guardar</button>
+                <button type="button" class="btn-ssepi btn-danger" id="modalCostoEliminar"><i class="fas fa-trash"></i> Eliminar</button>
+                <button type="button" class="btn-ssepi btn-secondary" id="modalCostoCancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    <!-- Modal Editar Cliente -->
+    <div class="modal-backdrop calc-modal" id="modalCliente" aria-hidden="true">
+        <div class="modal">
+            <div class="modal-header"><h4 id="modalClienteTitle">Editar cliente</h4><button type="button" class="modal-close" id="modalClienteClose" aria-label="Cerrar">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="modalClienteId">
+                <div class="form-group"><label for="modalClienteCalculadora">Calculadora</label><select id="modalClienteCalculadora" class="form-control"></select></div>
+                <div class="form-group"><label for="modalClienteNombre">Cliente</label><input type="text" id="modalClienteNombre" class="form-control"></div>
+                <div class="form-group"><label for="modalClienteEmail">Email</label><input type="email" id="modalClienteEmail" class="form-control"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi" id="modalClienteGuardar"><i class="fas fa-save"></i> Guardar</button>
+                <button type="button" class="btn-ssepi btn-danger" id="modalClienteEliminar"><i class="fas fa-trash"></i> Eliminar</button>
+                <button type="button" class="btn-ssepi btn-secondary" id="modalClienteCancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tabulador Cliente (clientes_tabulador) -->
+    <div class="modal-backdrop calc-modal" id="modalTabuladorCliente" aria-hidden="true">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h4 id="modalTabuladorTitle">Agregar cliente al tabulador</h4>
+                <button type="button" class="modal-close" id="modalTabuladorClose" aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="modalTabuladorId">
+                <div class="form-group">
+                    <label for="modalTabuladorNombre">Empresa / Cliente</label>
+                    <input type="text" id="modalTabuladorNombre" class="form-control" placeholder="Nombre del cliente">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label for="modalTabuladorKm">Distancia (KM)</label>
+                        <input type="number" id="modalTabuladorKm" class="form-control" step="0.1" min="0" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="modalTabuladorHoras">Hrs viaje (ida)</label>
+                        <input type="number" id="modalTabuladorHoras" class="form-control" step="0.25" min="0" placeholder="0">
+                    </div>
+                </div>
+                <div id="tabuladorPreview" style="margin-top: 16px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi" id="modalTabuladorGuardar"><i class="fas fa-save"></i> Guardar</button>
+                <button type="button" class="btn-ssepi btn-danger" id="modalTabuladorEliminar"><i class="fas fa-trash"></i> Eliminar</button>
+                <button type="button" class="btn-ssepi btn-secondary" id="modalTabuladorCancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar BOM -->
+    <div class="modal-backdrop calc-modal" id="modalBOM" aria-hidden="true">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header"><h4 id="modalBOMTitle">Editar material BOM</h4><button type="button" class="modal-close" id="modalBOMClose" aria-label="Cerrar">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="modalBOMId">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group"><label for="modalBOMItem">Item</label><input type="number" id="modalBOMItem" class="form-control"></div>
+                    <div class="form-group"><label for="modalBOMNumeroParte">Número de Parte</label><input type="text" id="modalBOMNumeroParte" class="form-control"></div>
+                </div>
+                <div class="form-group"><label for="modalBOMDescripcion">Descripción</label><textarea id="modalBOMDescripcion" class="form-control" rows="2"></textarea></div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group"><label for="modalBOMCategoria">Categoría</label><input type="text" id="modalBOMCategoria" class="form-control"></div>
+                    <div class="form-group"><label for="modalBOMProveedor">Proveedor</label><input type="text" id="modalBOMProveedor" class="form-control"></div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group"><label for="modalBOMPrecio">Precio Unitario</label><input type="number" step="0.01" id="modalBOMPrecio" class="form-control"></div>
+                    <div class="form-group"><label for="modalBOMMoneda">Moneda</label>
+                        <select id="modalBOMMoneda" class="form-control">
+                            <option value="MXN">MXN</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group"><label for="modalBOMEstado">Estado</label>
+                    <select id="modalBOMEstado" class="form-control">
+                        <option value="Activo">Activo</option>
+                        <option value="Inactivo">Inactivo</option>
+                    </select>
+                </div>
+                <div class="form-group"><label for="modalBOMLink">Link</label><input type="text" id="modalBOMLink" class="form-control" placeholder="https://..."></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi" id="modalBOMGuardar"><i class="fas fa-save"></i> Guardar</button>
+                <button type="button" class="btn-ssepi btn-danger" id="modalBOMEliminar"><i class="fas fa-trash"></i> Eliminar</button>
+                <button type="button" class="btn-ssepi btn-secondary" id="modalBOMCancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Servicio -->
+    <div class="modal-backdrop calc-modal" id="modalServicio" aria-hidden="true">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header"><h4 id="modalServicioTitle">Editar servicio</h4><button type="button" class="modal-close" id="modalServicioClose" aria-label="Cerrar">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="modalServicioId">
+                <div class="form-group"><label for="modalServicioNombre">Nombre del Servicio</label><input type="text" id="modalServicioNombre" class="form-control"></div>
+                <div class="form-group"><label for="modalServicioDescripcion">Descripción</label><textarea id="modalServicioDescripcion" class="form-control" rows="2"></textarea></div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group"><label for="modalServicioArea">Área</label><input type="text" id="modalServicioArea" class="form-control"></div>
+                    <div class="form-group"><label for="modalServicioTipo">Tipo</label><input type="text" id="modalServicioTipo" class="form-control"></div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group"><label for="modalServicioCostoPlanta">Costo Planta ($)</label><input type="number" step="0.01" id="modalServicioCostoPlanta" class="form-control"></div>
+                    <div class="form-group"><label for="modalServicioCostoOficina">Costo Oficina ($)</label><input type="number" step="0.01" id="modalServicioCostoOficina" class="form-control"></div>
+                </div>
+                <div class="form-group"><label for="modalServicioHoras">Horas Estimadas</label><input type="number" step="0.25" id="modalServicioHoras" class="form-control"></div>
+                <div class="form-group"><label><input type="checkbox" id="modalServicioActivo" checked> Activo</label></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi" id="modalServicioGuardar"><i class="fas fa-save"></i> Guardar</button>
+                <button type="button" class="btn-ssepi btn-danger" id="modalServicioEliminar"><i class="fas fa-trash"></i> Eliminar</button>
+                <button type="button" class="btn-ssepi btn-secondary" id="modalServicioCancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', function() {
+            (async function() {
+                var deadline = Date.now() + 5000;
+                while (!window.securityMiddleware || !window.authService) {
+                    if (Date.now() > deadline) return;
+                    await new Promise(function(r) { setTimeout(r, 50); });
+                }
+                await window.securityMiddleware.initSecurity();
+                await window.authService.requireAuth('/panel.html');
+                var profile = await window.authService.getCurrentProfile();
+                if (profile) {
+                    var rol = profile.rol || '';
+                    var allowedRol = ['admin', 'superadmin', 'automatizacion', 'taller', 'contabilidad', 'ventas'].indexOf(rol) !== -1;
+                    var allowedPerm = false;
+                    try {
+                        allowedPerm = await window.authService.hasPermission('calculadoras', 'read');
+                    } catch (e) {}
+                    if (!allowedRol && !allowedPerm) {
+                        window.location.href = '/panel.html';
+                        return;
+                    }
+                    document.getElementById('userName').innerText = profile.nombre ? profile.nombre.split(' ')[0] : 'Usuario';
+                    document.getElementById('userAvatar').innerText = (profile.nombre ? profile.nombre[0] : 'U').toUpperCase();
+                }
+                if (window.calculadorasMod && window.calculadorasMod.init) window.calculadorasMod.init();
+                document.body.classList.remove('nav-loading');
+                document.body.classList.add('nav-ready');
+            })();
+        });
+    </script>
+</body>
+</html>

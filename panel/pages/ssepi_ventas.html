@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/assets/logo-ssepi.png">
+    <link rel="shortcut icon" type="image/png" href="/assets/logo-ssepi.png">
+    <title>SSEPI · Ventas y Cotizaciones</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/modules/ventas.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="/js/core/supabase-config.js"></script>
+    <script type="module" src="/js/core/security-middleware.js"></script>
+    <script type="module" src="/js/core/auth-service.js"></script>
+    <script type="module" src="/js/core/data-service.js"></script>
+    <script type="module" src="/js/core/costos-engine.js"></script>
+    <script type="module" src="/js/core/contactos-formulas.js"></script>
+    <script type="module" src="/js/core/pdf-generator.js"></script>
+    <script src="/js/core/theme-clock.js"></script>
+    <script src="/js/core/user-menu.js"></script>
+    <script src="/js/core/nav-by-role.js"></script>
+    <script src="/js/core/email-service.js"></script>
+    <script src="/js/core/folio-formats.js"></script>
+    <script type="module" src="/js/modules/ventas.js"></script>
+</head>
+<body class="page-ventas nav-loading">
+    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
+    <!-- HEADER -->
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <img src="/assets/logo-ssepi.png" alt="SSEPI" class="brand-logo">
+                <div>
+                    <div class="brand-text">CENTRO DE CONTROL DE VENTAS</div>
+                    <div class="brand-sub">Dinero que entra · Cotizaciones · Facturación</div>
+                </div>
+            </div>
+            <a href="/panel.html" class="home-link"><i class="fas fa-house"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <!-- BADGE DE NOTIFICACIONES -->
+            <div class="notification-badge">
+                <i class="fas fa-bell"></i>
+                <span class="badge-count" id="notificacionesBadge">0</span>
+            </div>
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <div class="user-pill" id="userMenu">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
+        <a href="/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/pages/ssepi_ventas.html" class="nav-item active" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
+        <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/pages/ssepi_import_viewer.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-file-upload"></i></span> Importar datos</a>
+        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <a href="/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <div class="menu-category">EXTERNOS</div>
+        <a href="#" class="nav-item" target="_blank" rel="noopener" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+    </nav>
+
+    <!-- MAIN -->
+    <main>
+        <!-- FILTROS SUPERIORES -->
+        <div class="filtros-superiores">
+            <div class="filtro-grupo">
+                <label>Desde:</label>
+                <input type="date" id="filtroFechaInicio">
+            </div>
+            <div class="filtro-grupo">
+                <label>Hasta:</label>
+                <input type="date" id="filtroFechaFin">
+            </div>
+            <div class="filtro-grupo">
+                <label>Vendedor:</label>
+                <select id="filtroVendedor">
+                    <option value="todos">Todos</option>
+                </select>
+            </div>
+            <div class="filtro-grupo">
+                <label>Estado:</label>
+                <select id="filtroEstado">
+                    <option value="todos">Todos</option>
+                    <option value="registro">📝 Registro</option>
+                    <option value="diagnostico">🔍 Diagnóstico</option>
+                    <option value="cotizacion">💰 Cotización</option>
+                    <option value="autorizado">✅ Autorizado</option>
+                    <option value="compra">🛒 En Compra</option>
+                    <option value="ejecucion">⚙️ En Ejecución</option>
+                    <option value="entregado">📦 Entregado</option>
+                    <option value="pagado">💵 Pagado</option>
+                </select>
+            </div>
+            <div class="filtro-chips">
+                <button type="button" class="chip-filtro active" data-estado="todos">Todos</button>
+                <button type="button" class="chip-filtro" data-estado="registro">📝 Registro</button>
+                <button type="button" class="chip-filtro" data-estado="diagnostico">🔍 Diagnóstico</button>
+                <button type="button" class="chip-filtro" data-estado="cotizacion">💰 Cotización</button>
+                <button type="button" class="chip-filtro" data-estado="autorizado">✅ Autorizado</button>
+                <button type="button" class="chip-filtro" data-estado="compra">🛒 En Compra</button>
+                <button type="button" class="chip-filtro" data-estado="ejecucion">⚙️ En Ejecución</button>
+                <button type="button" class="chip-filtro" data-estado="entregado">📦 Entregado</button>
+                <button type="button" class="chip-filtro" data-estado="pagado">💵 Pagado</button>
+            </div>
+            <div class="filtro-grupo">
+                <label>Buscar:</label>
+                <input type="text" id="filtroBuscar" placeholder="Cliente, folio">
+            </div>
+            <button class="btn-filtro" id="aplicarFiltrosBtn"><i class="fas fa-search"></i> Aplicar</button>
+            <div class="vistas">
+                <button id="vistaKanban" class="active"><i class="fas fa-columns"></i> Kanban</button>
+                <button id="vistaLista"><i class="fas fa-table"></i> Lista</button>
+                <button id="vistaGrafica"><i class="fas fa-chart-bar"></i> Gráfica</button>
+            </div>
+        </div>
+
+        <!-- KPIs: Total de Ventas, Cotizaciones Pendientes, Margen de Utilidad Promedio -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-money-bill-wave"></i></div>
+                <div class="kpi-title">Total de Ventas</div>
+                <div class="kpi-value" id="kpiTotalVentas">$0</div>
+                <div class="kpi-sub">Ventas cerradas (período)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-file-invoice"></i></div>
+                <div class="kpi-title">Cotizaciones Pendientes</div>
+                <div class="kpi-value" id="kpiCotizacionesPendientes">0</div>
+                <div class="kpi-sub">Por autorizar</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-chart-line"></i></div>
+                <div class="kpi-title">Margen de Utilidad Promedio</div>
+                <div class="kpi-value" id="kpiMargenUtilidad">—</div>
+                <div class="kpi-sub">Objetivo 40%</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-receipt"></i></div>
+                <div class="kpi-title">Ticket Promedio</div>
+                <div class="kpi-value" id="kpiTicketPromedio">$0</div>
+            </div>
+        </div>
+
+        <!-- PANEL: Registro Rápido de Cotización -->
+        <div class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 style="margin: 0;"><i class="fas fa-clipboard-list"></i> Registro Rápido</h2>
+                <button type="button" class="btn-ssepi btn-ventas" id="btnNuevaCotizacionRapida">
+                    <i class="fas fa-plus"></i> Nueva Cotización
+                </button>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
+                Crea una cotización directamente que aparecerá en 📝 Registro del kanban.
+            </p>
+        </div>
+
+        <!-- PANEL: Solicitudes de Taller Pendientes -->
+        <div class="panel">
+            <h2><i class="fas fa-tools"></i> Solicitudes de Taller Pendientes</h2>
+            <div id="solicitudesTaller" class="solicitudes-grid"></div>
+        </div>
+
+        <!-- PANEL: Cotizaciones Pendientes de Autorización -->
+        <div class="panel">
+            <h2><i class="fas fa-clock"></i> Cotizaciones Pendientes de Autorización</h2>
+            <div id="pendientesAutorizacion" class="solicitudes-grid"></div>
+        </div>
+
+        <!-- Acciones y vistas duales: Lista detallada o Kanban -->
+        <div class="actions-header">
+            <h2 class="section-title"><i class="fas fa-file-invoice"></i> Historial de Ventas</h2>
+            <button class="btn-ssepi btn-ventas" id="newCotizacionBtn"><i class="fas fa-plus"></i> Nueva Cotización</button>
+        </div>
+
+        <!-- Tabs: Historial Operativo vs Historia Comercial -->
+        <div class="ventas-tabs">
+            <button class="ventas-tab active" data-tab="operativo"><i class="fas fa-clipboard-list"></i> Kanban Operativo</button>
+            <button class="ventas-tab" data-tab="comercial"><i class="fas fa-chart-line"></i> Historia Comercial</button>
+            <button class="ventas-tab" data-tab="grafica"><i class="fas fa-chart-bar"></i> Gráfica</button>
+        </div>
+
+        <!-- Contenedores de vistas -->
+        <div id="kanbanContainer" class="kanban-container"></div>
+        <div id="listaContainer" class="lista-container">
+            <table class="lista-table">
+                <thead><tr><th>Fecha</th><th>Folio</th><th>Cliente</th><th>Tipo</th><th>Estado</th><th>Total</th><th>Acciones</th></tr></thead>
+                <tbody id="tablaVentasBody"></tbody>
+            </table>
+        </div>
+
+        <!-- HISTORIA COMERCIAL: Pendientes vs Emitidas -->
+        <div id="historiaComercialContainer" class="historia-comercial-container" style="display: none;">
+            <div class="comercial-tabs">
+                <button class="comercial-tab active" data-comercial="pendientes"><i class="fas fa-clock"></i> Pendientes</button>
+                <button class="comercial-tab" data-comercial="emitidas"><i class="fas fa-check-circle"></i> Emitidas</button>
+            </div>
+
+            <!-- Panel: Pendientes -->
+            <div id="comercialPendientes" class="comercial-panel">
+                <div class="comercial-header">
+                    <h3><i class="fas fa-hourglass-half"></i> Cotizaciones Pendientes</h3>
+                    <p class="comercial-desc">Por autorizar, por enviar, por pago</p>
+                </div>
+                <div class="comercial-grid" id="pendientesGrid"></div>
+            </div>
+
+            <!-- Panel: Emitidas -->
+            <div id="comercialEmitidas" class="comercial-panel" style="display: none;">
+                <div class="comercial-header">
+                    <h3><i class="fas fa-paper-plane"></i> Cotizaciones Emitidas</h3>
+                    <p class="comercial-desc">Enviadas, autorizadas, cerradas, facturadas</p>
+                </div>
+                <div class="comercial-grid" id="emitidasGrid"></div>
+            </div>
+        </div>
+
+        <div id="graficaContainer" class="grafica-container">
+            <div class="grafica-header">
+                <h3><i class="fas fa-chart-bar"></i> Ingresos Proyectados vs Ventas Cerradas</h3>
+                <p class="grafica-desc">Flujo de cotizaciones vs ventas cerradas para planear carga de trabajo.</p>
+            </div>
+            <canvas id="ventasChart"></canvas>
+        </div>
+    </main>
+
+    <!-- SIDEBAR DERECHO (FEED) -->
+    <aside class="sidebar-right">
+        <div class="history-header">
+            <span><i class="fas fa-history"></i> BITÁCORA</span>
+            <span class="notification-badge" id="feedCount">0</span>
+        </div>
+        <div class="feed-list" id="feedList">
+            <div class="feed-item">
+                <div class="feed-dot"></div>
+                <div class="feed-meta"><span style="color:var(--c-ventas);">SISTEMA</span><span>ahora</span></div>
+                <div class="feed-body">Módulo de ventas iniciado</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MODAL: REGISTRO RÁPIDO DE COTIZACIÓN -->
+    <div class="modal-backdrop" id="registroRapidoModal">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-clipboard-list"></i> Nueva Cotización Rápida</h3>
+                <button class="modal-close" id="closeRegistroRapidoModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="rrCliente">Cliente <span style="color: #c62828;">*</span></label>
+                    <input type="text" id="rrCliente" class="form-control" placeholder="Nombre del cliente">
+                </div>
+                <div class="form-group">
+                    <label for="rrEmail">Email</label>
+                    <input type="email" id="rrEmail" class="form-control" placeholder="cliente@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="rrTelefono">Teléfono</label>
+                    <input type="tel" id="rrTelefono" class="form-control" placeholder="(55) 1234 5678">
+                </div>
+                <div class="form-group">
+                    <label for="rrFalla">Falla / Servicio solicitado <span style="color: #c62828;">*</span></label>
+                    <textarea id="rrFalla" class="form-control" rows="3" placeholder="Describe la falla o servicio requerido"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="rrDepartamento">Departamento <span style="color: #c62828;">*</span></label>
+                    <select id="rrDepartamento" class="form-control">
+                        <option value="">Seleccionar...</option>
+                        <option value="Taller Electrónica">🔬 Laboratorio (Electrónica)</option>
+                        <option value="Taller Motores">🏭 Motores</option>
+                        <option value="Automatización">🤖 Automatización</option>
+                        <option value="Proyectos">📋 Proyectos</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="rrPrioridad">Prioridad</label>
+                    <select id="rrPrioridad" class="form-control">
+                        <option value="Normal">Normal</option>
+                        <option value="Alta">Alta</option>
+                        <option value="Urgente">Urgente</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-ssepi btn-secondary" id="cancelRegistroRapidoBtn">Cancelar</button>
+                <button type="button" class="btn-ssepi btn-ventas" id="guardarRegistroRapidoBtn"><i class="fas fa-save"></i> Guardar en Registro</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CALCULADORA DE COSTOS (Wizard 4 pasos) -->
+    <div class="modal-backdrop" id="calculadoraModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-file-invoice-dollar"></i> <span id="wizardModalTitle">Nueva Cotización</span></h3>
+                <span class="wizard-steps" id="wizardStepIndicator">Paso 1 de 4</span>
+                <button class="modal-close" id="closeCalculadoraModal">&times;</button>
+            </div>
+            <div class="modal-body" id="calculadoraBody">
+                <!-- Contenido dinámico por paso -->
+            </div>
+            <div class="modal-footer" id="calculadoraModalFooter">
+                <button class="btn btn-secondary" id="wizardCancelBtn">Cancelar</button>
+                <button class="btn btn-secondary" id="wizardPrevBtn" style="display:none;"><i class="fas fa-arrow-left"></i> Anterior</button>
+                <button class="btn btn-primary" id="wizardNextBtn"><i class="fas fa-arrow-right"></i> Siguiente</button>
+                <button class="btn btn-primary" id="guardarCotizacionWizardBtn" style="display:none;">💾 Guardar Cotización</button>
+                <button class="btn btn-primary" id="descargarPDFWizardBtn" style="display:none;"><i class="fas fa-download"></i> Descargar PDF</button>
+                <button class="btn btn-primary" id="generarCotizacionBtn" style="display:none;">📄 Generar Cotización</button>
+                <button class="btn btn-success" id="enviarCotizacionBtn" style="display:none;">📧 Enviar por Gmail</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDITOR DE COTIZACIÓN -->
+    <div class="modal-backdrop" id="cotizacionModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-edit"></i> Editar Cotización</h3>
+                <button class="modal-close" id="closeCotizacionModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="calculadora-section">
+                    <div class="calculadora-titulo"><i class="fas fa-chart-pie"></i> Desglose de Costos</div>
+                    <div class="editor-grid">
+                        <div class="editor-item">
+                            <label>GASTOS GENERALES</label>
+                            <input type="number" id="editGastosGenerales" value="0" step="0.01" readonly>
+                        </div>
+                        <div class="editor-item">
+                            <label>UTILIDAD 40%</label>
+                            <input type="number" id="editUtilidad" value="0" step="0.01" readonly>
+                        </div>
+                        <div class="editor-item">
+                            <label>CRÉDITO 3%</label>
+                            <input type="number" id="editCredito" value="0" step="0.01" readonly>
+                        </div>
+                        <div class="editor-item">
+                            <label>PRECIO FINAL (ANTES IVA)</label>
+                            <input type="number" id="editPrecioFinal" value="0" step="0.01" readonly>
+                        </div>
+                        <div class="editor-item">
+                            <label>IVA 16%</label>
+                            <input type="number" id="editIVA" value="0" step="0.01" readonly>
+                        </div>
+                        <div class="editor-item">
+                            <label>TOTAL CON IVA</label>
+                            <input type="number" id="editTotal" value="0" step="0.01" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="calculadora-section">
+                    <div class="calculadora-titulo"><i class="fas fa-user"></i> Datos del Cliente</div>
+                    <div class="editor-grid">
+                        <div class="editor-item">
+                            <label>Nombre / Empresa</label>
+                            <input type="text" id="editCliente" placeholder="Nombre del cliente">
+                        </div>
+                        <div class="editor-item editor-item-full">
+                            <label>Enviar cotización a (solo envío)</label>
+                            <select id="editEnviarAContacto" class="edit-enviar-a">
+                                <option value="">— Seleccionar cliente con correo o escribir abajo —</option>
+                            </select>
+                        </div>
+                        <div class="editor-item">
+                            <label>Email</label>
+                            <input type="email" id="editEmail" placeholder="correo@ejemplo.com">
+                        </div>
+                        <div class="editor-item">
+                            <label>Teléfono</label>
+                            <input type="tel" id="editTelefono" placeholder="+52 123 456 7890">
+                        </div>
+                        <div class="editor-item">
+                            <label>RFC</label>
+                            <input type="text" id="editRFC" placeholder="RFC">
+                        </div>
+                    </div>
+                </div>
+                <div class="calculadora-section">
+                    <div class="calculadora-titulo"><i class="fas fa-boxes"></i> Productos</div>
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left; padding:8px;">Descripción</th>
+                                <th style="text-align:center; padding:8px;">Cantidad</th>
+                                <th style="text-align:right; padding:8px;">Precio Unit.</th>
+                                <th style="text-align:right; padding:8px;">Total</th>
+                                <th style="width:40px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="editProductosBody"></tbody>
+                    </table>
+                    <button class="btn btn-sm btn-primary" style="margin-top:15px;" id="addProductoBtn">
+                        <i class="fas fa-plus"></i> Agregar Producto
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelEditBtn">Cancelar</button>
+                <button class="btn btn-primary" id="guardarCotizacionBtn">💾 Guardar Cotización</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: VISTA PREVIA DE COTIZACIÓN -->
+    <div class="modal-backdrop" id="vistaPreviaModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-file-pdf"></i> Vista Previa de Cotización</h3>
+                <button class="modal-close" id="closeVistaPreviaModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="vistaPreviaImprimible" style="background: var(--bg-panel); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <h2 style="color: var(--c-ventas); font-size: 28px;">SSEPI</h2>
+                        <p style="color: var(--text-secondary); font-size: 12px;">Soluciones en Sistemas Eléctricos y Proyectos Industriales</p>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px;">
+                        <div>
+                            <p><strong>Cliente:</strong> <span id="previewCliente"></span></p>
+                            <p><strong>RFC:</strong> <span id="previewRFC"></span></p>
+                        </div>
+                        <div style="text-align: right;">
+                            <p><strong>Folio:</strong> <span id="previewFolio"></span></p>
+                            <p><strong>Fecha:</strong> <span id="previewFecha"></span></p>
+                        </div>
+                    </div>
+
+                    <div style="border-top: 2px solid var(--c-ventas); padding-top: 20px; margin-top: 20px;">
+                        <div style="font-size: 32px; font-weight: 900; color: var(--c-ventas); text-align: right;">
+                            $<span id="previewTotal">0.00</span>
+                        </div>
+                        <p style="font-size: 12px; color: var(--text-muted); text-align: right;">IVA incluido</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="document.getElementById('vistaPreviaModal').classList.remove('active')">Cerrar</button>
+                <button class="btn btn-primary" id="descargarPDFBtn">
+                    <i class="fas fa-download"></i> Descargar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: HISTORIAL DE ORDEN/COTIZACIÓN -->
+    <div class="modal-backdrop" id="historialModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-history"></i> Historial de la Orden</h3>
+                <button class="modal-close" onclick="document.getElementById('historialModal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body" id="historialBody">
+                <!-- Contenido dinámico -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="document.getElementById('historialModal').classList.remove('active')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', function () {
+            (async function () {
+                var deadline = Date.now() + 8000;
+                while (!window.securityMiddleware || !window.authService) {
+                    if (Date.now() > deadline) {
+                        console.error('SSEPI: securityMiddleware o authService no disponibles.');
+                        return;
+                    }
+                    await new Promise(function (r) { setTimeout(r, 50); });
+                }
+                try {
+                    await window.securityMiddleware.initSecurity();
+                } catch (e) {
+                    console.warn('SSEPI security init:', e);
+                }
+                var user;
+                try {
+                    user = await window.authService.requireAuth('/');
+                } catch (e) {
+                    console.error('SSEPI auth:', e);
+                    return;
+                }
+                if (user) {
+                    try {
+                        var profile = await window.authService.getCurrentProfile();
+                        var nameEl = document.getElementById('userName');
+                        var avatarEl = document.getElementById('userAvatar');
+                        if (nameEl) nameEl.innerText = (profile && profile.nombre && profile.nombre.split(' ')[0]) || 'Admin';
+                        if (avatarEl) avatarEl.innerText = (profile && profile.nombre && profile.nombre[0]) ? profile.nombre[0].toUpperCase() : 'A';
+                    } catch (e) {
+                        console.warn('Perfil:', e);
+                    }
+                    if (typeof window.ventasModule !== 'undefined' && window.ventasModule.init) {
+                        try {
+                            await window.ventasModule.init();
+                        } catch (err) {
+                            console.error('Ventas init error:', err);
+                            alert('Error al iniciar Ventas. Revisa la consola (F12).');
+                        }
+                    } else {
+                        console.error('window.ventasModule no está definido. ¿Falló la carga del módulo ventas.js?');
+                        alert('El módulo de Ventas no cargó. Revisa la consola (F12).');
+                    }
+                }
+            })();
+        });
+    </script>
+</body>
+</html>

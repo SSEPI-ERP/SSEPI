@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/assets/logo-ssepi.png">
+    <link rel="shortcut icon" type="image/png" href="/assets/logo-ssepi.png">
+    <title>SSEPI · Inventario Maestro</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/modules/inventario.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="/js/core/supabase-config.js"></script>
+    <script type="module" src="/js/core/security-middleware.js"></script>
+    <script type="module" src="/js/core/auth-service.js"></script>
+    <script type="module" src="/js/core/data-service.js"></script>
+    <script src="/js/core/theme-clock.js"></script>
+    <script src="/js/core/user-menu.js"></script>
+    <script src="/js/core/nav-by-role.js"></script>
+    <script type="module" src="/js/modules/inventario.js"></script>
+</head>
+<body class="page-inventario nav-loading">
+    <script>
+(function(){
+  var r = sessionStorage.getItem('ssepi_rol');
+  if (r) document.body.dataset.rol = r;
+  r = (r || '').toLowerCase();
+  if (r === 'ventas' || r === 'ventas_sin_compras') document.body.classList.add('inventario-perfil-ventas');
+})();
+    </script>
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <img src="/assets/logo-ssepi.png" alt="SSEPI" class="brand-logo">
+                <div>
+                    <div class="brand-text">INVENTARIO MAESTRO</div>
+                    <div class="brand-sub">Control de Stock</div>
+                </div>
+            </div>
+            <a href="/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <div class="notification-badge">
+                <i class="fas fa-bell"></i>
+                <span class="badge-count" id="notificacionesBadge">0</span>
+            </div>
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <div class="user-pill" id="userMenu">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
+        <a href="/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
+        <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/pages/ssepi_import_viewer.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-file-upload"></i></span> Importar datos</a>
+        <a href="/pages/ssepi_productos.html" class="nav-item active" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <a href="/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
+        <a href="/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <div class="menu-category">EXTERNOS</div>
+        <a href="#" class="nav-item" target="_blank" rel="noopener" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+    </nav>
+
+    <main>
+        <!-- Filtros superiores -->
+        <div class="filtros-bar">
+            <div class="filtro-grupo categoria-tabs">
+                <button class="cat-btn active" data-cat="refaccion"><i class="fas fa-microchip"></i> Refacciones</button>
+                <button class="cat-btn" data-cat="almacenable"><i class="fas fa-archive"></i> Almacenables</button>
+                <button class="cat-btn" data-cat="consumible"><i class="fas fa-flask"></i> Consumibles</button>
+                <button class="cat-btn" data-cat="servicio"><i class="fas fa-tools"></i> Servicios</button>
+            </div>
+            <div class="filtro-grupo search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Buscar por SKU, nombre o ubicación...">
+            </div>
+            <div class="filtro-grupo counter">
+                Total: <strong id="totalCount">0</strong> | Mostrando: <strong id="filteredCount">0</strong>
+            </div>
+            <div class="vistas">
+                <button id="vistaGrid" class="active"><i class="fas fa-th"></i> Grid</button>
+                <button id="vistaLista"><i class="fas fa-table"></i> Tabla</button>
+                <button id="vistaGrafica"><i class="fas fa-chart-pie"></i> Gráfica</button>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi-card" data-hide-for-no-admin="true">
+                <div class="kpi-icon"><i class="fas fa-dollar-sign"></i></div>
+                <div class="kpi-title">Valor Total</div>
+                <div class="kpi-value" id="kpiValorTotal">$0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-cubes"></i></div>
+                <div class="kpi-title">Productos</div>
+                <div class="kpi-value" id="kpiProductos">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="kpi-title">Bajo Stock</div>
+                <div class="kpi-value" id="kpiBajoStock">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="fas fa-exchange-alt"></i></div>
+                <div class="kpi-title">Mov. Mes</div>
+                <div class="kpi-value" id="kpiMovimientos">0</div>
+            </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="actions-header">
+            <div class="toolbar-actions">
+                <button class="btn-ssepi btn-inventario" id="newProductBtn" data-hide-for-ventas="true"><i class="fas fa-plus"></i> Nuevo Producto</button>
+                <button class="btn btn-import" id="importGeneralBtn" data-hide-for-ventas="true" title="Importa varios archivos y los categoriza automáticamente"><i class="fas fa-file-arrow-up"></i> Importación general</button>
+                <button class="btn btn-import" id="importExcelBtn" data-hide-for-ventas="true"><i class="fas fa-file-excel"></i> Importar Excel</button>
+                <button class="btn btn-secondary" id="initDataBtn" style="display: none;"><i class="fas fa-database"></i> Cargar Datos Iniciales</button>
+            </div>
+        </div>
+
+        <!-- VISTA GRID -->
+        <div id="gridView" class="view-container active">
+            <div id="loadingState" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <div>Cargando inventario...</div>
+            </div>
+            <div id="productsGrid" class="products-grid"></div>
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <i class="fas fa-box-open"></i>
+                <h3>No hay productos</h3>
+                <p>Agrega tu primer producto usando el botón "Nuevo Producto" o importa desde Excel.</p>
+            </div>
+        </div>
+
+        <!-- VISTA TABLA -->
+        <div id="tableView" class="view-container">
+            <div class="table-wrapper">
+                <table class="inventory-table dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Nombre</th>
+                            <th class="col-desc">Descripción</th>
+                            <th>Categoría</th>
+                            <th>Ubicación</th>
+                            <th class="col-num">Stock</th>
+                            <th class="col-num">Mín.</th>
+                            <th class="col-num" data-hide-for-no-admin="true">Costo</th>
+                            <th class="col-num">Precio Venta</th>
+                            <th class="col-num" data-hide-for-no-admin="true">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- VISTA GRÁFICA -->
+        <div id="chartView" class="view-container">
+            <div class="chart-container">
+                <div id="chartVentasMsg" class="chart-ventas-msg" style="display:none;">
+                    La gráfica por valor de inventario no está disponible para el perfil Ventas.
+                </div>
+                <canvas id="inventoryChart"></canvas>
+            </div>
+        </div>
+    </main>
+
+    <!-- SIDEBAR DERECHO (FEED) -->
+    <aside class="sidebar-right">
+        <div class="history-header">
+            <span><i class="fas fa-history"></i> BITÁCORA</span>
+            <span class="notification-badge" id="feedCount">0</span>
+        </div>
+        <div class="feed-list" id="feedList">
+            <div class="feed-item">
+                <div class="feed-dot"></div>
+                <div class="feed-meta"><span style="color:var(--c-stock);">SISTEMA</span><span>ahora</span></div>
+                <div class="feed-body">Módulo de inventario iniciado</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MODAL DE PRODUCTO -->
+    <div class="modal-backdrop" id="productModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Nuevo Producto</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="productForm">
+                    <input type="hidden" id="productId">
+                    <div class="form-grid">
+                        <div class="input-group required">
+                            <label>SKU / Código</label>
+                            <input type="text" id="productSku" required>
+                            <div class="error-message" id="skuError" style="display: none;"></div>
+                        </div>
+                        <div class="input-group required">
+                            <label>Nombre del Producto</label>
+                            <input type="text" id="productName" required>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Categoría</label>
+                            <select id="productCategory">
+                                <option value="refaccion">Refacción</option>
+                                <option value="almacenable">Almacenable</option>
+                                <option value="consumible">Consumible</option>
+                                <option value="servicio">Servicio</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Ubicación</label>
+                            <input type="text" id="productLocation" placeholder="Ej: Estante A1, Rack 3">
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Stock Mínimo</label>
+                            <input type="number" id="productMinStock" min="0" value="0">
+                        </div>
+                        <div class="input-group" id="productCostGroup">
+                            <label>Costo Unitario ($)</label>
+                            <input type="number" id="productCost" min="0" step="0.01" value="0">
+                        </div>
+                        <div class="input-group">
+                            <label>Precio de Venta ($)</label>
+                            <input type="number" id="productPrice" min="0" step="0.01" value="0">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Stock Actual</label>
+                        <div class="stock-control">
+                            <button type="button" class="stock-btn" id="decreaseStock">−</button>
+                            <input type="number" id="stockInput" min="0" value="0">
+                            <button type="button" class="stock-btn" id="increaseStock">+</button>
+                        </div>
+                        <div class="stock-minimum" id="minStockInfo">Stock mínimo: <span>0</span></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelBtn">Cancelar</button>
+                <div id="modalFooterAdminActions" class="modal-footer-actions">
+                    <button class="btn btn-danger" id="deleteProductBtn" style="display: none;"><i class="fas fa-trash"></i> Eliminar</button>
+                    <button class="btn btn-primary" id="updateProductBtn" style="display: none;"><i class="fas fa-sync-alt"></i> Actualizar</button>
+                    <button class="btn btn-primary" id="saveProductBtn"><i class="fas fa-save"></i> Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE IMPORTACIÓN EXCEL -->
+    <div class="modal-backdrop" id="importModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Importar desde Excel, CSV o PDF</h3>
+                <button class="modal-close" id="importModalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="import-info">
+                    <h4 style="margin-bottom:10px;">Formatos aceptados</h4>
+                    <p><strong>Excel (.xlsx, .xls)</strong> y <strong>CSV</strong>. Se detectan solas las hojas con encabezados (varias hojas por archivo). Los datos se <strong>actualizan</strong> si el SKU ya existe en la categoría seleccionada, o se <strong>importan como nuevos</strong> y se guardan en la base de datos (Supabase).</p>
+                    <p>Ejemplos de columnas reconocidas (cualquier orden):</p>
+                    <ul style="margin-left:20px; margin-top:5px;">
+                        <li><strong>SKU / Código:</strong> Código Marking, SKU, Modelo, Clave, Ref</li>
+                        <li><strong>Nombre:</strong> Descripción del producto, Nombre, Producto</li>
+                        <li><strong>Stock:</strong> Existencia, Cantidad, Stock, Qty</li>
+                        <li><strong>Ubicación:</strong> Ubicación, Estante, Almacén</li>
+                        <li><strong>Costo:</strong> Costo unitario MXN, C/U, Costo</li>
+                        <li><strong>Precio:</strong> Precio venta, Total línea MXN, Precios SSEPI, Importe</li>
+                    </ul>
+                    <p>Se busca automáticamente la fila de encabezados (incluso si hay títulos arriba como &quot;INVENTARIO 2025&quot;).</p>
+                </div>
+                <div class="import-category">
+                    <span style="font-weight:700;">Importar a categoría:</span>
+                    <select id="importCategory">
+                        <option value="refaccion">Refacciones</option>
+                        <option value="almacenable">Almacenables</option>
+                        <option value="consumible">Consumibles</option>
+                        <option value="servicio">Servicios</option>
+                    </select>
+                </div>
+                <div class="import-progress" style="display: none;">
+                    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+                    <div style="text-align:center; font-size:12px; margin-top:8px;" id="progressText">Procesando...</div>
+                </div>
+                <input type="file" id="excelFile" accept=".xlsx,.xls,.csv,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,application/pdf" style="display: none;">
+                <div style="text-align: center;">
+                    <button class="btn btn-primary" id="selectFileBtn"><i class="fas fa-file-excel"></i> Seleccionar Archivo</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelImportBtn">Cancelar</button>
+                <button class="btn btn-primary" id="processImportBtn" style="display: none;">Procesar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- INPUT OCULTO PARA IMPORTACIÓN DIRECTA -->
+    <input type="file" id="generalImportInput" multiple accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" style="display: none;">
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf" style="display: none;">
+
+    <script>
+        window.addEventListener('load', () => {
+            (async function() {
+                const deadline = Date.now() + 8000;
+                while (!window.securityMiddleware || !window.authService) {
+                    if (Date.now() > deadline) {
+                        console.error('SSEPI: securityMiddleware o authService no disponibles.');
+                        return;
+                    }
+                    await new Promise(r => setTimeout(r, 50));
+                }
+                try {
+                    await window.securityMiddleware.initSecurity();
+                } catch (e) {
+                    console.warn('SSEPI security init:', e);
+                }
+                let user = null;
+                try {
+                    user = await window.authService.requireAuth('/');
+                } catch (e) {
+                    console.error('SSEPI auth:', e);
+                    return;
+                }
+                if (user) {
+                    try {
+                        const profile = await window.authService.getCurrentProfile();
+                        const nameEl = document.getElementById('userName');
+                        const avatarEl = document.getElementById('userAvatar');
+                        if (nameEl) nameEl.innerText = (profile?.nombre?.split(' ')[0]) || 'Admin';
+                        if (avatarEl) avatarEl.innerText = (profile?.nombre?.[0] || 'A').toUpperCase();
+                    } catch (e) {
+                        console.warn('Perfil:', e);
+                    }
+                }
+                const modDeadline = Date.now() + 3000;
+                while (!window.inventarioModule || typeof window.inventarioModule.init !== 'function') {
+                    if (Date.now() > modDeadline) {
+                        console.error('SSEPI: inventarioModule no disponible.');
+                        return;
+                    }
+                    await new Promise(r => setTimeout(r, 50));
+                }
+                try {
+                    await window.inventarioModule.init();
+                } catch (e) {
+                    console.error('Inventario init:', e);
+                }
+            })();
+        });
+    </script>
+</body>
+</html>

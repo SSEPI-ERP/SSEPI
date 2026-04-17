@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/assets/logo-ssepi.png">
+    <link rel="shortcut icon" type="image/png" href="/assets/logo-ssepi.png">
+    <title>SSEPI · Nómina</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/modules/contabilidad.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="/js/core/supabase-config.js"></script>
+    <script type="module" src="/js/core/security-middleware.js"></script>
+    <script type="module" src="/js/core/auth-service.js"></script>
+    <script src="/js/core/theme-clock.js"></script>
+    <script src="/js/core/user-menu.js"></script>
+    <script src="/js/core/nav-by-role.js"></script>
+    <script type="module" src="/js/modules/nomina.js"></script>
+</head>
+<body class="page-nomina nav-loading">
+    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenuBtn" title="Colapsar/Expandir Menú"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <img src="/assets/logo-ssepi.png" alt="SSEPI" class="brand-logo">
+                <div>
+                    <div class="brand-text">NÓMINA</div>
+                    <div class="brand-sub">Pagos y períodos</div>
+                </div>
+            </div>
+            <a href="/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <div class="notification-badge">
+                <i class="fas fa-bell"></i>
+                <span class="badge-count" id="notificacionesBadge">0</span>
+            </div>
+            <div id="clock" class="live-clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <div class="user-pill" id="userMenu">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
+        <a href="/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
+        <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/pages/ssepi_import_viewer.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-file-upload"></i></span> Importar datos</a>
+        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/pages/ssepi_nomina.html" class="nav-item active" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <a href="/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
+        <a href="/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <div class="menu-category">EXTERNOS</div>
+        <a href="#" class="nav-item" target="_blank" rel="noopener" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+    </nav>
+
+    <main>
+        <div class="welcome-header contab-hero nom-hero">
+            <h1>Nómina</h1>
+            <p class="contab-hero-sub">Pagos por periodo y registro de nuevos movimientos.</p>
+        </div>
+        <section class="nom-section">
+            <div class="nom-kpi-grid" aria-label="Resumen del periodo">
+                <div class="nom-kpi-card">
+                    <span class="nom-kpi-label">Pagos en rango</span>
+                    <strong id="nomKpiCount">0</strong>
+                    <span class="nom-kpi-hint">Registros listados</span>
+                </div>
+                <div class="nom-kpi-card nom-kpi-card--accent">
+                    <span class="nom-kpi-label">Total pagado</span>
+                    <strong id="nomKpiTotal">$0.00</strong>
+                    <span class="nom-kpi-hint">Suma de totales</span>
+                </div>
+                <div class="nom-kpi-card">
+                    <span class="nom-kpi-label">Promedio</span>
+                    <strong id="nomKpiAvg">$0.00</strong>
+                    <span class="nom-kpi-hint">Por pago</span>
+                </div>
+            </div>
+            <div class="coi-card nom-card">
+                <div class="contab-toolbar nom-toolbar">
+                    <div class="contab-field">
+                        <label for="nomDesde">Desde</label>
+                        <input type="date" id="nomDesde" class="coi-input contab-input-date">
+                    </div>
+                    <div class="contab-field">
+                        <label for="nomHasta">Hasta</label>
+                        <input type="date" id="nomHasta" class="coi-input contab-input-date">
+                    </div>
+                    <button type="button" class="btn-ssepi contab-apply-btn" id="nomAplicarBtn"><i class="fas fa-filter"></i> Aplicar</button>
+                    <button type="button" class="btn-ssepi contab-apply-btn" id="nomRefreshBtn"><i class="fas fa-sync-alt"></i> Actualizar</button>
+                    <button type="button" class="btn-ssepi nom-btn-primary" id="nomCrearBtn"><i class="fas fa-plus"></i> Crear nómina</button>
+                </div>
+                <div class="coi-table-wrap">
+                    <table class="coi-log-table nom-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha pago</th>
+                                <th>Empleado</th>
+                                <th>Período</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th>Método</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nominaBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- SIDEBAR DERECHO (HISTORIAL / BITÁCORA) -->
+    <aside class="sidebar-right">
+        <div class="history-header">
+            <span><i class="fas fa-history"></i> BITÁCORA</span>
+            <span class="notification-badge" id="feedCount">0</span>
+        </div>
+        <div class="feed-list" id="feedList">
+            <div class="feed-item">
+                <div class="feed-dot"></div>
+                <div class="feed-meta"><span style="color:var(--c-contabilidad);">NÓMINA</span><span>ahora</span></div>
+                <div class="feed-body">Historial no disponible en esta fase.</div>
+            </div>
+        </div>
+    </aside>
+
+    <div id="nomModalBackdrop" class="nom-modal-backdrop" aria-hidden="true">
+        <div class="nom-modal" role="dialog" aria-labelledby="nomModalTitle">
+            <div class="nom-modal-header">
+                <h2 id="nomModalTitle">Registrar pago de nómina</h2>
+                <button type="button" class="nom-modal-close" id="nomModalClose" aria-label="Cerrar"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="nom-modal-body">
+                <div class="nom-form-grid">
+                    <div class="nom-field nom-field--full">
+                        <label for="nomInpEmpleado">Empleado</label>
+                        <input type="text" id="nomInpEmpleado" class="coi-input" placeholder="Nombre completo" autocomplete="name">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpDesde">Período desde</label>
+                        <input type="date" id="nomInpDesde" class="coi-input contab-input-date">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpHasta">Período hasta</label>
+                        <input type="date" id="nomInpHasta" class="coi-input contab-input-date">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpDias">Días trabajados</label>
+                        <input type="number" id="nomInpDias" class="coi-input" min="0" step="1" placeholder="0">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpFechaPago">Fecha de pago</label>
+                        <input type="date" id="nomInpFechaPago" class="coi-input contab-input-date">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpSueldo">Sueldo base</label>
+                        <input type="number" id="nomInpSueldo" class="coi-input" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpExtras">Horas extras ($)</label>
+                        <input type="number" id="nomInpExtras" class="coi-input" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpBonos">Bonos</label>
+                        <input type="number" id="nomInpBonos" class="coi-input" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpDed">Deducciones</label>
+                        <input type="number" id="nomInpDed" class="coi-input" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpTotal">Total a pagar</label>
+                        <input type="number" id="nomInpTotal" class="coi-input nom-input-total" min="0" step="0.01" readonly>
+                    </div>
+                    <div class="nom-field">
+                        <label for="nomInpEstado">Estado</label>
+                        <select id="nomInpEstado" class="coi-input">
+                            <option value="pagado">Pagado</option>
+                            <option value="borrador">Borrador</option>
+                            <option value="programado">Programado</option>
+                        </select>
+                    </div>
+                    <div class="nom-field nom-field--full">
+                        <label for="nomInpMetodo">Método de pago</label>
+                        <input type="text" id="nomInpMetodo" class="coi-input" placeholder="Transferencia, efectivo…" value="transferencia">
+                    </div>
+                </div>
+            </div>
+            <div class="nom-modal-footer">
+                <button type="button" class="btn-ssepi btn-secondary" id="nomModalCancel">Cancelar</button>
+                <button type="button" class="btn-ssepi nom-btn-primary" id="nomModalGuardar"><i class="fas fa-save"></i> Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', () => {
+            (async function() {
+                const deadline = Date.now() + 5000;
+                while (!window.securityMiddleware || !window.authService) {
+                    if (Date.now() > deadline) return;
+                    await new Promise(r => setTimeout(r, 50));
+                }
+                await window.securityMiddleware.initSecurity();
+                const user = await window.authService.requireAuth('/');
+                if (user) {
+                    const profile = await window.authService.getCurrentProfile();
+                    document.getElementById('userName').innerText = profile?.nombre?.split(' ')[0] || 'Admin';
+                    document.getElementById('userAvatar').innerText = (profile?.nombre?.[0] || 'A').toUpperCase();
+                    const t0 = Date.now();
+                    while (!window.nominaModule && Date.now() - t0 < 3000) {
+                        await new Promise(r => setTimeout(r, 50));
+                    }
+                    if (window.nominaModule) await window.nominaModule.init();
+                }
+            })();
+        });
+    </script>
+</body>
+</html>
