@@ -150,15 +150,19 @@ SELECT
     s.fecha_estimada_entrega,
     s.tiempo_espera_proveedor_dias,
     c.folio as folio_cotizacion,
-    c.cliente_nombre,
+    ct.nombre as cliente_nombre,
     c.total,
     ot.folio as folio_taller,
+    ot.cliente_nombre as taller_cliente_nombre,
     om.folio as folio_motor,
+    om.cliente_nombre as motores_cliente_nombre,
     p.folio as folio_proyecto,
+    p.cliente_nombre as proyectos_cliente_nombre,
     (SELECT COUNT(*) FROM public.orden_eventos e WHERE e.seguimiento_id = s.id) as total_eventos,
     (SELECT MAX(e.creado_en) FROM public.orden_eventos e WHERE e.seguimiento_id = s.id) as ultimo_evento
 FROM public.orden_seguimiento s
 LEFT JOIN public.cotizaciones c ON c.id = s.cotizacion_id
+LEFT JOIN public.contactos ct ON ct.id = c.cliente_id
 LEFT JOIN public.ordenes_taller ot ON ot.id = s.orden_taller_id
 LEFT JOIN public.ordenes_motores om ON om.id = s.orden_motor_id
 LEFT JOIN public.proyectos_automatizacion p ON p.id = s.proyecto_id;
