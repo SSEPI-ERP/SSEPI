@@ -661,6 +661,14 @@ const TallerModule = (function() {
                 <div class="card-header">
                     <span class="folio">${orden.folio || orden.id.slice(-6)}</span>
                     ${badgeHtml}
+                    <div class="card-actions">
+                        <button class="btn-icon btn-edit" onclick="event.stopPropagation(); tallerModule._editarOrden('${orden.id}')" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-icon btn-delete" onclick="event.stopPropagation(); tallerModule._eliminarOrden('${orden.id}')" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="cliente">${orden.cliente_nombre || 'Cliente'}</div>
@@ -843,6 +851,34 @@ const TallerModule = (function() {
         _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
         _initWsChatterUI(orden);
         _renderPrioritySupplierBarTaller();
+    }
+
+    async function _editarOrden(id) {
+        const orden = orders.find(o => o.id === id);
+        if (!orden) { alert('Orden no encontrada'); return; }
+        currentOrder = orden;
+        orderId = id;
+        isNewOrder = false;
+        _cargarDatosEnModal(orden);
+        document.getElementById('wsModal').classList.add('active');
+        _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
+    }
+
+    async function _eliminarOrden(id) {
+        const orden = orders.find(o => o.id === id);
+        if (!orden) { alert('Orden no encontrada'); return; }
+        if (!confirm('¿Eliminar orden ' + (orden.folio || id) + '?\n\nCliente: ' + (orden.cliente_nombre || 'N/A') + '\nEquipo: ' + (orden.equipo || 'N/A'))) return;
+        try {
+            const csrfToken = await authService.getCsrfToken();
+            const { error } = await window.supabase.from('ordenes_taller').delete().eq('id', id);
+            if (error) throw error;
+            _addToFeed('🗑️', 'Orden eliminada: ' + (orden.folio || id));
+            await _loadOrders();
+            _applyFilters();
+        } catch (e) {
+            console.error(e);
+            alert('Error al eliminar: ' + e.message);
+        }
     }
 
     async function _abrirNuevaOrden() {
@@ -2348,6 +2384,8 @@ ${printScript}
     return {
         init,
         _abrirOrden,
+        _editarOrden,
+        _eliminarOrden,
         _actualizarEnlace,
         _eliminarEnlace,
         _actualizarInventarioSeleccion,

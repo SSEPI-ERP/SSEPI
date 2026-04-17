@@ -882,6 +882,15 @@ const VentasModule = (function() {
                     <button class="btn btn-sm btn-primary" onclick="ventasModule._abrirCalculadora('${s.id}')">
                         <i class="fas fa-calculator"></i> Calcular
                     </button>
+                    <button class="btn btn-sm btn-secondary" onclick="ventasModule._verOrdenTaller('${s.id}')" title="Ver orden">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-warning" onclick="ventasModule._editarOrdenTaller('${s.id}')" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="ventasModule._eliminarOrdenTaller('${s.id}')" title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </div>
             </div>
         `).join('');
@@ -913,6 +922,50 @@ const VentasModule = (function() {
                 </div>
             </div>
         `).join('');
+    }
+
+    // ==================== VER / EDITAR / ELIMINAR ÓRDENES DE TALLER ====================
+    async function _verOrdenTaller(compraId) {
+        const compra = solicitudesTaller.find(s => s.id === compraId);
+        if (!compra) return;
+        const ordenTallerId = compra.vinculacion?.id;
+        if (!ordenTallerId) { alert('No hay orden de taller vinculada'); return; }
+        const orden = taller.find(o => o.id === ordenTallerId);
+        if (!orden) { alert('Orden no encontrada en Taller'); return; }
+        alert(`Orden ${orden.folio}\nCliente: ${orden.cliente_nombre || 'N/A'}\nEstado: ${orden.estado || 'Pendiente'}\nEquipo: ${orden.equipo || 'N/A'}`);
+    }
+
+    async function _editarOrdenTaller(compraId) {
+        const compra = solicitudesTaller.find(s => s.id === compraId);
+        if (!compra) return;
+        const ordenTallerId = compra.vinculacion?.id;
+        if (!ordenTallerId) { alert('No hay orden de taller vinculada'); return; }
+        const orden = taller.find(o => o.id === ordenTallerId);
+        if (!orden) { alert('Orden no encontrada en Taller'); return; }
+        alert('Función de edición en implementación. ID: ' + ordenTallerId);
+    }
+
+    async function _eliminarOrdenTaller(compraId) {
+        const compra = solicitudesTaller.find(s => s.id === compraId);
+        if (!compra) return;
+        if (!confirm('¿Eliminar esta orden de Taller?\n\nFolio: ' + (compra.folio || compraId) + '\nCliente: ' + (compra.vinculacion?.nombre || 'N/A'))) return;
+        try {
+            const ordenTallerId = compra.vinculacion?.id;
+            if (ordenTallerId) {
+                const csrfToken = await authService.getCsrfToken();
+                const ok = await window.supabase.from('ordenes_taller').delete().eq('id', ordenTallerId);
+                if (ok.error) throw ok.error;
+            }
+            const csrfToken2 = await authService.getCsrfToken();
+            const ok2 = await window.supabase.from('compras').delete().eq('id', compraId);
+            if (ok2.error) throw ok2.error;
+            _addToFeed('🗑️', 'Orden eliminada: ' + (compra.folio || compraId));
+            await _loadCompras();
+            _renderSolicitudesTaller();
+        } catch (e) {
+            console.error(e);
+            alert('Error al eliminar: ' + e.message);
+        }
     }
 
     // ==================== CALCULADORA DE COSTOS ====================
@@ -2308,7 +2361,10 @@ const VentasModule = (function() {
         _editarVenta,
         _reenviarCotizacion,
         _abrirDetalle,
-        _mostrarHistorial
+        _mostrarHistorial,
+        _verOrdenTaller,
+        _editarOrdenTaller,
+        _eliminarOrdenTaller
     };
 })();
 
