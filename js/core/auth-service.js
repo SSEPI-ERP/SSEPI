@@ -417,16 +417,7 @@ export class AuthService {
   }
 
   // ==================== VERIFICAR PERMISO ====================
-  /**
-   * Verifica si el usuario tiene permiso para un módulo y acción.
-   *
-   * COMPORTAMIENTO MODO DUAL:
-   * - Si ssepi_mode = 'normal', el usuario con modo dual usa su rol base (ej. 'automatizacion')
-   * - Si ssepi_mode = 'admin' (default), el usuario con modo dual usa rol 'admin' (acceso total)
-   * - Esto afecta tanto la navegación (nav-by-role) como permisos de escritura (hasPermission)
-   */
   async hasPermission(module, action) {
-    // Lectura: cualquier sesión válida puede consultar; el control fino lo hace RLS en Supabase.
     if (action === 'read') {
       const { data: { user } } = await this.supabase.auth.getUser();
       return !!user;
@@ -435,7 +426,6 @@ export class AuthService {
     const profile = await this.getCurrentProfile();
     if (!profile) return false;
 
-    // Obtener rol efectivo considerando modo dual
     let effectiveRol = profile.rol;
     try {
       const isDualMode = this._isDualModeUser(profile);
@@ -443,11 +433,8 @@ export class AuthService {
       if (isDualMode && mode === 'normal') {
         effectiveRol = this._getDualModeBaseRol(profile);
       }
-    } catch (e) {
-      // Si falla el check de modo dual, usar rol de BD por defecto
-    }
+    } catch (e) {}
 
-    // Admin/superadmin tienen acceso total
     if (effectiveRol === 'admin' || effectiveRol === 'superadmin') return true;
 
     const { data, error } = await this.supabase
@@ -473,15 +460,9 @@ export class AuthService {
   }
 
   // ==================== MODO DUAL HELPERS ====================
-  /**
-   * Mapa de usuarios con modo dual (Normal ↔ Admin).
-   * Clave: email. Valor: rol base en modo Normal.
-   * Futuro: migrar a users.modo_dual (boolean) y users.rol_normal (text) en BD.
-   */
   _getDualModeUsersMap() {
     return {
       'norbertomoro4@gmail.com': 'automatizacion'
-      // Agregar más: 'email@ejemplo.com': 'rol_base'
     };
   }
 

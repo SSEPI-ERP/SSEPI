@@ -342,14 +342,9 @@
         }
         return supabase().from('calculadora_hoja_filas').select('*').eq('calculadora_id', cid).order('fila_orden', { ascending: true }).then(function(r) {
             if (r.error) {
-                if (r.error.code === '42P01' || (r.error.message && r.error.message.indexOf('does not exist') !== -1)) {
-                    hojaFilasList = [];
-                    renderHojaTable();
-                    var tbody = document.getElementById('tablaHojaExcelBody');
-                    if (tbody) tbody.innerHTML = '<tr><td colspan="6">Ejecuta la migración <code>calculadoras-hoja-excel-perfil-pendientes.sql</code> en Supabase.</td></tr>';
-                    return;
-                }
-                throw r.error;
+                hojaFilasList = [];
+                renderHojaTable();
+                return;
             }
             hojaFilasList = r.data || [];
             renderHojaTable();
@@ -1373,8 +1368,6 @@
             }
         } catch (e) {
             console.warn('[Calculadoras] init:', e);
-            var tbody = document.getElementById('tablaFuncionesBody');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="5">Error al cargar (¿ejecutaste la migración calculadoras-modulo.sql?).</td></tr>';
         }
     }
 
