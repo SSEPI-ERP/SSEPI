@@ -1,6 +1,7 @@
 {
   "buildCommand": "node scripts/vercel-build.js",
   "outputDirectory": "vercel-output",
+  "installCommand": "npm install",
   "headers": [
     {
       "source": "/(.*)",
