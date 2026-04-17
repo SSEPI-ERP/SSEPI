@@ -18,7 +18,7 @@ export function applyCSP() {
     default-src 'self';
     script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline';
     style-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline';
-    font-src 'self' https://fonts.gstatic.com data:;
+    font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:;
     img-src 'self' data: https://images.unsplash.com;
     connect-src 'self' https://*.supabase.co wss://*.supabase.co ${supabaseHost ? `https://${supabaseHost} wss://${supabaseHost}` : ''} https://cdn.jsdelivr.net https://api.ipify.org;
     base-uri 'self';
