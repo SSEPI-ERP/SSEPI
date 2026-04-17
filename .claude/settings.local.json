@@ -21,7 +21,11 @@
       "Bash(git -C D:/SSEPI add -A)",
       "Bash(git -C D:/SSEPI status)",
       "Bash(git *)",
-      "Bash(dir \"D:\\\\SSEPI\" /b)"
+      "Bash(dir \"D:\\\\SSEPI\" /b)",
+      "Bash(npm install *)",
+      "Bash(pnpm install *)",
+      "Bash(pnpm run *)",
+      "Bash(curl -X POST https://foytizbicwnndegeorny.supabase.co/rest/v1/rpc/exec_sql -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZveXRpemJpY3dubmRlZ2Vvcm55Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjE5NjAyMiwiZXhwIjoyMDkxNzcyMDIyfQ.7zV20r9XDCxcn-bTg9k1Q9Kj7hhhDffRtAWG8JDikLo' -H 'Content-Type: application/json' -H 'Prefer: return=representation' -d '{\"sql_body\": \"__CMDSUB_OUTPUT__')"
     ]
   }
 }
