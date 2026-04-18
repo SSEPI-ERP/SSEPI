@@ -22,6 +22,7 @@
     <script src="/panel/js/core/user-menu.js"></script>
     <script src="/panel/js/core/nav-by-role.js"></script>
     <script src="/panel/js/core/email-service.js"></script>
+    <script type="module" src="/panel/js/core/ai-assistant.js"></script>
 </head>
 <body class="page-panel nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -209,6 +210,40 @@
         <div class="system-status"><span class="status-indicator"></span> CONECTADO A SUPABASE</div>
     </aside>
 
+    <!-- Botón flotante de IA -->
+    <button class="ai-fab" id="aiFab" title="Asistente IA SSEPI">
+        <i class="fas fa-robot"></i>
+    </button>
+
+    <!-- Modal de IA -->
+    <div class="ai-modal" id="aiModal">
+        <div class="ai-modal-header">
+            <h3><i class="fas fa-brain"></i> Asistente IA SSEPI</h3>
+            <button class="ai-close" id="aiClose"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="ai-modal-body">
+            <div class="ai-chat" id="aiChat">
+                <div class="ai-message ai-message-system">
+                    <i class="fas fa-robot"></i>
+                    <div class="ai-message-content">
+                        <strong>IA SSEPI</strong>
+                        <p>Hola, soy tu asistente inteligente. Puedo ayudarte con información sobre ventas, taller, motores, compras y proyectos.</p>
+                        <p class="ai-suggestions">
+                            <button class="ai-suggestion" data-query="resumen general">Resumen general</button>
+                            <button class="ai-suggestion" data-query="¿Cómo están las ventas?">Ventas</button>
+                            <button class="ai-suggestion" data-query="¿Qué hay en el taller?">Taller</button>
+                            <button class="ai-suggestion" data-query="¿Alguna alerta pendiente?">Alertas</button>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="ai-input-container">
+                <input type="text" class="ai-input" id="aiInput" placeholder="Pregunta algo sobre el ERP...">
+                <button class="ai-send" id="aiSend"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
     <script>
         window.addEventListener('load', () => {
             (async function() {
@@ -264,6 +299,119 @@
                             const isExpanded = this.classList.toggle('expanded');
                             configSubmenu.classList.toggle('expanded');
                         });
+                    }
+                }
+            })();
+
+            // Inicializar Asistente IA
+            (async function() {
+                const aiFab = document.getElementById('aiFab');
+                const aiModal = document.getElementById('aiModal');
+                const aiClose = document.getElementById('aiClose');
+                const aiInput = document.getElementById('aiInput');
+                const aiSend = document.getElementById('aiSend');
+                const aiChat = document.getElementById('aiChat');
+
+                if (!aiFab || !aiModal) return;
+
+                // Abrir/cerrar modal
+                aiFab.addEventListener('click', () => {
+                    aiModal.classList.toggle('active');
+                    if (aiModal.classList.contains('active')) {
+                        setTimeout(() => aiInput?.focus(), 300);
+                    }
+                });
+
+                aiClose?.addEventListener('click', () => {
+                    aiModal.classList.remove('active');
+                });
+
+                // Enviar consulta
+                async function enviarConsulta(query) {
+                    if (!query.trim()) return;
+
+                    // Agregar mensaje del usuario
+                    const userMsg = document.createElement('div');
+                    userMsg.className = 'ai-message ai-message-user';
+                    userMsg.innerHTML = `
+                        <div class="ai-message-icon"><i class="fas fa-user"></i></div>
+                        <div class="ai-message-content">
+                            <p>${query}</p>
+                        </div>
+                    `;
+                    aiChat.appendChild(userMsg);
+                    aiChat.scrollTop = aiChat.scrollHeight;
+
+                    // Limpiar input
+                    if (aiInput) aiInput.value = '';
+
+                    // Mostrar "escribiendo..."
+                    const typing = document.createElement('div');
+                    typing.className = 'ai-message ai-message-system';
+                    typing.id = 'aiTyping';
+                    typing.innerHTML = `
+                        <div class="ai-message-icon"><i class="fas fa-robot"></i></div>
+                        <div class="ai-message-content">
+                            <div class="ai-typing"><span></span><span></span><span></span></div>
+                        </div>
+                    `;
+                    aiChat.appendChild(typing);
+                    aiChat.scrollTop = aiChat.scrollHeight;
+
+                    // Procesar con IA
+                    let respuesta = 'Lo siento, no pude procesar tu consulta. Intenta de nuevo.';
+
+                    if (window.AIAssistant) {
+                        try {
+                            // Actualizar datos antes de consultar
+                            await window.AIAssistant.refreshData();
+                            respuesta = window.AIAssistant.consultar(query);
+                        } catch (error) {
+                            console.error('[AI] Error:', error);
+                            respuesta = 'Error al consultar. Verifica tu conexión.';
+                        }
+                    } else {
+                        respuesta = 'El módulo de IA no está cargado. Recarga la página.';
+                    }
+
+                    // Remover "escribiendo..."
+                    typing.remove();
+
+                    // Agregar respuesta
+                    const responseMsg = document.createElement('div');
+                    responseMsg.className = 'ai-message ai-message-system';
+                    responseMsg.innerHTML = `
+                        <div class="ai-message-icon"><i class="fas fa-robot"></i></div>
+                        <div class="ai-message-content">
+                            <strong>IA SSEPI</strong>
+                            <p style="white-space: pre-wrap;">${respuesta}</p>
+                        </div>
+                    `;
+                    aiChat.appendChild(responseMsg);
+                    aiChat.scrollTop = aiChat.scrollHeight;
+                }
+
+                // Event listeners
+                aiSend?.addEventListener('click', () => enviarConsulta(aiInput?.value || ''));
+
+                aiInput?.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') enviarConsulta(aiInput.value);
+                });
+
+                // Sugestiones de botones
+                document.querySelectorAll('.ai-suggestion')?.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        enviarConsulta(this.dataset.query);
+                    });
+                });
+
+                // Inicializar IA si está disponible
+                if (window.AIAssistant) {
+                    try {
+                        await window.AIAssistant.init();
+                        console.log('[Panel] IA Assistant inicializado');
+                    } catch (error) {
+                        console.error('[Panel] Error inicializando IA:', error);
                     }
                 }
             })();

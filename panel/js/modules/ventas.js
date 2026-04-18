@@ -151,7 +151,7 @@ const VentasModule = (function() {
         return { type: 'unknown', message: 'Error: ' + (error.message || 'Intenta de nuevo.') };
     }
 
-    async function _ventasCrearOrdenOperativa(dept, clienteNombre, falla, fechaStr, prioridad, csrfToken) {
+    async function _ventasCrearOrdenOperativa(dept, clienteNombre, falla, fechaStr, prioridad, csrfToken, nombreProducto) {
         // VALIDACIÓN DE AUTENTICACIÓN ANTES DE ESCRIBIR
         const authCheck = await _validateAuthForWrite();
         if (!authCheck.valid) {
@@ -164,7 +164,13 @@ const VentasModule = (function() {
             ? new Date(fechaStr + 'T12:00:00.000Z').toISOString()
             : new Date().toISOString();
         const prioLine = 'Prioridad (Ventas): ' + (prioridad || 'Normal');
-        const notasAlta = [prioLine, 'Alta desde Ventas (cerebro).'].join('\n');
+        const productoServicio = nombreProducto || 'N/A';
+        const notasAlta = [
+            prioLine,
+            'Alta desde Ventas (cerebro).',
+            `Producto/Servicio: ${productoServicio}`,
+            `Falla/Requerimiento: ${falla || 'N/A'}`
+        ].join('\n');
 
         try {
             if (dept === 'Taller Electrónica') {
@@ -173,11 +179,14 @@ const VentasModule = (function() {
                 const row = {
                     folio,
                     cliente_nombre: clienteNombre,
-                    equipo: '—',
+                    equipo: productoServicio,
                     falla_reportada: falla,
                     fecha_ingreso: fechaIso,
                     estado: 'Nuevo',
-                    notas_generales: notasAlta
+                    notas_generales: notasAlta,
+                    origen_venta: true,
+                    producto_servicio: productoServicio,
+                    vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas'
                 };
                 const inserted = await tallerService.insert(row, csrfToken);
                 if (!inserted) {
@@ -186,10 +195,18 @@ const VentasModule = (function() {
                 if (inserted && taller && !taller.some((o) => o.id === inserted.id)) taller.unshift(inserted);
                 compraActual = {
                     id: inserted.id,
-                    vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'taller', folio_taller: folio },
+                    vinculacion: {
+                        id: inserted.id,
+                        nombre: clienteNombre,
+                        tipo: 'taller',
+                        folio_taller: folio,
+                        producto: productoServicio,
+                        falla: falla,
+                        prioridad: prioridad
+                    },
                     _origen: 'taller'
                 };
-                return { folio, ordenId: inserted.id, tipo: 'taller' };
+                return { folio, ordenId: inserted.id, tipo: 'taller', data: row };
             }
 
             if (dept === 'Taller Motores') {
@@ -198,11 +215,14 @@ const VentasModule = (function() {
                 const row = {
                     folio,
                     cliente_nombre: clienteNombre,
-                    motor: '—',
+                    motor: productoServicio,
                     fecha_ingreso: fechaIso,
                     falla_reportada: falla,
                     estado: 'Nuevo',
-                    notas_generales: notasAlta
+                    notas_generales: notasAlta,
+                    origen_venta: true,
+                    producto_servicio: productoServicio,
+                    vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas'
                 };
                 const inserted = await motoresService.insert(row, csrfToken);
                 if (!inserted) {
@@ -211,10 +231,18 @@ const VentasModule = (function() {
                 if (inserted && motores && !motores.some((o) => o.id === inserted.id)) motores.unshift(inserted);
                 compraActual = {
                     id: inserted.id,
-                    vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'motor' },
+                    vinculacion: {
+                        id: inserted.id,
+                        nombre: clienteNombre,
+                        tipo: 'motor',
+                        folio_motores: folio,
+                        producto: productoServicio,
+                        falla: falla,
+                        prioridad: prioridad
+                    },
                     _origen: 'motores'
                 };
-                return { folio, ordenId: inserted.id, tipo: 'motor' };
+                return { folio, ordenId: inserted.id, tipo: 'motor', data: row };
             }
 
             if (dept === 'Automatización' || dept === 'Proyectos') {
@@ -227,12 +255,15 @@ const VentasModule = (function() {
                 const nombre = dept === 'Proyectos' ? 'Proyecto (Ventas)' : 'Automatización (Ventas)';
                 const row = {
                     folio,
-                    nombre,
+                    nombre: productoServicio || nombre,
                     cliente: clienteNombre,
                     fecha: (fechaStr || new Date().toISOString().split('T')[0]),
                     vendedor: userName,
-                    notas_generales: [falla, prioLine].filter(Boolean).join('\n\n'),
-                    estado: 'pendiente'
+                    notas_generales: [falla, prioLine, `Producto: ${productoServicio}`].filter(Boolean).join('\n\n'),
+                    estado: 'pendiente',
+                    origen_venta: true,
+                    producto_servicio: productoServicio,
+                    prioridad: prioridad
                 };
                 const inserted = await proyectosService.insert(row, csrfToken);
                 if (!inserted) {
@@ -242,10 +273,18 @@ const VentasModule = (function() {
                 const origen = dept === 'Automatización' ? 'automatizacion' : 'proyecto';
                 compraActual = {
                     id: inserted.id,
-                    vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'proyecto' },
+                    vinculacion: {
+                        id: inserted.id,
+                        nombre: clienteNombre,
+                        tipo: 'proyecto',
+                        folio_proyecto: folio,
+                        producto: productoServicio,
+                        falla: falla,
+                        prioridad: prioridad
+                    },
                     _origen: origen
                 };
-                return { folio, ordenId: inserted.id, tipo: 'proyecto' };
+                return { folio, ordenId: inserted.id, tipo: 'proyecto', data: row };
             }
 
             throw new Error('Departamento no soportado para alta de orden');
