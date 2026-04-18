@@ -923,7 +923,7 @@ const VentasModule = (function() {
     }
 
     /**
-     * Obtiene el folio de la orden operativa vinculada a una cotización.
+     * Obtiene el folio y estatus de la orden operativa vinculada a una cotización.
      * Busca en taller, motores o proyectos según el origen.
      */
     async function _getFolioOrdenVinculada(cotizacion) {
@@ -934,37 +934,37 @@ const VentasModule = (function() {
             if (cotizacion.origen === 'taller') {
                 const { data } = await window.supabase
                     .from('ordenes_taller')
-                    .select('folio')
+                    .select('folio, estado')
                     .eq('id', cotizacion.orden_origen_id)
                     .single();
-                if (data?.folio) return { tipo: 'taller', folio: data.folio };
+                if (data?.folio) return { tipo: 'taller', folio: data.folio, estado: data.estado };
             }
 
             // Intentar en ordenes_motores
             if (cotizacion.origen === 'motor' || cotizacion.origen === 'motores') {
                 const { data } = await window.supabase
                     .from('ordenes_motores')
-                    .select('folio')
+                    .select('folio, estado')
                     .eq('id', cotizacion.orden_origen_id)
                     .single();
-                if (data?.folio) return { tipo: 'motor', folio: data.folio };
+                if (data?.folio) return { tipo: 'motor', folio: data.folio, estado: data.estado };
             }
 
             // Intentar en proyectos_automatizacion
             if (cotizacion.origen === 'automatizacion' || cotizacion.origen === 'proyecto' || cotizacion.origen === 'proyectos') {
                 const { data } = await window.supabase
                     .from('proyectos_automatizacion')
-                    .select('folio')
+                    .select('folio, estado')
                     .eq('id', cotizacion.orden_origen_id)
                     .single();
-                if (data?.folio) return { tipo: 'proyecto', folio: data.folio };
+                if (data?.folio) return { tipo: 'proyecto', folio: data.folio, estado: data.estado };
             }
 
             // Búsqueda genérica si no hay origen claro
             for (const tabla of ['ordenes_taller', 'ordenes_motores', 'proyectos_automatizacion']) {
                 const { data } = await window.supabase
                     .from(tabla)
-                    .select('folio')
+                    .select('folio, estado')
                     .eq('id', cotizacion.orden_origen_id)
                     .single();
                 if (data?.folio) {
@@ -1007,11 +1007,26 @@ const VentasModule = (function() {
             'proyecto': 'Automatización'
         };
 
+        const estadoColores = {
+            'Nuevo': '#3b82f6',
+            'Confirmado': '#8b5cf6',
+            'Diagnóstico': '#f59e0b',
+            'En Espera': '#f59e0b',
+            'En reparación': '#f59e0b',
+            'Reparado': '#10b981',
+            'Entregado': '#059669',
+            'Cancelado': '#ef4444',
+            'pendiente': '#3b82f6',
+            'en_proceso': '#f59e0b',
+            'completado': '#10b981'
+        };
+
         return items.map((item, idx) => {
             const folioVinculado = foliosVinculados[idx];
             const etiquetaHtml = folioVinculado
-                ? `<div class="vinculacion-badge" title="Orden creada en ${etiquetas[folioVinculado.tipo]}: ${folioVinculado.folio}">
+                ? `<div class="vinculacion-badge" title="Orden creada en ${etiquetas[folioVinculado.tipo]}: ${folioVinculado.folio} (${folioVinculado.estado || 'N/A'})">
                     <span>${iconos[folioVinculado.tipo]}</span> ${etiquetas[folioVinculado.tipo]}: ${folioVinculado.folio}
+                    ${folioVinculado.estado ? `<span style="margin-left: 6px; padding: 2px 6px; background: ${estadoColores[folioVinculado.estado] || '#666'}; color: white; border-radius: 4px; font-size: 10px;">${folioVinculado.estado}</span>` : ''}
                    </div>`
                 : '';
 
