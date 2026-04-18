@@ -2991,14 +2991,53 @@ const VentasModule = (function() {
         const totalStr = document.getElementById('resTotal')?.innerText || '0';
         const total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
         if (!cliente) { alert('Falta el nombre del cliente.'); return; }
-        if (total <= 0) { alert('El total debe ser mayor a 0.'); return; }
+        if (total <= 0) { alert('El total debe ser mayor a 0. Agrega materiales o servicios en el Paso 2.'); return; }
 
-        const items = calculadoraComponentes.map(c => ({
+        // Construir ítems: componentes manuales + costos calculados (gasolina, traslado, mano de obra)
+        const items = [];
+
+        // Agregar componentes manuales (materiales, refacciones)
+        items.push(...calculadoraComponentes.map(c => ({
             descripcion: c.nombre,
             cantidad: c.cantidad,
             precio_unitario: c.costo_unitario,
             importe: c.subtotal
-        }));
+        })));
+
+        // Agregar costos calculados del preview si existen
+        const km = parseFloat(document.getElementById('inpLogisticaKm')?.value) || 0;
+        const horasViaje = parseFloat(document.getElementById('inpLogisticaHoras')?.value) || 0;
+        const horasTaller = parseFloat(document.getElementById('inpHorasTaller')?.value) || 0;
+
+        if (km > 0) {
+            const gasolina = CostosEngine.calcularCostoGasolina(km);
+            if (gasolina > 0) {
+                items.push({ descripcion: 'Gasolina (servicio)', cantidad: 1, precio_unitario: gasolina, importe: gasolina });
+            }
+        }
+        if (horasViaje > 0) {
+            const traslado = CostosEngine.calcularCostoTrasladoTecnico(horasViaje);
+            if (traslado > 0) {
+                items.push({ descripcion: 'Traslado técnico', cantidad: 1, precio_unitario: traslado, importe: traslado });
+            }
+        }
+        if (horasTaller > 0) {
+            const manoObra = CostosEngine.calcularManoObra(horasTaller);
+            if (manoObra > 0) {
+                items.push({ descripcion: 'Mano de obra', cantidad: horasTaller, precio_unitario: CostosEngine.CONFIG.manoObra, importe: manoObra });
+            }
+            const gastosFijos = CostosEngine.calcularGastosFijos(horasTaller);
+            if (gastosFijos > 0) {
+                items.push({ descripcion: 'Gastos fijos', cantidad: 1, precio_unitario: gastosFijos, importe: gastosFijos });
+            }
+        }
+        const camionetaHoras = calculadoraClienteActual?.horas || 0;
+        if (camionetaHoras > 0) {
+            const camioneta = CostosEngine.calcularCostoCamioneta(camionetaHoras);
+            if (camioneta > 0) {
+                items.push({ descripcion: 'Uso de camioneta', cantidad: 1, precio_unitario: camioneta, importe: camioneta });
+            }
+        }
 
         const folio = `COT-${Date.now().toString().slice(-6)}`;
         const cotizacionData = {
