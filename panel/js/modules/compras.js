@@ -458,13 +458,70 @@ const ComprasModule = (function() {
         isNewCompra = false;
         const modal = document.getElementById('detalleModal');
         const contenido = document.getElementById('detalleContenido');
-        contenido.innerHTML = _generarDetalleHTML(compra);
+        contenido.innerHTML = '<div style="padding: 40px; text-align: center;"><i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i><p>Cargando...</p></div>';
         document.getElementById('editarOrdenBtn').style.display = 'inline-flex';
         document.getElementById('editarOrdenBtn').onclick = () => _editarOrden(id);
+        const html = await _generarDetalleHTML(compra);
+        contenido.innerHTML = html;
         modal.classList.add('active');
     }
 
-    function _generarDetalleHTML(compra) {
+    async function _generarDetalleHTML(compra) {
+        // Obtener estatus de la orden operativa vinculada
+        let estatusOrden = null;
+        if (compra.vinculacion) {
+            try {
+                if (compra.vinculacion.tipo === 'taller') {
+                    const { data: ordenTaller } = await window.supabase
+                        .from('ordenes_taller')
+                        .select('folio, estado, cliente_nombre, equipo')
+                        .eq('id', compra.vinculacion.id)
+                        .single();
+                    if (ordenTaller) {
+                        estatusOrden = {
+                            modulo: 'Taller',
+                            folio: ordenTaller.folio,
+                            estado: ordenTaller.estado,
+                            cliente: ordenTaller.cliente_nombre,
+                            equipo: ordenTaller.equipo
+                        };
+                    }
+                } else if (compra.vinculacion.tipo === 'motor') {
+                    const { data: ordenMotores } = await window.supabase
+                        .from('ordenes_motores')
+                        .select('folio, estado, cliente_nombre, motor')
+                        .eq('id', compra.vinculacion.id)
+                        .single();
+                    if (ordenMotores) {
+                        estatusOrden = {
+                            modulo: 'Motores',
+                            folio: ordenMotores.folio,
+                            estado: ordenMotores.estado,
+                            cliente: ordenMotores.cliente_nombre,
+                            equipo: ordenMotores.motor
+                        };
+                    }
+                } else if (compra.vinculacion.tipo === 'proyecto' || compra.vinculacion.tipo === 'automatizacion') {
+                    const { data: proyecto } = await window.supabase
+                        .from('proyectos_automatizacion')
+                        .select('folio, estado, cliente, nombre')
+                        .eq('id', compra.vinculacion.id)
+                        .single();
+                    if (proyecto) {
+                        estatusOrden = {
+                            modulo: compra.vinculacion.tipo === 'automatizacion' ? 'Automatización' : 'Proyectos',
+                            folio: proyecto.folio,
+                            estado: proyecto.estado,
+                            cliente: proyecto.cliente,
+                            equipo: proyecto.nombre
+                        };
+                    }
+                }
+            } catch (e) {
+                console.warn('[Compras] Error obteniendo estatus de orden vinculada:', e);
+            }
+        }
+
         return `
             <div class="detalle-section">
                 <h4>Información General</h4>
@@ -479,11 +536,27 @@ const ComprasModule = (function() {
             </div>
             ${compra.vinculacion ? `
             <div class="detalle-section">
-                <h4>Vinculación</h4>
-                <div><strong>Tipo:</strong> ${compra.vinculacion.tipo}</div>
-                <div><strong>ID:</strong> ${compra.vinculacion.id}</div>
-                <div><strong>Cliente/Orden:</strong> ${compra.vinculacion.nombre || ''}</div>
-                <div><strong>Folio Taller:</strong> ${compra.vinculacion.folio_taller || ''}</div>
+                <h4>Vinculación con Orden Operativa</h4>
+                <div class="detalle-grid">
+                    <div><strong>Tipo:</strong> ${compra.vinculacion.tipo}</div>
+                    <div><strong>ID:</strong> ${compra.vinculacion.id}</div>
+                    <div><strong>Cliente/Orden:</strong> ${compra.vinculacion.nombre || ''}</div>
+                    <div><strong>Folio Taller:</strong> ${compra.vinculacion.folio_taller || ''}</div>
+                </div>
+                ${estatusOrden ? `
+                <div style="margin-top: 12px; padding: 12px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px;">
+                    <div style="color: #0369a1; font-weight: 600; margin-bottom: 8px;">
+                        <i class="fas fa-${estatusOrden.modulo === 'Taller' ? 'microchip' : estatusOrden.modulo === 'Motores' ? 'industry' : 'robot'}"></i>
+                        Estatus en ${estatusOrden.modulo}
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
+                        <div><strong>Folio:</strong> ${estatusOrden.folio}</div>
+                        <div><strong>Estado:</strong> <span style="color: ${estatusOrden.estado === 'Entregado' ? '#059669' : '#d97706'}">${estatusOrden.estado}</span></div>
+                        <div><strong>Cliente:</strong> ${estatusOrden.cliente}</div>
+                        <div><strong>Equipo/Proyecto:</strong> ${estatusOrden.equipo}</div>
+                    </div>
+                </div>
+                ` : '<div style="margin-top: 12px; color: #666; font-size: 13px;"><em>No se pudo obtener el estatus de la orden vinculada</em></div>'}
             </div>
             ` : ''}
             <div class="detalle-section">
