@@ -183,10 +183,7 @@ const VentasModule = (function() {
                     falla_reportada: falla,
                     fecha_ingreso: fechaIso,
                     estado: 'Nuevo',
-                    notas_generales: notasAlta,
-                    origen_venta: true,
-                    producto_servicio: productoServicio,
-                    vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas'
+                    notas_generales: notasAlta
                 };
                 const inserted = await tallerService.insert(row, csrfToken);
                 if (!inserted) {
@@ -219,10 +216,7 @@ const VentasModule = (function() {
                     fecha_ingreso: fechaIso,
                     falla_reportada: falla,
                     estado: 'Nuevo',
-                    notas_generales: notasAlta,
-                    origen_venta: true,
-                    producto_servicio: productoServicio,
-                    vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas'
+                    notas_generales: notasAlta
                 };
                 const inserted = await motoresService.insert(row, csrfToken);
                 if (!inserted) {
@@ -261,7 +255,6 @@ const VentasModule = (function() {
                     vendedor: userName,
                     notas_generales: [falla, prioLine, `Producto: ${productoServicio}`].filter(Boolean).join('\n\n'),
                     estado: 'pendiente',
-                    origen_venta: true,
                     producto_servicio: productoServicio,
                     prioridad: prioridad
                 };
