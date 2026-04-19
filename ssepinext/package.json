@@ -1,21 +1,22 @@
 {
-  "name": "ssepi-next-dataviewer",
-  "version": "1.0.0",
-  "description": "SSEPI-NEXT Data Viewer - Escritorio para ver datos del ERP",
+  "name": "ssepi-next",
+  "version": "2.0.0",
+  "description": "SSEPI-NEXT — Desktop ERP companion with auth, realtime, and COI integration",
   "main": "main.js",
   "type": "module",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "build:win": "electron-builder --win"
   },
   "author": "SSEPI",
   "license": "UNLICENSED",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
   "devDependencies": {
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.45.0"
   },
   "build": {
     "appId": "com.ssepi.next",
