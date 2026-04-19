@@ -770,6 +770,18 @@ const VentasModule = (function() {
             })
             .subscribe();
         subscriptions.push(subHistorial);
+
+        // Notificaciones para ventas
+        const subNotifVentas = supabase
+            .channel('ventas_notificaciones')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: 'para=eq.ventas' }, payload => {
+                _addToFeed('🔔', payload.new?.mensaje || 'Nueva notificación');
+                _loadCotizaciones();
+                _loadVentas();
+                _applyFilters();
+            })
+            .subscribe();
+        subscriptions.push(subNotifVentas);
     }
 
     // ==================== FILTROS Y VISTAS ====================

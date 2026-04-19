@@ -292,6 +292,18 @@ const ComprasModule = (function() {
             })
             .subscribe();
         subscriptions.push(subProveedores);
+
+        const subNotificaciones = supabase
+            .channel('compras_notificaciones')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: 'para=eq.compras' }, payload => {
+                _addToFeed('🔔', payload.new?.mensaje || 'Nueva notificación');
+                _loadCompras();
+                _loadTaller();
+                _loadMotores();
+                _renderSolicitudesTaller();
+            })
+            .subscribe();
+        subscriptions.push(subNotificaciones);
     }
 
     // ==================== FILTROS Y VISTAS ====================
