@@ -1,0 +1,448 @@
+{
+  "name": "SSEPI - Event Poller (Free Plan)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [ { "field": "minutes", "minutesInterval": 1 } ]
+        }
+      },
+      "id": "poll-schedule",
+      "name": "Every 1 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_event_queue?status=eq.pending&order=created_at.asc&limit=50",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-events",
+      "name": "Fetch Pending Events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "has-events",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "has-events",
+      "name": "Has Events?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": { "batchSize": 1, "options": {} },
+      "id": "split-batch",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_event_queue?id=eq.{{$json.id}}&status=eq.pending",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "status", "value": "processing" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "claim-event",
+      "name": "Claim Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const event = $input.item.json;\nconst table = event.source_table;\nlet targetWorkflow = '';\nif (table === 'ventas') targetWorkflow = 'cerebro_ventas';\nelse if (table === 'orden_historial') targetWorkflow = 'cross_module_notifier';\nelse if (table === 'ssepi_folio_evento') targetWorkflow = 'pipeline_tracker';\nelse if (table === 'inbound_emails') targetWorkflow = 'email_intelligence';\nelse if (table === 'audit_logs') targetWorkflow = 'smart_audit';\nelse targetWorkflow = 'unknown';\nreturn [{ json: { ...event, targetWorkflow } }];"
+      },
+      "id": "classify-event",
+      "name": "Classify Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            { "leftValue": "={{ $json.targetWorkflow }}", "rightValue": "cerebro_ventas", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "is-ventas",
+      "name": "Is Ventas?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1320, -200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            { "leftValue": "={{ $json.targetWorkflow }}", "rightValue": "cross_module_notifier", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "is-orden-hist",
+      "name": "Is Orden Historial?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            { "leftValue": "={{ $json.targetWorkflow }}", "rightValue": "pipeline_tracker", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "is-folio",
+      "name": "Is Folio Evento?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1320, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            { "leftValue": "={{ $json.targetWorkflow }}", "rightValue": "email_intelligence", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "is-email",
+      "name": "Is Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1320, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:3b', messages: [{role: 'system', content: 'Responde SIEMPRE en JSON válido sin markdown. Eres el cerebro comercial del ERP SSEPI.'}, {role: 'user', content: `Se registró un evento en ventas.\\nEvento: ${$json.event_type}\\nDatos: ${JSON.stringify($json.payload)}\\n\\nTareas:\\n1. Si es INSERT: verificar si hay stock, detectar venta huérfana (sin orden_origen_id)\\n2. Si es UPDATE y estatus_pago cambió a Pagado: marcar para encolar COI\\n3. Sugerir acción\\n\\nResponde en JSON: {\\\"suggestion_type\\\": \\\"inventory_check\\\"|\\\"orphan_sale\\\"|\\\"payment_detected\\\", \\\"severity\\\": \\\"info\\\"|\\\"warning\\\", \\\"summary\\\": \\\"resumen español\\\", \\\"detail\\\": \\\"detalle\\\", \\\"action_suggested\\\": \\\"acción o null\\\", \\\"should_enqueue_coi\\\": true|false}`}], stream: false, format: 'json', options: { temperature: 0.3 } }) }}",
+        "options": {}
+      },
+      "id": "ai-ventas",
+      "name": "Ollama: Analyze Venta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, -200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.item.json;\nconst content = resp.message?.content || resp.content || resp.text || '{}';\nreturn [{ json: { text: content, content: content } }];"
+      },
+      "id": "norm-ventas",
+      "name": "Normalize Ventas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, -200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Prefer", "value": "return=minimal" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ const t = $json.text || $json.content || '{}'; let p; try { p = typeof t === 'string' ? JSON.parse(t) : t; } catch { p = { summary: t }; } return JSON.stringify({ workflow_name: 'cerebro_ventas', insight_type: p.suggestion_type || 'venta_suggestion', severity: p.severity || 'info', module_target: 'ventas', summary: p.summary || 'Venta analizada', detail: p.detail || '', action_suggested: p.action_suggested || null, related_record_id: $node['Classify Event'].json.record_id || null, related_table: 'ventas' }); }}",
+        "options": {}
+      },
+      "id": "save-ventas-insight",
+      "name": "Save Ventas Insight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, -200],
+      "credentials": { "httpHeaderAuth": { "id": "SUPABASE_SERVICE_ROLE_CRED_ID", "name": "Supabase Service Role" } }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:3b', messages: [{role: 'system', content: 'Responde SIEMPRE en JSON válido sin markdown. Eres el cerebro del ERP SSEPI.'}, {role: 'user', content: `Un evento ocurrió en orden_historial.\\nDatos: ${JSON.stringify($json.payload)}\\n\\nDetermina módulo origen y escribe notificación breve (máx 80 chars) para módulos afectados.\\nResponde en JSON: {\\\"notifications\\\": [{\\\"para\\\": \\\"modulo\\\", \\\"tipo\\\": \\\"evento\\\", \\\"mensaje\\\": \\\"texto\\\"}]}`}], stream: false, format: 'json', options: { temperature: 0.3 } }) }}",
+        "options": {}
+      },
+      "id": "ai-orden",
+      "name": "Ollama: Cross-Module",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.item.json;\nconst content = resp.message?.content || resp.content || resp.text || '{}';\nreturn [{ json: { text: content, content: content } }];"
+      },
+      "id": "norm-orden",
+      "name": "Normalize Orden",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json.text || $input.item.json.content || '{}';\nlet p; try { p = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { p = { notifications: [] }; }\nconst notifications = p.notifications || [];\nif (notifications.length === 0) notifications.push({ para: 'admin', tipo: 'cross_module', mensaje: 'Evento cross-module sin destinatario' });\nreturn notifications.map(n => ({ json: n }));"
+      },
+      "id": "parse-notifications",
+      "name": "Parse Notifications",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/notificaciones",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Prefer", "value": "return=minimal" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ para: $json.para, tipo: $json.tipo || 'cross_module', mensaje: $json.mensaje, leido: false, fecha: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "insert-notification",
+      "name": "Insert Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 0],
+      "credentials": { "httpHeaderAuth": { "id": "SUPABASE_SERVICE_ROLE_CRED_ID", "name": "Supabase Service Role" } }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:3b', messages: [{role: 'system', content: 'Responde SIEMPRE en JSON válido sin markdown. Eres el monitor de pipeline del ERP SSEPI.'}, {role: 'user', content: `Evento folio: ${JSON.stringify($json.payload)}\\n\\nSLAs: cotizacion→pedido_pendiente:3d, pedido_pendiente→abastecimiento:2d, abastecimiento→ejecucion:5d, ejecucion→listo_entrega:10d, listo_entrega→facturado_timbrado:3d, facturado_timbrado→finalizado:2d\\n\\nResponde en JSON: {\\\"delayed\\\":true|false, \\\"severity\\\":\\\"info\\\"|\\\"warning\\\"|\\\"critical\\\", \\\"summary\\\":\\\"resumen\\\", \\\"detail\\\":\\\"explicación\\\", \\\"action_suggested\\\":\\\"acción o null\\\"}`}], stream: false, format: 'json', options: { temperature: 0.3 } }) }}",
+        "options": {}
+      },
+      "id": "ai-folio",
+      "name": "Ollama: Pipeline SLA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.item.json;\nconst content = resp.message?.content || resp.content || resp.text || '{}';\nlet p; try { p = typeof content === 'string' ? JSON.parse(content) : content; } catch { p = { delayed: false, severity: 'info', summary: 'Pipeline check' }; }\nreturn [{ json: { delayed: !!p.delayed, severity: p.severity || 'info', summary: p.summary || 'Pipeline check', detail: p.detail || '', action_suggested: p.action_suggested || null } }];"
+      },
+      "id": "parse-sla",
+      "name": "Parse SLA Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Prefer", "value": "return=minimal" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workflow_name: 'pipeline_tracker', insight_type: 'pipeline_transition', severity: $json.severity || 'info', module_target: 'ventas', summary: $json.summary || 'Pipeline', detail: $json.detail || '', action_suggested: $json.action_suggested || null, payload: { delayed: $json.delayed } }) }}",
+        "options": {}
+      },
+      "id": "save-folio-insight",
+      "name": "Save Pipeline Insight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 200],
+      "credentials": { "httpHeaderAuth": { "id": "SUPABASE_SERVICE_ROLE_CRED_ID", "name": "Supabase Service Role" } }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:3b', messages: [{role: 'system', content: 'Responde SIEMPRE en JSON válido sin markdown. Eres el asistente de comunicación del ERP SSEPI.'}, {role: 'user', content: `Se recibió un email.\\nDatos: ${JSON.stringify($json.payload)}\\n\\nClasificar intención, vincular folio (SP-E/SP-M/SP-A-XXXX), sugerir módulo.\\nResponde en JSON: {\\\"intent\\\":\\\"...\\\", \\\"related_folio\\\":\\\"...\\\"|null, \\\"module_target\\\":\\\"ventas\\\"|..., \\\"notification_message\\\":\\\"texto\\\", \\\"priority\\\":\\\"high\\\"|\\\"normal\\\"|\\\"low\\\"}`}], stream: false, format: 'json', options: { temperature: 0.3 } }) }}",
+        "options": {}
+      },
+      "id": "ai-email",
+      "name": "Ollama: Classify Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.item.json;\nconst content = resp.message?.content || resp.content || resp.text || '{}';\nlet p; try { p = typeof content === 'string' ? JSON.parse(content) : content; } catch { p = { module_target: 'ventas', notification_message: 'Email entrante' }; }\nreturn [{ json: p }];"
+      },
+      "id": "parse-email",
+      "name": "Parse Email Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/notificaciones",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Prefer", "value": "return=minimal" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ para: $json.module_target || 'ventas', tipo: 'email_entrante', mensaje: $json.notification_message || 'Email entrante', leido: false, fecha: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "insert-email-notification",
+      "name": "Insert Email Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 400],
+      "credentials": { "httpHeaderAuth": { "id": "SUPABASE_SERVICE_ROLE_CRED_ID", "name": "Supabase Service Role" } }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Prefer", "value": "return=minimal" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workflow_name: 'email_intelligence', insight_type: 'email_intelligence', severity: ($node['Parse Email Result'].json.priority === 'high' ? 'warning' : 'info'), module_target: $node['Parse Email Result'].json.module_target || 'ventas', summary: $node['Parse Email Result'].json.notification_message || 'Email clasificado', detail: 'Intención: ' + ($node['Parse Email Result'].json.intent || 'N/A') }) }}",
+        "options": {}
+      },
+      "id": "save-email-insight",
+      "name": "Save Email Insight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 400],
+      "credentials": { "httpHeaderAuth": { "id": "SUPABASE_SERVICE_ROLE_CRED_ID", "name": "Supabase Service Role" } }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_event_queue?id=eq.{{$node['Classify Event'].json.id}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "status", "value": "done" },
+            { "name": "processed_at", "value": "={{ new Date().toISOString() }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "mark-done",
+      "name": "Mark Done",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2600, 0],
+      "credentials": { "httpHeaderAuth": { "id": "SUPABASE_SERVICE_ROLE_CRED_ID", "name": "Supabase Service Role" } }
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_event_queue?status=in.(done,error)&created_at=lt.{{$now.minus({days:7}).toISO()}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "cleanup-old",
+      "name": "Cleanup Old Events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 300],
+      "credentials": { "httpHeaderAuth": { "id": "SUPABASE_SERVICE_ROLE_CRED_ID", "name": "Supabase Service Role" } }
+    }
+  ],
+  "connections": {
+    "Every 1 min": { "main": [ [{ "node": "Cleanup Old Events", "type": "main", "index": 0 }] ] },
+    "Cleanup Old Events": { "main": [ [{ "node": "Fetch Pending Events", "type": "main", "index": 0 }] ] },
+    "Fetch Pending Events": { "main": [ [{ "node": "Has Events?", "type": "main", "index": 0 }] ] },
+    "Has Events?": { "main": [ [{ "node": "Split In Batches", "type": "main", "index": 0 }], [] ] },
+    "Split In Batches": { "main": [ [{ "node": "Claim Event", "type": "main", "index": 0 }] ] },
+    "Claim Event": { "main": [ [{ "node": "Classify Event", "type": "main", "index": 0 }] ] },
+    "Classify Event": { "main": [ [{ "node": "Is Ventas?", "type": "main", "index": 0 }] ] },
+    "Is Ventas?": { "main": [ [{ "node": "Ollama: Analyze Venta", "type": "main", "index": 0 }], [{ "node": "Is Orden Historial?", "type": "main", "index": 0 }] ] },
+    "Is Orden Historial?": { "main": [ [{ "node": "Ollama: Cross-Module", "type": "main", "index": 0 }], [{ "node": "Is Folio Evento?", "type": "main", "index": 0 }] ] },
+    "Is Folio Evento?": { "main": [ [{ "node": "Ollama: Pipeline SLA", "type": "main", "index": 0 }], [{ "node": "Is Email?", "type": "main", "index": 0 }] ] },
+    "Is Email?": { "main": [ [{ "node": "Ollama: Classify Email", "type": "main", "index": 0 }], [{ "node": "Mark Done", "type": "main", "index": 0 }] ] },
+    "Ollama: Analyze Venta": { "main": [ [{ "node": "Normalize Ventas", "type": "main", "index": 0 }] ] },
+    "Normalize Ventas": { "main": [ [{ "node": "Save Ventas Insight", "type": "main", "index": 0 }] ] },
+    "Save Ventas Insight": { "main": [ [{ "node": "Mark Done", "type": "main", "index": 0 }] ] },
+    "Ollama: Cross-Module": { "main": [ [{ "node": "Normalize Orden", "type": "main", "index": 0 }] ] },
+    "Normalize Orden": { "main": [ [{ "node": "Parse Notifications", "type": "main", "index": 0 }] ] },
+    "Parse Notifications": { "main": [ [{ "node": "Insert Notification", "type": "main", "index": 0 }] ] },
+    "Insert Notification": { "main": [ [{ "node": "Mark Done", "type": "main", "index": 0 }] ] },
+    "Ollama: Pipeline SLA": { "main": [ [{ "node": "Parse SLA Result", "type": "main", "index": 0 }] ] },
+    "Parse SLA Result": { "main": [ [{ "node": "Save Pipeline Insight", "type": "main", "index": 0 }] ] },
+    "Save Pipeline Insight": { "main": [ [{ "node": "Mark Done", "type": "main", "index": 0 }] ] },
+    "Ollama: Classify Email": { "main": [ [{ "node": "Parse Email Result", "type": "main", "index": 0 }] ] },
+    "Parse Email Result": { "main": [ [{ "node": "Insert Email Notification", "type": "main", "index": 0 }] ] },
+    "Insert Email Notification": { "main": [ [{ "node": "Save Email Insight", "type": "main", "index": 0 }] ] },
+    "Save Email Insight": { "main": [ [{ "node": "Mark Done", "type": "main", "index": 0 }] ] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

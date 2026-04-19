@@ -8,6 +8,8 @@ import { createDataService } from './data-service.js';
 import { renderPendingHtmlList, formatPendingTitle } from './ssepi-runtime/pending-activity-view.js';
 import { ssepiOn, SSEPI_EVENTS } from './ssepi-runtime/ssepi-event-bus.js';
 import { listPendingEntries } from './ssepi-runtime/pending-drafts-registry.js';
+import { N8nStatus } from './n8n-status.js';
+import { N8nInsightsPanel } from './n8n-insights-panel.js';
 
 export const IndexCore = (function() {
     let subscriptions = [];
@@ -35,6 +37,8 @@ export const IndexCore = (function() {
         ssepiOn(SSEPI_EVENTS.DRAFT_SAVED, () => { _renderIndexPendingList(); _loadFeed(); });
         _renderIndexPendingList();
         await _checkSupabaseConnection();
+        N8nStatus.init();
+        N8nInsightsPanel.init();
         _startRealtime();
         try {
             await _startListeners();

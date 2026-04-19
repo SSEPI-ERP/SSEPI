@@ -1,0 +1,165 @@
+{
+  "name": "SSEPI - Cross-Module Notifier",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "orden-historial",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook: orden_historial",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "orden-historial"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.item.json.body || $input.item.json;\nconst record = payload.record || payload;\n\nlet sourceModule = 'desconocido';\nif (record.orden_taller_id) sourceModule = 'taller';\nelse if (record.orden_motor_id) sourceModule = 'motores';\nelse if (record.proyecto_id) sourceModule = 'automatizacion';\nelse if (record.cotizacion_id) sourceModule = 'ventas';\n\nconst targetModules = [];\nif (sourceModule === 'taller' || sourceModule === 'motores' || sourceModule === 'automatizacion') {\n  targetModules.push('ventas');\n}\nif (record.evento && record.evento.includes('compra')) {\n  targetModules.push('compras');\n}\n\nreturn [{ json: { sourceModule, targetModules, evento: record.evento || '', descripcion: record.descripcion || '', metadata: record.metadata || {}, record } }];"
+      },
+      "id": "determine-module",
+      "name": "Determine Module",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:3b', messages: [{role: 'system', content: 'Responde SIEMPRE en JSON válido sin markdown. Eres el cerebro del ERP SSEPI.'}, {role: 'user', content: `Eres el cerebro del ERP SSEPI. Un evento ocurrió en el módulo ${$json.sourceModule}.\\n\\nEvento: ${$json.evento}\\nDescripción: ${$json.descripcion}\\nMetadata: ${JSON.stringify($json.metadata)}\\n\\nMódulos que deberían saber: ${JSON.stringify($json.targetModules)}\\n\\nEscribe una notificación breve en español (máx 80 caracteres) para cada módulo objetivo.\\nResponde SOLO en JSON: {\"notifications\": [{\"para\": \"modulo\", \"tipo\": \"evento\", \"mensaje\": \"texto\"}]}`}], stream: false, format: 'json', options: { temperature: 0.3 } }) }}",
+        "options": {}
+      },
+      "id": "ollama-notify",
+      "name": "Ollama Generate Notifications",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.item.json; const content = resp.message?.content || resp.content || resp.text || '{}'; return [{ json: { text: content, content: content } }];"
+      },
+      "id": "normalize-notify",
+      "name": "Normalize Notifications",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.item.json.text || $input.item.json.content || '{}';\nlet parsed;\ntry { parsed = typeof text === 'string' ? JSON.parse(text) : text; } catch { parsed = { notifications: [] }; }\nconst notifications = parsed.notifications || [];\nconst results = [];\nfor (const n of notifications) {\n  results.push({ json: n });\n}\nif (results.length === 0) results.push({ json: { para: 'admin', tipo: 'cross_module', mensaje: 'Evento sin módulo objetivo: ' + ($node['Determine Module'].json.evento || 'desconocido') } });\nreturn results;"
+      },
+      "id": "parse-notifications",
+      "name": "Parse Notifications",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/notificaciones",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ para: $json.para, tipo: $json.tipo || 'cross_module', mensaje: $json.mensaje, leido: false, fecha: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "insert-notification",
+      "name": "Insert Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workflow_name: 'cross_module_notifier', insight_type: 'cross_module_event', severity: 'info', module_target: $json.para, summary: $json.mensaje, payload: { source: $node['Determine Module'].json.sourceModule, evento: $node['Determine Module'].json.evento } }) }}",
+        "options": {}
+      },
+      "id": "log-insight",
+      "name": "Log Insight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true }) }}"
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1540, 0]
+    }
+  ],
+  "connections": {
+    "Webhook: orden_historial": {
+      "main": [ [{ "node": "Determine Module", "type": "main", "index": 0 }] ]
+    },
+    "Determine Module": {
+      "main": [ [{ "node": "Ollama Generate Notifications", "type": "main", "index": 0 }] ]
+    },
+    "Ollama Generate Notifications": {
+      "main": [ [{ "node": "Normalize Notifications", "type": "main", "index": 0 }] ]
+    },
+    "Normalize Notifications": {
+      "main": [ [{ "node": "Parse Notifications", "type": "main", "index": 0 }] ]
+    },
+    "Parse Notifications": {
+      "main": [ [{ "node": "Insert Notification", "type": "main", "index": 0 }] ]
+    },
+    "Insert Notification": {
+      "main": [ [{ "node": "Log Insight", "type": "main", "index": 0 }] ]
+    },
+    "Log Insight": {
+      "main": [ [{ "node": "Respond OK", "type": "main", "index": 0 }] ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

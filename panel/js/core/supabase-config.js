@@ -3,9 +3,8 @@
 // (Solo se declara una vez, se usa en todo el sistema)
 // ============================================================================
 
-const SUPABASE_URL = 'https://knzmdwjmrhcoytmebdwa.supabase.co';
-// Pega aquí tu Anon Key desde el dashboard de Supabase (Project Settings > API):
-const SUPABASE_ANON_KEY = '***ANON_REMOVED***';
+const SUPABASE_URL = 'https://foytizbicwnndegeorny.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZveXRpemJpY3dubmRlZ2Vvcm55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTYwMjIsImV4cCI6MjA5MTc3MjAyMn0.GvT4buxZgvGG_Llr-T9b1lxaEBmXMrCN9FK7WZYOZyA';
 
 if (!window.__SUPABASE_INITIALIZED__) {
     // Exponer URL para que otros módulos (p. ej. CSP) puedan ajustarse sin hardcode.

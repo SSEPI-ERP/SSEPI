@@ -23,6 +23,8 @@
     <script src="/panel/js/core/nav-by-role.js"></script>
     <script src="/panel/js/core/email-service.js"></script>
     <script type="module" src="/panel/js/core/ai-assistant.js"></script>
+    <script type="module" src="/panel/js/core/n8n-status.js"></script>
+    <script type="module" src="/panel/js/core/n8n-insights-panel.js"></script>
 </head>
 <body class="page-panel nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -208,6 +210,8 @@
         <div class="history-header">BITÁCORA MAESTRA <span class="notification-badge" id="feedBadge">0</span></div>
         <div class="feed-list" id="feedList"></div>
         <div class="system-status"><span class="status-indicator"></span> CONECTADO A SUPABASE</div>
+        <div class="system-status" id="n8nStatusIndicator"><span class="status-indicator" style="background:#dc2626;"></span> N8N DESCONECTADO</div>
+        <div id="n8nInsightsPanel" class="n8n-insights-panel"></div>
     </aside>
 
     <!-- Botón flotante de IA -->

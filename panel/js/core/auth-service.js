@@ -68,7 +68,7 @@ export class AuthService {
     const { error } = await this.supabase.auth.signOut();
     if (error) throw error;
     sessionStorage.clear();
-    localStorage.removeItem('sb-knzmdwjmrhcoytmebdwa-auth-token');
+    localStorage.removeItem('sb-foytizbicwnndegeorny-auth-token');
   }
 
   // ==================== REGISTRO DE INTENTOS DE AUTENTICACIÓN ====================

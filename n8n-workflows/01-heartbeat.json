@@ -1,0 +1,82 @@
+{
+  "name": "SSEPI - n8n Heartbeat",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [ { "field": "minutes", "minutesInterval": 1 } ]
+        }
+      },
+      "id": "heartbeat-schedule",
+      "name": "Every 60 seconds",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_heartbeat?created_at=lt.{{$now.minus({hours:24}).toISO()}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "cleanup-old-heartbeats",
+      "name": "Cleanup Old Heartbeats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_heartbeat",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "source", "value": "n8n" },
+            { "name": "status", "value": "alive" },
+            { "name": "detail", "value": "={{ JSON.stringify({ workflows_active: true, timestamp: new Date().toISOString() }) }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "insert-heartbeat",
+      "name": "Insert Heartbeat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 60 seconds": {
+      "main": [ [{ "node": "Cleanup Old Heartbeats", "type": "main", "index": 0 }] ]
+    },
+    "Cleanup Old Heartbeats": {
+      "main": [ [{ "node": "Insert Heartbeat", "type": "main", "index": 0 }] ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

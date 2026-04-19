@@ -1,0 +1,191 @@
+{
+  "name": "SSEPI - Smart Audit",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "audit-logs",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-audit",
+      "name": "Webhook: audit_logs",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "audit-logs"
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "batch-wait",
+      "name": "Batch Window 30s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst filtered = items.filter(i => {\n  const tbl = i.json?.body?.table_name || i.json?.table_name || '';\n  return !['rate_limit_log', 'n8n_heartbeat', 'n8n_insights'].includes(tbl);\n});\nif (filtered.length === 0) return [];\nconst summary = filtered.map(i => {\n  const r = i.json?.body?.record || i.json?.body || i.json;\n  return { table: r.table_name, action: r.action, user: r.user_email, role: r.user_role, time: r.created_at || r.timestamp };\n});\nreturn [{ json: { count: filtered.length, records: summary } }];"
+      },
+      "id": "batch-process",
+      "name": "Batch Process",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            { "leftValue": "={{ $json.count }}", "rightValue": 0, "operator": { "type": "number", "operation": "gt" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "has-events",
+      "name": "Has Events?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:3b', messages: [{role: 'system', content: 'Responde SIEMPRE en JSON válido sin markdown. Eres el cerebro del ERP SSEPI.'}, {role: 'user', content: `Eres el monitor de seguridad del ERP SSEPI. Analiza estos eventos de auditoría:\\n\\n${JSON.stringify($json.records)}\\n\\nTareas:\\n1. Detectar anomalías: múltiples DELETE en la misma tabla en 5 min, operaciones fuera de horario (antes de 7am o después de 9pm CDT), UPDATE masivos.\\n2. Clasificar severidad: info (normal), warning (inusual), critical (posible pérdida de datos o brecha).\\n3. Para critical/warning, explicar brevemente y sugerir acción.\\n\\nResponde en JSON: {\"analyses\": [{\"severity\": \"info\"|\"warning\"|\"critical\", \"summary\": \"resumen español\", \"detail\": \"explicación\", \"action_suggested\": \"acción o null\", \"affected_tables\": [\"tabla\"]}]}`}], stream: false, format: 'json', options: { temperature: 0.3 } }) }}",
+        "options": {}
+      },
+      "id": "ollama-analyze",
+      "name": "Ollama Analyze Audit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.item.json; const content = resp.message?.content || resp.content || resp.text || '{}'; return [{ json: { text: content, content: content } }];"
+      },
+      "id": "normalize-audit",
+      "name": "Normalize Audit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const t = $input.item.json.text || $input.item.json.content || '{}';\nlet p;\ntry { p = typeof t === 'string' ? JSON.parse(t) : t; } catch { p = { analyses: [] }; }\nconst analyses = p.analyses || [];\nconst results = [];\nfor (const a of analyses) {\n  if (a.severity === 'warning' || a.severity === 'critical') {\n    results.push({ json: a });\n  }\n}\nreturn results.length > 0 ? results : [{ json: { skip: true } }];"
+      },
+      "id": "filter-important",
+      "name": "Filter Important",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            { "leftValue": "={{ $json.skip }}", "rightValue": "true", "operator": { "type": "string", "operation": "notEquals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "is-important",
+      "name": "Is Important?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workflow_name: 'smart_audit', insight_type: 'anomaly_detected', severity: $json.severity || 'warning', module_target: 'admin', summary: $json.summary || 'Anomalía detectada', detail: $json.detail || '', action_suggested: $json.action_suggested || null, payload: { affected_tables: $json.affected_tables || [] } }) }}",
+        "options": {}
+      },
+      "id": "save-insight",
+      "name": "Save Insight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true }) }}"
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1980, 0]
+    }
+  ],
+  "connections": {
+    "Webhook: audit_logs": {
+      "main": [ [{ "node": "Batch Window 30s", "type": "main", "index": 0 }] ]
+    },
+    "Batch Window 30s": {
+      "main": [ [{ "node": "Batch Process", "type": "main", "index": 0 }] ]
+    },
+    "Batch Process": {
+      "main": [ [{ "node": "Has Events?", "type": "main", "index": 0 }] ]
+    },
+    "Has Events?": {
+      "main": [
+        [{ "node": "Ollama Analyze Audit", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Ollama Analyze Audit": {
+      "main": [ [{ "node": "Normalize Audit", "type": "main", "index": 0 }] ]
+    },
+    "Normalize Audit": {
+      "main": [ [{ "node": "Filter Important", "type": "main", "index": 0 }] ]
+    },
+    "Filter Important": {
+      "main": [ [{ "node": "Is Important?", "type": "main", "index": 0 }] ]
+    },
+    "Is Important?": {
+      "main": [
+        [{ "node": "Save Insight", "type": "main", "index": 0 }],
+        [{ "node": "Respond OK", "type": "main", "index": 0 }]
+      ]
+    },
+    "Save Insight": {
+      "main": [ [{ "node": "Respond OK", "type": "main", "index": 0 }] ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
