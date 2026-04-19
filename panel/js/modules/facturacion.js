@@ -35,6 +35,7 @@ const FacturacionModule = (function() {
     const tallerService = createDataService('ordenes_taller');
     const motoresService = createDataService('ordenes_motores');
     const ventasService = createDataService('ventas');
+    const cotizacionesService = createDataService('cotizaciones');
     const contactosService = createDataService('contactos');
     const facturasService = createDataService('facturas');
     const ingresosService = createDataService('ingresos_contabilidad');
@@ -679,10 +680,22 @@ const FacturacionModule = (function() {
     async function _timbrarFactura(orden, folioFactura, uuid, calculo, contacto) {
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
+            // Buscar la venta/cotización vinculada a esta orden
+            let ventaVinculada = null;
+            try {
+                const ventasRelacionadas = await ventasService.select({ orden_origen_id: orden.id }, { pageSize: 10 });
+                ventaVinculada = ventasRelacionadas && ventasRelacionadas.length > 0 ? ventasRelacionadas[0] : null;
+                if (!ventaVinculada) {
+                    const cotizacionesRelacionadas = await cotizacionesService.select({ orden_origen_id: orden.id }, { pageSize: 10 });
+                    ventaVinculada = cotizacionesRelacionadas && cotizacionesRelacionadas.length > 0 ? cotizacionesRelacionadas[0] : null;
+                }
+            } catch (vErr) { console.warn('[Facturacion] No se pudo buscar venta/cotización vinculada:', vErr); }
+
             const facturaData = {
                 folio_factura: folioFactura,
                 orden_taller_id: orden.tipoOrigen === 'taller' ? orden.id : null,
                 orden_motor_id: orden.tipoOrigen === 'motor' ? orden.id : null,
+                venta_id: ventaVinculada?.id || null,
                 cliente: orden.cliente_nombre,
                 rfc: contacto?.rfc || 'XAXX010101000',
                 fecha_emision: new Date().toISOString(),
@@ -713,6 +726,19 @@ const FacturacionModule = (function() {
                 await tallerService.update(orden.id, updateData, csrfToken);
             } else {
                 await motoresService.update(orden.id, updateData, csrfToken);
+            }
+
+            // Actualizar la venta vinculada como facturada
+            if (ventaVinculada) {
+                try {
+                    await ventasService.update(ventaVinculada.id, {
+                        facturado: true,
+                        uuid_factura: uuid,
+                        folio_factura: folioFactura,
+                        fecha_factura: new Date().toISOString(),
+                        estatus_pago: 'Pagado'
+                    }, csrfToken);
+                } catch (vUpErr) { console.warn('[Facturacion] No se pudo actualizar venta:', vUpErr); }
             }
 
             // Registrar ingreso en contabilidad
