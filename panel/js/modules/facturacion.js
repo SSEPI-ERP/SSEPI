@@ -145,8 +145,11 @@ const FacturacionModule = (function() {
 
     // ==================== LISTENERS SUPABASE ====================
     function _startListeners() {
+        const sb = _supabase();
+        if (!sb) return;
+
         // Órdenes de taller en estado "Reparado"
-        const subTaller = supabase
+        const subTaller = sb
             .channel('taller_facturacion')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes_taller', filter: 'estado=eq.Reparado' }, () => {
                 _loadTaller();
@@ -155,7 +158,7 @@ const FacturacionModule = (function() {
         subscriptions.push(subTaller);
 
         // Órdenes de motores en estado "Reparado"
-        const subMotores = supabase
+        const subMotores = sb
             .channel('motores_facturacion')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes_motores', filter: 'estado=eq.Reparado' }, () => {
                 _loadMotores();
@@ -164,7 +167,7 @@ const FacturacionModule = (function() {
         subscriptions.push(subMotores);
 
         // Ventas (para clientes)
-        const subVentas = supabase
+        const subVentas = sb
             .channel('ventas_facturacion')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ventas' }, payload => {
                 _loadVentas();
@@ -176,7 +179,7 @@ const FacturacionModule = (function() {
         subscriptions.push(subVentas);
 
         // Contactos
-        const subContactos = supabase
+        const subContactos = sb
             .channel('contactos_facturacion')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'contactos' }, () => {
                 _loadContactos();
@@ -185,13 +188,24 @@ const FacturacionModule = (function() {
         subscriptions.push(subContactos);
 
         // Facturas emitidas
-        const subFacturas = supabase
+        const subFacturas = sb
             .channel('facturas_facturacion')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'facturas' }, () => {
                 _loadFacturas();
             })
             .subscribe();
         subscriptions.push(subFacturas);
+
+        // Notificaciones para facturación
+        const subNotif = sb
+            .channel('facturacion_notificaciones')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: 'para=eq.facturacion' }, payload => {
+                _addToFeed('🔔', payload.new?.mensaje || 'Nueva notificación');
+                _loadTaller();
+                _loadMotores();
+            })
+            .subscribe();
+        subscriptions.push(subNotif);
 
         // Carga inicial
         _loadTaller();

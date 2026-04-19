@@ -733,12 +733,11 @@
 
                 if (deleteError) throw deleteError;
 
-                // Insertar nuevos permisos (solo los que están enabled = true)
-                const permisosActivos = nuevosPermisos.filter(p => p.enabled);
-                if (permisosActivos.length > 0) {
+                // Insertar TODOS los permisos (incluidos enabled=false para que la desactivación funcione)
+                if (nuevosPermisos.length > 0) {
                     const { error: insertError } = await window.supabase
                         .from('user_module_permissions')
-                        .insert(permisosActivos);
+                        .insert(nuevosPermisos);
 
                     if (insertError) throw insertError;
                 }

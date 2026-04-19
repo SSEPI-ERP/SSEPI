@@ -382,10 +382,10 @@ const MotoresModule = (function() {
             .subscribe();
         subscriptions.push(subCompras);
 
-        // Canal para notificaciones de taller (motores)
+        // Canal para notificaciones de motores
         const subNotificaciones = supabase
             .channel('motores_notificaciones')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: 'para=eq.taller' }, payload => {
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: 'para=eq.motores' }, payload => {
                 _mostrarNotificacion(payload.new);
             })
             .subscribe();
@@ -393,7 +393,7 @@ const MotoresModule = (function() {
     }
 
     async function _cargarNotificaciones() {
-        const notis = await notificacionesService.select({ para: 'taller', leido: false });
+        const notis = await notificacionesService.select({ para: 'motores', leido: false });
         notificaciones = notis;
         if (notis.length > 0) {
             _mostrarNotificacionesRecientes(notis);

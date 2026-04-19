@@ -156,6 +156,16 @@
                     </a>
                 </div>
 
+                <!-- COI Bridge Dashboard -->
+                <div id="coiDashboard" class="coi-card" style="margin-top:1rem;">
+                    <h3 style="margin:0 0 .5rem;display:flex;align-items:center;gap:.5rem;"><i class="fas fa-plug"></i> Motor COI</h3>
+                    <div id="coiMotorStatus" style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;">
+                        <span id="coiMotorDot" style="width:10px;height:10px;border-radius:50%;background:#999;display:inline-block;"></span>
+                        <span id="coiMotorText">Verificando conexión...</span>
+                    </div>
+                    <div id="coiSyncLog" style="max-height:200px;overflow-y:auto;"></div>
+                </div>
+
                 <div class="contab-pill-row">
                     <button type="button" class="contab-pill btn-ssepi active" id="tabVentasBtn"><i class="fas fa-table"></i> Facturas</button>
                     <button type="button" class="contab-pill btn-ssepi" id="tabComprasBtn"><i class="fas fa-shopping-cart"></i> Compras</button>

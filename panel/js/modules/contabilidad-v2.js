@@ -1,5 +1,6 @@
 import { createDataService } from '../core/data-service.js';
 import { initAuditFeed } from '../core/audit-feed.js';
+import { init as initCoiDashboard } from './contabilidad-coi.js';
 
 const facturasService = createDataService('facturas');
 const comprasService = createDataService('compras');
@@ -464,6 +465,16 @@ async function init() {
 
     _syncExternalModuleLinks();
     await refreshAll();
+
+    // Inicializar dashboard COI si el contabilidad-coi container existe
+    try {
+        const coiContainer = document.getElementById('coiDashboard');
+        if (coiContainer) {
+            await initCoiDashboard();
+        }
+    } catch (coiErr) {
+        console.warn('[Contabilidad] COI dashboard no disponible:', coiErr?.message || coiErr);
+    }
 }
 
 window.contabilidadV2Module = { init, pagarCompra, refreshAll };

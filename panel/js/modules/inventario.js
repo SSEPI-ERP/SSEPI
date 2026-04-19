@@ -120,17 +120,20 @@ const InventarioModule = (function() {
                 document.body.dataset.rol = profile.rol;
             }
             // Solo admin/superadmin ven costos reales y valor total
-            // Ventas, Compras, Norberto (dual mode) y demás roles: solo ven precio final, NO costo
+            // Respetar ver_costos del perfil si está disponible
             const isAdmin = (rol === 'admin' || rol === 'superadmin');
-            canSeeCosts = isAdmin;
+            const verCostosPerfil = profile && ('ver_costos' in profile) ? profile.ver_costos : null;
+            canSeeCosts = verCostosPerfil !== null ? verCostosPerfil : isAdmin;
             canEditInventario = isAdmin;
-            isRestrictedProfile = !isAdmin;
+            isRestrictedProfile = !canSeeCosts;
         } catch (e) {
             const rol = (document.body.dataset.rol || sessionStorage.getItem('ssepi_rol') || '').toLowerCase();
             const isAdmin = (rol === 'admin' || rol === 'superadmin');
-            canSeeCosts = isAdmin;
+            const cachedProfile = sessionStorage.getItem('ssepi_profile');
+            const verCostosCached = cachedProfile ? (JSON.parse(cachedProfile).ver_costos ?? null) : null;
+            canSeeCosts = verCostosCached !== null ? verCostosCached : isAdmin;
             canEditInventario = isAdmin;
-            isRestrictedProfile = !isAdmin;
+            isRestrictedProfile = !canSeeCosts;
         }
         if (isRestrictedProfile) document.body.classList.add('inventario-perfil-ventas');
         else document.body.classList.remove('inventario-perfil-ventas');

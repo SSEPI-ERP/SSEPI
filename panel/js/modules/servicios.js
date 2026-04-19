@@ -424,6 +424,28 @@ const ServiciosModule = (function() {
             })
             .subscribe();
         subscriptions.push(subProyectos);
+
+        // Compras vinculadas a proyectos de automatización
+        const subCompras = supabase
+            .channel('automatizacion_compras')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'compras' }, payload => {
+                const nueva = payload.new;
+                if (nueva?.vinculacion?.tipo === 'proyecto') {
+                    _addToFeed('📦', `Compra actualizada: ${nueva.folio || ''}`);
+                }
+            })
+            .subscribe();
+        subscriptions.push(subCompras);
+
+        // Notificaciones para automatización
+        const subNotif = supabase
+            .channel('automatizacion_notificaciones')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: 'para=eq.automatizacion' }, payload => {
+                _addToFeed('🔔', payload.new?.mensaje || 'Nueva notificación');
+                _loadProjects();
+            })
+            .subscribe();
+        subscriptions.push(subNotif);
     }
 
     // ==================== FILTROS Y VISTAS ====================

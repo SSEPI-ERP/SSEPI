@@ -158,6 +158,27 @@ const ContabilidadModule = (function() {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'empleados' }, payload => { _loadEmpleados(); })
             .subscribe();
         subscriptions.push(subEmpleados);
+
+        // Facturas emitidas (para ingresos contables)
+        const subFacturas = supabase
+            .channel('contabilidad_facturas')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'facturas' }, () => {
+                _loadFacturas();
+                _loadIngresos();
+                _refreshBalanceView();
+            })
+            .subscribe();
+        subscriptions.push(subFacturas);
+
+        // Ingresos contables
+        const subIngresos = supabase
+            .channel('contabilidad_ingresos')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ingresos_contabilidad' }, () => {
+                _loadIngresos();
+                _refreshBalanceView();
+            })
+            .subscribe();
+        subscriptions.push(subIngresos);
     }
 
     // ==================== FILTROS DE FECHA ====================
