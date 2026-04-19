@@ -2003,6 +2003,12 @@ const VentasModule = (function() {
         if (elCred) elCred.innerText = '$' + precioAntesIVA.toFixed(2);
         if (elIva) elIva.innerText = '$' + iva.toFixed(2);
         if (elTotal) elTotal.innerText = '$' + total.toFixed(2);
+
+        // Also update previewTotal on paso 2 when it exists
+        const elPreviewTotal = document.getElementById('previewTotal');
+        if (elPreviewTotal) elPreviewTotal.innerText = '$' + total.toFixed(2);
+        const elPreviewSubtotal = document.getElementById('previewSubtotal');
+        if (elPreviewSubtotal) elPreviewSubtotal.innerText = '$' + (total / 1.16).toFixed(2);
     }
 
     function _adjuntarEventosCalculadora() {
@@ -2102,8 +2108,8 @@ const VentasModule = (function() {
             fecha: new Date().toISOString().split('T')[0],
             items,
             subtotal: items.reduce((s, i) => s + i.importe, 0),
-            iva: total * 0.16 / 1.16,
-            total,
+            iva: finalTotal * 0.16 / 1.16,
+            total: finalTotal,
             estado: 'registro',
             origen: compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo',
             orden_origen_id: compraActual?.id,
@@ -2831,10 +2837,19 @@ const VentasModule = (function() {
 
     async function _guardarCotizacionDesdeWizard() {
         const cliente = _nombreClienteWizardResuelto();
-        const totalStr = document.getElementById('resTotal')?.innerText || '0';
+
+        // Try both resTotal (paso 3/4) and previewTotal (paso 2)
+        const resTotalEl = document.getElementById('resTotal');
+        const previewTotalEl = document.getElementById('previewTotal');
+        const totalStr = resTotalEl?.innerText || previewTotalEl?.innerText || '0';
         const total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
         if (!cliente) { alert('Falta el nombre del cliente.'); return; }
-        if (total <= 0) { alert('El total debe ser mayor a 0.'); return; }
+        if (total <= 0) {
+            _recalcular();
+            const totalAfter = parseFloat((document.getElementById('resTotal')?.innerText || document.getElementById('previewTotal')?.innerText || '0').replace(/[$,]/g, '')) || 0;
+            if (totalAfter <= 0) { alert('El total debe ser mayor a 0. Agrega materiales o servicios en el Paso 2.'); return; }
+        }
+        const finalTotal = total > 0 ? total : parseFloat((document.getElementById('resTotal')?.innerText || document.getElementById('previewTotal')?.innerText || '0').replace(/[$,]/g, '')) || 0;
 
         const items = calculadoraComponentes.map(c => ({
             descripcion: c.nombre,
@@ -2854,8 +2869,8 @@ const VentasModule = (function() {
             fecha: new Date().toISOString().split('T')[0],
             items,
             subtotal: items.reduce((s, i) => s + i.importe, 0),
-            iva: total * 0.16 / 1.16,
-            total,
+            iva: finalTotal * 0.16 / 1.16,
+            total: finalTotal,
             estado: 'registro',
             origen: (ventasWizardCerebro && ventasWizardCerebro.origen_cotizacion) || (compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo'),
             orden_origen_id: compraActual?.vinculacion?.id || compraActual?.id || null,
@@ -2918,8 +2933,8 @@ const VentasModule = (function() {
             fecha: new Date().toISOString().split('T')[0],
             items,
             subtotal: items.reduce((s, i) => s + i.importe, 0),
-            iva: total * 0.16 / 1.16,
-            total,
+            iva: finalTotal * 0.16 / 1.16,
+            total: finalTotal,
             estado: 'registro',
             origen: (ventasWizardCerebro && ventasWizardCerebro.origen_cotizacion) || (compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo'),
             orden_origen_id: compraActual?.vinculacion?.id || compraActual?.id || null,
