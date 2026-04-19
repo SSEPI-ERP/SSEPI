@@ -175,11 +175,11 @@ const ComprasModule = (function() {
     }
 
     async function _loadTaller() {
-        ordenesTaller = await tallerService.select({ estado: ['Diagnóstico', 'En Espera'] }, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 });
+        ordenesTaller = await tallerService.select({ estado: ['Nuevo', 'Diagnóstico', 'En Espera'] }, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 });
     }
 
     async function _loadMotores() {
-        ordenesMotores = await motoresService.select({ estado: ['Diagnóstico', 'En Espera'] }, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 });
+        ordenesMotores = await motoresService.select({ estado: ['Nuevo', 'Diagnóstico', 'En Espera'] }, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 });
     }
 
     async function _loadProyectos() {

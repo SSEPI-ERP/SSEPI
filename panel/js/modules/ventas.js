@@ -2295,6 +2295,47 @@ const VentasModule = (function() {
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
             await cotizacionesService.update(id, { estado: 'autorizada_por_ventas' }, csrfToken);
+
+            // Avanzar estado de la orden operativa vinculada y generar solicitud de compra
+            const origen = cotizacion?.origen || cotizacion?.cerebro_registro?.origen_cotizacion;
+            const ordenId = cotizacion?.orden_origen_id || cotizacion?.cerebro_registro?.orden_id;
+            if (ordenId) {
+                try {
+                    if (origen === 'taller') {
+                        await tallerService.update(ordenId, { estado: 'Diagnóstico' }, csrfToken);
+                        // Generar solicitud de compra vinculada
+                        const nuevaCompra = {
+                            folio: `PO-${cotizacion.folio || Date.now().toString().slice(-6)}`,
+                            proveedor: 'Por asignar',
+                            departamento: 'Taller Electrónica',
+                            vinculacion: { tipo: 'taller', id: ordenId, nombre: cotizacion.cliente || 'Cliente', folio_taller: cotizacion.cerebro_registro?.folio_operativo || cotizacion.folio },
+                            items: (cotizacion.items || []).map(i => ({ sku: i.sku || '', descripcion: i.descripcion || '', cantidad: i.cantidad || 1, precio_unitario: i.precio_unitario || 0 })),
+                            estado: 1,
+                            updated_at: new Date().toISOString()
+                        };
+                        const compraRef = await comprasService.insert(nuevaCompra, csrfToken);
+                        await tallerService.update(ordenId, { compra_vinculada: compraRef?.id, estado: 'En Espera' }, csrfToken);
+                    } else if (origen === 'motores') {
+                        await motoresService.update(ordenId, { estado: 'Diagnóstico' }, csrfToken);
+                        const nuevaCompra = {
+                            folio: `PO-${cotizacion.folio || Date.now().toString().slice(-6)}`,
+                            proveedor: 'Por asignar',
+                            departamento: 'Taller Motores',
+                            vinculacion: { tipo: 'motor', id: ordenId, nombre: cotizacion.cliente || 'Cliente', folio_motores: cotizacion.cerebro_registro?.folio_operativo || cotizacion.folio },
+                            items: (cotizacion.items || []).map(i => ({ sku: i.sku || '', descripcion: i.descripcion || '', cantidad: i.cantidad || 1, precio_unitario: i.precio_unitario || 0 })),
+                            estado: 1,
+                            updated_at: new Date().toISOString()
+                        };
+                        const compraRef = await comprasService.insert(nuevaCompra, csrfToken);
+                        await motoresService.update(ordenId, { compra_vinculada: compraRef?.id, estado: 'En Espera' }, csrfToken);
+                    } else if (origen === 'automatizacion' || origen === 'proyecto') {
+                        await proyectosService.update(ordenId, { estado: 'progreso' }, csrfToken);
+                    }
+                } catch (linkErr) {
+                    console.warn('[Ventas] Error al vincular orden operativa:', linkErr);
+                }
+            }
+
             await notificacionesService.insert({
                 para: 'compras',
                 tipo: 'cotizacion_autorizada',
@@ -2305,7 +2346,7 @@ const VentasModule = (function() {
                 leido: false,
                 fecha: new Date().toISOString()
             }, csrfToken);
-            _addToFeed('✅', 'Cotización autorizada - Notificación enviada a Compras');
+            _addToFeed('✅', 'Cotización autorizada - Orden actualizada y notificación enviada a Compras');
             _renderPendientesAutorizacion();
         } catch (error) {
             console.error(error);
