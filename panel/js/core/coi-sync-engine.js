@@ -1,6 +1,8 @@
 /**
- * Cliente del motor local SSEPI COI (bridge HTTP en 127.0.0.1).
- * No guardar secretos en el repositorio; opcional: localStorage.ssepi_coi_bridge_key
+ * SSEPI COI Sync Engine — Cola unica via Supabase.
+ * La Edge Function procesa la cola en la nube.
+ * El Node.js local server sincroniza pólizas desde Postgres a SQLite.
+ * Ya no se hace HTTP POST directo al bridge local.
  */
 import { enqueueCoiJob } from './coi-queue.js';
 
@@ -30,6 +32,7 @@ function _headers() {
 }
 
 /**
+ * Venta pagada — encola para procesamiento COI.
  * @param {Record<string, unknown>} row - fila ventas (Supabase)
  * @param {Record<string, unknown>|null|undefined} previousRow - fila anterior en UPDATE
  */
@@ -40,7 +43,6 @@ export function notifyVentaIfEligible(row, previousRow) {
     const id = row.id;
     if (!id) return;
 
-    // Encolar para que el bridge lo procese aunque no esté encendido ahora.
     enqueueCoiJob({
         erp_source: 'venta',
         erp_id: String(id),
@@ -48,32 +50,13 @@ export function notifyVentaIfEligible(row, previousRow) {
         idempotency_key: `venta:${id}:pagado`,
         payload_json: row,
     }).then(r => {
-        if (!r.ok) console.warn('[COI queue] Venta no encolada:', r.error?.message || r.error || r);
-    });
-
-    const url = `${getCoiBridgeBaseUrl()}/ingest/venta`;
-    fetch(url, {
-        method: 'POST',
-        headers: _headers(),
-        body: JSON.stringify(row)
-    }).then(async r => {
-        if (!r.ok) {
-            let msg = r.statusText;
-            try {
-                const j = await r.json();
-                msg = j.detail || j.error || j.mensaje || msg;
-            } catch (_) { /* ignore */ }
-            throw new Error(msg);
-        }
-        return r.json();
-    }).then(() => {
-        console.log('[COI sync] Venta enviada al motor:', id);
-    }).catch(err => {
-        console.warn('[COI sync] Venta no sincronizada (¿motor encendido?):', err.message || err);
+        if (!r.ok) console.warn('[COI sync] Venta no encolada:', r.error?.message || r.error || r);
+        else console.log('[COI sync] Venta encolada:', id);
     });
 }
 
 /**
+ * Compra recibida — encola para procesamiento COI.
  * @param {Record<string, unknown>} row - fila compras
  * @param {Record<string, unknown>|null|undefined} previousRow
  */
@@ -92,31 +75,71 @@ export function notifyCompraIfEligible(row, previousRow) {
         idempotency_key: `compra:${id}:estado>=4`,
         payload_json: row,
     }).then(r => {
-        if (!r.ok) console.warn('[COI queue] Compra no encolada:', r.error?.message || r.error || r);
-    });
-
-    const url = `${getCoiBridgeBaseUrl()}/ingest/compra`;
-    fetch(url, {
-        method: 'POST',
-        headers: _headers(),
-        body: JSON.stringify(row)
-    }).then(async r => {
-        if (!r.ok) {
-            let msg = r.statusText;
-            try {
-                const j = await r.json();
-                msg = j.detail || j.error || j.mensaje || msg;
-            } catch (_) { /* ignore */ }
-            throw new Error(msg);
-        }
-        return r.json();
-    }).then(() => {
-        console.log('[COI sync] Compra enviada al motor:', id);
-    }).catch(err => {
-        console.warn('[COI sync] Compra no sincronizada (¿motor encendido?):', err.message || err);
+        if (!r.ok) console.warn('[COI sync] Compra no encolada:', r.error?.message || r.error || r);
+        else console.log('[COI sync] Compra encolada:', id);
     });
 }
 
+/**
+ * Factura timbrada — encola para procesamiento COI.
+ * @param {Record<string, unknown>} row - fila facturas
+ */
+export function notifyFacturaIfEligible(row) {
+    if (!row || !row.id) return;
+
+    enqueueCoiJob({
+        erp_source: 'factura',
+        erp_id: String(row.id),
+        folio: row.folio_factura || row.folio || null,
+        idempotency_key: `factura:${row.id}:timbrada`,
+        payload_json: row,
+    }).then(r => {
+        if (!r.ok) console.warn('[COI sync] Factura no encolada:', r.error?.message || r.error || r);
+        else console.log('[COI sync] Factura encolada:', row.id);
+    });
+}
+
+/**
+ * Pago de nómina — encola para procesamiento COI.
+ * @param {Record<string, unknown>} row - fila pagos_nomina
+ */
+export function notifyNominaIfEligible(row) {
+    if (!row || !row.id) return;
+
+    enqueueCoiJob({
+        erp_source: 'nomina',
+        erp_id: String(row.id),
+        folio: row.referencia || row.folio || null,
+        idempotency_key: `nomina:${row.id}:pagada`,
+        payload_json: row,
+    }).then(r => {
+        if (!r.ok) console.warn('[COI sync] Nómina no encolada:', r.error?.message || r.error || r);
+        else console.log('[COI sync] Nómina encolada:', row.id);
+    });
+}
+
+/**
+ * Movimiento bancario — encola para procesamiento COI.
+ * @param {Record<string, unknown>} row - fila movimientos_banco
+ */
+export function notifyBancosIfEligible(row) {
+    if (!row || !row.id) return;
+
+    enqueueCoiJob({
+        erp_source: 'bancos',
+        erp_id: String(row.id),
+        folio: row.concepto || null,
+        idempotency_key: `bancos:${row.id}:movimiento`,
+        payload_json: row,
+    }).then(r => {
+        if (!r.ok) console.warn('[COI sync] Banco no encolado:', r.error?.message || r.error || r);
+        else console.log('[COI sync] Banco encolado:', row.id);
+    });
+}
+
+/**
+ * Verificar estado del motor COI local.
+ */
 export async function checkCoiBridgeHealth() {
     const url = `${getCoiBridgeBaseUrl()}/health`;
     const res = await fetch(url, { method: 'GET', headers: _headers() }).catch(() => null);
