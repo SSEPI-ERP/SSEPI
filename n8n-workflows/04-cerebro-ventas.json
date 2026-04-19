@@ -1,0 +1,254 @@
+{
+  "name": "SSEPI - Cerebro de Ventas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ventas",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-ventas",
+      "name": "Webhook: ventas",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "ventas"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.item.json.body || $input.item.json;\nconst eventType = payload.type || 'INSERT';\nconst record = payload.record || payload;\nconst oldRecord = payload.old_record || null;\n\nlet flow = 'insert';\nif (eventType === 'UPDATE' && record.estatus_pago === 'Pagado' && (!oldRecord || oldRecord.estatus_pago !== 'Pagado')) {\n  flow = 'payment';\n} else if (eventType === 'UPDATE') {\n  flow = 'update';\n}\n\nreturn [{ json: { flow, record, eventType } }];"
+      },
+      "id": "route-event",
+      "name": "Route Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            { "leftValue": "={{ $json.flow }}", "rightValue": "insert", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "is-insert",
+      "name": "Is New Sale?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            { "leftValue": "={{ $json.flow }}", "rightValue": "payment", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "is-payment",
+      "name": "Is Payment?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/inventario?select=id,nombre,stock,minimo&stock=lt.0",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "check-inventory",
+      "name": "Check Inventory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, -100],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:3b', messages: [{role: 'system', content: 'Responde SIEMPRE en JSON válido sin markdown. Eres el cerebro del ERP SSEPI.'}, {role: 'user', content: `Eres el cerebro comercial del ERP SSEPI. Se creó una nueva venta.\\n\\nVenta: ${JSON.stringify($node['Route Event'].json.record)}\\nItems sin stock: ${JSON.stringify($json)}\\n\\nTareas:\\n1. ¿Hay stock suficiente? Si no, sugerir orden de compra.\\n2. ¿La venta tiene orden operativa vinculada (origen/orden_origen_id)? Si no, marcar como huérfana.\\n3. ¿Hay cotización asociada?\\n\\nResponde en JSON: {\"suggestion_type\": \"inventory_check\"|\"orphan_sale\", \"severity\": \"info\"|\"warning\", \"summary\": \"resumen en español\", \"detail\": \"detalle\", \"action_suggested\": \"acción o null\"}`}], stream: false, format: 'json', options: { temperature: 0.3 } }) }}",
+        "options": {}
+      },
+      "id": "ollama-analyze-sale",
+      "name": "Ollama Analyze Sale",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.item.json; const content = resp.message?.content || resp.content || resp.text || '{}'; return [{ json: { text: content, content: content } }];"
+      },
+      "id": "normalize-sale",
+      "name": "Normalize Sale",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, -100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ const t = $json.text || $json.content || '{}'; let p; try { p = typeof t === 'string' ? JSON.parse(t) : t; } catch { p = { summary: t }; } return JSON.stringify({ workflow_name: 'cerebro_ventas', insight_type: p.suggestion_type || 'venta_suggestion', severity: p.severity || 'info', module_target: 'ventas', summary: p.summary || 'Nueva venta analizada', detail: p.detail || '', action_suggested: p.action_suggested || null, related_record_id: $node['Route Event'].json.record?.id || null, related_table: 'ventas' }); }}",
+        "options": {}
+      },
+      "id": "save-insight",
+      "name": "Save Insight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, -100],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/coi_sync_queue",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ const r = $node['Route Event'].json.record; return JSON.stringify({ erp_source: 'venta', erp_id: String(r.id), folio: r.folio || null, payload_json: r, status: 'pending', idempotency_key: `venta:${r.id}:pagado` }); }}",
+        "options": {}
+      },
+      "id": "enqueue-coi",
+      "name": "Enqueue COI Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workflow_name: 'cerebro_ventas', insight_type: 'payment_detected', severity: 'info', module_target: 'ventas', summary: 'Venta pagada — job COI encolado: ' + ($node['Route Event'].json.record.folio || 'sin folio'), related_record_id: $node['Route Event'].json.record?.id || null, related_table: 'ventas' }) }}",
+        "options": {}
+      },
+      "id": "log-payment-insight",
+      "name": "Log Payment Insight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true }) }}"
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1540, 100]
+    }
+  ],
+  "connections": {
+    "Webhook: ventas": {
+      "main": [ [{ "node": "Route Event", "type": "main", "index": 0 }] ]
+    },
+    "Route Event": {
+      "main": [
+        [{ "node": "Is New Sale?", "type": "main", "index": 0 }],
+        [{ "node": "Is Payment?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Is New Sale?": {
+      "main": [
+        [{ "node": "Check Inventory", "type": "main", "index": 0 }],
+        [{ "node": "Respond OK", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Inventory": {
+      "main": [ [{ "node": "Ollama Analyze Sale", "type": "main", "index": 0 }] ]
+    },
+    "Ollama Analyze Sale": {
+      "main": [ [{ "node": "Normalize Sale", "type": "main", "index": 0 }] ]
+    },
+    "Normalize Sale": {
+      "main": [ [{ "node": "Save Insight", "type": "main", "index": 0 }] ]
+    },
+    "Save Insight": {
+      "main": [ [{ "node": "Respond OK", "type": "main", "index": 0 }] ]
+    },
+    "Is Payment?": {
+      "main": [
+        [{ "node": "Enqueue COI Job", "type": "main", "index": 0 }],
+        [{ "node": "Respond OK", "type": "main", "index": 0 }]
+      ]
+    },
+    "Enqueue COI Job": {
+      "main": [ [{ "node": "Log Payment Insight", "type": "main", "index": 0 }] ]
+    },
+    "Log Payment Insight": {
+      "main": [ [{ "node": "Respond OK", "type": "main", "index": 0 }] ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

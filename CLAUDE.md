@@ -44,6 +44,18 @@ Ningún rol básico ve módulos `analisis_*` ni módulos asignados a otros roles
 - Flujo COI es salida: SSEPI → COI vía cola/bridge. No asumir importación masiva COI → SSEPI.
 - SSEPI-NEXT / Electron es complemento (escritorio/bridge/COI local). El ERP web es el sistema principal.
 
+## n8n — Cerebro IA
+
+- n8n + Ollama corren localmente en Docker (`docker-compose.yml`), accesibles en `localhost:5678` y `localhost:11434`.
+- IA: Ollama con modelo `qwen2.5:3b` (local, sin costo de API). Config: ver `docs/n8n-integration.md`.
+- Cloudflare Tunnel opcional (solo para webhooks push; el modelo polling no lo necesita).
+- Tablas `n8n_insights` (insights IA), `n8n_heartbeat` (status) y `n8n_event_queue` (cola de eventos) en Supabase con Realtime.
+- **Modelo polling (GRATIS)**: PostgreSQL triggers insertan en `n8n_event_queue`, n8n poll cada 1 min. No requiere Supabase Pro ni tunnel.
+- Frontend consulta `n8n_heartbeat` para mostrar estado, y `n8n_insights` para mostrar sugerencias IA.
+- Workflows en `n8n-workflows/`: `00-event-poller` (polling), `01-heartbeat`, `02-coi-cloud-processor`, `08-daily-digest` + legados 03-07.
+- COI Cloud Processor (workflow 02) reemplaza dependencia del bridge Python para procesamiento de pólizas.
+- **Costo total: $0/mes** (Supabase Free + Ollama local + n8n self-hosted).
+
 ## Seguridad
 
 - Anon key en front es patrón SPA, pero el repositorio no debe ser público sin control.

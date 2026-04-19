@@ -1,0 +1,125 @@
+{
+  "name": "SSEPI - Daily Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [ { "field": "cronExpression", "expression": "0 7 * * 1-5" } ]
+        },
+        "timezone": "America/Mexico_City"
+      },
+      "id": "daily-schedule",
+      "name": "7:00 AM Weekdays",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const supabaseUrl = $env.SUPABASE_URL;\nconst supabaseKey = $env.SUPABASE_SERVICE_ROLE_KEY;\nconst headers = { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` };\nconst today = new Date().toISOString().split('T')[0];\nconst yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];\n\nconst fetch = async (url) => {\n  const resp = await this.helpers.httpRequest({ method: 'GET', url, headers });\n  return resp;\n};\n\nconst [ventas, cotizaciones, compras, pipelineDelayed, unreadEmails, coiErrors, insightsWarning] = await Promise.all([\n  fetch(`${supabaseUrl}/rest/v1/ventas?select=id,folio,total,estatus_pago&created_at=gte.${yesterday}&created_at=lt.${today}`),\n  fetch(`${supabaseUrl}/rest/v1/cotizaciones?select=id,folio,total,estado&created_at=gte.${yesterday}&created_at=lt.${today}`),\n  fetch(`${supabaseUrl}/rest/v1/compras?select=id,folio,total,estado&created_at=gte.${yesterday}&created_at=lt.${today}`),\n  fetch(`${supabaseUrl}/rest/v1/ssepi_folio_operativo?select=id,etapa,updated_at&etapa=not.in.(finalizado,facturado_timbrado)&updated_at=lt.${new Date(Date.now() - 3*86400000).toISOString()}`),\n  fetch(`${supabaseUrl}/rest/v1/inbound_emails?select=id&leido=eq.false`),\n  fetch(`${supabaseUrl}/rest/v1/coi_sync_queue?select=id,erp_source,folio&status=eq.error`),\n  fetch(`${supabaseUrl}/rest/v1/n8n_insights?select=id,workflow_name,summary,severity&severity=in.(warning,critical)&dismissed=eq.false&created_at=gte.${yesterday}`)\n]);\n\nreturn [{ json: {\n  date: today,\n  ventas_new: ventas.length,\n  ventas_total: ventas.reduce((s, v) => s + (v.total || 0), 0),\n  cotizaciones_new: cotizaciones.length,\n  compras_new: compras.length,\n  pipeline_delayed: pipelineDelayed.length,\n  unread_emails: unreadEmails.length,\n  coi_errors: coiErrors.length,\n  insights_warning: insightsWarning.length,\n  insights_detail: insightsWarning.slice(0, 5)\n} }];"
+      },
+      "id": "aggregate-data",
+      "name": "Aggregate Daily Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:3b', messages: [{role: 'user', content: `Genera un digest diario de operaciones para el administrador del ERP SSEPI.\\n\\nDatos del día:\\n${JSON.stringify($json)}\\n\\nEscribe un email profesional en español con:\\n1. Resumen ejecutivo (2-3 oraciones)\\n2. Métricas clave (ventas, cotizaciones, compras)\\n3. Pipeline retrasado (si hay)\\n4. Alertas de errores COI\\n5. Insights IA relevantes\\n6. Top 3 acciones recomendadas\\n\\nFormato: HTML para email. Profesional y conciso.`}], stream: false, options: { temperature: 0.5 } }) }}",
+        "options": {}
+      },
+      "id": "ai-digest",
+      "name": "Ollama: Generate Digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.item.json;\nconst content = resp.message?.content || resp.content || resp.text || '';\nreturn [{ json: { text: content, content: content } }];"
+      },
+      "id": "norm-digest",
+      "name": "Normalize Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/functions/v1/send-email",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ to: 'norbertomoro4@gmail.com', subject: 'SSEPI Digest — ' + new Date().toLocaleDateString('es-MX'), html: $json.text || $json.content || '', from: 'SSEPI <onboarding@resend.dev>' }) }}",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workflow_name: 'daily_digest', insight_type: 'daily_summary', severity: 'info', module_target: null, summary: 'Digest diario enviado — ' + new Date().toLocaleDateString('es-MX'), detail: 'Ventas: ' + $node['Aggregate Daily Data'].json.ventas_new + ' nuevas, Pipeline retrasado: ' + $node['Aggregate Daily Data'].json.pipeline_delayed + ', Errores COI: ' + $node['Aggregate Daily Data'].json.coi_errors }) }}",
+        "options": {}
+      },
+      "id": "log-insight",
+      "name": "Log Insight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "7:00 AM Weekdays": {
+      "main": [ [{ "node": "Aggregate Daily Data", "type": "main", "index": 0 }] ]
+    },
+    "Aggregate Daily Data": {
+      "main": [ [{ "node": "Ollama: Generate Digest", "type": "main", "index": 0 }] ]
+    },
+    "Ollama: Generate Digest": {
+      "main": [ [{ "node": "Normalize Digest", "type": "main", "index": 0 }] ]
+    },
+    "Normalize Digest": {
+      "main": [ [{ "node": "Send Email", "type": "main", "index": 0 }] ]
+    },
+    "Send Email": {
+      "main": [ [{ "node": "Log Insight", "type": "main", "index": 0 }] ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

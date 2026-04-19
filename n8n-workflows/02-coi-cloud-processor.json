@@ -1,0 +1,378 @@
+{
+  "name": "SSEPI - COI Cloud Processor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [ { "field": "minutes", "minutesInterval": 2 } ]
+        }
+      },
+      "id": "coi-schedule",
+      "name": "Every 2 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/coi_sync_queue?status=eq.pending&order=created_at.asc&limit=10",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-pending",
+      "name": "Fetch Pending Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "has-items",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "has-items",
+      "name": "Has Items?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "split-batch",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/coi_sync_queue?id=eq.{{$json.id}}&status=eq.pending",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "status", "value": "processing" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "claim-job",
+      "name": "Claim Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// COI Poliza Builder\ntry {\n  const item = $input.item.json;\n  const source = item.erp_source;\n  const payload = item.payload_json || {};\n  const folio = item.folio || '';\n  const erpId = item.erp_id;\n\n  const mappingResp = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${$env.SUPABASE_URL}/rest/v1/coi_account_mapping?select=key,value,label&order=key`,\n    headers: {\n      apikey: $env.SUPABASE_SERVICE_ROLE_KEY,\n      Authorization: `Bearer ${$env.SUPABASE_SERVICE_ROLE_KEY}`\n    }\n  });\n  const mapping = {};\n  for (const row of mappingResp) { mapping[row.key] = row.value; }\n\n  function calcIvaSubtotal(total) {\n    const subtotal = Math.round((total / 1.16) * 100) / 100;\n    const iva = Math.round((total - subtotal) * 100) / 100;\n    return { subtotal, iva };\n  }\n\n  function getConcepto(p) { return `${p.cliente || 'N/A'} - ${p.folio || folio}`; }\n\n  let poliza = { tipo_poliza: 'DIARIO', movimientos: [] };\n\n  if (source === 'venta') {\n    const { subtotal, iva } = calcIvaSubtotal(payload.total || 0);\n    poliza.tipo_poliza = 'INGRESO';\n    poliza.concepto = getConcepto(payload);\n    poliza.movimientos = [\n      { num_cuenta: mapping['ventas_cargo'] || '400-01', concepto_mov: 'Venta ' + folio, cargo: 0, abono: subtotal },\n      { num_cuenta: mapping['ventas_iva'] || '208-01', concepto_mov: 'IVA venta ' + folio, cargo: 0, abono: iva },\n      { num_cuenta: mapping['ventas_abono'] || '110-01', concepto_mov: 'Cobro venta ' + folio, cargo: payload.total || 0, abono: 0 }\n    ];\n  } else if (source === 'compra') {\n    const { subtotal, iva } = calcIvaSubtotal(payload.total || 0);\n    poliza.tipo_poliza = 'EGRESO';\n    poliza.concepto = `Compra - ${payload.proveedor || 'N/A'} - ${folio}`;\n    poliza.movimientos = [\n      { num_cuenta: mapping['compras_abono'] || '110-01', concepto_mov: 'Pago compra ' + folio, cargo: 0, abono: payload.total || 0 },\n      { num_cuenta: mapping['compras_cargo'] || '600-01', concepto_mov: 'Compra ' + folio, cargo: subtotal, abono: 0 },\n      { num_cuenta: mapping['compras_iva'] || '118-01', concepto_mov: 'IVA compra ' + folio, cargo: iva, abono: 0 }\n    ];\n  } else if (source === 'factura') {\n    poliza.tipo_poliza = 'DIARIO';\n    poliza.concepto = `Factura - ${folio}`;\n    const { subtotal, iva } = calcIvaSubtotal(payload.total || 0);\n    poliza.movimientos = [\n      { num_cuenta: mapping['factura_cargo'] || '110-01', concepto_mov: 'Factura ' + folio, cargo: payload.total || 0, abono: 0 },\n      { num_cuenta: mapping['factura_abono'] || '400-01', concepto_mov: 'Ingreso factura ' + folio, cargo: 0, abono: subtotal },\n      { num_cuenta: mapping['factura_iva'] || '208-01', concepto_mov: 'IVA factura ' + folio, cargo: 0, abono: iva }\n    ];\n  } else if (source === 'nomina') {\n    poliza.tipo_poliza = 'EGRESO';\n    poliza.concepto = `Nómina - ${folio}`;\n    poliza.movimientos = [\n      { num_cuenta: mapping['nomina_cargo'] || '510-01', concepto_mov: 'Nómina ' + folio, cargo: payload.total || 0, abono: 0 },\n      { num_cuenta: mapping['nomina_abono'] || '110-01', concepto_mov: 'Pago nómina ' + folio, cargo: 0, abono: payload.total || 0 }\n    ];\n  } else if (source === 'bancos') {\n    poliza.tipo_poliza = 'DIARIO';\n    poliza.concepto = `Movimiento bancario - ${folio}`;\n    const tipo = payload.tipo || 'ingreso';\n    poliza.movimientos = [\n      { num_cuenta: mapping['bancos_cargo'] || '110-01', concepto_mov: 'Banco ' + folio, cargo: tipo === 'ingreso' ? (payload.monto || 0) : 0, abono: tipo === 'egreso' ? (payload.monto || 0) : 0 }\n    ];\n  }\n\n  return [{ json: { poliza, source, erpId, folio, queueItemId: item.id, _success: true } }];\n} catch (err) {\n  const item = $input.item.json;\n  return [{ json: { _success: false, errorMessage: err.message, source: item.erp_source, erpId: item.erp_id, folio: item.folio || '', queueItemId: item.id } }];\n}"
+      },
+      "id": "build-poliza",
+      "name": "Build Poliza",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            { "leftValue": "={{ $json._success }}", "rightValue": "true", "operator": { "type": "boolean", "operation": "true" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "is-success",
+      "name": "Build Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/coi_polizas",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ tipo_poliza: $json.poliza.tipo_poliza, fecha: new Date().toISOString().split('T')[0], concepto: $json.poliza.concepto, moneda: 'MXN', tipo_cambio: 1, estatus: 'A', erp_source: $json.source, erp_id: $json.erpId }) }}",
+        "options": {}
+      },
+      "id": "insert-poliza",
+      "name": "Insert Poliza",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/coi_movimientos",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ const polizaId = $node['Insert Poliza'].json.id; const movs = $node['Build Poliza'].json.poliza.movimientos.map((m, i) => ({ poliza_id: polizaId, num_cuenta: m.num_cuenta, concepto_mov: m.concepto_mov, cargo: m.cargo, abono: m.abono, numero_linea: i + 1 })); return JSON.stringify(movs); }}",
+        "options": {}
+      },
+      "id": "insert-movimientos",
+      "name": "Insert Movimientos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/coi_sync_queue?id=eq.{{$node['Build Poliza'].json.queueItemId}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "status", "value": "done" },
+            { "name": "processed_at", "value": "={{ new Date().toISOString() }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "mark-done",
+      "name": "Mark Done",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/coi_sync_log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: $node['Build Poliza'].json.source, erp_id: $node['Build Poliza'].json.erpId, folio: $node['Build Poliza'].json.folio, status: 'ok', poliza_id: $node['Insert Poliza'].json.numero_poliza, numero_poliza: $node['Insert Poliza'].json.numero_poliza, monto: $node['Build Poliza'].json.poliza.movimientos.reduce((s, m) => s + m.cargo, 0) }) }}",
+        "options": {}
+      },
+      "id": "log-success",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/coi_sync_queue?id=eq.{{$json.queueItemId}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "status", "value": "error" },
+            { "name": "last_error", "value": "={{ $json.errorMessage || 'Unknown error' }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "mark-error",
+      "name": "Mark Error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:3b', messages: [{role: 'user', content: `Eres el asistente de contabilidad del ERP SSEPI. Hubo un error procesando una póliza COI.\\n\\nFuente: ${$json.source}\\nFolio: ${$json.folio}\\nError: ${$json.errorMessage || 'desconocido'}\\n\\nExplica brevemente en español qué pudo causar este error y sugiere una solución. Máximo 100 palabras.`}], stream: false, options: { temperature: 0.3 } }) }}",
+        "options": {}
+      },
+      "id": "ai-explain-error",
+      "name": "Ollama: Explain Error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workflow_name: 'coi_cloud_processor', insight_type: 'coi_error', severity: 'warning', module_target: 'contabilidad', summary: 'Error procesando póliza COI: ' + ($node['Build Poliza'].json.folio || 'sin folio'), detail: $json.message?.content || $json.text || $json.content || $node['Build Poliza'].json.errorMessage || 'Error desconocido', action_suggested: 'Revisar datos de la orden y reintentar' }) }}",
+        "options": {}
+      },
+      "id": "log-error-insight",
+      "name": "Log Error Insight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 2 min": {
+      "main": [ [{ "node": "Fetch Pending Jobs", "type": "main", "index": 0 }] ]
+    },
+    "Fetch Pending Jobs": {
+      "main": [ [{ "node": "Has Items?", "type": "main", "index": 0 }] ]
+    },
+    "Has Items?": {
+      "main": [
+        [{ "node": "Split In Batches", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Split In Batches": {
+      "main": [ [{ "node": "Claim Job", "type": "main", "index": 0 }] ]
+    },
+    "Claim Job": {
+      "main": [ [{ "node": "Build Poliza", "type": "main", "index": 0 }] ]
+    },
+    "Build Poliza": {
+      "main": [ [{ "node": "Build Succeeded?", "type": "main", "index": 0 }] ]
+    },
+    "Build Succeeded?": {
+      "main": [
+        [{ "node": "Insert Poliza", "type": "main", "index": 0 }],
+        [{ "node": "Mark Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Insert Poliza": {
+      "main": [ [{ "node": "Insert Movimientos", "type": "main", "index": 0 }] ]
+    },
+    "Insert Movimientos": {
+      "main": [ [{ "node": "Mark Done", "type": "main", "index": 0 }] ]
+    },
+    "Mark Done": {
+      "main": [ [{ "node": "Log Success", "type": "main", "index": 0 }] ]
+    },
+    "Mark Error": {
+      "main": [ [{ "node": "AI Explain Error", "type": "main", "index": 0 }] ]
+    },
+    "AI Explain Error": {
+      "main": [ [{ "node": "Log Error Insight", "type": "main", "index": 0 }] ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

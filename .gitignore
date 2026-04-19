@@ -35,6 +35,12 @@ pnpm-debug.log*
 mi-coi/.venv/
 mi-coi/.env
 
+# Ollama model data (large binary files)
+ollama-data/
+
+# n8n local env (secrets)
+.env.n8n.local
+
 # OS / editor
 .DS_Store
 Thumbs.db

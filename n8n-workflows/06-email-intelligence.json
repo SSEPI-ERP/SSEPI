@@ -1,0 +1,175 @@
+{
+  "name": "SSEPI - Email Intelligence",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "inbound-email",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-email",
+      "name": "Webhook: inbound_email",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "inbound-email"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/contactos?email=eq.{{$json.body.from_email || $json.from_email}}&select=id,nombre,empresa,tipo&limit=1",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "find-contact",
+      "name": "Find Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen2.5:3b', messages: [{role: 'system', content: 'Responde SIEMPRE en JSON válido sin markdown. Eres el cerebro del ERP SSEPI.'}, {role: 'user', content: `Eres el asistente de comunicación del ERP SSEPI. Se recibió un email.\\n\\nDe: ${$json.body.from_email || $json.from_email}\\nAsunto: ${$json.body.subject || $json.subject}\\nCuerpo: ${$json.body.body_text || $json.body_text || ''}\\nContacto encontrado: ${JSON.stringify($node['Find Contact'].json)}\\n\\nTareas:\\n1. Clasificar intención: nueva_consulta, seguimiento_orden, queja, notificacion_pago, otro\\n2. Si se menciona un folio (formato SP-E-XXXX, SP-M-XXXX, SP-A-XXXX), identificarlo\\n3. Sugerir módulo responsable: ventas, taller, motores, automatizacion, facturacion\\n4. Escribir notificación breve en español\\n\\nResponde en JSON: {\"intent\": \"...\", \"related_folio\": \"...\"|null, \"module_target\": \"ventas\"|..., \"notification_message\": \"texto\", \"priority\": \"high\"|\"normal\"|\"low\"}`}], stream: false, format: 'json', options: { temperature: 0.3 } }) }}",
+        "options": {}
+      },
+      "id": "ollama-classify",
+      "name": "Ollama Classify Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.item.json; const content = resp.message?.content || resp.content || resp.text || '{}'; return [{ json: { text: content, content: content } }];"
+      },
+      "id": "normalize-email",
+      "name": "Normalize Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const t = $input.item.json.text || $input.item.json.content || '{}';\nlet p;\ntry { p = typeof t === 'string' ? JSON.parse(t) : t; } catch { p = { module_target: 'ventas', notification_message: 'Email entrante sin clasificar' }; }\nreturn [{ json: p }];"
+      },
+      "id": "parse-result",
+      "name": "Parse AI Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/notificaciones",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ para: $json.module_target || 'ventas', tipo: 'email_entrante', mensaje: $json.notification_message || 'Email entrante', leido: false, fecha: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "insert-notification",
+      "name": "Insert Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/n8n_insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workflow_name: 'email_intelligence', insight_type: 'email_intelligence', severity: $json.priority === 'high' ? 'warning' : 'info', module_target: $json.module_target || 'ventas', summary: $json.notification_message || 'Email clasificado', detail: 'Intención: ' + ($json.intent || 'N/A') + '. Folio: ' + ($json.related_folio || 'N/A') }) }}",
+        "options": {}
+      },
+      "id": "log-insight",
+      "name": "Log Insight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true }) }}"
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1540, 0]
+    }
+  ],
+  "connections": {
+    "Webhook: inbound_email": {
+      "main": [ [{ "node": "Find Contact", "type": "main", "index": 0 }] ]
+    },
+    "Find Contact": {
+      "main": [ [{ "node": "Ollama Classify Email", "type": "main", "index": 0 }] ]
+    },
+    "Ollama Classify Email": {
+      "main": [ [{ "node": "Normalize Email", "type": "main", "index": 0 }] ]
+    },
+    "Normalize Email": {
+      "main": [ [{ "node": "Parse AI Result", "type": "main", "index": 0 }] ]
+    },
+    "Parse AI Result": {
+      "main": [ [{ "node": "Insert Notification", "type": "main", "index": 0 }] ]
+    },
+    "Insert Notification": {
+      "main": [ [{ "node": "Log Insight", "type": "main", "index": 0 }] ]
+    },
+    "Log Insight": {
+      "main": [ [{ "node": "Respond OK", "type": "main", "index": 0 }] ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
