@@ -5,13 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SSEPI-NEXT</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Login View -->
+  <!-- Login -->
   <div class="login-view" id="loginView">
     <div class="login-card">
       <div class="login-logo">
-        <h1>SSEPI-NEXT</h1>
+        <h1>SSEPI</h1>
         <p>Iniciar sesión</p>
       </div>
       <form id="loginForm">
@@ -28,17 +31,16 @@
       </form>
       <div class="login-footer">
         <span class="status-dot" id="loginStatusDot"></span>
-        <span id="loginStatusText">Verificando conexión...</span>
+        <span id="loginStatusText">Verificando...</span>
       </div>
     </div>
   </div>
 
-  <!-- Main App (hidden until auth) -->
+  <!-- App -->
   <div class="app-container" id="appContainer" style="display:none;">
-    <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="logo-section">
-        <h1>SSEPI-NEXT</h1>
+        <h1>SSEPI</h1>
         <p class="subtitle" id="userRoleLabel">Cargando...</p>
       </div>
 
@@ -74,7 +76,7 @@
         <div class="nav-divider"></div>
         <div class="nav-item" data-module="coi">
           <span class="icon">&#x1F4D6;</span>
-          <span class="label">Contabilidad COI</span>
+          <span class="label">Contabilidad</span>
         </div>
       </nav>
 
@@ -87,26 +89,21 @@
       </div>
     </aside>
 
-    <!-- Main Content -->
     <main class="main-content">
       <header class="top-bar">
         <h2 id="pageTitle">Dashboard</h2>
         <div class="actions">
-          <button class="btn btn-refresh" id="refreshBtn">
-            <span class="icon">&#x1F504;</span> Actualizar
-          </button>
-          <button class="btn btn-export" id="exportBtn">
-            <span class="icon">&#x1F4E5;</span> Exportar
-          </button>
+          <button class="btn btn-refresh" id="refreshBtn">Actualizar</button>
+          <button class="btn btn-export" id="exportBtn">Exportar</button>
         </div>
       </header>
 
       <div class="content-area" id="contentArea">
 
-        <!-- Dashboard View -->
+        <!-- Dashboard -->
         <div class="view active" id="view-dashboard">
           <div class="cards-grid">
-            <div class="card"><h3>Ventas Totales</h3><p class="value" id="dashVentasTotal">$0.00</p><span class="change">Este mes</span></div>
+            <div class="card"><h3>Ventas Totales</h3><p class="value" id="dashVentasTotal">$0</p><span class="change">Este mes</span></div>
             <div class="card"><h3>Órdenes Activas</h3><p class="value" id="dashOrdenesActivas">0</p><span class="change">Taller + Motores + Auto</span></div>
             <div class="card"><h3>Clientes</h3><p class="value" id="dashClientes">0</p><span class="change">Total registrados</span></div>
             <div class="card"><h3>Productos</h3><p class="value" id="dashProductos">0</p><span class="change">En inventario</span></div>
@@ -117,7 +114,7 @@
           </div>
         </div>
 
-        <!-- Ventas View -->
+        <!-- Ventas -->
         <div class="view" id="view-ventas">
           <div class="filters-bar">
             <input type="text" class="search-input" placeholder="Buscar por folio o cliente..." id="ventasSearch">
@@ -126,7 +123,7 @@
           <div class="table-container"><table id="ventasTable"><thead><tr><th>Folio</th><th>Cliente</th><th>Producto/Servicio</th><th>Estado</th><th>Total</th><th>Fecha</th></tr></thead><tbody></tbody></table></div>
         </div>
 
-        <!-- Taller View -->
+        <!-- Taller -->
         <div class="view" id="view-taller">
           <div class="filters-bar">
             <input type="text" class="search-input" placeholder="Buscar orden..." id="tallerSearch">
@@ -135,7 +132,7 @@
           <div class="table-container"><table id="tallerTable"><thead><tr><th>Folio</th><th>Equipo</th><th>Cliente</th><th>Estado</th><th>Técnico</th><th>Fecha</th></tr></thead><tbody></tbody></table></div>
         </div>
 
-        <!-- Motores View -->
+        <!-- Motores -->
         <div class="view" id="view-motores">
           <div class="filters-bar">
             <input type="text" class="search-input" placeholder="Buscar orden..." id="motoresSearch">
@@ -144,7 +141,7 @@
           <div class="table-container"><table id="motoresTable"><thead><tr><th>Folio</th><th>Motor</th><th>Cliente</th><th>Estado</th><th>Técnico</th><th>Fecha</th></tr></thead><tbody></tbody></table></div>
         </div>
 
-        <!-- Automatización View -->
+        <!-- Automatización -->
         <div class="view" id="view-automatizacion">
           <div class="filters-bar">
             <input type="text" class="search-input" placeholder="Buscar proyecto..." id="autoSearch">
@@ -153,7 +150,7 @@
           <div class="table-container"><table id="autoTable"><thead><tr><th>Folio</th><th>Proyecto</th><th>Cliente</th><th>Estado</th><th>Ingeniero</th><th>Fecha</th></tr></thead><tbody></tbody></table></div>
         </div>
 
-        <!-- Inventario View -->
+        <!-- Inventario -->
         <div class="view" id="view-inventario">
           <div class="filters-bar">
             <input type="text" class="search-input" placeholder="Buscar producto..." id="inventarioSearch">
@@ -162,7 +159,7 @@
           <div class="table-container"><table id="inventarioTable"><thead><tr><th>Código</th><th>Producto</th><th>Categoría</th><th>Stock</th><th>Precio</th><th>Ubicación</th></tr></thead><tbody></tbody></table></div>
         </div>
 
-        <!-- Contactos View -->
+        <!-- Contactos -->
         <div class="view" id="view-contactos">
           <div class="filters-bar">
             <input type="text" class="search-input" placeholder="Buscar contacto..." id="contactosSearch">
@@ -171,27 +168,27 @@
           <div class="table-container"><table id="contactosTable"><thead><tr><th>Nombre</th><th>Tipo</th><th>Email</th><th>Teléfono</th><th>Empresa</th></tr></thead><tbody></tbody></table></div>
         </div>
 
-        <!-- COI Dashboard View -->
+        <!-- COI Dashboard -->
         <div class="view" id="view-coi">
           <div class="coi-status-section">
             <div class="card"><h3>COI Bridge</h3><p class="value" id="coiBridgeStatus">--</p><span class="change" id="coiBridgeDetail">Verificando...</span></div>
             <div class="card"><h3>SQLite</h3><p class="value" id="coiSqliteStatus">--</p><span class="change">Base de datos local</span></div>
             <div class="card"><h3>Postgres</h3><p class="value" id="coiPostgresStatus">--</p><span class="change">Base de datos remota</span></div>
-            <div class="card"><h3>Sync</h3><p class="value" id="coiSyncPending">--</p><span class="change" id="coiSyncDetail">Sin sincronizar</span></div>
+            <div class="card"><h3>Sync</h3><p class="value" id="coiSyncPending">--</p><span class="change" id="coiSyncDetail">Pendientes</span></div>
           </div>
           <div class="coi-actions">
-            <button class="btn btn-refresh" id="coiSyncPullBtn">Pull (Postgres → SQLite)</button>
-            <button class="btn btn-export" id="coiSyncPushBtn">Push (SQLite → Postgres)</button>
+            <button class="btn btn-refresh" id="coiSyncPullBtn">Pull (Postgres &#8594; SQLite)</button>
+            <button class="btn btn-export" id="coiSyncPushBtn">Push (SQLite &#8594; Postgres)</button>
             <button class="btn btn-refresh" id="coiRefreshBtn">Refrescar</button>
           </div>
           <div class="coi-polizas-section">
             <div class="filters-bar">
               <select class="filter-select" id="coiTipo"><option value="">Todos los tipos</option><option value="INGRESO">Ingreso</option><option value="EGRESO">Egreso</option><option value="DIARIO">Diario</option></select>
-              <input type="date" class="search-input" id="coiFechaDesde" placeholder="Desde">
-              <input type="date" class="search-input" id="coiFechaHasta" placeholder="Hasta">
+              <input type="date" class="search-input" id="coiFechaDesde">
+              <input type="date" class="search-input" id="coiFechaHasta">
               <select class="filter-select" id="coiEstatus"><option value="">Todos</option><option value="A">Afectada</option><option value="C">Creada</option><option value="V">Validada</option></select>
             </div>
-            <div class="table-container"><table id="coiPolizasTable"><thead><tr><th>ID</th><th>Número</th><th>Tipo</th><th>Fecha</th><th>Concepto</th><th>Estado</th><th>Origen</th></tr></thead><tbody></tbody></table></div>
+            <div class="table-container"><table id="coiPolizasTable"><thead><tr><th>ID</th><th>No.</th><th>Tipo</th><th>Fecha</th><th>Concepto</th><th>Estado</th><th>Origen</th></tr></thead><tbody></tbody></table></div>
           </div>
           <div class="coi-poliza-detail" id="coiPolizaDetail" style="display:none;">
             <h3>Detalle de Póliza</h3>

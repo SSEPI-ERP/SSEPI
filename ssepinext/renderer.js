@@ -74,7 +74,7 @@ function fmtDate(d) {
 }
 
 function statusBadge(estado) {
-  if (!estado) return '<span class="status-badge">--</span>';
+  if (!estado) return '<span class="status-badge status-badge--default">--</span>';
   const cls = String(estado).replace(/\s+/g, '_');
   return `<span class="status-badge ${cls}">${estado}</span>`;
 }
