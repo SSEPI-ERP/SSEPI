@@ -22,22 +22,18 @@ CREATE TABLE IF NOT EXISTS public.gastos_fijos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nombre TEXT NOT NULL,
     monto NUMERIC(12,2) DEFAULT 0,
-    categoria TEXT,
-    frecuencia TEXT,
-    activo BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
-DO $$ BEGIN
-    ALTER TABLE public.gastos_fijos ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT true;
-    UPDATE public.gastos_fijos SET activo = true WHERE activo IS NULL;
-EXCEPTION WHEN duplicate_column THEN NULL;
-END $$;
+-- Agregar columnas que pueden faltar si la tabla ya existía
+ALTER TABLE public.gastos_fijos ADD COLUMN IF NOT EXISTS categoria TEXT;
+ALTER TABLE public.gastos_fijos ADD COLUMN IF NOT EXISTS frecuencia TEXT;
+ALTER TABLE public.gastos_fijos ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT true;
+UPDATE public.gastos_fijos SET activo = true WHERE activo IS NULL;
 ALTER TABLE public.gastos_fijos ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS gastos_fijos_all ON public.gastos_fijos;
 CREATE POLICY gastos_fijos_all ON public.gastos_fijos FOR ALL TO authenticated USING (true) WITH CHECK (true);
 GRANT ALL ON public.gastos_fijos TO authenticated;
 GRANT ALL ON public.gastos_fijos TO service_role;
-CREATE INDEX IF NOT EXISTS idx_gastos_fijos_categoria ON public.gastos_fijos(categoria);
 
 -- 3) clientes_tabulador
 CREATE TABLE IF NOT EXISTS public.clientes_tabulador (
