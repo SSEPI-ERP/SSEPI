@@ -35,16 +35,12 @@ CREATE POLICY gastos_fijos_all ON public.gastos_fijos FOR ALL TO authenticated U
 GRANT ALL ON public.gastos_fijos TO authenticated;
 GRANT ALL ON public.gastos_fijos TO service_role;
 
--- 3) clientes_tabulador
+-- 3) clientes_tabulador (las columnas calculadas son GENERATED — no se crean aquí)
 CREATE TABLE IF NOT EXISTS public.clientes_tabulador (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nombre_cliente TEXT UNIQUE NOT NULL,
     km NUMERIC(10,2) DEFAULT 0,
     horas_viaje NUMERIC(5,2) DEFAULT 0,
-    litros NUMERIC(10,2) DEFAULT 0,
-    costo_gasolina NUMERIC(12,2) DEFAULT 0,
-    costo_tecnico NUMERIC(12,2) DEFAULT 0,
-    total_viatico NUMERIC(12,2) DEFAULT 0,
     creado_en TIMESTAMPTZ DEFAULT NOW(),
     actualizado_en TIMESTAMPTZ DEFAULT NOW()
 );
@@ -124,13 +120,8 @@ INSERT INTO public.clientes_tabulador (nombre_cliente, km, horas_viaje) VALUES
   ('CURTIDOS BENGALA', 17.2, 2)
 ON CONFLICT (nombre_cliente) DO NOTHING;
 
--- 7) Actualizar columnas calculadas de clientes_tabulador
-UPDATE public.clientes_tabulador SET
-  litros = ROUND(km / 9.5, 2),
-  costo_gasolina = ROUND((km / 9.5) * 24.50, 2),
-  costo_tecnico = ROUND(horas_viaje * 104.16, 2),
-  total_viatico = ROUND((km / 9.5) * 24.50 + horas_viaje * 104.16, 2)
-WHERE litros IS NULL OR litros = 0;
+-- 7) Las columnas calculadas (litros, costo_gasolina, costo_tecnico, total_viatico)
+--    son GENERATED ALWAYS AS — se actualizan automáticamente al insertar km/horas_viaje
 
 -- 8) Publicar tablas en Realtime
 DO $$ BEGIN
