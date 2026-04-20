@@ -20,11 +20,11 @@ CREATE TABLE IF NOT EXISTS public.notificaciones (
 );
 
 ALTER TABLE public.notificaciones ENABLE ROW LEVEL SECURITY;
-CREATE POLICY notificaciones_select ON public.notificaciones
+DROP POLICY IF EXISTS notificaciones_select ON public.notificaciones
   FOR SELECT TO authenticated USING (true);
-CREATE POLICY notificaciones_insert ON public.notificaciones
+DROP POLICY IF EXISTS notificaciones_insert ON public.notificaciones
   FOR INSERT WITH CHECK (true);
-CREATE POLICY notificaciones_update ON public.notificaciones
+DROP POLICY IF EXISTS notificaciones_update ON public.notificaciones
   FOR UPDATE USING (true);
 
 GRANT SELECT, INSERT, UPDATE ON public.notificaciones TO authenticated;
@@ -38,12 +38,12 @@ CREATE TABLE IF NOT EXISTS public.users_ver_costos (
 );
 
 ALTER TABLE public.users_ver_costos ENABLE ROW LEVEL SECURITY;
-CREATE POLICY users_ver_costos_select_own ON public.users_ver_costos
+DROP POLICY IF EXISTS users_ver_costos_select_own ON public.users_ver_costos
   FOR SELECT TO authenticated USING (
     auth.uid() = auth_user_id
     OR EXISTS (SELECT 1 FROM public.usuarios u WHERE u.auth_user_id = auth.uid() AND u.rol IN ('admin', 'superadmin'))
   );
-CREATE POLICY users_ver_costos_all_admin ON public.users_ver_costos
+DROP POLICY IF EXISTS users_ver_costos_all_admin ON public.users_ver_costos
   FOR ALL TO authenticated USING (
     EXISTS (SELECT 1 FROM public.usuarios u WHERE u.auth_user_id = auth.uid() AND u.rol IN ('admin', 'superadmin'))
   ) WITH CHECK (
@@ -93,11 +93,11 @@ CREATE INDEX IF NOT EXISTS idx_ssepi_folio_evento_venta ON public.ssepi_folio_ev
 ALTER TABLE public.ssepi_folio_operativo ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ssepi_folio_evento ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY ssepi_folio_operativo_all ON public.ssepi_folio_operativo
+DROP POLICY IF EXISTS ssepi_folio_operativo_all ON public.ssepi_folio_operativo
   FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY ssepi_folio_evento_select ON public.ssepi_folio_evento
+DROP POLICY IF EXISTS ssepi_folio_evento_select ON public.ssepi_folio_evento
   FOR SELECT TO authenticated USING (true);
-CREATE POLICY ssepi_folio_evento_insert ON public.ssepi_folio_evento
+DROP POLICY IF EXISTS ssepi_folio_evento_insert ON public.ssepi_folio_evento
   FOR INSERT WITH CHECK (true);
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.ssepi_folio_operativo TO authenticated;
@@ -128,11 +128,11 @@ CREATE TABLE IF NOT EXISTS public.facturas (
 );
 
 ALTER TABLE public.facturas ENABLE ROW LEVEL SECURITY;
-CREATE POLICY facturas_select ON public.facturas
+DROP POLICY IF EXISTS facturas_select ON public.facturas
   FOR SELECT TO authenticated USING (true);
-CREATE POLICY facturas_insert ON public.facturas
+DROP POLICY IF EXISTS facturas_insert ON public.facturas
   FOR INSERT WITH CHECK (true);
-CREATE POLICY facturas_update ON public.facturas
+DROP POLICY IF EXISTS facturas_update ON public.facturas
   FOR UPDATE USING (true);
 
 GRANT SELECT, INSERT, UPDATE ON public.facturas TO authenticated;
@@ -156,11 +156,11 @@ CREATE TABLE IF NOT EXISTS public.ingresos_contabilidad (
 );
 
 ALTER TABLE public.ingresos_contabilidad ENABLE ROW LEVEL SECURITY;
-CREATE POLICY ingresos_contabilidad_select ON public.ingresos_contabilidad
+DROP POLICY IF EXISTS ingresos_contabilidad_select ON public.ingresos_contabilidad
   FOR SELECT TO authenticated USING (true);
-CREATE POLICY ingresos_contabilidad_insert ON public.ingresos_contabilidad
+DROP POLICY IF EXISTS ingresos_contabilidad_insert ON public.ingresos_contabilidad
   FOR INSERT WITH CHECK (true);
-CREATE POLICY ingresos_contabilidad_update ON public.ingresos_contabilidad
+DROP POLICY IF EXISTS ingresos_contabilidad_update ON public.ingresos_contabilidad
   FOR UPDATE USING (true);
 
 GRANT SELECT, INSERT, UPDATE ON public.ingresos_contabilidad TO authenticated;
@@ -190,11 +190,11 @@ CREATE TABLE IF NOT EXISTS public.pagos_nomina (
 );
 
 ALTER TABLE public.pagos_nomina ENABLE ROW LEVEL SECURITY;
-CREATE POLICY pagos_nomina_select ON public.pagos_nomina
+DROP POLICY IF EXISTS pagos_nomina_select ON public.pagos_nomina
   FOR SELECT TO authenticated USING (true);
-CREATE POLICY pagos_nomina_insert ON public.pagos_nomina
+DROP POLICY IF EXISTS pagos_nomina_insert ON public.pagos_nomina
   FOR INSERT WITH CHECK (true);
-CREATE POLICY pagos_nomina_update ON public.pagos_nomina
+DROP POLICY IF EXISTS pagos_nomina_update ON public.pagos_nomina
   FOR UPDATE USING (true);
 
 GRANT SELECT, INSERT, UPDATE ON public.pagos_nomina TO authenticated;
@@ -239,9 +239,9 @@ ALTER TABLE public.calculadoras ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.calculadora_costos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.calculadora_clientes ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY calculadoras_all ON public.calculadoras FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY calculadora_costos_all ON public.calculadora_costos FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY calculadora_clientes_all ON public.calculadora_clientes FOR ALL TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS calculadoras_all ON public.calculadoras FOR ALL TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS calculadora_costos_all ON public.calculadora_costos FOR ALL TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS calculadora_clientes_all ON public.calculadora_clientes FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.calculadoras TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.calculadora_costos TO authenticated;
@@ -296,21 +296,21 @@ ALTER TABLE public.vacaciones_balance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vacaciones_solicitudes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vacaciones_empleados ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY vacaciones_feriados_select ON public.vacaciones_dias_feriados
+DROP POLICY IF EXISTS vacaciones_feriados_select ON public.vacaciones_dias_feriados
   FOR SELECT TO authenticated USING (true);
-CREATE POLICY vacaciones_balance_select ON public.vacaciones_balance
+DROP POLICY IF EXISTS vacaciones_balance_select ON public.vacaciones_balance
   FOR SELECT TO authenticated USING (true);
-CREATE POLICY vacaciones_balance_insert ON public.vacaciones_balance
+DROP POLICY IF EXISTS vacaciones_balance_insert ON public.vacaciones_balance
   FOR INSERT WITH CHECK (true);
-CREATE POLICY vacaciones_balance_update ON public.vacaciones_balance
+DROP POLICY IF EXISTS vacaciones_balance_update ON public.vacaciones_balance
   FOR UPDATE USING (true);
-CREATE POLICY vacaciones_solicitudes_select ON public.vacaciones_solicitudes
+DROP POLICY IF EXISTS vacaciones_solicitudes_select ON public.vacaciones_solicitudes
   FOR SELECT TO authenticated USING (true);
-CREATE POLICY vacaciones_solicitudes_insert ON public.vacaciones_solicitudes
+DROP POLICY IF EXISTS vacaciones_solicitudes_insert ON public.vacaciones_solicitudes
   FOR INSERT WITH CHECK (true);
-CREATE POLICY vacaciones_solicitudes_update ON public.vacaciones_solicitudes
+DROP POLICY IF EXISTS vacaciones_solicitudes_update ON public.vacaciones_solicitudes
   FOR UPDATE USING (true);
-CREATE POLICY vacaciones_empleados_select ON public.vacaciones_empleados
+DROP POLICY IF EXISTS vacaciones_empleados_select ON public.vacaciones_empleados
   FOR SELECT TO authenticated USING (true);
 
 GRANT SELECT ON public.vacaciones_dias_feriados TO authenticated;
@@ -370,9 +370,9 @@ CREATE TABLE IF NOT EXISTS public.token_blacklist (
 CREATE INDEX IF NOT EXISTS idx_token_blacklist_hash ON public.token_blacklist(token_hash);
 
 ALTER TABLE public.token_blacklist ENABLE ROW LEVEL SECURITY;
-CREATE POLICY token_blacklist_select ON public.token_blacklist
+DROP POLICY IF EXISTS token_blacklist_select ON public.token_blacklist
   FOR SELECT TO authenticated USING (true);
-CREATE POLICY token_blacklist_insert ON public.token_blacklist
+DROP POLICY IF EXISTS token_blacklist_insert ON public.token_blacklist
   FOR INSERT WITH CHECK (true);
 
 GRANT SELECT, INSERT ON public.token_blacklist TO authenticated;
@@ -467,13 +467,13 @@ ALTER TABLE public.coi_account_mapping ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coi_sync_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coi_connection_state ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY coi_sync_queue_all ON public.coi_sync_queue FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY coi_polizas_all ON public.coi_polizas FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY coi_movimientos_all ON public.coi_movimientos FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY coi_mapping_all ON public.coi_account_mapping FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY coi_sync_log_select ON public.coi_sync_log FOR SELECT TO authenticated USING (true);
-CREATE POLICY coi_sync_log_insert ON public.coi_sync_log FOR INSERT WITH CHECK (true);
-CREATE POLICY coi_connection_state_all ON public.coi_connection_state FOR ALL TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS coi_sync_queue_all ON public.coi_sync_queue FOR ALL TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS coi_polizas_all ON public.coi_polizas FOR ALL TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS coi_movimientos_all ON public.coi_movimientos FOR ALL TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS coi_mapping_all ON public.coi_account_mapping FOR ALL TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS coi_sync_log_select ON public.coi_sync_log FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS coi_sync_log_insert ON public.coi_sync_log FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS coi_connection_state_all ON public.coi_connection_state FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 GRANT ALL ON public.coi_sync_queue TO authenticated;
 GRANT ALL ON public.coi_sync_queue TO service_role;
