@@ -3055,12 +3055,12 @@ const VentasModule = (function() {
         const total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
         if (!cliente) { alert('Falta el nombre del cliente.'); return; }
         if (total <= 0) {
-            // Recalcular antes de rechazar — puede que los costos no se hayan propagado
             _recalcular();
             const totalAfter = parseFloat((document.getElementById('resTotal')?.innerText || document.getElementById('previewTotal')?.innerText || '0').replace(/[$,]/g, '')) || 0;
             if (totalAfter <= 0) {
-                alert('El total debe ser mayor a 0. Agrega materiales o servicios en el Paso 2.');
-                return;
+                // Permitir guardar cotización sin items (se completará después)
+                const proceed = confirm('La cotización tiene total $0. ¿Guardar como borrador sin items?');
+                if (!proceed) return;
             }
         }
         const finalTotal = total > 0 ? total : parseFloat((document.getElementById('resTotal')?.innerText || document.getElementById('previewTotal')?.innerText || '0').replace(/[$,]/g, '')) || 0;
