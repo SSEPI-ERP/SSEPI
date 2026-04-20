@@ -6,6 +6,7 @@
 -- ================================================
 
 -- 1) usuarios (necesaria para FK de orden_historial)
+-- IMPORTANTE: DISABLE RLS para evitar recursión infinita (la policy USUALLY causa self-reference)
 CREATE TABLE IF NOT EXISTS public.usuarios (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nombre TEXT,
@@ -14,9 +15,13 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
     activo BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE public.usuarios ENABLE ROW LEVEL SECURITY;
+-- Deshabilitar RLS: tabla de soporte, no necesita RLS (causa recursión si la policy hace SELECT sobre usuarios)
+ALTER TABLE public.usuarios DISABLE ROW LEVEL SECURITY;
+-- Eliminar policies existentes que causan recursión
 DROP POLICY IF EXISTS usuarios_all ON public.usuarios;
-CREATE POLICY usuarios_all ON public.usuarios FOR ALL TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS usuarios_select ON public.usuarios;
+DROP POLICY IF EXISTS usuarios_insert ON public.usuarios;
+DROP POLICY IF EXISTS usuarios_update ON public.usuarios;
 GRANT ALL ON public.usuarios TO authenticated;
 GRANT ALL ON public.usuarios TO service_role;
 
