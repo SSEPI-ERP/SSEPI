@@ -788,7 +788,7 @@ const MotoresModule = (function() {
     function _cargarDatosEnModal(orden) {
         document.getElementById('inpFolio').value = orden.folio || '';
         document.getElementById('selClient').value = orden.cliente_nombre || '';
-        document.getElementById('inpDateTime').value = orden.fecha_ingreso || '';
+        document.getElementById('inpDateTime').value = (orden.fecha_ingreso ? orden.fecha_ingreso.slice(0, 16) : '');
         document.getElementById('inpClientRef').value = orden.referencia || '';
         document.getElementById('inpMotor').value = orden.motor || '';
         document.getElementById('inpBrand').value = orden.marca || '';
