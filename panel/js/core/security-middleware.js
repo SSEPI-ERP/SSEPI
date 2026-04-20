@@ -20,7 +20,7 @@ export function applyCSP() {
     style-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline';
     font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:;
     img-src 'self' data: https://images.unsplash.com;
-    connect-src 'self' https://*.supabase.co wss://*.supabase.co ${supabaseHost ? `https://${supabaseHost} wss://${supabaseHost}` : ''} https://cdn.jsdelivr.net https://api.ipify.org;
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co ${supabaseHost ? `https://${supabaseHost} wss://${supabaseHost}` : ''} https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://api.ipify.org;
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';
