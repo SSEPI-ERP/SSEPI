@@ -4,6 +4,9 @@
 -- ================================================
 
 -- cotizaciones
+ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS folio TEXT;
+ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS tipo TEXT;
+ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS cliente TEXT;
 ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS cerebro_registro JSONB DEFAULT '{}';
 ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS orden_origen_id UUID;
 ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS vendedor TEXT;
@@ -11,11 +14,21 @@ ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS telefono TEXT;
 ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS rfc TEXT;
 ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS origen TEXT;
-ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS tipo TEXT;
 ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]';
+ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS subtotal NUMERIC DEFAULT 0;
+ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS iva NUMERIC DEFAULT 0;
+ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS total NUMERIC DEFAULT 0;
+ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS estado TEXT DEFAULT 'registro';
+ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS departamento TEXT;
+ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS fecha TIMESTAMPTZ;
 ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS fecha_creacion TIMESTAMPTZ;
+ALTER TABLE public.cotizaciones ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
 
 -- ordenes_taller
+ALTER TABLE public.ordenes_taller ADD COLUMN IF NOT EXISTS folio TEXT;
+ALTER TABLE public.ordenes_taller ADD COLUMN IF NOT EXISTS cliente_nombre TEXT;
+ALTER TABLE public.ordenes_taller ADD COLUMN IF NOT EXISTS estado TEXT DEFAULT 'Nuevo';
+ALTER TABLE public.ordenes_taller ADD COLUMN IF NOT EXISTS fecha_ingreso DATE;
 ALTER TABLE public.ordenes_taller ADD COLUMN IF NOT EXISTS equipo TEXT;
 ALTER TABLE public.ordenes_taller ADD COLUMN IF NOT EXISTS marca TEXT;
 ALTER TABLE public.ordenes_taller ADD COLUMN IF NOT EXISTS modelo TEXT;
@@ -54,8 +67,13 @@ ALTER TABLE public.ordenes_taller ADD COLUMN IF NOT EXISTS factura_id UUID;
 ALTER TABLE public.ordenes_taller ADD COLUMN IF NOT EXISTS folio_factura TEXT;
 ALTER TABLE public.ordenes_taller ADD COLUMN IF NOT EXISTS fecha_factura DATE;
 ALTER TABLE public.ordenes_taller ADD COLUMN IF NOT EXISTS referencia TEXT;
+ALTER TABLE public.ordenes_taller ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
 
 -- ordenes_motores (mismo esquema que taller + columnas de motor)
+ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS folio TEXT;
+ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS cliente_nombre TEXT;
+ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS estado TEXT DEFAULT 'Nuevo';
+ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS fecha_ingreso DATE;
 ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS motor TEXT;
 ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS marca TEXT;
 ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS modelo TEXT;
@@ -70,9 +88,9 @@ ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS bajo_garantia BOOLEA
 ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS tecnico_responsable TEXT;
 ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS megger TEXT;
 ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS ip TEXT;
-ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS rU TEXT;
-ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS rV TEXT;
-ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS rW TEXT;
+ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS "rU" TEXT;
+ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS "rV" TEXT;
+ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS "rW" TEXT;
 ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS notas_internas TEXT;
 ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS notas_generales TEXT;
 ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS horas_estimadas NUMERIC DEFAULT 0;
@@ -101,6 +119,7 @@ ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS factura_id UUID;
 ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS folio_factura TEXT;
 ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS fecha_factura DATE;
 ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS referencia TEXT;
+ALTER TABLE public.ordenes_motores ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
 
 -- ventas
 ALTER TABLE public.ventas ADD COLUMN IF NOT EXISTS facturado BOOLEAN DEFAULT false;
@@ -122,17 +141,26 @@ ALTER TABLE public.compras ADD COLUMN IF NOT EXISTS estado INTEGER DEFAULT 0;
 ALTER TABLE public.compras ADD COLUMN IF NOT EXISTS pasos JSONB DEFAULT '[]';
 ALTER TABLE public.compras ADD COLUMN IF NOT EXISTS confirmado_ventas BOOLEAN DEFAULT false;
 ALTER TABLE public.compras ADD COLUMN IF NOT EXISTS fecha_creacion TIMESTAMPTZ;
+ALTER TABLE public.compras ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
 
 -- contactos
+ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS nombre TEXT;
 ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS empresa TEXT;
 ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS puesto TEXT;
+ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS telefono TEXT;
+ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS direccion TEXT;
+ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS rfc TEXT;
 ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS sitio_web TEXT;
 ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'cliente';
 ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS etiquetas JSONB DEFAULT '[]';
 ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS avatar TEXT;
 ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS color TEXT DEFAULT '#3b82f6';
 ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS logo_url TEXT;
+ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS km NUMERIC DEFAULT 0;
+ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS horas_viaje NUMERIC DEFAULT 0;
+ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.contactos ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- inventario
 ALTER TABLE public.inventario ADD COLUMN IF NOT EXISTS sku TEXT;
@@ -142,6 +170,9 @@ ALTER TABLE public.inventario ADD COLUMN IF NOT EXISTS ubicacion TEXT;
 ALTER TABLE public.inventario ADD COLUMN IF NOT EXISTS minimo NUMERIC DEFAULT 0;
 ALTER TABLE public.inventario ADD COLUMN IF NOT EXISTS costo NUMERIC DEFAULT 0;
 ALTER TABLE public.inventario ADD COLUMN IF NOT EXISTS precio_venta NUMERIC DEFAULT 0;
+ALTER TABLE public.inventario ADD COLUMN IF NOT EXISTS stock INTEGER DEFAULT 0;
+ALTER TABLE public.inventario ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.inventario ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- audit_logs
 ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS table_name TEXT;

@@ -1806,8 +1806,10 @@ const TallerModule = (function() {
 
     async function _guardarOrden(silencioso = false) {
         const data = _recolectarDatos();
-        if (!data.cliente_nombre) { if (!silencioso) alert('Seleccione cliente'); _irPaso(1); return; }
-        if (!data.equipo) { if (!silencioso) alert('Ingrese el equipo'); _irPaso(1); return; }
+        // Auto-guardado: siempre guardar, solo advertir en modo manual si faltan campos
+        if (!silencioso && (!data.cliente_nombre || !data.equipo)) {
+            if (!confirm('Faltan campos obligatorios. ¿Guardar como borrador?')) { _irPaso(1); return; }
+        }
 
         const fotoInput = document.getElementById('productImage');
         if (fotoInput && fotoInput.files[0]) {
