@@ -507,10 +507,26 @@ EXCEPTION WHEN unique_violation THEN
   RAISE NOTICE 'coi_account_mapping ya tiene datos';
 END $$;
 
-ALTER PUBLICATION supabase_realtime ADD TABLE public.coi_polizas;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.coi_movimientos;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.coi_sync_log;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.coi_sync_queue;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.coi_polizas;
+EXCEPTION WHEN duplicate_object THEN
+  RAISE NOTICE 'coi_polizas ya en supabase_realtime';
+END $$;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.coi_movimientos;
+EXCEPTION WHEN duplicate_object THEN
+  RAISE NOTICE 'coi_movimientos ya en supabase_realtime';
+END $$;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.coi_sync_log;
+EXCEPTION WHEN duplicate_object THEN
+  RAISE NOTICE 'coi_sync_log ya en supabase_realtime';
+END $$;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.coi_sync_queue;
+EXCEPTION WHEN duplicate_object THEN
+  RAISE NOTICE 'coi_sync_queue ya en supabase_realtime';
+END $$;
 
 CREATE OR REPLACE FUNCTION public._ssepi_folio_operativo_touch()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
