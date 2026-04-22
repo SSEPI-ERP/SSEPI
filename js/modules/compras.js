@@ -541,7 +541,7 @@ const ComprasModule = (function() {
     }
 
     function _editarOrden(id) {
-        alert('Función de edición pendiente de implementación');
+        _showToast('Función de edición pendiente de implementación', 'info');
     }
 
     // ==================== NUEVA ORDEN ====================
@@ -647,12 +647,12 @@ const ComprasModule = (function() {
                     currentCompra = { ...payload, id: inserted.id };
                 }
             }
-            alert('Borrador guardado. Puedes seguir editando.');
+            _showToast('Borrador guardado. Puedes seguir editando.', 'success');
             _afterComprasPersistOk();
             _addToFeed('💾', 'Borrador de orden guardado');
         } catch (e) {
             console.warn('[Compras] Guardar borrador:', e);
-            alert('No se pudo guardar el borrador. Comprueba que la tabla compras acepte estado 0.');
+            _showToast('No se pudo guardar el borrador. Verifica la tabla compras.', 'error');
         }
     }
 
@@ -666,7 +666,7 @@ const ComprasModule = (function() {
         const vinculacionId = document.getElementById('vinculacionId').value;
 
         if (!proveedor || !departamento) {
-            alert('Complete los campos obligatorios');
+            _showToast('Complete los campos obligatorios', 'warning');
             return;
         }
 
@@ -683,7 +683,7 @@ const ComprasModule = (function() {
         });
 
         if (items.length === 0) {
-            alert('Debe agregar al menos un producto');
+            _showToast('Debe agregar al menos un producto', 'warning');
             return;
         }
 
@@ -729,7 +729,7 @@ const ComprasModule = (function() {
             if (compraId) {
                 await comprasService.update(compraId, nuevaCompra, csrfToken);
                 _afterComprasPersistOk();
-                alert('✅ Orden confirmada');
+                _showToast('Orden confirmada', 'success');
                 document.getElementById('nuevaOrdenModal').classList.remove('active');
                 _addToFeed('➕', `Orden ${folio} confirmada`);
             } else {
@@ -757,14 +757,14 @@ const ComprasModule = (function() {
                         fecha: new Date().toISOString()
                     }, csrfToken);
                 }
-                alert('✅ Orden de compra creada');
+                _showToast('Orden de compra creada', 'success');
                 _afterComprasPersistOk();
                 document.getElementById('nuevaOrdenModal').classList.remove('active');
                 _addToFeed('➕', `Orden ${folio} creada`);
             }
         } catch (error) {
             console.error(error);
-            alert('Error al guardar: ' + error.message);
+            _showToast('Error al guardar: ' + error.message, 'error');
         }
     }
 
@@ -801,7 +801,7 @@ const ComprasModule = (function() {
             window.open(p.sitio_web, '_blank', 'noopener,noreferrer');
             return;
         }
-        alert(p ? (p.nombre || p.empresa || 'Proveedor') : ('Proveedor ' + id));
+        _showToast(p ? (p.nombre || p.empresa || 'Proveedor') : ('Proveedor ' + id), 'info');
     }
 
     // ==================== FEED ====================

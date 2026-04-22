@@ -110,13 +110,27 @@ const ActividadesModule = (function() {
         try {
             const { data, error } = await window.supabase
                 .from('actividades_diarias')
-                .select('*, creado_por_usuario:usuarios (nombre, email)')
+                .select('*')
                 .gte('fecha', inicioSemana.toISOString().split('T')[0])
                 .lte('fecha', finSemana.toISOString().split('T')[0])
                 .order('fecha', { ascending: true });
 
             if (error) throw error;
-            actividades = data || [];
+            // Resolve creado_por → nombre de usuario en segunda consulta
+            let rawActividades = data || [];
+            const userIds = [...new Set(rawActividades.map(a => a.creado_por).filter(Boolean))];
+            let userMap = {};
+            if (userIds.length > 0) {
+                const { data: users } = await window.supabase
+                    .from('usuarios')
+                    .select('id, nombre, email')
+                    .in('id', userIds);
+                if (users) users.forEach(u => { userMap[u.id] = u; });
+            }
+            actividades = rawActividades.map(a => ({
+                ...a,
+                creado_por_usuario: a.creado_por ? { nombre: userMap[a.creado_por]?.nombre, email: userMap[a.creado_por]?.email } : null
+            }));
         } catch (error) {
             console.error('[Actividades] Error cargando actividades:', error);
             actividades = [];

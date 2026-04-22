@@ -814,8 +814,8 @@ const ServiciosModule = (function() {
     function _validarPasoActual() {
         switch(currentStep) {
             case 1:
-                if (!document.getElementById('paso1_nombre').value) { alert('Ingrese el nombre del proyecto'); return false; }
-                if (!document.getElementById('paso1_cliente').value) { alert('Ingrese el cliente'); return false; }
+                if (!document.getElementById('paso1_nombre').value) { _showToast('Ingrese el nombre del proyecto', 'warning'); return false; }
+                if (!document.getElementById('paso1_cliente').value) { _showToast('Ingrese el cliente', 'warning'); return false; }
                 break;
         }
         return true;
@@ -876,13 +876,13 @@ const ServiciosModule = (function() {
         const ganttBody = document.getElementById('ganttBody');
 
         if (actividades.length === 0) {
-            alert('Agregue actividades primero');
+            _showToast('Agregue actividades primero', 'info');
             return;
         }
 
         let totalHoras = actividades.reduce((sum, a) => sum + (parseFloat(a.horas) || 0), 0);
         if (totalHoras === 0) {
-            alert('Las actividades deben tener horas asignadas');
+            _showToast('Las actividades deben tener horas asignadas', 'info');
             return;
         }
 
@@ -925,7 +925,7 @@ const ServiciosModule = (function() {
     }
 
     function _exportarCronogramaPDF() {
-        alert('Función de exportar PDF pendiente de implementación');
+        _showToast('Función de exportar PDF pendiente de implementación', 'info');
     }
 
     // ==================== PASO 3: MATERIALES ====================
@@ -1009,7 +1009,7 @@ const ServiciosModule = (function() {
         if (projectId) {
             const csrfToken = sessionStorage.getItem('csrfToken');
             await proyectosService.update(projectId, { materiales: materiales }, csrfToken);
-            alert('✅ Materiales guardados');
+            _showToast('Materiales guardados', 'success');
         }
     }
 
@@ -1183,7 +1183,7 @@ const ServiciosModule = (function() {
     }
 
     function _subirArchivo(id) {
-        alert('Simulación: Seleccionar archivo para subir');
+        _showToast('Simulación: Seleccionar archivo para subir', 'info');
     }
 
     function _eliminarArchivo(apartadoId, nombreArchivo) {
@@ -1231,17 +1231,17 @@ const ServiciosModule = (function() {
                 const inserted = await proyectosService.insert(data, csrfToken);
                 projectId = inserted.id;
                 isNewProject = false;
-                alert('✅ Proyecto guardado');
+                _showToast('Proyecto guardado', 'success');
             } else {
                 await proyectosService.update(projectId, data, csrfToken);
-                alert('✅ Proyecto actualizado');
+                _showToast('Proyecto actualizado', 'success');
             }
             _afterServiciosPersistOk();
             _addToFeed('💾', `Proyecto ${data.folio} guardado`);
             _cerrarModal();
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
@@ -1370,7 +1370,7 @@ const ServiciosModule = (function() {
         console.log('✅ [Automatización] Click Generar Requerimiento');
 
         if (!materiales || materiales.length === 0) {
-            alert('Agrega materiales antes de generar el requerimiento.');
+            _showToast('Agrega materiales antes de generar el requerimiento.', 'info');
             return;
         }
 
@@ -1406,7 +1406,7 @@ const ServiciosModule = (function() {
             _addToFeed('🧾', `Requerimiento generado (${compra.folio})`);
         } catch (error) {
             console.error(error);
-            alert('Error al generar requerimiento: ' + error.message);
+            _showToast('Error al generar requerimiento: ' + error.message, 'error');
         }
     }
 

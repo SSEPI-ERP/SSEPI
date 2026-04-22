@@ -42,7 +42,14 @@
       "Bash(curl *)",
       "Bash(docker exec *)",
       "Bash(python -m json.tool)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(gh api *)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); users=d.get\\('users',[]\\); print\\(f'Total auth users: {len\\(users\\)}'\\); [print\\(f' {u[\\\\\"email\\\\\"]} - id: {u[\\\\\"id\\\\\"]}'\\) for u in users[:20]]\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'Deployments: {len\\(d\\)}'\\) if d else print\\('No deployments via API'\\)\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'Total clientes: {len\\(d\\)}'\\); [print\\(f'  {c[\\\\\"nombre_cliente\\\\\"]}: km={c[\\\\\"km\\\\\"]}, hrs={c[\\\\\"horas_viaje\\\\\"]}'\\) for c in d[:5]]\")",
+      "Bash(npx supabase *)",
+      "Bash(npx serve *)",
+      "Bash(]+)"
     ]
   }
 }

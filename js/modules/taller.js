@@ -855,7 +855,7 @@ const TallerModule = (function() {
 
     async function _editarOrden(id) {
         const orden = orders.find(o => o.id === id);
-        if (!orden) { alert('Orden no encontrada'); return; }
+        if (!orden) { _showToast('Orden no encontrada', 'error'); return; }
         currentOrder = orden;
         orderId = id;
         isNewOrder = false;
@@ -1081,7 +1081,7 @@ const TallerModule = (function() {
         document.getElementById('fechaInicioDisplay').innerText = new Date().toLocaleString();
         _renderPrioritySupplierBarTaller();
 
-        alert('✅ Orden cargada desde cotización ' + cotizacion.folio);
+        _showToast('Orden cargada desde cotización ' + cotizacion.folio, 'success');
     }
 
     function _estadoToPaso(estado) {
@@ -1238,7 +1238,7 @@ const TallerModule = (function() {
             _addToFeed('📝', `Nota registrada en ${currentOrder.folio || 'orden'}`);
         } catch (e) {
             console.error(e);
-            alert('No se pudo registrar la nota: ' + String(e?.message || e));
+            _showToast('No se pudo registrar la nota', 'error');
         }
     }
 
@@ -1383,16 +1383,16 @@ const TallerModule = (function() {
     function _validarPasoActual() {
         switch(currentStep) {
             case 1:
-                if (!document.getElementById('selClient').value) { alert('Seleccione un cliente'); return false; }
-                if (!document.getElementById('inpEquip').value) { alert('Ingrese el equipo'); return false; }
+                if (!document.getElementById('selClient').value) { _showToast('Seleccione un cliente', 'warning'); return false; }
+                if (!document.getElementById('inpEquip').value) { _showToast('Ingrese el equipo', 'warning'); return false; }
                 break;
             case 2:
-                if (!document.getElementById('techSelect').value) { alert('Seleccione técnico responsable'); return false; }
-                if (parseFloat(document.getElementById('horasEstimadas').value) <= 0) { alert('Ingrese horas estimadas válidas'); return false; }
+                if (!document.getElementById('techSelect').value) { _showToast('Seleccione técnico responsable', 'warning'); return false; }
+                if (parseFloat(document.getElementById('horasEstimadas').value) <= 0) { _showToast('Ingrese horas estimadas válidas', 'warning'); return false; }
                 break;
             case 5:
-                if (!document.getElementById('recibeNombre').value) { alert('Ingrese el nombre de quien recibe'); return false; }
-                if (!document.getElementById('fechaEntrega').value) { alert('Ingrese la fecha de entrega'); return false; }
+                if (!document.getElementById('recibeNombre').value) { _showToast('Ingrese el nombre de quien recibe', 'warning'); return false; }
+                if (!document.getElementById('fechaEntrega').value) { _showToast('Ingrese la fecha de entrega', 'warning'); return false; }
                 break;
         }
         return true;
@@ -1628,24 +1628,24 @@ const TallerModule = (function() {
             _addToFeed('⚠️', `Orden marcada sin reparación`);
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
     async function _generarSolicitudCompra() {
         console.log('[Taller] Click en Generar Solicitud de Compra');
         if (!orderId && !isNewOrder) {
-            alert('Primero guarde la orden de taller');
+            _showToast('Primero guarde la orden de taller', 'warning');
             return;
         }
 
         await _guardarOrden(true);
 
         const data = _recolectarDatos();
-        if (!data.cliente_nombre) { alert('Seleccione cliente'); _irPaso(1); return; }
-        if (!data.equipo) { alert('Ingrese el equipo'); _irPaso(1); return; }
+        if (!data.cliente_nombre) { _showToast('Seleccione cliente', 'warning'); _irPaso(1); return; }
+        if (!data.equipo) { _showToast('Ingrese el equipo', 'warning'); _irPaso(1); return; }
         if (diagnosticoEnlaces.length === 0 && diagnosticoInventario.length === 0) {
-            alert('Debe agregar al menos una refacción a comprar');
+            _showToast('Debe agregar al menos una refacción', 'warning');
             return;
         }
 
@@ -1721,7 +1721,7 @@ const TallerModule = (function() {
 
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
@@ -1779,11 +1779,11 @@ const TallerModule = (function() {
 
             _irPaso(4);
             _afterTallerPersistOk();
-            alert('✅ Reparación finalizada');
+            _showToast('Reparación finalizada');
             _addToFeed('✅', `Reparación completada para ${data.folio}`);
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
@@ -1809,14 +1809,14 @@ const TallerModule = (function() {
             await _generarSolicitudCompra();
         }
 
-        alert(`✅ Etapa ${etapa} finalizada`);
+        _showToast(, 'success');
         if (etapa < 5) _irPaso(etapa + 1);
     }
 
     async function _guardarOrden(silencioso = false) {
         const data = _recolectarDatos();
-        if (!data.cliente_nombre) { if (!silencioso) alert('Seleccione cliente'); _irPaso(1); return; }
-        if (!data.equipo) { if (!silencioso) alert('Ingrese el equipo'); _irPaso(1); return; }
+        if (!data.cliente_nombre) { if (!silencioso) _showToast('Seleccione cliente', 'warning'); _irPaso(1); return; }
+        if (!data.equipo) { if (!silencioso) _showToast('Ingrese el equipo', 'warning'); _irPaso(1); return; }
 
         const fotoInput = document.getElementById('productImage');
         if (fotoInput && fotoInput.files[0]) {
@@ -1842,16 +1842,16 @@ const TallerModule = (function() {
                 const inserted = await ordenesService.insert(data, csrfToken);
                 orderId = inserted.id;
                 isNewOrder = false;
-                if (!silencioso) alert('✅ Orden guardada correctamente');
+                if (!silencioso) _showToast('Orden guardada correctamente');
             } else {
                 await ordenesService.update(orderId, data, csrfToken);
-                if (!silencioso) alert('✅ Orden actualizada correctamente');
+                if (!silencioso) _showToast('Orden actualizada correctamente');
             }
             _afterTallerPersistOk();
             _addToFeed('💾', `Orden ${data.folio} guardada`);
         } catch (error) {
             console.error(error);
-            if (!silencioso) alert('Error al guardar: ' + error.message);
+            if (!silencioso) _showToast('Error al guardar: ' + error.message, 'error');
         }
     }
 
@@ -1917,10 +1917,10 @@ const TallerModule = (function() {
 
             _afterTallerPersistOk();
             _cerrarModal();
-            alert('✅ Orden entregada a ventas');
+            _showToast('Orden entregada a ventas');
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
@@ -2226,7 +2226,7 @@ ${printScript}
 
         const w = window.open('', '_blank', 'noopener,noreferrer');
         if (!w) {
-            alert('Permite ventanas emergentes para la vista previa o impresión.');
+            _showToast('Permite ventanas emergentes para impresión', 'info');
             return;
         }
         w.document.write(html);

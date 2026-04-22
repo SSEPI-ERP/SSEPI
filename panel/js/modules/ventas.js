@@ -2409,14 +2409,30 @@ const VentasModule = (function() {
         const columnName = columnMap[tipo] || 'cotizacion_id';
 
         try {
+            // Fetch historial sin join (PostgREST requiere FK para joins embebidos)
             const { data, error } = await window.supabase
                 .from('orden_historial')
-                .select(`*, creado_por_usuario:usuarios (nombre, email)`)
+                .select('*')
                 .eq(columnName, id)
                 .order('creado_en', { ascending: false });
 
             if (error) throw error;
-            const events = data || [];
+
+            // Resolve creado_por → nombre de usuario en segunda consulta
+            let events = data || [];
+            const userIds = [...new Set(events.map(e => e.creado_por).filter(Boolean))];
+            let userMap = {};
+            if (userIds.length > 0) {
+                const { data: users } = await window.supabase
+                    .from('usuarios')
+                    .select('id, nombre, email')
+                    .in('id', userIds);
+                if (users) users.forEach(u => { userMap[u.id] = u; });
+            }
+            events = events.map(e => ({
+                ...e,
+                creado_por_usuario: e.creado_por ? { nombre: userMap[e.creado_por]?.nombre, email: userMap[e.creado_por]?.email } : null
+            }));
             const item = [...ventas, ...cotizaciones].find(i => i.id === id);
             const estadoActual = item?.estado || item?.estatus_pago || 'registro';
 

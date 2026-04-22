@@ -1445,20 +1445,20 @@ const VentasModule = (function() {
         const compra = solicitudesTaller.find(s => s.id === compraId);
         if (!compra) return;
         const ordenTallerId = compra.vinculacion?.id;
-        if (!ordenTallerId) { alert('No hay orden de taller vinculada'); return; }
+        if (!ordenTallerId) { _showToast('No hay orden de taller vinculada', 'info'); return; }
         const orden = taller.find(o => o.id === ordenTallerId);
-        if (!orden) { alert('Orden no encontrada en Taller'); return; }
-        alert(`Orden ${orden.folio}\nCliente: ${orden.cliente_nombre || 'N/A'}\nEstado: ${orden.estado || 'Pendiente'}\nEquipo: ${orden.equipo || 'N/A'}`);
+        if (!orden) { _showToast('Orden no encontrada en Taller', 'info'); return; }
+        _showToast(`Orden ${orden.folio}\nCliente: ${orden.cliente_nombre || 'N/A'}\nEstado: ${orden.estado || 'Pendiente'}\nEquipo: ${orden.equipo || 'N/A'}`, 'info');
     }
 
     async function _editarOrdenTaller(compraId) {
         const compra = solicitudesTaller.find(s => s.id === compraId);
         if (!compra) return;
         const ordenTallerId = compra.vinculacion?.id;
-        if (!ordenTallerId) { alert('No hay orden de taller vinculada'); return; }
+        if (!ordenTallerId) { _showToast('No hay orden de taller vinculada', 'info'); return; }
         const orden = taller.find(o => o.id === ordenTallerId);
-        if (!orden) { alert('Orden no encontrada en Taller'); return; }
-        alert('Función de edición en implementación. ID: ' + ordenTallerId);
+        if (!orden) { _showToast('Orden no encontrada en Taller', 'info'); return; }
+        _showToast('Función de edición en implementación. ID: ' + ordenTallerId, 'error');
     }
 
     function _eliminarOrdenTaller(compraId) {
@@ -1704,7 +1704,7 @@ const VentasModule = (function() {
         const nombre = document.getElementById('compNombre')?.value;
         const cantidad = parseFloat(document.getElementById('compCantidad')?.value) || 1;
         const costo = parseFloat(document.getElementById('compCosto')?.value) || 0;
-        if (!nombre) { alert('Ingrese el nombre del componente'); return; }
+        if (!nombre) { _showToast('Ingrese el nombre del componente', 'warning'); return; }
         calculadoraComponentes.push({ nombre, cantidad, costo_unitario: costo, subtotal: cantidad * costo });
         _renderizarComponentes();
         _recalcular();
@@ -1847,7 +1847,7 @@ const VentasModule = (function() {
         const cliente = calculadoraClienteActual;
 
         if (!cliente || !cliente.id) {
-            alert('Cliente no válido.');
+            _showToast('Cliente no válido.', 'info');
             return;
         }
 
@@ -1856,7 +1856,7 @@ const VentasModule = (function() {
 
         const supabaseClient = _supabase();
         if (!supabaseClient) {
-            alert('Error de conexión con la base de datos.');
+            _showToast('Error de conexión con la base de datos.', 'error');
             return;
         }
 
@@ -1869,7 +1869,7 @@ const VentasModule = (function() {
             .single();
 
         if (error) {
-            alert('Error al guardar: ' + (error.message || error));
+            _showToast('Error al guardar: ' + (error.message || error, 'error'));
             return;
         }
 
@@ -1888,7 +1888,7 @@ const VentasModule = (function() {
         // Recargar la calculadora con los nuevos valores
         _irPaso(2);
 
-        alert('Viáticos guardados correctamente para ' + (cliente.nombre || 'el cliente'));
+        _showToast('Viáticos guardados correctamente para ' + (cliente.nombre || 'el cliente', 'error'));
     }
 
     // ==================== CARGA DE COSTOS DESDE BD ====================
@@ -2108,7 +2108,7 @@ const VentasModule = (function() {
             if (error) throw error;
             btn.closest('tr').remove();
         } catch (e) {
-            alert('Error: ' + e.message);
+            _showToast('Error: ' + e.message, 'error');
         }
     }
 
@@ -2148,7 +2148,7 @@ const VentasModule = (function() {
         const nuevosParametros = await _cargarParametrosCostos();
         CostosEngine.applyConfig(nuevosParametros);
 
-        alert('Configuración guardada. Los cálculos se actualizarán automáticamente.');
+        _showToast('Configuración guardada. Los cálculos se actualizarán automáticamente.', 'info');
         document.querySelector('.modal.active')?.remove();
 
         // Recalcular si hay calculadora abierta
@@ -2282,9 +2282,9 @@ const VentasModule = (function() {
         const total = parseFloat(document.getElementById('editTotal').value) || 0;
         const rfc = document.getElementById('editRFC').value;
 
-        if (!cliente) { alert('El nombre del cliente es obligatorio'); return; }
+        if (!cliente) { _showToast('El nombre del cliente es obligatorio', 'info'); return; }
         if (!total || total <= 0) {
-            alert('Calcule el costo final (Total) con la calculadora antes de enviar la cotización.');
+            _showToast('Calcule el costo final (Total) con la calculadora antes de enviar la cotización.', 'info');
             return;
         }
 
@@ -2333,13 +2333,13 @@ const VentasModule = (function() {
                     if (r.error) console.warn('Correo no enviado:', r.error);
                 });
             }
-            alert('✅ Cotización guardada y enviada para autorización');
+            _showToast('Cotización guardada y enviada para autorización', 'success');
             _addToFeed('📧', `Cotización ${folio} enviada a ${cliente}`);
             document.getElementById('cotizacionModal').classList.remove('active');
             document.getElementById('calculadoraModal').classList.remove('active');
         } catch (error) {
             console.error(error);
-            alert('Error al guardar cotización: ' + error.message);
+            _showToast('Error al guardar cotización: ' + error.message, 'error');
         }
     }
 
@@ -2404,7 +2404,7 @@ const VentasModule = (function() {
             _renderPendientesAutorizacion();
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
@@ -2417,7 +2417,7 @@ const VentasModule = (function() {
             _renderPendientesAutorizacion();
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
@@ -2430,7 +2430,7 @@ const VentasModule = (function() {
         const modal = document.getElementById('historialModal');
         const body = document.getElementById('historialBody');
         if (!modal || !body) {
-            alert('Error: No se encontró el modal de historial.');
+            _showToast('Error: No se encontró el modal de historial.', 'error');
             return;
         }
 
@@ -2445,14 +2445,30 @@ const VentasModule = (function() {
         const columnName = columnMap[tipo] || 'cotizacion_id';
 
         try {
+            // Fetch historial sin join (PostgREST requiere FK para joins embebidos)
             const { data, error } = await window.supabase
                 .from('orden_historial')
-                .select(`*, creado_por_usuario:usuarios (nombre, email)`)
+                .select('*')
                 .eq(columnName, id)
                 .order('creado_en', { ascending: false });
 
             if (error) throw error;
-            const events = data || [];
+
+            // Resolve creado_por → nombre de usuario en segunda consulta
+            let events = data || [];
+            const userIds = [...new Set(events.map(e => e.creado_por).filter(Boolean))];
+            let userMap = {};
+            if (userIds.length > 0) {
+                const { data: users } = await window.supabase
+                    .from('usuarios')
+                    .select('id, nombre, email')
+                    .in('id', userIds);
+                if (users) users.forEach(u => { userMap[u.id] = u; });
+            }
+            events = events.map(e => ({
+                ...e,
+                creado_por_usuario: e.creado_por ? { nombre: userMap[e.creado_por]?.nombre, email: userMap[e.creado_por]?.email } : null
+            }));
             const item = [...ventas, ...cotizaciones].find(i => i.id === id);
             const estadoActual = item?.estado || item?.estatus_pago || 'registro';
 
@@ -2531,13 +2547,13 @@ const VentasModule = (function() {
     }
 
     function _editarVenta(id, tipo) {
-        alert(`Editar ${tipo} con id ${id}`);
+        _showToast(`Editar ${tipo} con id ${id}`, 'info');
     }
 
     async function _reenviarCotizacion(id) {
         const cotizacion = cotizaciones.find(c => c.id === id);
         if (!cotizacion) return;
-        alert(`✅ Cotización reenviada a ${cotizacion.cliente || 'cliente'}`);
+        _showToast(`✅ Cotización reenviada a ${cotizacion.cliente || 'cliente'}`, 'info');
         _addToFeed('📧', `Cotización reenviada`);
     }
 
@@ -2566,7 +2582,7 @@ const VentasModule = (function() {
         const prioridad = document.getElementById('rrPrioridad').value.trim();
 
         if (!cliente || !falla || !departamento) {
-            alert('❗ Cliente, falla y departamento son obligatorios.');
+            _showToast('❗ Cliente, falla y departamento son obligatorios.', 'info');
             return;
         }
 
@@ -2612,14 +2628,14 @@ const VentasModule = (function() {
                 await _insertarEventoHistorial('cotizacion', inserted.id, 'creacion', `Cotización rápida ${folio} creada en Registro`, csrfToken);
             }
 
-            alert('✅ Cotización guardada en 📝 Registro. Folio: ' + folio);
+            _showToast('✅ Cotización guardada en 📝 Registro. Folio: ' + folio, 'error');
             _addToFeed('💾', `Cotización ${folio} guardada en Registro`);
             document.getElementById('registroRapidoModal').classList.remove('active');
             await _loadCotizaciones();
             _applyFilters();
         } catch (error) {
             console.error(error);
-            alert('Error al guardar: ' + error.message);
+            _showToast('Error al guardar: ' + error.message, 'error');
         }
     }
 
@@ -2634,7 +2650,7 @@ const VentasModule = (function() {
         var modal = document.getElementById('calculadoraModal');
         if (!modal) {
             console.error('[Ventas] No se encontró #calculadoraModal');
-            alert('No se pudo abrir el wizard. Recarga la página.');
+            _showToast('No se pudo abrir el wizard. Recarga la página.', 'error');
             return;
         }
         await _renderWizardPaso(1);
@@ -3046,7 +3062,7 @@ const VentasModule = (function() {
         const items = calculadoraComponentes.map(c => ({ descripcion: c.nombre, cantidad: c.cantidad, precioUnitario: c.costo_unitario, importe: c.subtotal }));
         const subtotal = total / 1.16;
         const iva = total - subtotal;
-        if (!cliente) { alert('Cliente requerido para el PDF.'); return; }
+        if (!cliente) { _showToast('Cliente requerido para el PDF.', 'info'); return; }
         (async () => {
             try {
                 const { data: { user } } = await window.supabase.auth.getUser();
@@ -3054,7 +3070,7 @@ const VentasModule = (function() {
                 _addToFeed('🧾', `PDF generado: ${folio}`);
             } catch (error) {
                 console.error(error);
-                alert('Error al generar PDF: ' + error.message);
+                _showToast('Error al generar PDF: ' + error.message, 'error');
             }
         })();
     }
@@ -3067,11 +3083,11 @@ const VentasModule = (function() {
         const previewTotalEl = document.getElementById('previewTotal');
         const totalStr = resTotalEl?.innerText || previewTotalEl?.innerText || '0';
         const total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
-        if (!cliente) { alert('Falta el nombre del cliente.'); return; }
+        if (!cliente) { _showToast('Falta el nombre del cliente.', 'warning'); return; }
         if (total <= 0) {
             _recalcular();
             const totalAfter = parseFloat((document.getElementById('resTotal')?.innerText || document.getElementById('previewTotal')?.innerText || '0').replace(/[$,]/g, '')) || 0;
-            if (totalAfter <= 0) { alert('El total debe ser mayor a 0. Agrega materiales o servicios en el Paso 2.'); return; }
+            if (totalAfter <= 0) { _showToast('El total debe ser mayor a 0. Agrega materiales o servicios en el Paso 2.', 'info'); return; }
         }
         const finalTotal = total > 0 ? total : parseFloat((document.getElementById('resTotal')?.innerText || document.getElementById('previewTotal')?.innerText || '0').replace(/[$,]/g, '')) || 0;
 
@@ -3120,7 +3136,7 @@ const VentasModule = (function() {
                 }
             }
 
-            alert('✅ Cotización guardada. Folio: ' + folio);
+            _showToast('✅ Cotización guardada. Folio: ' + folio, 'error');
             _addToFeed('💾', `Cotización ${folio} guardada`);
             _afterVentasPersistOk();
             document.getElementById('calculadoraModal').classList.remove('active');
@@ -3128,14 +3144,14 @@ const VentasModule = (function() {
             _applyFilters();
         } catch (error) {
             console.error(error);
-            alert('Error al guardar: ' + error.message);
+            _showToast('Error al guardar: ' + error.message, 'error');
         }
     }
 
     async function _enviarCotizacionDesdeWizard() {
         const email = calculadoraClienteActual?.email || '';
         if (!email) {
-            alert('Para enviar por Gmail necesitas el correo del cliente. Edita el contacto o ingresa el email.');
+            _showToast('Para enviar por Gmail necesitas el correo del cliente. Edita el contacto o ingresa el email.', 'info');
             return;
         }
         const totalStr = document.getElementById('resTotal')?.innerText || '$0';
@@ -3190,7 +3206,7 @@ const VentasModule = (function() {
                 }
             }
 
-            alert('✅ Cotización guardada y enviada. Folio: ' + folio);
+            _showToast('✅ Cotización guardada y enviada. Folio: ' + folio, 'error');
             _addToFeed('📧', `Cotización ${folio} enviada a ${cliente}`);
             _afterVentasPersistOk();
             document.getElementById('calculadoraModal').classList.remove('active');
@@ -3198,7 +3214,7 @@ const VentasModule = (function() {
             _applyFilters();
         } catch (error) {
             console.error(error);
-            alert('Error al guardar: ' + error.message);
+            _showToast('Error al guardar: ' + error.message, 'error');
         }
     }
 
@@ -3557,11 +3573,11 @@ const VentasModule = (function() {
         const total = parseFloat(document.getElementById('editTotal')?.value || '') || 0;
 
         if (!cliente) {
-            alert('Cliente requerido para generar el PDF.');
+            _showToast('Cliente requerido para generar el PDF.', 'info');
             return;
         }
         if (!total || total <= 0) {
-            alert('Antes de generar PDF, calcula el costo final (Total).');
+            _showToast('Antes de generar PDF, calcula el costo final (Total).', 'info');
             return;
         }
 
@@ -3602,7 +3618,7 @@ const VentasModule = (function() {
                 _addToFeed('🧾', `PDF generado: ${folio}`);
             } catch (error) {
                 console.error(error);
-                alert('Error al generar PDF: ' + error.message);
+                _showToast('Error al generar PDF: ' + error.message, 'error');
             }
         })();
     }

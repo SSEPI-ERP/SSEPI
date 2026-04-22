@@ -912,16 +912,16 @@ const MotoresModule = (function() {
     function _validarPasoActual() {
         switch(currentStep) {
             case 1:
-                if (!document.getElementById('selClient').value) { alert('Seleccione un cliente'); return false; }
-                if (!document.getElementById('inpMotor').value) { alert('Ingrese el motor'); return false; }
+                if (!document.getElementById('selClient').value) { _showToast('Seleccione un cliente', 'warning'); return false; }
+                if (!document.getElementById('inpMotor').value) { _showToast('Ingrese el motor', 'warning'); return false; }
                 break;
             case 2:
-                if (!document.getElementById('techSelect').value) { alert('Seleccione técnico responsable'); return false; }
-                if (parseFloat(document.getElementById('horasEstimadas').value) <= 0) { alert('Ingrese horas estimadas válidas'); return false; }
+                if (!document.getElementById('techSelect').value) { _showToast('Seleccione técnico responsable', 'warning'); return false; }
+                if (parseFloat(document.getElementById('horasEstimadas').value) <= 0) { _showToast('Ingrese horas estimadas válidas', 'warning'); return false; }
                 break;
             case 5:
-                if (!document.getElementById('recibeNombre').value) { alert('Ingrese el nombre de quien recibe'); return false; }
-                if (!document.getElementById('fechaEntrega').value) { alert('Ingrese la fecha de entrega'); return false; }
+                if (!document.getElementById('recibeNombre').value) { _showToast('Ingrese el nombre de quien recibe', 'warning'); return false; }
+                if (!document.getElementById('fechaEntrega').value) { _showToast('Ingrese la fecha de entrega', 'warning'); return false; }
                 break;
         }
         return true;
@@ -1157,24 +1157,24 @@ const MotoresModule = (function() {
             _addToFeed('⚠️', `Orden marcada sin reparación`);
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
     async function _generarSolicitudCompra() {
         console.log('[Motores] Click en Generar Solicitud de Compra');
         if (!orderId && !isNewOrder) {
-            alert('Primero guarde la orden de taller');
+            _showToast('Primero guarde la orden de taller', 'info');
             return;
         }
 
         await _guardarOrden(true);
 
         const data = _recolectarDatos();
-        if (!data.cliente_nombre) { alert('Seleccione cliente'); _irPaso(1); return; }
-        if (!data.motor) { alert('Ingrese el motor'); _irPaso(1); return; }
+        if (!data.cliente_nombre) { _showToast('Seleccione cliente', 'warning'); _irPaso(1); return; }
+        if (!data.motor) { _showToast('Ingrese el motor', 'warning'); _irPaso(1); return; }
         if (diagnosticoEnlaces.length === 0 && diagnosticoInventario.length === 0) {
-            alert('Debe agregar al menos una refacción a comprar');
+            _showToast('Debe agregar al menos una refacción a comprar', 'warning');
             return;
         }
 
@@ -1250,7 +1250,7 @@ const MotoresModule = (function() {
 
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
@@ -1308,11 +1308,11 @@ const MotoresModule = (function() {
 
             _irPaso(4);
             _afterMotoresPersistOk();
-            alert('✅ Reparación finalizada');
+            _showToast('Reparación finalizada', 'success');
             _addToFeed('✅', `Reparación completada para ${data.folio}`);
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
@@ -1323,14 +1323,14 @@ const MotoresModule = (function() {
             const csrfToken = sessionStorage.getItem('csrfToken');
             await ordenesService.update(orderId, { fechas_etapas: fechasEtapas }, csrfToken);
         }
-        alert(`✅ Etapa ${etapa} finalizada`);
+        _showToast(`✅ Etapa ${etapa} finalizada`, 'info');
         if (etapa < 5) _irPaso(etapa + 1);
     }
 
     async function _guardarOrden(silencioso = false) {
         const data = _recolectarDatos();
-        if (!data.cliente_nombre) { if (!silencioso) alert('Seleccione cliente'); _irPaso(1); return; }
-        if (!data.motor) { if (!silencioso) alert('Ingrese el motor'); _irPaso(1); return; }
+        if (!data.cliente_nombre) { if (!silencioso) _showToast('Seleccione cliente', 'warning'); _irPaso(1); return; }
+        if (!data.motor) { if (!silencioso) _showToast('Ingrese el motor', 'warning'); _irPaso(1); return; }
 
         const fotoInput = document.getElementById('productImage');
         if (fotoInput && fotoInput.files[0]) {
@@ -1356,16 +1356,16 @@ const MotoresModule = (function() {
                 const inserted = await ordenesService.insert(data, csrfToken);
                 orderId = inserted.id;
                 isNewOrder = false;
-                if (!silencioso) alert('✅ Orden guardada correctamente');
+                if (!silencioso) _showToast('Orden guardada correctamente', 'success');
             } else {
                 await ordenesService.update(orderId, data, csrfToken);
-                if (!silencioso) alert('✅ Orden actualizada correctamente');
+                if (!silencioso) _showToast('Orden actualizada correctamente', 'success');
             }
             _afterMotoresPersistOk();
             _addToFeed('💾', `Orden ${data.folio} guardada`);
         } catch (error) {
             console.error(error);
-            if (!silencioso) alert('Error al guardar: ' + error.message);
+            if (!silencioso) _showToast('Error al guardar: ' + error.message, 'error');
         }
     }
 
@@ -1439,10 +1439,10 @@ const MotoresModule = (function() {
 
             _afterMotoresPersistOk();
             _cerrarModal();
-            alert('✅ Orden entregada a ventas');
+            _showToast('Orden entregada a ventas', 'success');
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
