@@ -786,12 +786,75 @@ const ComprasModule = (function() {
         return '';
     }
 
-    function _crearOrdenDesdeSolicitud(id, tipo) {
+    async function _crearOrdenDesdeSolicitud(id, tipo) {
         console.log('[Compras] Click en Crear Orden desde Solicitud', { id, tipo });
         // Precargar vinculación
         document.getElementById('vinculacionTipo').value = tipo;
         document.getElementById('vinculacionId').value = id;
         _nuevaOrden();
+
+        // Precargar datos de la orden vinculada
+        try {
+            let orden = null;
+            if (tipo === 'taller') {
+                orden = await tallerService.getById(id);
+            } else if (tipo === 'motor') {
+                orden = await motoresService.getById(id);
+            } else if (tipo === 'proyecto') {
+                orden = await proyectosService.getById(id);
+            }
+            if (orden) {
+                const nombre = orden.cliente_nombre || orden.cliente || '';
+                if (nombre) {
+                    const sel = document.getElementById('proveedorSelect');
+                    if (sel) {
+                        const opts = [...sel.options];
+                        const match = opts.find(o => o.value === nombre);
+                        if (match) sel.value = nombre;
+                    }
+                }
+                const dept = tipo === 'taller' ? 'Taller Electrónica' : tipo === 'motor' ? 'Taller Motores' : 'Automatización';
+                const deptSel = document.getElementById('departamentoSelect');
+                if (deptSel) deptSel.value = dept;
+
+                // Agregar items de refacciones/enlaces como líneas de compra
+                const items = [];
+                const enlaces = orden.refacciones_enlaces || orden.diagnostico_enlaces || [];
+                (enlaces || []).forEach(e => {
+                    items.push({
+                        desc: e.descripcion || e.desc || 'Refacción',
+                        sku: e.sku || '',
+                        qty: e.cantidad || 1,
+                        price: e.precio || e.costo_unitario || 0,
+                        link: e.link || ''
+                    });
+                });
+                if (items.length > 0) {
+                    const tbody = document.getElementById('itemsBody');
+                    if (tbody) {
+                        tbody.innerHTML = '';
+                        items.forEach(item => {
+                            _agregarItemRow();
+                            const lastRow = tbody.lastElementChild;
+                            if (lastRow) {
+                                const desc = lastRow.querySelector('.item-desc');
+                                const sku = lastRow.querySelector('.item-sku');
+                                const qty = lastRow.querySelector('.item-qty');
+                                const price = lastRow.querySelector('.item-price');
+                                const link = lastRow.querySelector('.item-link');
+                                if (desc) desc.value = item.desc;
+                                if (sku) sku.value = item.sku;
+                                if (qty) qty.value = item.qty;
+                                if (price) price.value = item.price;
+                                if (link) link.value = item.link;
+                            }
+                        });
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[Compras] Error precargando datos de solicitud:', e);
+        }
     }
 
     function _verProveedor(id) {

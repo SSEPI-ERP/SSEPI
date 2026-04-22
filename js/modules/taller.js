@@ -1104,10 +1104,38 @@ const TallerModule = (function() {
         return mapa[paso] || 'Nuevo';
     }
 
+    function _estadoPrioridad(estado) {
+        const mapa = {
+            'Nuevo': 1, 'Confirmado': 2, 'Diagnóstico': 2,
+            'En Espera': 3, 'En reparación': 3, 'Reparado': 4,
+            'Entregado': 5, 'Facturado': 5, 'Cancelado': 0
+        };
+        return mapa[estado] || 1;
+    }
+
+    function _toDateLocalInput(iso) {
+        if (!iso) return '';
+        try {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '';
+            const pad = (n) => String(n).padStart(2, '0');
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        } catch (_) { return ''; }
+    }
+    function _toDateInput(iso) {
+        if (!iso) return '';
+        try {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '';
+            const pad = (n) => String(n).padStart(2, '0');
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+        } catch (_) { return ''; }
+    }
+
     function _cargarDatosEnModal(orden) {
         document.getElementById('inpFolio').value = orden.folio || '';
         document.getElementById('selClient').value = orden.cliente_nombre || '';
-        document.getElementById('inpDateTime').value = orden.fecha_ingreso || '';
+        document.getElementById('inpDateTime').value = _toDateLocalInput(orden.fecha_ingreso);
         document.getElementById('inpClientRef').value = orden.referencia || '';
         document.getElementById('inpEquip').value = orden.equipo || '';
         document.getElementById('inpBrand').value = orden.marca || '';
@@ -1809,7 +1837,7 @@ const TallerModule = (function() {
             await _generarSolicitudCompra();
         }
 
-        _showToast(, 'success');
+        _showToast(`Etapa ${etapa} finalizada`, 'success');
         if (etapa < 5) _irPaso(etapa + 1);
     }
 
@@ -1831,6 +1859,21 @@ const TallerModule = (function() {
         data.fecha_inicio = fechaInicioOrden;
         data.fechas_etapas = fechasEtapas;
         data.recibido_por = document.getElementById('recibidoPor')?.value || '';
+
+        // Auto-avanzar estado según paso actual
+        if (!isNewOrder) {
+            const pasoEstado = _pasoToEstado(currentStep);
+            if (pasoEstado && data.estado !== pasoEstado) {
+                // Solo avanzar, nunca retroceder
+                const ordenActual = ordenes.find(o => String(o.id) === String(orderId));
+                const estadoActual = ordenActual?.estado || 'Nuevo';
+                const ordenPrioridad = _estadoPrioridad(estadoActual);
+                const nuevoPrioridad = _estadoPrioridad(pasoEstado);
+                if (nuevoPrioridad > ordenPrioridad) {
+                    data.estado = pasoEstado;
+                }
+            }
+        }
 
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
