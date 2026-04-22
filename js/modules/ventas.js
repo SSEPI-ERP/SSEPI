@@ -2591,8 +2591,51 @@ const VentasModule = (function() {
         _mostrarHistorial(id, tipo);
     }
 
-    function _editarVenta(id, tipo) {
-        _showToast(`Editar ${tipo} con id ${id}`, 'info');
+    async function _editarVenta(id, tipo) {
+        const item = [...ventas, ...cotizaciones].find(i => i.id === id);
+        if (!item) { _showToast('Registro no encontrado', 'error'); return; }
+
+        // Cargar datos en el wizard
+        calculadoraClienteActual = {
+            id: item.cliente_id || '',
+            nombre: item.cliente || '',
+            email: item.email || '',
+            telefono: item.telefono || '',
+            rfc: item.rfc || ''
+        };
+        compraActual = null;
+        ventasWizardCerebro = item.cerebro_registro || null;
+
+        // Reconstruir componentes desde items
+        calculadoraComponentes = (item.items || []).map(i => ({
+            nombre: i.descripcion || i.desc || '',
+            cantidad: i.cantidad || i.qty || 1,
+            costo_unitario: i.precio_unitario || i.price || 0,
+            subtotal: i.importe || (i.cantidad || 1) * (i.precio_unitario || 0)
+        }));
+
+        // Abrir wizard en paso 2 (para editar componentes/costos)
+        wizardPaso = 2;
+        ventasDraftSessionKey = null;
+        var modal = document.getElementById('calculadoraModal');
+        if (!modal) return;
+        await _renderWizardPaso(2);
+        modal.classList.add('active');
+        _bindWizardEvents();
+
+        // Pre-llenar paso 1 fields (se usarán al guardar)
+        setTimeout(() => {
+            const clienteSel = document.getElementById('wizardClienteSelect');
+            const fechaIn = document.getElementById('wizardFechaIngreso');
+            const nombreProd = document.getElementById('wizardNombreProducto');
+            const falla = document.getElementById('wizardFallaReportada');
+            if (clienteSel && calculadoraClienteActual?.id) clienteSel.value = calculadoraClienteActual.id;
+            if (fechaIn) fechaIn.value = item.fecha || '';
+            if (nombreProd) nombreProd.value = item.cerebro_registro?.producto_servicio || '';
+            if (falla) falla.value = item.cerebro_registro?.falla_reportada || '';
+        }, 100);
+
+        _showToast('Editando ' + (tipo || 'registro') + ': ' + (item.folio || ''), 'info');
     }
 
     async function _reenviarCotizacion(id) {

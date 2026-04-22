@@ -1892,6 +1892,36 @@ const TallerModule = (function() {
             }
             _afterTallerPersistOk();
             _addToFeed('💾', `Orden ${data.folio} guardada`);
+
+            // Notificar a ventas: actualizar estado de la cotización vinculada
+            if (data.estado && data.estado !== 'Nuevo' && orderId) {
+                try {
+                    const cotizacionesService = createDataService('cotizaciones');
+                    const { data: cotizaciones } = await window.supabase
+                        .from('cotizaciones')
+                        .select('id, folio, estado')
+                        .eq('orden_origen_id', orderId)
+                        .limit(1);
+                    if (cotizaciones && cotizaciones.length > 0) {
+                        const cot = cotizaciones[0];
+                        const estadoMap = {
+                            'Diagnóstico': 'cotizacion_en_proceso',
+                            'En Espera': 'cotizacion_en_proceso',
+                            'En reparación': 'cotizacion_en_proceso',
+                            'Reparado': 'cotizacion_autorizada',
+                            'Entregado': 'venta_cerrada',
+                            'Facturado': 'venta_cerrada'
+                        };
+                        const nuevoEstadoVentas = estadoMap[data.estado];
+                        if (nuevoEstadoVentas && cot.estado !== nuevoEstadoVentas) {
+                            await cotizacionesService.update(cot.id, { estado: nuevoEstadoVentas, updated_at: new Date().toISOString() }, csrfToken);
+                            _addToFeed('📊', `Cotización ${cot.folio} actualizada a ${nuevoEstadoVentas}`);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[Taller] Error notificando a ventas:', e);
+                }
+            }
         } catch (error) {
             console.error(error);
             if (!silencioso) _showToast('Error al guardar: ' + error.message, 'error');

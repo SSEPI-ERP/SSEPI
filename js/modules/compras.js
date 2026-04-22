@@ -540,8 +540,48 @@ const ComprasModule = (function() {
         `;
     }
 
-    function _editarOrden(id) {
-        _showToast('Función de edición pendiente de implementación', 'info');
+    async function _editarOrden(id) {
+        const compra = compras.find(c => c.id === id);
+        if (!compra) { _showToast('Orden no encontrada', 'error'); return; }
+        currentCompra = compra;
+        compraId = id;
+        isNewCompra = false;
+        comprasDraftSessionKey = null;
+        const modal = document.getElementById('nuevaOrdenModal');
+        if (!modal) return;
+        // Cargar datos en el formulario
+        document.getElementById('proveedorSelect').value = compra.proveedor || '';
+        document.getElementById('departamentoSelect').value = compra.departamento || 'Taller Electrónica';
+        document.getElementById('fechaRequerida').value = compra.fecha_requerida || '';
+        document.getElementById('prioridadSelect').value = compra.prioridad || 'Normal';
+        document.getElementById('vinculacionTipo').value = compra.vinculacion?.tipo || '';
+        document.getElementById('vinculacionId').value = compra.vinculacion?.id || '';
+        // Cargar items
+        const tbody = document.getElementById('itemsBody');
+        if (tbody) {
+            tbody.innerHTML = '';
+            (compra.items || []).forEach(item => {
+                _agregarItemRow();
+                const lastRow = tbody.lastElementChild;
+                if (lastRow) {
+                    const desc = lastRow.querySelector('.item-desc');
+                    const sku = lastRow.querySelector('.item-sku');
+                    const qty = lastRow.querySelector('.item-qty');
+                    const price = lastRow.querySelector('.item-price');
+                    const link = lastRow.querySelector('.item-link');
+                    if (desc) desc.value = item.desc || item.descripcion || '';
+                    if (sku) sku.value = item.sku || '';
+                    if (qty) qty.value = item.qty || item.cantidad || 1;
+                    if (price) price.value = item.price || item.precio_unitario || 0;
+                    if (link) link.value = item.link || '';
+                }
+            });
+            if (!(compra.items && compra.items.length > 0)) _agregarItemRow();
+        }
+        // Cerrar detalle modal si está abierto
+        const detalleModal = document.getElementById('detalleModal');
+        if (detalleModal) detalleModal.classList.remove('active');
+        modal.classList.add('active');
     }
 
     // ==================== NUEVA ORDEN ====================
