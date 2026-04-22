@@ -825,10 +825,21 @@ const VentasModule = (function() {
                 .single();
 
             if (error) {
+                // Si falla por columna faltante, intentar sin la FK de cotizacion
+                if (columnName === 'cotizacion_id' && (error.message?.includes('does not exist') || error.code === '42703')) {
+                    delete row.cotizacion_id;
+                    row.descripcion = `[cotización ${id}] ${descripcion}`;
+                    const { data: data2, error: error2 } = await window.supabase
+                        .from('orden_historial')
+                        .insert(row)
+                        .select()
+                        .single();
+                    if (error2) { console.warn('[Ventas] Error insertando evento (fallback):', error2); return null; }
+                    return data2;
+                }
                 console.warn('[Ventas] Error insertando evento en historial:', error);
             } else {
                 console.log(`[Ventas] Evento registrado en historial: ${evento} para ${tipo} ${id}`);
-                // Disparar actualización del timeline si el modal está abierto
                 const modalAbierto = document.getElementById('historialModal');
                 if (modalAbierto && modalAbierto.classList.contains('active')) {
                     _mostrarHistorial(id, tipo);
@@ -931,7 +942,6 @@ const VentasModule = (function() {
                     // Si el modal de historial está abierto para este ID, refrescar
                     const modalAbierto = document.getElementById('historialModal');
                     if (modalAbierto && modalAbierto.classList.contains('active')) {
-                        // Determinar tipo basado en qué campo tiene el ID
                         const tipo = nueva.cotizacion_id ? 'cotizacion' : nueva.orden_taller_id ? 'taller' : nueva.orden_motor_id ? 'motor' : 'proyecto';
                         _mostrarHistorial(idAfectado, tipo);
                     }
@@ -2446,11 +2456,46 @@ const VentasModule = (function() {
 
         try {
             // Fetch historial sin join (PostgREST requiere FK para joins embebidos)
-            const { data, error } = await window.supabase
+            let data, error;
+            // Intentar con la columna específica primero
+            const query = window.supabase
                 .from('orden_historial')
-                .select('*')
-                .eq(columnName, id)
-                .order('creado_en', { ascending: false });
+                .select('*');
+
+            if (columnName === 'cotizacion_id') {
+                // cotizacion_id puede no existir — buscar por descripción como fallback
+                const res = await query
+                    .or(`cotizacion_id.eq.${id},descripcion.ilike.%${id}%`)
+                    .order('creado_en', { ascending: false });
+                data = res.data;
+                error = res.error;
+                // Si falla por columna faltante, buscar solo por descripción
+                if (error && (error.message?.includes('does not exist') || error.code === '42703')) {
+                    const fallback = await window.supabase
+                        .from('orden_historial')
+                        .select('*')
+                        .ilike('descripcion', `%${id}%`)
+                        .order('created_at', { ascending: false });
+                    data = fallback.data;
+                    error = fallback.error;
+                }
+            } else {
+                const res = await query
+                    .eq(columnName, id)
+                    .order('creado_en', { ascending: false });
+                data = res.data;
+                error = res.error;
+                // Fallback si creado_en no existe
+                if (error && (error.message?.includes('does not exist') || error.code === '42703')) {
+                    const fallback = await window.supabase
+                        .from('orden_historial')
+                        .select('*')
+                        .eq(columnName, id)
+                        .order('created_at', { ascending: false });
+                    data = fallback.data;
+                    error = fallback.error;
+                }
+            }
 
             if (error) throw error;
 
@@ -2484,7 +2529,7 @@ const VentasModule = (function() {
                     ` : `
                         <div style="max-height:50vh; overflow-y:auto;">
                             ${events.map(e => {
-                                const fecha = new Date(e.creado_en).toLocaleString('es-MX');
+                                const fecha = new Date(e.creado_en || e.created_at).toLocaleString('es-MX');
                                 const usuario = e.creado_por_usuario?.nombre || e.creado_por_usuario?.email?.split('@')[0] || 'Sistema';
                                 const iconMap = {
                                     'creacion': '🆕', 'cotizacion_guardada': '💾', 'cotizacion_enviada': '📧',
