@@ -794,10 +794,19 @@ const MotoresModule = (function() {
         return mapa[paso] || 'Nuevo';
     }
 
+    function _estadoPrioridad(estado) {
+        const mapa = {
+            'Nuevo': 1, 'Confirmado': 2, 'Diagnóstico': 2,
+            'En Espera': 3, 'En reparación': 3, 'Reparado': 4,
+            'Entregado': 5, 'Facturado': 5, 'Cancelado': 0
+        };
+        return mapa[estado] || 1;
+    }
+
     function _cargarDatosEnModal(orden) {
         document.getElementById('inpFolio').value = orden.folio || '';
         document.getElementById('selClient').value = orden.cliente_nombre || '';
-        document.getElementById('inpDateTime').value = orden.fecha_ingreso || '';
+        document.getElementById('inpDateTime').value = orden.fecha_ingreso ? orden.fecha_ingreso.includes('T') ? orden.fecha_ingreso : orden.fecha_ingreso + 'T00:00' : '';
         document.getElementById('inpClientRef').value = orden.referencia || '';
         document.getElementById('inpMotor').value = orden.motor || '';
         document.getElementById('inpBrand').value = orden.marca || '';
@@ -1345,6 +1354,18 @@ const MotoresModule = (function() {
         data.fecha_inicio = fechaInicioOrden;
         data.fechas_etapas = fechasEtapas;
         data.recibido_por = document.getElementById('recibidoPor')?.value || '';
+
+        // Auto-avanzar estado según paso actual
+        if (!isNewOrder) {
+            const pasoEstado = _pasoToEstado(currentStep);
+            if (pasoEstado) {
+                const ordenActual = ordenesMotores.find(o => String(o.id) === String(orderId));
+                const estadoActual = ordenActual?.estado || 'Nuevo';
+                if (_estadoPrioridad(pasoEstado) > _estadoPrioridad(estadoActual)) {
+                    data.estado = pasoEstado;
+                }
+            }
+        }
 
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
