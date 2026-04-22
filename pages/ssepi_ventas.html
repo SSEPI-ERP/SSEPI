@@ -27,6 +27,7 @@
     <script src="/js/core/email-service.js"></script>
     <script src="/js/core/folio-formats.js"></script>
     <script type="module" src="/js/modules/ventas.js"></script>
+<script src="/js/core/ssepi-toast.js"></script>
 </head>
 <body class="page-ventas nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -532,5 +533,6 @@
             })();
         });
     </script>
+<div id="toastContainer" style="position:fixed;top:20px;right:20px;z-index:10000;display:flex;flex-direction:column;gap:8px;"></div>
 </body>
 </html>

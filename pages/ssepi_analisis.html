@@ -31,6 +31,7 @@
     <script type="module" src="/js/modules/analisis-automatizacion.js"></script>
     <script type="module" src="/js/modules/analisis-proyectos.js"></script>
     <script type="module" src="/js/modules/analisis.js"></script>
+<script src="/js/core/ssepi-toast.js"></script>
 </head>
 <body class="page-analisis nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -403,5 +404,6 @@
             })();
         });
     </script>
+<div id="toastContainer" style="position:fixed;top:20px;right:20px;z-index:10000;display:flex;flex-direction:column;gap:8px;"></div>
 </body>
 </html>
