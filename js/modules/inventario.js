@@ -652,7 +652,7 @@ const InventarioModule = (function() {
             _cerrarModal();
         } catch (error) {
             console.error(error);
-            alert('Error al guardar: ' + error.message);
+            _showToast('Error al guardar: ' + error.message, 'error');
         }
     }
 
@@ -672,7 +672,7 @@ const InventarioModule = (function() {
             _cerrarModal();
         } catch (error) {
             console.error(error);
-            alert('Error al eliminar: ' + error.message);
+            _showToast('Error al eliminar: ' + error.message, 'error');
         }
     }
 
@@ -785,9 +785,9 @@ const InventarioModule = (function() {
         if (progress) progress.style.display = 'none';
         input.value = '';
         if (errores.length) {
-            alert(`✅ Archivos importados: ${okFiles}\n❌ Con error: ${errores.length}\n\n- ${errores.slice(0, 8).join('\n- ')}${errores.length > 8 ? '\n- ...' : ''}`);
+            _showToast(`✅ Archivos importados: ${okFiles}\n❌ Con error: ${errores.length}\n\n- ${errores.slice(0, 8).join('\n- ')}${errores.length > 8 ? '\n- ...' : ''}`, 'info');
         } else {
-            alert(`✅ Archivos importados: ${okFiles}`);
+            _showToast(`✅ Archivos importados: ${okFiles}`, 'info');
         }
     }
 
@@ -808,7 +808,7 @@ const InventarioModule = (function() {
         if (!file) return;
         const name = (file.name || '').toLowerCase();
         if (name.endsWith('.pdf') || file.type === 'application/pdf') {
-            alert('Para importar datos use Excel (.xlsx, .xls) o CSV. El PDF se acepta solo como referencia.');
+            _showToast('Para importar datos use Excel (.xlsx, .xls) o CSV. El PDF se acepta solo como referencia.', 'info');
             e.target.value = '';
             return;
         }
@@ -828,7 +828,7 @@ const InventarioModule = (function() {
                     const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
                     const raw = json.filter(fila => fila.some(celda => celda != null && celda !== ''));
                     if (raw.length === 0) {
-                        alert('El archivo no contiene datos válidos. Use una hoja con columnas como Código/SKU, Descripción/Nombre, Existencia/Stock, Ubicación, Costo, Precio.');
+                        _showToast('El archivo no contiene datos válidos. Use una hoja con columnas como Código/SKU, Descripción/Nombre, Existencia/Stock, Ubicación, Costo, Precio.', 'info');
                         return;
                     }
                     excelColumnMap = _detectarColumnas(raw[0]);
@@ -846,12 +846,12 @@ const InventarioModule = (function() {
                         document.getElementById('processImportBtn').style.display = 'flex';
                         document.getElementById('processImportBtn').innerHTML = 'Procesar ' + excelData.length + ' productos';
                     } else {
-                        alert('No se encontró fila de encabezados. Incluya columnas como: Código/SKU, Descripción/Nombre, Existencia, Ubicación, Costo, Precio.');
+                        _showToast('No se encontró fila de encabezados. Incluya columnas como: Código/SKU, Descripción/Nombre, Existencia, Ubicación, Costo, Precio.', 'info');
                     }
                 }
             } catch (ex) {
                 console.error(ex);
-                alert('Error al leer el archivo');
+                _showToast('Error al leer el archivo', 'error');
             }
         };
         reader.readAsArrayBuffer(file);
@@ -862,7 +862,7 @@ const InventarioModule = (function() {
         if (!file) return;
         const name = (file.name || '').toLowerCase();
         if (name.endsWith('.pdf') || file.type === 'application/pdf') {
-            alert('Para importar datos use Excel (.xlsx, .xls) o CSV. El PDF se acepta solo como referencia.');
+            _showToast('Para importar datos use Excel (.xlsx, .xls) o CSV. El PDF se acepta solo como referencia.', 'info');
             e.target.value = '';
             return;
         }
@@ -887,7 +887,7 @@ const InventarioModule = (function() {
                 }
             } catch (ex) {
                 console.error(ex);
-                alert('Error al leer el archivo');
+                _showToast('Error al leer el archivo', 'error');
             }
             document.getElementById('fileInput').value = '';
         };
@@ -951,7 +951,7 @@ const InventarioModule = (function() {
             progressText.textContent = `Procesando ${i+1} de ${filas.length}...`;
             await new Promise(r => setTimeout(r, 10));
         }
-        alert(`✅ Importados: ${importados}\n⚠️ Omitidos: ${omitidos}\n❌ Errores: ${errores.length}`);
+        _showToast(`✅ Importados: ${importados}\n⚠️ Omitidos: ${omitidos}\n❌ Errores: ${errores.length}`, 'info');
         progress.style.display = 'none';
     }
 
@@ -974,10 +974,10 @@ const InventarioModule = (function() {
             for (let p of datosDemo) {
                 await inventarioService.insert(p, csrfToken);
             }
-            alert('✅ 5 productos de ejemplo cargados');
+            _showToast('5 productos de ejemplo cargados', 'success');
         } catch (e) {
             console.error(e);
-            alert('Error cargando datos iniciales');
+            _showToast('Error cargando datos iniciales', 'error');
         }
     }
 

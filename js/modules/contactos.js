@@ -685,9 +685,9 @@ const ContactosModule = (function() {
 
     // ==================== WHATSAPP ====================
     function _enviarWhatsApp() {
-        if (!contactoSeleccionado) { alert('Seleccione un contacto'); return; }
+        if (!contactoSeleccionado) { _showToast('Seleccione un contacto', 'warning'); return; }
         const telefono = contactoSeleccionado.telefono;
-        if (!telefono) { alert('El contacto no tiene teléfono'); return; }
+        if (!telefono) { _showToast('El contacto no tiene teléfono', 'info'); return; }
         const numero = telefono.replace(/[^\d]/g, '');
         const mensaje = `Hola ${contactoSeleccionado.nombre}, contacto desde SSEPI.`;
         window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank');
@@ -697,7 +697,7 @@ const ContactosModule = (function() {
     // ==================== GUARDAR NUEVO CONTACTO ====================
     async function _saveContact() {
         const nombre = document.getElementById('inputNombre')?.value?.trim();
-        if (!nombre) { alert('El nombre es obligatorio'); return; }
+        if (!nombre) { _showToast('El nombre es obligatorio', 'info'); return; }
         const data = {
             nombre: nombre.toUpperCase(),
             empresa: document.getElementById('inputEmpresa')?.value?.trim() || '',

@@ -430,7 +430,7 @@ const ContabilidadModule = (function() {
         const nombre = document.getElementById('empleadoNombre').value.trim();
         const puesto = document.getElementById('empleadoPuesto').value.trim();
         const sueldoDiario = parseFloat(document.getElementById('empleadoSueldoDiario').value);
-        if (!nombre || !puesto || !sueldoDiario) { alert('Por favor complete todos los campos requeridos'); return; }
+        if (!nombre || !puesto || !sueldoDiario) { _showToast('Por favor complete todos los campos requeridos', 'info'); return; }
         const empData = {
             nombre, puesto, sueldo_diario: sueldoDiario,
             email: document.getElementById('empleadoEmail').value.trim() || '',
@@ -443,20 +443,20 @@ const ContabilidadModule = (function() {
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
             await empleadosService.insert(empData, csrfToken);
-            alert('✅ Empleado guardado exitosamente');
+            _showToast('Empleado guardado exitosamente', 'success');
             _closeEmployeeModal();
         } catch(error) {
             console.error(error);
-            alert('❌ Error al guardar: ' + error.message);
+            _showToast('❌ Error al guardar: ' + error.message, 'error');
         }
     }
 
     async function _saveNominaPayment() {
-        if (!currentEmployee) { alert('Seleccione un empleado primero'); return; }
+        if (!currentEmployee) { _showToast('Seleccione un empleado primero', 'warning'); return; }
         const fechaInicio = document.getElementById('nominaFechaInicio').value;
         const fechaFin = document.getElementById('nominaFechaFin').value;
         const totalPago = parseFloat(document.getElementById('totalNomina').textContent.replace(/[$,]/g,''));
-        if (!fechaInicio || !fechaFin) { alert('Complete las fechas del período'); return; }
+        if (!fechaInicio || !fechaFin) { _showToast('Complete las fechas del período', 'info'); return; }
         const diasCheckboxes = document.querySelectorAll('input[name="dias"]:checked');
         const diasTrabajados = Array.from(diasCheckboxes).map(cb => cb.value);
         const pagoData = {
@@ -489,11 +489,11 @@ const ContabilidadModule = (function() {
             }).then(r => {
                 if (!r.ok) console.warn('[COI queue] Nómina no encolada:', r.error?.message || r.error || r);
             });
-            alert('✅ Pago de nómina guardado');
+            _showToast('Pago de nómina guardado', 'success');
             _loadNomina();
         } catch(error) {
             console.error(error);
-            alert('❌ Error al guardar: ' + error.message);
+            _showToast('❌ Error al guardar: ' + error.message, 'error');
         }
     }
 
@@ -512,8 +512,8 @@ const ContabilidadModule = (function() {
     }
 
     function _generateNominaPDF() {
-        if (!currentEmployee) { alert('Seleccione un empleado'); return; }
-        alert('Funcionalidad: Recibo de nómina en PDF (próximamente)');
+        if (!currentEmployee) { _showToast('Seleccione un empleado', 'warning'); return; }
+        _showToast('Funcionalidad: Recibo de nómina en PDF (próximamente)', 'info');
     }
 
     // ==================== IMPUESTOS ====================
@@ -600,7 +600,7 @@ const ContabilidadModule = (function() {
         const fecha = document.getElementById('movimientoFecha').value;
         const metodo = document.getElementById('movimientoMetodo').value;
         const notas = document.getElementById('movimientoNotas').value.trim();
-        if (!concepto || !monto || !fecha) { alert('Complete campos requeridos'); return; }
+        if (!concepto || !monto || !fecha) { _showToast('Complete campos requeridos', 'info'); return; }
         const mov = {
             concepto, tipo, monto, fecha,
             metodo, notas: notas || '',
@@ -619,7 +619,7 @@ const ContabilidadModule = (function() {
             }).then(r => {
                 if (!r.ok) console.warn('[COI queue] Bancos no encolado:', r.error?.message || r.error || r);
             });
-            alert('✅ Movimiento guardado');
+            _showToast('Movimiento guardado', 'success');
             document.getElementById('movimientoConcepto').value = '';
             document.getElementById('movimientoMonto').value = '';
             document.getElementById('movimientoNotas').value = '';
@@ -627,7 +627,7 @@ const ContabilidadModule = (function() {
             document.querySelectorAll('.concepto-btn').forEach(b => b.classList.remove('selected'));
         } catch(e) {
             console.error(e);
-            alert('❌ Error: ' + e.message);
+            _showToast('❌ Error: ' + e.message, 'error');
         }
     }
 

@@ -1370,10 +1370,11 @@ const MotoresModule = (function() {
     }
 
     function _recolectarDatos() {
+        const nullIfEmpty = (v) => (v && v.trim()) ? v.trim() : null;
         return {
             cliente_nombre: document.getElementById('selClient').value,
             referencia: document.getElementById('inpClientRef').value,
-            fecha_ingreso: document.getElementById('inpDateTime').value,
+            fecha_ingreso: nullIfEmpty(document.getElementById('inpDateTime').value),
             motor: document.getElementById('inpMotor').value,
             marca: document.getElementById('inpBrand').value,
             modelo: document.getElementById('inpModel').value,
@@ -1394,7 +1395,7 @@ const MotoresModule = (function() {
             notas_internas: document.getElementById('internalNotes').value,
             notas_generales: document.getElementById('generalNotes').value,
             horas_estimadas: parseFloat(document.getElementById('horasEstimadas').value) || 0,
-            fecha_entrega: document.getElementById('fechaEntrega').value,
+            fecha_entrega: nullIfEmpty(document.getElementById('fechaEntrega').value),
             recibe_nombre: document.getElementById('recibeNombre').value,
             recibe_identificacion: document.getElementById('recibeIdentificacion').value,
             factura_numero: document.getElementById('facturaNumero').value,

@@ -339,7 +339,7 @@ async function pagarCompra(compraId) {
     const montoStr = prompt('Monto a pagar (MXN):');
     if (!montoStr) return;
     const monto = Number(String(montoStr).replace(/[$,]/g, ''));
-    if (!Number.isFinite(monto) || monto <= 0) { alert('Monto inválido.'); return; }
+    if (!Number.isFinite(monto) || monto <= 0) { _showToast('Monto inválido.', 'info'); return; }
     const metodo = prompt('Método (transferencia/efectivo/tarjeta):', 'transferencia') || 'transferencia';
     const concepto = `Pago compra ${compraId ? String(compraId).slice(-6) : ''}`.trim();
 
@@ -353,10 +353,10 @@ async function pagarCompra(compraId) {
             metodo,
             notas: `compra_id=${compraId}`
         }, csrfToken);
-        alert('✅ Pago registrado (egreso).');
+        _showToast('Pago registrado (egreso).', 'success');
         await _renderCobranza();
     } catch (e) {
-        alert('Error: ' + (e?.message || e));
+        _showToast('Error: ' + (e?.message || e, 'error'));
     }
 }
 

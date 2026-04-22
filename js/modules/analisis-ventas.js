@@ -211,7 +211,7 @@ const AnalisisVentas = (function() {
         auth.getCurrentProfile().then(profile => {
             if (profile.rol !== 'admin' && profile.rol !== 'superadmin') return;
             const JsPDF = window.jspdf?.jsPDF;
-            if (!JsPDF) { alert('No se puede generar PDF.'); return; }
+            if (!JsPDF) { _showToast('No se puede generar PDF.', 'info'); return; }
             const doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const t = getReportTotals();
             doc.setFontSize(16);

@@ -446,7 +446,7 @@
         prom.then(function(r) {
             if (r.error) throw r.error;
             return loadHojaFilas();
-        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
     }
 
     function deleteHojaRowFromTr(tr) {
@@ -462,7 +462,7 @@
         supabase().from('calculadora_hoja_filas').delete().eq('id', id).then(function(r) {
             if (r.error) throw r.error;
             return loadHojaFilas();
-        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
     }
 
     function appendEmptyHojaRow() {
@@ -470,7 +470,7 @@
         if (!tbody) return;
         var first = tbody.querySelector('tr[data-hoja-id]');
         if (first && first.getAttribute('data-hoja-id') === 'new') {
-            alert('Ya hay una fila nueva sin guardar.');
+            _showToast('Ya hay una fila nueva sin guardar.', 'info');
             return;
         }
         if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
@@ -618,7 +618,7 @@
         var activo = document.getElementById('modalCalcActivo');
         var id = (idInp && idInp.value) ? idInp.value.trim() : '';
         var nom = (nombre && nombre.value) ? nombre.value.trim() : '';
-        if (!nom) { alert('El nombre es obligatorio.'); return; }
+        if (!nom) { _showToast('El nombre es obligatorio.', 'info'); return; }
         var payload = { nombre: nom, tipo: tipo ? tipo.value.trim() || null : null, funciones: funciones ? funciones.value.trim() || null : null, activo: activo ? activo.checked : true, updated_at: new Date().toISOString() };
         var prom;
         if (id) {
@@ -632,7 +632,7 @@
             if (r.error) throw r.error;
             closeModalCalculadora();
             loadCalculadoras().then(function() { renderFunciones(); fillSelectCalculadoras('modalCostoCalculadora'); fillSelectCalculadoras('modalClienteCalculadora'); updateAnalisis(); });
-        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
     }
     function deleteModalCalculadora() {
         var idInp = document.getElementById('modalCalcId');
@@ -650,7 +650,7 @@
             fillSelectCalculadoras('modalCostoCalculadora');
             fillSelectCalculadoras('modalClienteCalculadora');
             updateAnalisis();
-        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
     }
     function closeModalCalculadora() {
         var modal = document.getElementById('modalCalc');
@@ -700,7 +700,7 @@
         var calcId = calcSel && calcSel.value ? calcSel.value : (calculadorasList[0] && calculadorasList[0].id);
         var conc = (concepto && concepto.value) ? concepto.value.trim() : '';
         var costVal = (costo && costo.value) ? parseFloat(costo.value) : 0;
-        if (!conc) { alert('El concepto es obligatorio.'); return; }
+        if (!conc) { _showToast('El concepto es obligatorio.', 'info'); return; }
         if (isNaN(costVal)) costVal = 0;
         var payload = { calculadora_id: calcId, concepto: conc, costo: costVal, moneda: (moneda && moneda.value) ? moneda.value.trim() : 'MXN', updated_at: new Date().toISOString() };
         var prom;
@@ -714,7 +714,7 @@
             if (r.error) throw r.error;
             closeModalCosto();
             loadCostos().then(function() { renderCostos(); updateAnalisis(); renderSimAutoTable(); syncAutoGasDefault(); });
-        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
     }
     function deleteModalCosto() {
         var idInp = document.getElementById('modalCostoId');
@@ -724,7 +724,7 @@
             if (r.error) throw r.error;
             closeModalCosto();
             loadCostos().then(function() { renderCostos(); updateAnalisis(); renderSimAutoTable(); syncAutoGasDefault(); });
-        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
     }
     function closeModalCosto() {
         var modal = document.getElementById('modalCosto');
@@ -848,7 +848,7 @@
         var km = Number(kmInput && kmInput.value ? kmInput.value : 0);
         var horas = Number(horasInput && horasInput.value ? horasInput.value : 0);
 
-        if (!nom) { alert('El nombre del cliente es obligatorio.'); return; }
+        if (!nom) { _showToast('El nombre del cliente es obligatorio.', 'info'); return; }
 
         var payload = {
             nombre_cliente: nom,
@@ -872,7 +872,7 @@
                 renderTabuladorViaticos();
                 renderClientesTabuladorTabla();
             });
-        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
     }
 
     function deleteModalTabuladorCliente() {
@@ -887,7 +887,7 @@
                 renderTabuladorViaticos();
                 renderClientesTabuladorTabla();
             });
-        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
     }
 
     function closeModalTabuladorCliente() {
@@ -902,7 +902,7 @@
         var id = (idInp && idInp.value) ? idInp.value.trim() : '';
         var calcId = calcSel && calcSel.value ? calcSel.value : (calculadorasList[0] && calculadorasList[0].id);
         var nom = (nombre && nombre.value) ? nombre.value.trim() : '';
-        if (!nom) { alert('El nombre del cliente es obligatorio.'); return; }
+        if (!nom) { _showToast('El nombre del cliente es obligatorio.', 'info'); return; }
         var payload = { calculadora_id: calcId, cliente_nombre: nom, cliente_email: (email && email.value) ? email.value.trim() : null, updated_at: new Date().toISOString() };
         var prom;
         if (id) {
@@ -916,7 +916,7 @@
             if (r.error) throw r.error;
             closeModalCliente();
             loadClientes().then(function() { renderClientes(); updateAnalisis(); });
-        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
     }
     function deleteModalCliente() {
         var idInp = document.getElementById('modalClienteId');
@@ -926,7 +926,7 @@
             if (r.error) throw r.error;
             closeModalCliente();
             loadClientes().then(function() { renderClientes(); updateAnalisis(); });
-        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
     }
     function closeModalCliente() {
         var modal = document.getElementById('modalCliente');
@@ -1010,7 +1010,7 @@
             updated_at: new Date().toISOString()
         };
 
-        if (!payload.descripcion) { alert('La descripción es obligatoria.'); return; }
+        if (!payload.descripcion) { _showToast('La descripción es obligatoria.', 'info'); return; }
 
         var prom;
         if (id) {
@@ -1024,7 +1024,7 @@
             if (r.error) throw r.error;
             closeModalBOM();
             loadBOM().then(function() { renderBOM(); fillBOMFiltros(); });
-        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
     }
 
     function deleteModalBOM() {
@@ -1036,7 +1036,7 @@
             if (r.error) throw r.error;
             closeModalBOM();
             loadBOM().then(function() { renderBOM(); fillBOMFiltros(); });
-        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
     }
 
     function closeModalBOM() {
@@ -1116,7 +1116,7 @@
             updated_at: new Date().toISOString()
         };
 
-        if (!payload.nombre) { alert('El nombre del servicio es obligatorio.'); return; }
+        if (!payload.nombre) { _showToast('El nombre del servicio es obligatorio.', 'info'); return; }
 
         var prom;
         if (id) {
@@ -1130,7 +1130,7 @@
             if (r.error) throw r.error;
             closeModalServicio();
             loadServicios().then(renderServicios);
-        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
     }
 
     function deleteModalServicio() {
@@ -1142,7 +1142,7 @@
             if (r.error) throw r.error;
             closeModalServicio();
             loadServicios().then(renderServicios);
-        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
+        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
     }
 
     function closeModalServicio() {
@@ -1211,11 +1211,11 @@
 
     function procesarImportacion() {
         if (!excelDataPreview || !excelDataPreview.length) {
-            alert('Selecciona primero un archivo Excel.');
+            _showToast('Selecciona primero un archivo Excel.', 'info');
             return;
         }
         if (!supabase()) {
-            alert('Supabase no disponible.');
+            _showToast('Supabase no disponible.', 'info');
             return;
         }
         var headers = excelDataPreview[0] || [];
@@ -1263,7 +1263,7 @@
                 hojaMsg = ' Filas en hoja Excel: ' + hojaN + '.';
                 if (hojaS) hojaMsg += ' Hojas con columnas detectadas: ' + hojaS + '.';
             }
-            alert('Importación completada. Calculadoras — agregados: ' + added + ', actualizados: ' + updated + '.' + hojaMsg);
+            _showToast('Importación completada. Calculadoras — agregados: ' + added + ', actualizados: ' + updated + '.' + hojaMsg, 'error');
             excelDataPreview = null;
             excelSheetsPreview = null;
             var impSel = document.getElementById('importSheetSelect');
@@ -1284,7 +1284,7 @@
             return loadHojaFilas();
         }).catch(function(err) {
             console.error(err);
-            alert('Error al importar: ' + (err.message || err));
+            _showToast('Error al importar: ' + (err.message || err, 'error'));
         });
     }
 
@@ -1341,9 +1341,9 @@
 
     function runLaboratorioSim() {
         var CE = window.CostosEngine;
-        if (!CE) { alert('Motor CostosEngine no cargado.'); return; }
+        if (!CE) { _showToast('Motor CostosEngine no cargado.', 'info'); return; }
         var calc = findCalculadoraNombre('laboratorio');
-        if (!calc) { alert('No hay calculadora "Laboratorio (electrónica)". Importa formulas o créala.'); return; }
+        if (!calc) { _showToast('No hay calculadora "Laboratorio (electrónica)". Importa formulas o créala.', 'info'); return; }
         var m = costosMapByCalculadoraId(calc.id);
         CE.applyConfig({
             gasolina: m.gasolina != null ? m.gasolina : CE.CONFIG.gasolina,
@@ -1368,7 +1368,7 @@
 
     function runAutomatizacionSim() {
         var calc = findCalculadoraNombre('automatiz');
-        if (!calc) { alert('No hay calculadora Automatización.'); return; }
+        if (!calc) { _showToast('No hay calculadora Automatización.', 'info'); return; }
         var m = costosMapByCalculadoraId(calc.id);
         var lines = 0;
         document.querySelectorAll('#simAutoBody tr[data-tarifa-i]').forEach(function(tr) {

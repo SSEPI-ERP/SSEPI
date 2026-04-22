@@ -137,9 +137,9 @@ async function _saveNomModal() {
     const pi = document.getElementById('nomInpDesde')?.value;
     const pf = document.getElementById('nomInpHasta')?.value;
     const fp = document.getElementById('nomInpFechaPago')?.value;
-    if (!nombre) { alert('Indica el nombre del empleado.'); return; }
-    if (!pi || !pf) { alert('Indica el periodo (desde / hasta).'); return; }
-    if (!fp) { alert('Indica la fecha de pago.'); return; }
+    if (!nombre) { _showToast('Indica el nombre del empleado.', 'info'); return; }
+    if (!pi || !pf) { _showToast('Indica el periodo (desde / hasta).', 'info'); return; }
+    if (!fp) { _showToast('Indica la fecha de pago.', 'info'); return; }
     const dias = parseInt(document.getElementById('nomInpDias')?.value, 10);
     const sueldo = parseFloat(document.getElementById('nomInpSueldo')?.value) || 0;
     const hex = parseFloat(document.getElementById('nomInpExtras')?.value) || 0;
@@ -181,10 +181,10 @@ async function _saveNomModal() {
         });
         _closeNomModal();
         await refreshList();
-        alert('Pago de nómina guardado.');
+        _showToast('Pago de nómina guardado.', 'info');
     } catch (e) {
         _addToFeed('❌', 'Error guardando: ' + (e?.message || e), 'error');
-        alert('Error: ' + (e?.message || e));
+        _showToast('Error: ' + (e?.message || e, 'error'));
     }
 }
 

@@ -707,7 +707,7 @@ const ComprasModule = (function() {
             folio,
             proveedor,
             departamento,
-            fecha_requerida: fechaRequerida,
+            fecha_requerida: fechaRequerida || new Date().toISOString().split('T')[0],
             prioridad,
             vinculacion,
             items,
