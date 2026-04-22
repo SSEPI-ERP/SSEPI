@@ -12,6 +12,9 @@ import { ContactosFormulas } from '../core/contactos-formulas.js';
 import { pdfGenerator } from '../core/pdf-generator.js';
 import { notifyVentaIfEligible } from '../core/coi-sync-engine.js';
 import { syncFolioAfterCotizacionInsert } from '../core/folio-operativo-service.js';
+import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
+import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
+import { purgeDraftRecordKeys } from '../core/ssepi-runtime/draft-purge-keys.js';
 
 const VentasModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -43,6 +46,11 @@ const VentasModule = (function() {
     let lastPrecioAntesIVA = 0;
     let lastIva = 0;
     let lastTotal = 0;
+
+    // Autosave
+    let ventasDraftSessionKey = null;
+    let ventasAutosaveCtrl = null;
+    let currentUserName = '';
 
     // Filtros
     let filtroFechaInicio = null;
@@ -87,6 +95,175 @@ const VentasModule = (function() {
         el.textContent = map[dept] || 'Elige departamento.';
     }
 
+    // ==================== AUTOSAVE VENTAS ====================
+    function _ventasRecordKey() {
+        if (compraActual && compraActual.id) return String(compraActual.id);
+        if (ventasDraftSessionKey) return ventasDraftSessionKey;
+        ventasDraftSessionKey = 'tmp:' + Date.now();
+        return ventasDraftSessionKey;
+    }
+
+    function _ventasDraftKeysToPurge() {
+        const keys = [];
+        if (compraActual && compraActual.id) keys.push(String(compraActual.id));
+        if (ventasDraftSessionKey) keys.push(ventasDraftSessionKey);
+        return keys;
+    }
+
+    function _afterVentasPersistOk() {
+        purgeDraftRecordKeys('ventas', _ventasDraftKeysToPurge());
+        ventasDraftSessionKey = null;
+    }
+
+    function _collectVentasDraftPayload() {
+        return {
+            v: 1,
+            wizardPaso: wizardPaso,
+            calculadoraClienteActual: calculadoraClienteActual ? { ...calculadoraClienteActual } : null,
+            calculadoraComponentes: calculadoraComponentes.slice(),
+            compraActual: compraActual ? { ...compraActual } : null,
+            ventasWizardCerebro: ventasWizardCerebro ? { ...ventasWizardCerebro } : null,
+            lastGastosGenerales: lastGastosGenerales,
+            lastPrecioConUtilidad: lastPrecioConUtilidad,
+            lastPrecioAntesIVA: lastPrecioAntesIVA,
+            lastIva: lastIva,
+            lastTotal: lastTotal,
+            paso1Fields: _collectPaso1Fields(),
+            paso2Fields: _collectPaso2Fields(),
+            paso3Fields: _collectPaso3Fields(),
+        };
+    }
+
+    function _collectPaso1Fields() {
+        return {
+            clienteId: (document.getElementById('wizardClienteSelect') || {}).value || '',
+            fechaIngreso: (document.getElementById('wizardFechaIngreso') || {}).value || '',
+            nombreProducto: (document.getElementById('wizardNombreProducto') || {}).value || '',
+            fallaReportada: (document.getElementById('wizardFallaReportada') || {}).value || '',
+            prioridad: (document.getElementById('wizardPrioridadSelect') || {}).value || 'Normal',
+            departamento: (document.getElementById('wizardDepartamentoSelect') || {}).value || '',
+        };
+    }
+
+    function _collectPaso2Fields() {
+        const kmEl = document.getElementById('inpLogisticaKm');
+        const hrsEl = document.getElementById('inpLogisticaHoras');
+        const techEl = document.getElementById('inpTechHours');
+        const partsEl = document.getElementById('inpParts');
+        return {
+            logisticaKm: kmEl ? kmEl.value : '',
+            logisticaHoras: hrsEl ? hrsEl.value : '',
+            techHours: techEl ? techEl.value : '',
+            parts: partsEl ? partsEl.value : '',
+        };
+    }
+
+    function _collectPaso3Fields() {
+        const utilEl = document.getElementById('inpUtilidadPct');
+        const credEl = document.getElementById('inpCreditoPct');
+        return {
+            utilidadPct: utilEl ? utilEl.value : '',
+            creditoPct: credEl ? credEl.value : '',
+        };
+    }
+
+    function _applyVentasDraft(w) {
+        if (!w || !w.payload) return;
+        const p = w.payload;
+
+        // Restaurar estado JS
+        if (p.calculadoraClienteActual) calculadoraClienteActual = { ...p.calculadoraClienteActual };
+        if (Array.isArray(p.calculadoraComponentes)) calculadoraComponentes = p.calculadoraComponentes.slice();
+        if (p.compraActual) compraActual = { ...p.compraActual };
+        if (p.ventasWizardCerebro) ventasWizardCerebro = { ...p.ventasWizardCerebro };
+        if (p.lastGastosGenerales !== undefined) lastGastosGenerales = p.lastGastosGenerales;
+        if (p.lastPrecioConUtilidad !== undefined) lastPrecioConUtilidad = p.lastPrecioConUtilidad;
+        if (p.lastPrecioAntesIVA !== undefined) lastPrecioAntesIVA = p.lastPrecioAntesIVA;
+        if (p.lastIva !== undefined) lastIva = p.lastIva;
+        if (p.lastTotal !== undefined) lastTotal = p.lastTotal;
+
+        // Abrir modal y renderizar paso guardado
+        const modal = document.getElementById('calculadoraModal');
+        if (modal) modal.classList.add('active');
+
+        const targetStep = p.wizardPaso || 1;
+        wizardPaso = targetStep;
+        _renderWizardPaso(targetStep).then(() => {
+            // Después de renderizar, restaurar campos del paso actual
+            if (targetStep === 1) _applyPaso1DraftFields(p.paso1Fields);
+            if (targetStep >= 2) _applyPaso2DraftFields(p.paso2Fields);
+            if (targetStep >= 3) _applyPaso3DraftFields(p.paso3Fields);
+            try { _recalcular(); } catch (e) { /* ignore */ }
+        });
+    }
+
+    function _applyPaso1DraftFields(f) {
+        if (!f) return;
+        const setv = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val == null ? '' : val; };
+        setv('wizardClienteSelect', f.clienteId);
+        setv('wizardFechaIngreso', f.fechaIngreso);
+        setv('wizardNombreProducto', f.nombreProducto);
+        setv('wizardFallaReportada', f.fallaReportada);
+        setv('wizardPrioridadSelect', f.prioridad);
+        setv('wizardDepartamentoSelect', f.departamento);
+        // Llenar datos del cliente si se seleccionó
+        if (f.clienteId) {
+            const sel = document.getElementById('wizardClienteSelect');
+            const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
+            setv('wizardEmailCliente', opt ? (opt.dataset.email || '') : '');
+            setv('wizardTelefonoCliente', opt ? (opt.dataset.telefono || '') : '');
+            setv('wizardRfcCliente', opt ? (opt.dataset.rfc || '') : '');
+        }
+    }
+
+    function _applyPaso2DraftFields(f) {
+        if (!f) return;
+        const setv = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val == null ? '' : val; };
+        setv('inpLogisticaKm', f.logisticaKm);
+        setv('inpLogisticaHoras', f.logisticaHoras);
+        setv('inpTechHours', f.techHours);
+        setv('inpParts', f.parts);
+    }
+
+    function _applyPaso3DraftFields(f) {
+        if (!f) return;
+        const setv = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val == null ? '' : val; };
+        setv('inpUtilidadPct', f.utilidadPct);
+        setv('inpCreditoPct', f.creditoPct);
+    }
+
+    function _initVentasAutosave() {
+        ventasAutosaveCtrl = createAutosaveController({
+            module: 'ventas',
+            getRecordKey: _ventasRecordKey,
+            collectPayload: _collectVentasDraftPayload,
+            getLabel: () => {
+                const n = calculadoraClienteActual && calculadoraClienteActual.nombre;
+                return 'Ventas ' + (n || 'borrador');
+            },
+            debounceMs: 1800,
+        });
+        const modal = document.getElementById('calculadoraModal');
+        if (modal) {
+            modal.addEventListener('input', () => { if (ventasAutosaveCtrl) ventasAutosaveCtrl.schedule(); }, true);
+            modal.addEventListener('change', () => { if (ventasAutosaveCtrl) ventasAutosaveCtrl.schedule(); }, true);
+        }
+    }
+
+    function _tryResumeVentasDraft() {
+        const resume = new URLSearchParams(window.location.search).get('resume');
+        if (!resume) return;
+        const w = loadLocalDraft('ventas', resume);
+        if (!w || !w.payload) return;
+        if (!confirm('Se encontró un borrador guardado. ¿Recuperar?')) {
+            history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
+        ventasDraftSessionKey = resume.indexOf('tmp:') === 0 ? resume : null;
+        _applyVentasDraft(w);
+        history.replaceState({}, document.title, window.location.pathname);
+    }
+
     function _attachWizardPaso1() {
         const deptEl = document.getElementById('wizardDepartamentoSelect');
         if (deptEl && !deptEl._ssepiBound) {
@@ -96,6 +273,22 @@ const VentasModule = (function() {
                 _wizardActualizarAyudaFolio();
             });
         }
+
+        // Autofill: al seleccionar cliente, llenar email/tel/rfc
+        const clienteEl = document.getElementById('wizardClienteSelect');
+        if (clienteEl && !clienteEl._ssepiBound) {
+            clienteEl._ssepiBound = true;
+            clienteEl.addEventListener('change', () => {
+                const opt = clienteEl.selectedOptions && clienteEl.selectedOptions[0];
+                const emailEl = document.getElementById('wizardEmailCliente');
+                const telEl = document.getElementById('wizardTelefonoCliente');
+                const rfcEl = document.getElementById('wizardRfcCliente');
+                if (emailEl) emailEl.value = opt ? (opt.dataset.email || '') : '';
+                if (telEl) telEl.value = opt ? (opt.dataset.telefono || '') : '';
+                if (rfcEl) rfcEl.value = opt ? (opt.dataset.rfc || '') : '';
+            });
+        }
+
         _wizardActualizarAyudaFolio();
     }
 
@@ -379,6 +572,17 @@ const VentasModule = (function() {
         } catch (e) {
             console.warn('[Ventas] Realtime:', e);
         }
+
+        // Cargar nombre del usuario actual para autofill de vendedor
+        try {
+            const profile = await authService.getCurrentProfile();
+            if (profile && profile.nombre) currentUserName = profile.nombre;
+        } catch (e) { /* ignore */ }
+
+        // Inicializar autosave y reanudar borradores
+        _initVentasAutosave();
+        _tryResumeVentasDraft();
+
         console.log('✅ Módulo ventas iniciado');
     }
 
@@ -2426,6 +2630,7 @@ const VentasModule = (function() {
         compraActual = null;
         ventasWizardCerebro = null;
         wizardPaso = 1;
+        ventasDraftSessionKey = null;
         var modal = document.getElementById('calculadoraModal');
         if (!modal) {
             console.error('[Ventas] No se encontró #calculadoraModal');
@@ -2567,6 +2772,24 @@ const VentasModule = (function() {
                             <option value="Administración">Administración (Sin orden)</option>
                         </select>
                     </div>
+                </div>
+                <div class="editor-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:14px;">
+                    <div class="editor-item">
+                        <label>Email</label>
+                        <input type="email" id="wizardEmailCliente" readonly style="width:100%; padding:10px; background:#f5f5f5; color:var(--text-secondary);">
+                    </div>
+                    <div class="editor-item">
+                        <label>Teléfono</label>
+                        <input type="tel" id="wizardTelefonoCliente" readonly style="width:100%; padding:10px; background:#f5f5f5; color:var(--text-secondary);">
+                    </div>
+                    <div class="editor-item">
+                        <label>RFC</label>
+                        <input type="text" id="wizardRfcCliente" readonly style="width:100%; padding:10px; background:#f5f5f5; color:var(--text-secondary);">
+                    </div>
+                </div>
+                <div class="editor-item" style="margin-top:10px;">
+                    <label>Vendedor</label>
+                    <input type="text" id="wizardVendedor" value="${currentUserName}" readonly style="width:100%; padding:10px; background:#f5f5f5; color:var(--text-secondary);">
                 </div>
             </div>
         `;
@@ -2774,6 +2997,7 @@ const VentasModule = (function() {
     function _bindWizardEvents() {
         var wizardCancel = document.getElementById('wizardCancelBtn');
         if (wizardCancel) wizardCancel.onclick = function () {
+            _afterVentasPersistOk();
             var m = document.getElementById('calculadoraModal');
             if (m) m.classList.remove('active');
         };
@@ -2898,6 +3122,7 @@ const VentasModule = (function() {
 
             alert('✅ Cotización guardada. Folio: ' + folio);
             _addToFeed('💾', `Cotización ${folio} guardada`);
+            _afterVentasPersistOk();
             document.getElementById('calculadoraModal').classList.remove('active');
             await _loadCotizaciones();
             _applyFilters();
@@ -2967,6 +3192,7 @@ const VentasModule = (function() {
 
             alert('✅ Cotización guardada y enviada. Folio: ' + folio);
             _addToFeed('📧', `Cotización ${folio} enviada a ${cliente}`);
+            _afterVentasPersistOk();
             document.getElementById('calculadoraModal').classList.remove('active');
             await _loadCotizaciones();
             _applyFilters();
