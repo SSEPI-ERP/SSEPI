@@ -9,6 +9,9 @@ import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
 import { notifyCompraIfEligible } from '../core/coi-sync-engine.js';
 import { mergePriorityProvidersFirst } from '../core/ssepi-runtime/priority-suppliers-merge.js';
+import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
+import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
+import { purgeDraftRecordKeys } from '../core/ssepi-runtime/draft-purge-keys.js';
 
 const ComprasModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -23,6 +26,10 @@ const ComprasModule = (function() {
     let currentCompra = null;
     let compraId = null;
     let isNewCompra = true;
+
+    // Autosave
+    let comprasDraftSessionKey = null;
+    let comprasAutosaveCtrl = null;
 
     // Filtros
     let filtroFechaInicio = null;
@@ -58,6 +65,8 @@ const ComprasModule = (function() {
         }
         _startClock();
         _setupRealtime();
+        _initComprasAutosave();
+        _tryResumeComprasDraft();
         console.log('✅ Módulo compras iniciado');
     }
 
@@ -546,6 +555,7 @@ const ComprasModule = (function() {
         isNewCompra = true;
         currentCompra = null;
         compraId = null;
+        comprasDraftSessionKey = null;
         try {
             _resetFormulario();
             _agregarItemRow();
@@ -638,6 +648,7 @@ const ComprasModule = (function() {
                 }
             }
             alert('Borrador guardado. Puedes seguir editando.');
+            _afterComprasPersistOk();
             _addToFeed('💾', 'Borrador de orden guardado');
         } catch (e) {
             console.warn('[Compras] Guardar borrador:', e);
@@ -717,6 +728,7 @@ const ComprasModule = (function() {
         try {
             if (compraId) {
                 await comprasService.update(compraId, nuevaCompra, csrfToken);
+                _afterComprasPersistOk();
                 alert('✅ Orden confirmada');
                 document.getElementById('nuevaOrdenModal').classList.remove('active');
                 _addToFeed('➕', `Orden ${folio} confirmada`);
@@ -746,6 +758,7 @@ const ComprasModule = (function() {
                     }, csrfToken);
                 }
                 alert('✅ Orden de compra creada');
+                _afterComprasPersistOk();
                 document.getElementById('nuevaOrdenModal').classList.remove('active');
                 _addToFeed('➕', `Orden ${folio} creada`);
             }
@@ -839,9 +852,11 @@ const ComprasModule = (function() {
             window.pdfGenerator.generateOrdenCompra(data, user);
         });
         document.getElementById('closeNuevaOrdenModal').addEventListener('click', () => {
+            _afterComprasPersistOk();
             document.getElementById('nuevaOrdenModal').classList.remove('active');
         });
         document.getElementById('cancelNuevaOrden').addEventListener('click', () => {
+            _afterComprasPersistOk();
             document.getElementById('nuevaOrdenModal').classList.remove('active');
         });
         document.getElementById('addItemBtn').addEventListener('click', _agregarItemRow);
@@ -916,6 +931,132 @@ const ComprasModule = (function() {
             localStorage.setItem('theme', 'dark');
             btn.innerHTML = '<i class="fas fa-sun"></i>';
         }
+    }
+
+    // ==================== AUTOSAVE ====================
+    function _comprasRecordKey() {
+        if (compraId) return String(compraId);
+        const folio = (currentCompra && currentCompra.folio) || '';
+        if (folio) return 'new:' + folio;
+        if (!comprasDraftSessionKey) comprasDraftSessionKey = 'tmp:' + Date.now();
+        return comprasDraftSessionKey;
+    }
+
+    function _comprasDraftKeysToPurge() {
+        const keys = [];
+        if (compraId) keys.push(String(compraId));
+        const folio = (currentCompra && currentCompra.folio) || '';
+        if (folio) keys.push('new:' + folio);
+        if (comprasDraftSessionKey) keys.push(comprasDraftSessionKey);
+        return keys;
+    }
+
+    function _afterComprasPersistOk() {
+        purgeDraftRecordKeys('compras', _comprasDraftKeysToPurge());
+        comprasDraftSessionKey = null;
+    }
+
+    function _collectComprasDraftPayload() {
+        const proveedor = (document.getElementById('proveedorSelect') || {}).value || '';
+        const departamento = (document.getElementById('departamentoSelect') || {}).value || '';
+        const fechaRequerida = (document.getElementById('fechaRequerida') || {}).value || '';
+        const prioridad = (document.getElementById('prioridadSelect') || {}).value || '';
+        const vinculacionTipo = (document.getElementById('vinculacionTipo') || {}).value || '';
+        const vinculacionId = (document.getElementById('vinculacionId') || {}).value || '';
+        const items = [];
+        document.querySelectorAll('#itemsBody tr').forEach(tr => {
+            items.push({
+                desc: (tr.querySelector('.item-desc') || {}).value || '',
+                sku: (tr.querySelector('.item-sku') || {}).value || '',
+                qty: parseInt((tr.querySelector('.item-qty') || {}).value) || 0,
+                price: parseFloat((tr.querySelector('.item-price') || {}).value) || 0,
+                link: (tr.querySelector('.item-link') || {}).value || ''
+            });
+        });
+        return {
+            v: 1,
+            compraId: compraId || null,
+            proveedor,
+            departamento,
+            fechaRequerida,
+            prioridad,
+            vinculacionTipo,
+            vinculacionId,
+            items,
+        };
+    }
+
+    function _applyComprasDraft(w) {
+        if (!w || !w.payload) return;
+        const p = w.payload;
+        const setv = (id, val) => {
+            const el = document.getElementById(id);
+            if (el && val !== undefined) el.value = val == null ? '' : val;
+        };
+        setv('proveedorSelect', p.proveedor);
+        setv('departamentoSelect', p.departamento);
+        setv('fechaRequerida', p.fechaRequerida);
+        setv('prioridadSelect', p.prioridad);
+        setv('vinculacionTipo', p.vinculacionTipo);
+        setv('vinculacionId', p.vinculacionId);
+        if (p.compraId) {
+            compraId = p.compraId;
+            isNewCompra = false;
+        }
+        // Rebuild items
+        const tbody = document.getElementById('itemsBody');
+        if (tbody && Array.isArray(p.items) && p.items.length > 0) {
+            tbody.innerHTML = '';
+            p.items.forEach(item => {
+                _agregarItemRow();
+                const lastRow = tbody.lastElementChild;
+                if (lastRow) {
+                    const desc = lastRow.querySelector('.item-desc');
+                    const sku = lastRow.querySelector('.item-sku');
+                    const qty = lastRow.querySelector('.item-qty');
+                    const price = lastRow.querySelector('.item-price');
+                    const link = lastRow.querySelector('.item-link');
+                    if (desc) desc.value = item.desc || '';
+                    if (sku) sku.value = item.sku || '';
+                    if (qty) qty.value = item.qty || 1;
+                    if (price) price.value = item.price || 0;
+                    if (link) link.value = item.link || '';
+                }
+            });
+        }
+    }
+
+    function _initComprasAutosave() {
+        comprasAutosaveCtrl = createAutosaveController({
+            module: 'compras',
+            getRecordKey: _comprasRecordKey,
+            collectPayload: _collectComprasDraftPayload,
+            getLabel: () => {
+                const f = (currentCompra && currentCompra.folio) || 'borrador';
+                return 'Orden de compra ' + f;
+            },
+            debounceMs: 1600,
+        });
+        const modal = document.getElementById('nuevaOrdenModal');
+        if (modal) {
+            modal.addEventListener('input', () => { if (comprasAutosaveCtrl) comprasAutosaveCtrl.schedule(); }, true);
+            modal.addEventListener('change', () => { if (comprasAutosaveCtrl) comprasAutosaveCtrl.schedule(); }, true);
+        }
+    }
+
+    function _tryResumeComprasDraft() {
+        const resume = new URLSearchParams(window.location.search).get('resume');
+        if (!resume) return;
+        const w = loadLocalDraft('compras', resume);
+        if (!w || !w.payload) return;
+        if (!confirm('¿Recuperar borrador guardado en este equipo?')) {
+            history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
+        comprasDraftSessionKey = null;
+        _nuevaOrden();
+        _applyComprasDraft(w);
+        history.replaceState({}, document.title, window.location.pathname);
     }
 
     // ==================== LIMPIEZA ====================

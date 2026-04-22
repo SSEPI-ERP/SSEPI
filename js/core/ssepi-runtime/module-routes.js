@@ -4,6 +4,9 @@ export const MODULE_PAGE_PATH = {
   ordenes_motores: '/pages/ssepi_motores.html',
   proyectos_automatizacion: '/pages/ssepi_servicios.html',
   compras: '/pages/ssepi_compras.html',
+  ventas: '/pages/ssepi_ventas.html',
+  contactos: '/pages/ssepi_contactos.html',
+  inventario: '/pages/ssepi_inventario.html',
 };
 
 export function pagePathForModule(module) {

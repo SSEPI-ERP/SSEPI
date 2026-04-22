@@ -609,6 +609,16 @@ const ServiciosModule = (function() {
         ];
         _resetForm();
         _generarFolio();
+
+        // Autofill: vendedor con nombre del usuario actual
+        try {
+            const profile = await authService.getCurrentProfile();
+            if (profile && profile.nombre) {
+                const vendedorEl = document.getElementById('paso1_vendedor');
+                if (vendedorEl && !vendedorEl.value) vendedorEl.value = profile.nombre;
+            }
+        } catch (e) { /* ignore */ }
+
         _irPaso(1);
         const modal = document.getElementById('wsModal');
         if (modal) modal.classList.add('active');

@@ -632,6 +632,15 @@ const MotoresModule = (function() {
         _resetForm();
         _generarFolio();
         _populateClientSelect();
+
+        // Autofill: encargado_recepcion con nombre del usuario actual
+        try {
+            const profile = await authService.getCurrentProfile();
+            if (profile && profile.nombre) {
+                const encEl = document.getElementById('inpReceptionBy');
+                if (encEl && !encEl.value) encEl.value = profile.nombre;
+            }
+        } catch (e) { /* ignore */ }
         _irPaso(1);
         document.getElementById('wsModal').classList.add('active');
         document.getElementById('fechaInicioDisplay').innerText = new Date().toLocaleString();
