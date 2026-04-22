@@ -769,18 +769,18 @@ const FacturacionModule = (function() {
                 fecha: new Date().toISOString()
             }, csrfToken);
 
-            alert('✅ Factura timbrada y registrada correctamente');
+            _showToast('Factura timbrada y registrada correctamente', 'success');
             document.getElementById('facturaModal').classList.remove('active');
             _addToFeed('✅', `Factura ${folioFactura} generada para ${orden.cliente_nombre}`);
         } catch (error) {
             console.error(error);
-            alert('Error al timbrar factura: ' + error.message);
+            _showToast('Error al timbrar factura: ' + error.message, 'error');
         }
     }
 
     async function _enviarFacturaACoi(facturaId) {
         const f = (facturas || []).find(x => x.id === facturaId);
-        if (!f) { alert('Factura no encontrada.'); return; }
+        if (!f) { _showToast('Factura no encontrada.', 'info'); return; }
         try {
             const payload = { ...f };
             const r = await enqueueCoiJob({
@@ -791,14 +791,14 @@ const FacturacionModule = (function() {
                 payload_json: payload
             });
             if (!r.ok) throw (r.error || new Error('No se pudo encolar'));
-            alert('✅ Enviada a COI (cola).');
+            _showToast('Enviada a COI (cola).', 'success');
         } catch (e) {
-            alert('Error: ' + (e?.message || e));
+            _showToast('Error: ' + (e?.message || e, 'error'));
         }
     }
 
     function _verPDF(id) {
-        alert('Funcionalidad: Visualizar PDF de factura (pendiente implementación)');
+        _showToast('Funcionalidad: Visualizar PDF de factura (pendiente implementación)', 'info');
     }
 
     // ==================== FEED ====================

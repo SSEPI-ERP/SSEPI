@@ -387,24 +387,24 @@
         var desde = document.getElementById('solicitudDesde');
         var hasta = document.getElementById('solicitudHasta');
         if (!desde || !hasta || !desde.value || !hasta.value) {
-            alert('Indica desde y hasta.');
+            _showToast('Indica desde y hasta.', 'info');
             return;
         }
         var d = new Date(desde.value);
         var h = new Date(hasta.value);
         if (h < d) {
-            alert('La fecha hasta debe ser posterior a desde.');
+            _showToast('La fecha hasta debe ser posterior a desde.', 'info');
             return;
         }
         var dias = countDiasLaborables(desde.value, hasta.value);
         if (dias <= 0) {
-            alert('No hay días laborables en ese rango.');
+            _showToast('No hay días laborables en ese rango.', 'info');
             return;
         }
         var disp = (balance && balance.dias_asignados != null && balance.dias_solicitados != null)
             ? (balance.dias_asignados - balance.dias_solicitados) : 0;
         if (dias > disp) {
-            alert('No tienes suficientes días disponibles (' + disp + ').');
+            _showToast('No tienes suficientes días disponibles (' + disp + ', 'error').');
             return;
         }
         supabase()
@@ -433,10 +433,10 @@
                 loadSolicitudes();
                 desde.value = '';
                 hasta.value = '';
-                alert('Solicitud enviada.');
+                _showToast('Solicitud enviada.', 'info');
             })
             .catch(function(e) {
-                alert('Error: ' + (e.message || e));
+                _showToast('Error: ' + (e.message || e, 'error'));
             });
     }
 
@@ -475,7 +475,7 @@
                         var val = parseInt(input.value, 10);
                         if (isNaN(val) || val < 0) return;
                         supabase().from('vacaciones_balance').update({ dias_asignados: val }).eq('id', id).then(function(res) {
-                            if (res.error) alert('Error: ' + res.error.message);
+                            if (res.error) _showToast('Error: ' + res.error.message, 'error');
                             else loadBalance();
                         });
                     });

@@ -285,7 +285,7 @@ const ProyectosModule = (function() {
         var modal = document.getElementById('wsModal');
         if (!modal) {
             console.error('[Proyectos] No se encontró #wsModal');
-            alert('No se pudo abrir el formulario. Recarga la página.');
+            _showToast('No se pudo abrir el formulario. Recarga la página.', 'error');
             return;
         }
         modal.classList.add('active');
@@ -351,7 +351,7 @@ const ProyectosModule = (function() {
             data.actividades.push(cb.value);
         });
 
-        if (!data.cliente) { alert('El cliente es obligatorio'); return; }
+        if (!data.cliente) { _showToast('El cliente es obligatorio', 'info'); return; }
 
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
@@ -359,22 +359,22 @@ const ProyectosModule = (function() {
                 const inserted = await visitasService.insert(data, csrfToken);
                 visitId = inserted.id;
                 isNewVisit = false;
-                alert('✅ Visita guardada');
+                _showToast('Visita guardada', 'success');
             } else {
                 await visitasService.update(visitId, data, csrfToken);
-                alert('✅ Visita actualizada');
+                _showToast('Visita actualizada', 'success');
             }
             _addToFeed('💾', `Visita ${data.folio} guardada`);
             _cerrarModal();
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
     async function _confirmarVisita() {
         if (!visitId && !isNewVisit) {
-            alert('Primero guarde la visita');
+            _showToast('Primero guarde la visita', 'info');
             return;
         }
 
@@ -408,18 +408,18 @@ const ProyectosModule = (function() {
             };
             await proyectosService.insert(nuevoProyecto, csrfToken);
 
-            alert('✅ Visita confirmada y enviada a Automatización como proyecto');
+            _showToast('Visita confirmada y enviada a Automatización como proyecto', 'success');
             _addToFeed('✅', `Visita ${visita.folio} confirmada y enviada a proyectos`);
             _cerrarModal();
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
     async function _cancelarVisita() {
         if (!visitId && !isNewVisit) {
-            alert('Primero guarde la visita');
+            _showToast('Primero guarde la visita', 'info');
             return;
         }
         if (!confirm('¿Cancelar esta visita? Se marcará como cancelada.')) return;
@@ -431,12 +431,12 @@ const ProyectosModule = (function() {
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
             await visitasService.update(visitId, { estado: 'cancelado' }, csrfToken);
-            alert('✅ Visita cancelada');
+            _showToast('Visita cancelada', 'success');
             _addToFeed('❌', `Visita cancelada`);
             _cerrarModal();
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
@@ -516,18 +516,18 @@ const ProyectosModule = (function() {
         const progressText = progressEl ? progressEl.querySelector('.ocr-progress-text') : null;
 
         if (!input || !input.files || !input.files.length) {
-            alert('Selecciona primero una foto de la hoja de orden.');
+            _showToast('Selecciona primero una foto de la hoja de orden.', 'info');
             return;
         }
         const file = input.files[0];
         if (!file.type.startsWith('image/')) {
-            alert('El archivo debe ser una imagen (JPG, PNG, etc.).');
+            _showToast('El archivo debe ser una imagen (JPG, PNG, etc.).', 'info');
             return;
         }
 
         const Tesseract = window.Tesseract;
         if (!Tesseract || !Tesseract.recognize) {
-            alert('No se pudo cargar el motor de reconocimiento de texto. Comprueba tu conexión.');
+            _showToast('No se pudo cargar el motor de reconocimiento de texto. Comprueba tu conexión.', 'error');
             return;
         }
 
@@ -565,7 +565,7 @@ const ProyectosModule = (function() {
         } catch (err) {
             console.error(err);
             if (progressEl) progressEl.style.display = 'none';
-            alert('Error al leer la imagen: ' + (err.message || err));
+            _showToast('Error al leer la imagen: ' + (err.message || err, 'error'));
         }
     }
 

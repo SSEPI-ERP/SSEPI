@@ -365,7 +365,7 @@ const ActividadesModule = (function() {
         const archivoInput = document.getElementById('actArchivo');
 
         if (!fecha || !user_id || !resumen) {
-            alert('❗ Fecha, técnico y resumen son obligatorios.');
+            _showToast('❗ Fecha, técnico y resumen son obligatorios.', 'info');
             return;
         }
 
@@ -381,11 +381,11 @@ const ActividadesModule = (function() {
                 const file = archivoInput.files[0];
                 const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
                 if (!validTypes.includes(file.type)) {
-                    alert('❗ Solo se permiten archivos PDF, DOC o DOCX.');
+                    _showToast('❗ Solo se permiten archivos PDF, DOC o DOCX.', 'info');
                     return;
                 }
                 if (file.size > 5 * 1024 * 1024) {
-                    alert('❗ El archivo no puede pesar más de 5MB.');
+                    _showToast('❗ El archivo no puede pesar más de 5MB.', 'info');
                     return;
                 }
 
@@ -424,7 +424,7 @@ const ActividadesModule = (function() {
                 // Registrar en historial
                 await _insertarHistorial(currentActividadId, 'edicion', 'Actividad editada', profile?.id);
 
-                alert('✅ Actividad actualizada.');
+                _showToast('Actividad actualizada.', 'success');
             } else {
                 // Insertar nueva
                 const inserted = await actividadesService.insert(row, csrfToken);
@@ -435,7 +435,7 @@ const ActividadesModule = (function() {
                         archivo_url ? 'Archivo subido' : 'Actividad creada', profile?.id);
                 }
 
-                alert('✅ Actividad guardada.');
+                _showToast('Actividad guardada.', 'success');
             }
 
             document.getElementById('actividadModal').classList.remove('active');
@@ -445,7 +445,7 @@ const ActividadesModule = (function() {
 
         } catch (error) {
             console.error('[Actividades] Error guardando:', error);
-            alert('❌ Error al guardar: ' + error.message);
+            _showToast('❌ Error al guardar: ' + error.message, 'error');
         }
     }
 

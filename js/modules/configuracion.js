@@ -51,7 +51,7 @@
             // Solo admin, superadmin, automatizacion y electronica pueden acceder
             var rolesPermitidos = ['admin', 'superadmin', 'automatizacion', 'electronica'];
             if (!p || !rolesPermitidos.includes(p.rol)) {
-                alert('Acceso denegado. Solo administradores y roles autorizados pueden configurar permisos.');
+                _showToast('Acceso denegado. Solo administradores y roles autorizados pueden configurar permisos.', 'info');
                 window.location.href = '/panel.html';
                 return;
             }
@@ -162,10 +162,10 @@
 
         supabase.from('usuarios').update({ rol: nuevoRol }).eq('id', userId).then(function (result) {
             if (result.error) {
-                alert('Error: ' + (result.error.message || result.error));
+                _showToast('Error: ' + (result.error.message || result.error, 'error'));
                 return;
             }
-            alert('Rol actualizado correctamente.');
+            _showToast('Rol actualizado correctamente.', 'info');
             loadUsuarios();
         });
     }
@@ -243,10 +243,10 @@
         Promise.all(promises).then(function (results) {
             var hasError = results.some(function (r) { return r.error; });
             if (hasError) {
-                alert('Error al guardar permisos.');
+                _showToast('Error al guardar permisos.', 'error');
                 return;
             }
-            alert('Permisos guardados correctamente para el rol "' + rol + '".');
+            _showToast('Permisos guardados correctamente para el rol "' + rol + '".', 'error');
         });
     }
 
@@ -326,7 +326,7 @@
         var userId = selector.value;
 
         if (!userId) {
-            alert('Selecciona un usuario.');
+            _showToast('Selecciona un usuario.', 'info');
             return;
         }
 
@@ -351,10 +351,10 @@
         Promise.all(promises).then(function (results) {
             var hasError = results.some(function (r) { return r.error; });
             if (hasError) {
-                alert('Error al guardar permisos.');
+                _showToast('Error al guardar permisos.', 'error');
                 return;
             }
-            alert('Permisos guardados correctamente.');
+            _showToast('Permisos guardados correctamente.', 'info');
         });
     }
 
@@ -368,7 +368,7 @@
         var mod = moduleSel.value;
 
         if (!mod) {
-            alert('Selecciona un módulo.');
+            _showToast('Selecciona un módulo.', 'info');
             return;
         }
 
@@ -376,13 +376,13 @@
 
         supabase.from(mod).select('*').then(function (result) {
             if (result.error) {
-                alert('Error exportando: ' + (result.error.message || result.error));
+                _showToast('Error exportando: ' + (result.error.message || result.error, 'error'));
                 return;
             }
 
             var data = result.data || [];
             if (data.length === 0) {
-                alert('No hay datos para exportar.');
+                _showToast('No hay datos para exportar.', 'info');
                 return;
             }
 
@@ -409,7 +409,7 @@
             a.click();
             URL.revokeObjectURL(url);
 
-            alert('Exportación completada: ' + data.length + ' registros.');
+            _showToast('Exportación completada: ' + data.length + ' registros.', 'error');
         });
     }
 
@@ -419,7 +419,7 @@
         var mod = moduleSel.value;
 
         if (!mod) {
-            alert('Selecciona un módulo.');
+            _showToast('Selecciona un módulo.', 'info');
             return;
         }
 
@@ -431,7 +431,7 @@
             var text = e.target.result;
             var lines = text.split('\n').filter(function (l) { return l.trim(); });
             if (lines.length < 2) {
-                alert('El archivo está vacío o no tiene datos.');
+                _showToast('El archivo está vacío o no tiene datos.', 'info');
                 return;
             }
 
@@ -450,7 +450,7 @@
             }
 
             if (rows.length === 0) {
-                alert('No se pudieron parsear los datos.');
+                _showToast('No se pudieron parsear los datos.', 'info');
                 return;
             }
 
@@ -460,10 +460,10 @@
 
             supabase.from(mod).insert(rows).then(function (result) {
                 if (result.error) {
-                    alert('Error importando: ' + (result.error.message || result.error));
+                    _showToast('Error importando: ' + (result.error.message || result.error, 'error'));
                     return;
                 }
-                alert('Importación completada: ' + rows.length + ' registros.');
+                _showToast('Importación completada: ' + rows.length + ' registros.', 'error');
             });
         };
         reader.readAsText(file);

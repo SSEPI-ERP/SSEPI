@@ -288,7 +288,7 @@ function _bindCoiPanel() {
                 copyBtn.innerHTML = '<i class="fas fa-check"></i> Copiado';
                 setTimeout(() => { copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copiar comandos'; }, 2000);
             } catch (_) {
-                alert(text);
+                _showToast(text, 'info');
             }
         });
     }
@@ -300,9 +300,9 @@ function _bindCoiPanel() {
             try {
                 await navigator.clipboard.writeText(text);
                 copyMainBtn.innerHTML = '<i class="fas fa-check"></i> Copiado';
-                setTimeout(() => { copyMainBtn.innerHTML = '<i class="fas fa-copy"></i> Copiar arranque COI'; }, 2000);
+                setTimeout(() => { copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copiar arranque COI'; }, 2000);
             } catch (_) {
-                alert(text);
+                _showToast(text, 'info');
             }
         });
     }

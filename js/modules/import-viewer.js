@@ -261,7 +261,7 @@ function importFiles(e) {
 
 function exportCurrentCsv() {
     if (!activeTab || !tables[activeTab]) {
-        alert('Seleccione una pestaña con datos.');
+        _showToast('Seleccione una pestaña con datos.', 'warning');
         return;
     }
     const { cols, data } = tables[activeTab];
@@ -277,12 +277,12 @@ function exportCurrentCsv() {
 
 async function saveContactos() {
     if (!activeTab || !tables[activeTab]) {
-        alert('No hay pestaña activa.');
+        _showToast('No hay pestaña activa.', 'info');
         return;
     }
     const { cols, data } = tables[activeTab];
     if (!data.length) {
-        alert('Sin filas.');
+        _showToast('Sin filas.', 'info');
         return;
     }
     const csrf = sessionStorage.getItem('csrfToken');
@@ -356,12 +356,12 @@ async function saveContactos() {
     }
 
     _log(`Contactos → Supabase: ${imported} insertados, ${skipped} omitidos.`);
-    alert(`Contactos: ${imported} guardados en Supabase · ${skipped} omitidos o vacíos.`);
+    _showToast(`Contactos: ${imported} guardados en Supabase · ${skipped} omitidos o vacíos.`, 'info');
 }
 
 async function saveInventario() {
     if (!activeTab || !tables[activeTab]) {
-        alert('No hay pestaña activa.');
+        _showToast('No hay pestaña activa.', 'info');
         return;
     }
     const catEl = document.getElementById('ivInvCategoria');
@@ -410,7 +410,7 @@ async function saveInventario() {
     }
 
     _log(`Inventario → Supabase: ${importados} filas · ${omitidos} omitidas.`);
-    alert(`Inventario: ${importados} procesados en Supabase · ${omitidos} sin SKU/nombre.`);
+    _showToast(`Inventario: ${importados} procesados en Supabase · ${omitidos} sin SKU/nombre.`, 'info');
 }
 
 export async function init() {
@@ -427,7 +427,7 @@ export async function init() {
     const profile = await authService.getCurrentProfile();
     const okRol = ['admin', 'superadmin', 'contabilidad'].includes(profile?.rol);
     if (!okRol) {
-        alert('Esta herramienta es solo para administración / contabilidad.');
+        _showToast('Esta herramienta es solo para administración / contabilidad.', 'info');
         window.location.href = '/panel.html';
         return;
     }
@@ -445,8 +445,8 @@ export async function init() {
 
     document.getElementById('ivFile')?.addEventListener('change', importFiles);
     document.getElementById('ivExportCsv')?.addEventListener('click', exportCurrentCsv);
-    document.getElementById('ivSaveContactos')?.addEventListener('click', () => saveContactos().catch((e) => alert(e.message)));
-    document.getElementById('ivSaveInventario')?.addEventListener('click', () => saveInventario().catch((e) => alert(e.message)));
+    document.getElementById('ivSaveContactos')?.addEventListener('click', () => saveContactos().catch((e) => _showToast(e.message, 'error')));
+    document.getElementById('ivSaveInventario')?.addEventListener('click', () => saveInventario().catch((e) => _showToast(e.message, 'error')));
 
     tables = {};
     activeTab = null;

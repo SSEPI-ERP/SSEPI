@@ -283,7 +283,7 @@ const SoporteModule = (function() {
             data.actividades.push(cb.value);
         });
 
-        if (!data.cliente) { alert('El cliente es obligatorio'); return; }
+        if (!data.cliente) { _showToast('El cliente es obligatorio', 'info'); return; }
 
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
@@ -291,22 +291,22 @@ const SoporteModule = (function() {
                 const inserted = await visitasService.insert(data, csrfToken);
                 visitId = inserted.id;
                 isNewVisit = false;
-                alert('✅ Visita guardada');
+                _showToast('Visita guardada', 'success');
             } else {
                 await visitasService.update(visitId, data, csrfToken);
-                alert('✅ Visita actualizada');
+                _showToast('Visita actualizada', 'success');
             }
             _addToFeed('💾', `Visita ${data.folio} guardada`);
             _cerrarModal();
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
     async function _confirmarVisita() {
         if (!visitId && !isNewVisit) {
-            alert('Primero guarde la visita');
+            _showToast('Primero guarde la visita', 'info');
             return;
         }
 
@@ -340,18 +340,18 @@ const SoporteModule = (function() {
             };
             await proyectosService.insert(nuevoProyecto, csrfToken);
 
-            alert('✅ Visita confirmada y enviada a Automatización como proyecto');
+            _showToast('Visita confirmada y enviada a Automatización como proyecto', 'success');
             _addToFeed('✅', `Visita ${visita.folio} confirmada y enviada a proyectos`);
             _cerrarModal();
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
     async function _cancelarVisita() {
         if (!visitId && !isNewVisit) {
-            alert('Primero guarde la visita');
+            _showToast('Primero guarde la visita', 'info');
             return;
         }
         if (!confirm('¿Cancelar esta visita? Se marcará como cancelada.')) return;
@@ -363,12 +363,12 @@ const SoporteModule = (function() {
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
             await visitasService.update(visitId, { estado: 'cancelado' }, csrfToken);
-            alert('✅ Visita cancelada');
+            _showToast('Visita cancelada', 'success');
             _addToFeed('❌', `Visita cancelada`);
             _cerrarModal();
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 

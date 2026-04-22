@@ -101,7 +101,7 @@ const PaginasModule = (function() {
       toggleModal('editorModal', true);
     } catch (err) {
       console.error(err);
-      alert('Error al abrir la página');
+      _showToast('Error al abrir la página', 'error');
     }
   }
 
@@ -116,32 +116,32 @@ const PaginasModule = (function() {
       const estado = document.getElementById('inputEstado').value;
       const contenido = document.getElementById('inputContenido').value;
       if (!slug || !titulo) {
-        alert('Slug y título son obligatorios');
+        _showToast('Slug y título son obligatorios', 'info');
         return;
       }
       const payload = { slug, titulo, estado, contenido };
 
       if (actualId) {
         await paginasService.update(actualId, payload, csrfToken);
-        alert('Página actualizada');
+        _showToast('Página actualizada', 'info');
       } else {
         const inserted = await paginasService.insert(payload, csrfToken);
         actualId = inserted.id;
-        alert('Página creada');
+        _showToast('Página creada', 'info');
       }
       await cargarLista();
       renderLista();
       cerrarEditor();
     } catch (err) {
       console.error(err);
-      alert('Error al guardar');
+      _showToast('Error al guardar', 'error');
     }
   }
 
   async function eliminarPagina() {
     try {
       if (!actualId) {
-        alert('Selecciona una página');
+        _showToast('Selecciona una página', 'info');
         return;
       }
       if (!confirm('¿Eliminar la página seleccionada?')) return;
@@ -150,10 +150,10 @@ const PaginasModule = (function() {
       await cargarLista();
       renderLista();
       cerrarEditor();
-      alert('Página eliminada');
+      _showToast('Página eliminada', 'info');
     } catch (err) {
       console.error(err);
-      alert('Error al eliminar');
+      _showToast('Error al eliminar', 'error');
     }
   }
 

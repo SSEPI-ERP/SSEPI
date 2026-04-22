@@ -483,7 +483,7 @@ const AnalisisModule = (function() {
 
     function _exportarPDF() {
         if (!window.jspdf || !window.jspdf.jsPDF) {
-            alert('No se pudo cargar la librería PDF. Recarga la página e intenta de nuevo.');
+            _showToast('No se pudo cargar la librería PDF. Recarga la página e intenta de nuevo.', 'error');
             return;
         }
         const { jsPDF } = window.jspdf;
