@@ -1044,9 +1044,20 @@ const TallerModule = (function() {
 
         _resetForm();
 
-        // Llenar datos desde la cotización
+        // Generar folio usando folioFormats (formato SP-E)
         const folioEl = document.getElementById('inpFolio');
-        if (folioEl) folioEl.value = 'SP-E' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-001';
+        if (folioEl) {
+            if (window.folioFormats && window.folioFormats.getNextFolioLaboratorio) {
+                try {
+                    const folio = await window.folioFormats.getNextFolioLaboratorio();
+                    folioEl.value = folio;
+                } catch (e) {
+                    folioEl.value = 'SP-E' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-001';
+                }
+            } else {
+                folioEl.value = 'SP-E' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-001';
+            }
+        }
 
         // Cliente
         const clientSel = document.getElementById('selClient');
@@ -1054,16 +1065,22 @@ const TallerModule = (function() {
             clientSel.value = cotizacion.cliente;
         }
 
-        // Equipo/Descripción
+        // Equipo/Descripción - usar producto_servicio del cerebro_registro (wizard) o descripcion/nombre_producto como fallback
         const equipEl = document.getElementById('inpEquip');
-        if (equipEl && cotizacion.descripcion) {
-            equipEl.value = cotizacion.descripcion;
+        if (equipEl) {
+            const nombreProducto = cotizacion.cerebro_registro?.producto_servicio || cotizacion.descripcion || cotizacion.nombre_producto;
+            if (nombreProducto) {
+                equipEl.value = nombreProducto;
+            }
         }
 
         // Falla reportada
         const failEl = document.getElementById('inpFail');
-        if (failEl && cotizacion.falla) {
-            failEl.value = cotizacion.falla;
+        if (failEl) {
+            const fallaReportada = cotizacion.cerebro_registro?.falla_reportada || cotizacion.falla || cotizacion.falla_reportada;
+            if (fallaReportada) {
+                failEl.value = fallaReportada;
+            }
         }
 
         // Notas
@@ -1383,6 +1400,14 @@ const TallerModule = (function() {
         const saveBtn = document.getElementById('saveOrderBtn');
         const completeBtn = document.getElementById('completeOrderBtn');
         const sinReparacionBtn = document.getElementById('sinReparacionBtn');
+        // Botones PDF - solo visibles en paso 5 (Entregado / Facturado)
+        const ejemploPDFBtn = document.getElementById('btnEjemploPDFTaller');
+        const vistaPreviaBtn = document.getElementById('btnVistaPreviaOrdenTaller');
+        const imprimirBtn = document.getElementById('btnImprimirOrdenTaller');
+        const isPaso5 = currentStep === 5;
+        if (ejemploPDFBtn) ejemploPDFBtn.classList.toggle('hidden', !isPaso5);
+        if (vistaPreviaBtn) vistaPreviaBtn.classList.toggle('hidden', !isPaso5);
+        if (imprimirBtn) imprimirBtn.classList.toggle('hidden', !isPaso5);
 
         if (currentStep === 1) {
             prevBtn.style.display = 'none';
