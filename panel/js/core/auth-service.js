@@ -214,6 +214,7 @@ export class AuthService {
       const ver_costos = await this._getVerCostos(user.id);
       const perfil = {
         id: user.id,
+        usuarios_id: usuarioData.id, // ID local de la tabla usuarios (para FKs)
         email: user.email || usuarioData.email,
         nombre: usuarioData.nombre ?? usuarioData.email ?? user.email?.split('@')[0] ?? 'Usuario',
         rol: usuarioData.rol || 'ventas',

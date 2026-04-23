@@ -414,13 +414,15 @@ const VentasModule = (function() {
                     notas_generales: notasAlta
                 };
 
-                // Verificar si ya existe una orden similar
+                // Verificar si ya existe una orden similar (comparar solo fecha YYYY-MM-DD)
+                const fechaSolo = fechaIso.split('T')[0];
                 const { data: existing } = await window.supabase
                     .from('ordenes_taller')
                     .select('*')
                     .eq('cliente_nombre', clienteNombre)
                     .eq('falla_reportada', falla)
-                    .eq('fecha_ingreso', fechaIso)
+                    .filter('fecha_ingreso', 'gte', fechaSolo + 'T00:00:00')
+                    .filter('fecha_ingreso', 'lte', fechaSolo + 'T23:59:59')
                     .order('created_at', { ascending: false })
                     .limit(1)
                     .maybeSingle();
@@ -430,7 +432,28 @@ const VentasModule = (function() {
                     inserted = existing;
                     _showToast('📋 Orden existente recuperada: ' + (existing.folio || ''), 'info');
                 } else {
-                    inserted = await tallerService.insert(row, csrfToken);
+                    try {
+                        inserted = await tallerService.insert(row, csrfToken);
+                    } catch (err) {
+                        // Si es 409 Conflict, buscar la orden creada recientemente
+                        if (err.status === 409 || String(err.message).includes('duplicate')) {
+                            const { data: fallback } = await window.supabase
+                                .from('ordenes_taller')
+                                .select('*')
+                                .eq('cliente_nombre', clienteNombre)
+                                .filter('fecha_ingreso', 'gte', fechaSolo + 'T00:00:00')
+                                .filter('fecha_ingreso', 'lte', fechaSolo + 'T23:59:59')
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+                                .maybeSingle();
+                            if (fallback) {
+                                inserted = fallback;
+                                _showToast('📋 Orden existente recuperada (conflicto): ' + (fallback.folio || ''), 'info');
+                            }
+                        } else {
+                            throw err;
+                        }
+                    }
                     if (!inserted) throw new Error('No se recibió confirmación del servidor al crear la orden de Taller.');
                 }
 
@@ -456,13 +479,15 @@ const VentasModule = (function() {
                     notas_generales: notasAlta
                 };
 
-                // Verificar si ya existe una orden similar
+                // Verificar si ya existe una orden similar (comparar solo fecha YYYY-MM-DD)
+                const fechaSolo = fechaIso.split('T')[0];
                 const { data: existing } = await window.supabase
                     .from('ordenes_motores')
                     .select('*')
                     .eq('cliente_nombre', clienteNombre)
                     .eq('falla_reportada', falla)
-                    .eq('fecha_ingreso', fechaIso)
+                    .filter('fecha_ingreso', 'gte', fechaSolo + 'T00:00:00')
+                    .filter('fecha_ingreso', 'lte', fechaSolo + 'T23:59:59')
                     .order('created_at', { ascending: false })
                     .limit(1)
                     .maybeSingle();
@@ -472,7 +497,28 @@ const VentasModule = (function() {
                     inserted = existing;
                     _showToast('📋 Orden existente recuperada: ' + (existing.folio || ''), 'info');
                 } else {
-                    inserted = await motoresService.insert(row, csrfToken);
+                    try {
+                        inserted = await motoresService.insert(row, csrfToken);
+                    } catch (err) {
+                        // Si es 409 Conflict, buscar la orden creada recientemente
+                        if (err.status === 409 || String(err.message).includes('duplicate')) {
+                            const { data: fallback } = await window.supabase
+                                .from('ordenes_motores')
+                                .select('*')
+                                .eq('cliente_nombre', clienteNombre)
+                                .filter('fecha_ingreso', 'gte', fechaSolo + 'T00:00:00')
+                                .filter('fecha_ingreso', 'lte', fechaSolo + 'T23:59:59')
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+                                .maybeSingle();
+                            if (fallback) {
+                                inserted = fallback;
+                                _showToast('📋 Orden existente recuperada (conflicto): ' + (fallback.folio || ''), 'info');
+                            }
+                        } else {
+                            throw err;
+                        }
+                    }
                     if (!inserted) throw new Error('No se recibió confirmación del servidor al crear la orden de Motores.');
                 }
 
@@ -504,11 +550,12 @@ const VentasModule = (function() {
                 };
 
                 // Verificar si ya existe un proyecto similar
+                const fechaSolo = fechaStr || new Date().toISOString().split('T')[0];
                 const { data: existing } = await window.supabase
                     .from('proyectos_automatizacion')
                     .select('*')
                     .eq('cliente', clienteNombre)
-                    .eq('fecha', fechaStr || new Date().toISOString().split('T')[0])
+                    .eq('fecha', fechaSolo)
                     .order('created_at', { ascending: false })
                     .limit(1)
                     .maybeSingle();
@@ -518,7 +565,27 @@ const VentasModule = (function() {
                     inserted = existing;
                     _showToast('📋 Proyecto existente recuperado: ' + (existing.folio || ''), 'info');
                 } else {
-                    inserted = await proyectosService.insert(row, csrfToken);
+                    try {
+                        inserted = await proyectosService.insert(row, csrfToken);
+                    } catch (err) {
+                        // Si es 409 Conflict, buscar el proyecto creado recientemente
+                        if (err.status === 409 || String(err.message).includes('duplicate')) {
+                            const { data: fallback } = await window.supabase
+                                .from('proyectos_automatizacion')
+                                .select('*')
+                                .eq('cliente', clienteNombre)
+                                .eq('fecha', fechaSolo)
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+                                .maybeSingle();
+                            if (fallback) {
+                                inserted = fallback;
+                                _showToast('📋 Proyecto existente recuperado (conflicto): ' + (fallback.folio || ''), 'info');
+                            }
+                        } else {
+                            throw err;
+                        }
+                    }
                     if (!inserted) throw new Error('No se recibió confirmación del servidor al crear el registro de Automatización/Proyectos.');
                 }
 
@@ -1289,7 +1356,7 @@ const VentasModule = (function() {
             [columnName]: id,
             evento,
             descripcion,
-            creado_por: (await authService.getCurrentProfile())?.id || null
+            creado_por: (await authService.getCurrentProfile())?.usuarios_id || null
         };
 
         try {
@@ -2934,6 +3001,8 @@ const VentasModule = (function() {
             // Avanzar estado de la orden operativa vinculada y generar solicitud de compra
             const origen = cotizacion?.origen || cotizacion?.cerebro_registro?.origen_cotizacion;
             const ordenId = cotizacion?.orden_origen_id || cotizacion?.cerebro_registro?.orden_id;
+            const departamentoReal = cotizacion?.departamento || ventasWizardCerebro?.departamento ||
+                (origen === 'taller' ? 'Taller Electrónica' : origen === 'motores' ? 'Taller Motores' : origen === 'automatizacion' ? 'Automatización' : 'Proyectos');
             if (ordenId) {
                 try {
                     if (origen === 'taller') {
@@ -2941,7 +3010,7 @@ const VentasModule = (function() {
                         const nuevaCompra = {
                             folio: `PO-${cotizacion.folio || Date.now().toString().slice(-6)}`,
                             proveedor: 'Por asignar',
-                            departamento: 'Taller Electrónica',
+                            departamento: departamentoReal,
                             vinculacion: { tipo: 'taller', id: ordenId, nombre: cotizacion.cliente || 'Cliente', folio_taller: cotizacion.cerebro_registro?.folio_operativo || cotizacion.folio },
                             items: (cotizacion.items || []).map(i => ({ sku: i.sku || '', descripcion: i.descripcion || '', cantidad: i.cantidad || 1, precio_unitario: i.precio_unitario || 0 })),
                             estado: 1,
@@ -2954,7 +3023,7 @@ const VentasModule = (function() {
                         const nuevaCompra = {
                             folio: `PO-${cotizacion.folio || Date.now().toString().slice(-6)}`,
                             proveedor: 'Por asignar',
-                            departamento: 'Taller Motores',
+                            departamento: departamentoReal,
                             vinculacion: { tipo: 'motor', id: ordenId, nombre: cotizacion.cliente || 'Cliente', folio_motores: cotizacion.cerebro_registro?.folio_operativo || cotizacion.folio },
                             items: (cotizacion.items || []).map(i => ({ sku: i.sku || '', descripcion: i.descripcion || '', cantidad: i.cantidad || 1, precio_unitario: i.precio_unitario || 0 })),
                             estado: 1,
