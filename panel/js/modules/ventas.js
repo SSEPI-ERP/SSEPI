@@ -290,7 +290,7 @@ const VentasModule = (function() {
             });
         }
 
-        // Autofill: al seleccionar cliente, llenar email/tel/rfc
+        // Autofill: al seleccionar cliente, llenar email/tel/rfc y actualizar calculadoraClienteActual
         const clienteEl = document.getElementById('wizardClienteSelect');
         if (clienteEl && !clienteEl._ssepiBound) {
             clienteEl._ssepiBound = true;
@@ -302,6 +302,23 @@ const VentasModule = (function() {
                 if (emailEl) emailEl.value = opt ? (opt.dataset.email || '') : '';
                 if (telEl) telEl.value = opt ? (opt.dataset.telefono || '') : '';
                 if (rfcEl) rfcEl.value = opt ? (opt.dataset.rfc || '') : '';
+
+                // Actualizar calculadoraClienteActual para que el autosave y validación funcionen
+                if (opt && opt.value) {
+                    const contactoId = opt.value;
+                    const contacto = contactos.find(c => String(c.id) === String(contactoId));
+                    const nombreCliente = (contacto?.nombre || contacto?.empresa || contacto?.email || 'Cliente').trim() || 'Cliente';
+                    calculadoraClienteActual = {
+                        contactoId,
+                        nombre: nombreCliente,
+                        km: contacto?.km || 0,
+                        horas: contacto?.horas_viaje || 0,
+                        email: contacto?.email || '',
+                        telefono: contacto?.telefono || '',
+                        rfc: contacto?.rfc || '',
+                        producto: ''
+                    };
+                }
             });
         }
 
