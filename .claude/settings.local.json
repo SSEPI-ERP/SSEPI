@@ -79,7 +79,9 @@
       "Bash(npm run *)",
       "Bash(python *)",
       "Bash(npx http-server *)",
-      "Bash(npx *)"
+      "Bash(npx *)",
+      "WebFetch(domain:vercel.com)",
+      "WebFetch(domain:api.vercel.com)"
     ]
   }
 }
