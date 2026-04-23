@@ -355,19 +355,24 @@ const TallerModule = (function() {
     }
 
     async function _loadComprasVinculadas() {
-        const compras = await comprasService.select({}, { orderBy: 'fecha_creacion', ascending: false, page: 0, pageSize: 600 });
-        compras
-            .filter(c => c.vinculacion && c.vinculacion.tipo === 'taller')
-            .forEach(c => {
-                const ordenId = c.vinculacion?.id;
-                if (ordenId) {
-                    comprasVinculadas[ordenId] = {
-                        estado: c.estado,
-                        folio: c.folio,
-                        items: c.items || []
-                    };
-                }
-            });
+        try {
+            const compras = await comprasService.select({}, { orderBy: 'created_at', ascending: false, page: 0, pageSize: 600 });
+            compras
+                .filter(c => c.vinculacion && c.vinculacion.tipo === 'taller')
+                .forEach(c => {
+                    const ordenId = c.vinculacion?.id;
+                    if (ordenId) {
+                        comprasVinculadas[ordenId] = {
+                            estado: c.estado,
+                            folio: c.folio,
+                            items: c.items || []
+                        };
+                    }
+                });
+        } catch (e) {
+            console.warn('[Taller] Error cargando compras vinculadas:', e);
+            comprasVinculadas = {};
+        }
     }
 
     function _populateClientSelect() {
@@ -1740,9 +1745,11 @@ const TallerModule = (function() {
                 folio: `PO-${folioTaller}`,
                 proveedor: 'Por asignar',
                 departamento: 'Taller Electrónica',
+                fecha: new Date().toISOString(),
                 vinculacion: { tipo: 'taller', id: ordenTallerId, nombre: data.cliente_nombre, folio_taller: folioTaller },
                 items: itemsCompra,
                 estado: 1,
+                created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
 
