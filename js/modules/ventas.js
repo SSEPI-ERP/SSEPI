@@ -2524,8 +2524,25 @@ const VentasModule = (function() {
             }));
             const item = [...ventas, ...cotizaciones].find(i => i.id === id);
             const estadoActual = item?.estado || item?.estatus_pago || 'registro';
+            const cerebro = item?.cerebro_registro || {};
+            const equipoInfo = cerebro.producto_servicio || cerebro.nombre_producto || item?.descripcion || item?.equipo || null;
+            const marcaInfo = cerebro.marca || null;
+            const modeloInfo = cerebro.modelo || null;
+            const serieInfo = cerebro.serie || null;
+            const fallaInfo = cerebro.falla_reportada || null;
+
+            const equipoHtml = equipoInfo ? `
+                <div style="background:var(--bg-hover); border-radius:8px; padding:14px 16px; margin-bottom:20px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <div><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Equipo</span><div style="font-weight:600; margin-top:2px;">${equipoInfo}</div></div>
+                    ${marcaInfo ? `<div><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Marca</span><div style="font-weight:600; margin-top:2px;">${marcaInfo}</div></div>` : ''}
+                    ${modeloInfo ? `<div><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Modelo</span><div style="font-weight:600; margin-top:2px;">${modeloInfo}</div></div>` : ''}
+                    ${serieInfo ? `<div><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Serie</span><div style="font-weight:600; margin-top:2px;">${serieInfo}</div></div>` : ''}
+                    ${fallaInfo ? `<div style="grid-column:1/-1;"><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Falla reportada</span><div style="margin-top:2px;">${fallaInfo}</div></div>` : ''}
+                </div>
+            ` : '';
 
             body.innerHTML = `
+                ${equipoHtml}
                 ${_renderTimeline(estadoActual)}
                 <div style="margin-top:24px;">
                     <h4 style="margin-bottom:16px; color:var(--text-primary);"><i class="fas fa-history"></i> Historial de Eventos</h4>
