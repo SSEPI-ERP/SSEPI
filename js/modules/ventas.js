@@ -2578,6 +2578,14 @@ const VentasModule = (function() {
                         </div>
                     `}
                 </div>
+                <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                    <button class="btn btn-warning" onclick="ventasModule._editarVenta('${id}', '${tipo}')">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-danger" onclick="ventasModule._eliminarVenta('${id}', '${tipo}')">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
             `;
             modal.classList.add('active');
         } catch (error) {
@@ -2666,6 +2674,27 @@ const VentasModule = (function() {
         }, 100);
 
         _showToast('Editando ' + (tipo || 'registro') + ': ' + (item.folio || ''), 'info');
+    }
+
+    async function _eliminarVenta(id, tipo) {
+        const item = [...ventas, ...cotizaciones].find(i => i.id === id);
+        if (!item) { _showToast('Registro no encontrado', 'error'); return; }
+        const folio = item.folio || id.slice(-6);
+        if (!confirm(`¿Eliminar ${tipo || 'registro'} ${folio}?`)) return;
+        try {
+            const csrfToken = sessionStorage.getItem('csrfToken');
+            const tableName = tipo === 'cotizacion' ? 'cotizaciones' : 'ventas';
+            const { error } = await window.supabase.from(tableName).delete().eq('id', id);
+            if (error) throw error;
+            _showToast('Eliminado correctamente', 'success');
+            document.getElementById('historialModal').classList.remove('active');
+            await _loadVentas();
+            await _loadCotizaciones();
+            _applyFilters();
+        } catch (e) {
+            console.error(e);
+            _showToast('Error al eliminar: ' + e.message, 'error');
+        }
     }
 
     async function _reenviarCotizacion(id) {
@@ -3775,6 +3804,7 @@ const VentasModule = (function() {
         _verOrdenTaller,
         _editarOrdenTaller,
         _eliminarOrdenTaller,
+        _eliminarVenta,
         _insertarEventoHistorial,  // Expuesto para otros módulos que registren eventos
         _getFolioOrdenVinculada,   // Utilidad para obtener folios vinculados
         _renderKanbanCardsAsync    // Render asíncrono con etiquetas de vinculación
