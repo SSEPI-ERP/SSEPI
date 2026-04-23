@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>TABULADOR DE COTIZACIÓN — Fórmulas y Datos</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #1a1a2e; }
+  header { background: #16213e; color: white; padding: 20px 30px; }
+  header h1 { font-size: 1.5rem; }
+  header p { font-size: 0.85rem; color: #a0aec0; margin-top: 4px; }
+  .tabs { display: flex; background: #1a1a2e; padding: 0 20px; gap: 4px; overflow-x: auto; }
+  .tab { padding: 10px 20px; cursor: pointer; color: #a0aec0; font-size: 0.85rem; border-bottom: 3px solid transparent; white-space: nowrap; }
+  .tab.active { color: #63b3ed; border-bottom-color: #63b3ed; }
+  .sheet { display: none; padding: 20px; }
+  .sheet.active { display: block; }
+  .section { background: white; border-radius: 8px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .section-header { background: #2d3748; color: white; padding: 10px 16px; font-size: 0.85rem; font-weight: 600; }
+  .section-header.blue { background: #2b6cb0; }
+  .section-header.green { background: #276749; }
+  .section-header.orange { background: #c05621; }
+  .section-header.purple { background: #553c9a; }
+  .section-header.teal { background: #285e61; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  th { background: #edf2f7; color: #4a5568; padding: 7px 10px; text-align: left; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+  td { padding: 6px 10px; border-bottom: 1px solid #f7fafc; vertical-align: top; }
+  tr:hover td { background: #f7fafc; }
+  .formula { font-family: 'Courier New', monospace; background: #ebf8ff; color: #2b6cb0; padding: 2px 5px; border-radius: 3px; font-size: 0.75rem; }
+  .value { font-weight: 600; color: #276749; }
+  .coord { color: #718096; font-size: 0.72rem; }
+  .rate-box { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px; }
+  .rate { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px; min-width: 160px; }
+  .rate label { font-size: 0.7rem; color: #718096; display: block; margin-bottom: 2px; }
+  .rate .val { font-size: 1.1rem; font-weight: 700; color: #2d3748; }
+  .legend { display: flex; gap: 16px; padding: 10px 14px; background: #f7fafc; font-size: 0.75rem; flex-wrap: wrap; }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .copy-btn { float: right; background: #63b3ed; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.72rem; }
+  .copy-btn:hover { background: #4299e1; }
+  pre.prompt { background: #1a202c; color: #68d391; padding: 16px; font-size: 0.78rem; overflow-x: auto; white-space: pre-wrap; border-radius: 0 0 8px 8px; line-height: 1.6; }
+  .info-box { background: #fffbeb; border-left: 4px solid #f6ad55; padding: 12px 16px; font-size: 0.82rem; margin-bottom: 20px; border-radius: 0 6px 6px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📊 TABULADOR DE COTIZACIÓN — Fórmulas &amp; Datos Completos</h1>
+  <p>5 hojas · Extraído para uso en Claude Code / Ollama · Copia el prompt listo al final de cada sección</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="showSheet('hoja1')">Hoja1 (Viajes)</div>
+  <div class="tab" onclick="showSheet('laboratorio')">LABORATORIO</div>
+  <div class="tab" onclick="showSheet('motores')">MOTORES</div>
+  <div class="tab" onclick="showSheet('automatizacion')">AUTOMATIZACIÓN</div>
+  <div class="tab" onclick="showSheet('suministros')">SUMINISTROS</div>
+  <div class="tab" onclick="showSheet('prompt')">📋 PROMPT LISTO</div>
+</div>
+
+<!-- ======== HOJA 1 ======== -->
+<div id="hoja1" class="sheet active">
+  <div class="section">
+    <div class="section-header blue">HOJA1 — Cálculo de Viajes por Empresa</div>
+    <div class="legend">
+      <span><span class="dot" style="background:#ebf8ff;border:1px solid #90cdf4"></span>Fórmula</span>
+      <span><span class="dot" style="background:white;border:1px solid #e2e8f0"></span>Valor fijo</span>
+    </div>
+    <table>
+      <tr>
+        <th>Celda</th><th>EMPRESA (A)</th><th>KM×2 (B)</th><th>LITROS (C)</th><th>$ GASOLINA (D)</th>
+        <th>$ GASOLINA TOTAL (E)</th><th>HRS (F)</th><th>HR DANI (G)</th><th>$ DANI (H)</th><th>TOTAL (I)</th>
+      </tr>
+      <tr><td class="coord">Fila 2</td><td>BOLSAS DE LOS ALTOS</td><td class="value">226</td><td><span class="formula">=B2/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C2*D2</span></td><td class="value">5</td><td class="value">104.16</td><td><span class="formula">=F2*G2</span></td><td><span class="formula">=E2+H2</span></td></tr>
+      <tr><td class="coord">Fila 3</td><td>ANGUIPALST</td><td class="value">234</td><td><span class="formula">=B3/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C3*D3</span></td><td class="value">6</td><td class="value">104.16</td><td><span class="formula">=F3*G3</span></td><td><span class="formula">=E3+H3</span></td></tr>
+      <tr><td class="coord">Fila 4</td><td>ECOBOLSAS</td><td class="value">216</td><td><span class="formula">=B4/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C4*D4</span></td><td class="value">5</td><td class="value">104.16</td><td><span class="formula">=F4*G4</span></td><td><span class="formula">=E4+H4</span></td></tr>
+      <tr><td class="coord">Fila 5</td><td>BADER TABACHINES</td><td class="value">17.2</td><td><span class="formula">=B5/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C5*D5</span></td><td class="value">2</td><td class="value">104.16</td><td><span class="formula">=F5*G5</span></td><td><span class="formula">=E5+H5</span></td></tr>
+      <tr><td class="coord">Fila 6</td><td>BODYCOTE</td><td class="value">90.6</td><td><span class="formula">=B6/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C6*D6</span></td><td class="value">3</td><td class="value">104.16</td><td><span class="formula">=F6*G6</span></td><td><span class="formula">=E6+H6</span></td></tr>
+      <tr><td class="coord">Fila 7</td><td>COFICAB</td><td class="value">80</td><td><span class="formula">=B7/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C7*D7</span></td><td class="value">3</td><td class="value">104.16</td><td><span class="formula">=F7*G7</span></td><td><span class="formula">=E7+H7</span></td></tr>
+      <tr><td class="coord">Fila 8</td><td>CONDUMEX</td><td class="value">90.6</td><td><span class="formula">=B8/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C8*D8</span></td><td class="value">3</td><td class="value">104.16</td><td><span class="formula">=F8*G8</span></td><td><span class="formula">=E8+H8</span></td></tr>
+      <tr><td class="coord">Fila 9</td><td>ECSA</td><td class="value">32</td><td><span class="formula">=B9/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C9*D9</span></td><td class="value">2</td><td class="value">104.16</td><td><span class="formula">=F9*G9</span></td><td><span class="formula">=E9+H9</span></td></tr>
+      <tr><td class="coord">Fila 10</td><td>EMMSA</td><td class="value">21.6</td><td><span class="formula">=B10/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C10*D10</span></td><td class="value">2</td><td class="value">104.16</td><td><span class="formula">=F10*G10</span></td><td><span class="formula">=E10+H10</span></td></tr>
+      <tr><td class="coord">Fila 11</td><td>EPC 1</td><td class="value">400</td><td><span class="formula">=B11/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C11*D11</span></td><td class="value">7</td><td class="value">104.16</td><td><span class="formula">=F11*G11</span></td><td><span class="formula">=E11+H11</span></td></tr>
+      <tr><td class="coord">Fila 12</td><td>EPC 2</td><td class="value">402</td><td><span class="formula">=B12/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C12*D12</span></td><td class="value">8</td><td class="value">104.16</td><td><span class="formula">=F12*G12</span></td><td><span class="formula">=E12+H12</span></td></tr>
+      <tr><td class="coord">Fila 13</td><td>FRAENKISCHE</td><td class="value">(vacío)</td><td><span class="formula">=B13/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C13*D13</span></td><td class="value">3</td><td class="value">104.16</td><td><span class="formula">=F13*G13</span></td><td><span class="formula">=E13+H13</span></td></tr>
+      <tr><td class="coord">Fila 14</td><td>GEDNEY</td><td class="value">23.6</td><td><span class="formula">=B14/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C14*D14</span></td><td class="value">3</td><td class="value">104.16</td><td><span class="formula">=F14*G14</span></td><td><span class="formula">=E14+H14</span></td></tr>
+      <tr><td class="coord">Fila 15</td><td>GRUPO ACERERO</td><td class="value">386</td><td><span class="formula">=B15/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C15*D15</span></td><td class="value">7</td><td class="value">104.16</td><td><span class="formula">=F15*G15</span></td><td><span class="formula">=E15+H15</span></td></tr>
+      <tr><td class="coord">Fila 16</td><td>HALL PLANTA 1</td><td class="value">73.8</td><td><span class="formula">=B16/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C16*D16</span></td><td class="value">3</td><td class="value">104.16</td><td><span class="formula">=F16*G16</span></td><td><span class="formula">=E16+H16</span></td></tr>
+      <tr><td class="coord">Fila 17</td><td>HIRUTA PLANTA 1</td><td class="value">58.4</td><td><span class="formula">=B17/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C17*D17</span></td><td class="value">3</td><td class="value">104.16</td><td><span class="formula">=F17*G17</span></td><td><span class="formula">=E17+H17</span></td></tr>
+      <tr><td class="coord">Fila 18</td><td>IK PLASTIC</td><td class="value">61.4</td><td><span class="formula">=B18/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C18*D18</span></td><td class="value">3</td><td class="value">104.16</td><td><span class="formula">=F18*G18</span></td><td><span class="formula">=E18+H18</span></td></tr>
+      <tr><td class="coord">Fila 19</td><td>IMPRENTA JM</td><td class="value">16.2</td><td><span class="formula">=B19/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C19*D19</span></td><td class="value">2</td><td class="value">104.16</td><td><span class="formula">=F19*G19</span></td><td><span class="formula">=E19+H19</span></td></tr>
+      <tr><td class="coord">Fila 20</td><td>JARDÍN LA ALEMANA</td><td class="value">12</td><td><span class="formula">=B20/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C20*D20</span></td><td class="value">2</td><td class="value">104.16</td><td><span class="formula">=F20*G20</span></td><td><span class="formula">=E20+H20</span></td></tr>
+      <tr><td class="coord">Fila 21</td><td>MAFLOW</td><td class="value">59.8</td><td><span class="formula">=B21/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C21*D21</span></td><td class="value">3</td><td class="value">104.16</td><td><span class="formula">=F21*G21</span></td><td><span class="formula">=E21+H21</span></td></tr>
+      <tr><td class="coord">Fila 22</td><td>MARQUARDT</td><td class="value">125.4</td><td><span class="formula">=B22/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C22*D22</span></td><td class="value">4</td><td class="value">104.16</td><td><span class="formula">=F22*G22</span></td><td><span class="formula">=E22+H22</span></td></tr>
+      <tr><td class="coord">Fila 23</td><td>MICROONDA</td><td class="value">41.6</td><td><span class="formula">=B23/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C23*D23</span></td><td class="value">3</td><td class="value">104.16</td><td><span class="formula">=F23*G23</span></td><td><span class="formula">=E23+H23</span></td></tr>
+      <tr><td class="coord">Fila 24</td><td>MR LUCKY</td><td class="value">157</td><td><span class="formula">=B24/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C24*D24</span></td><td class="value">4</td><td class="value">104.16</td><td><span class="formula">=F24*G24</span></td><td><span class="formula">=E24+H24</span></td></tr>
+      <tr><td class="coord">Fila 25</td><td>NHK</td><td class="value">138.6</td><td><span class="formula">=B25/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C25*D25</span></td><td class="value">4</td><td class="value">104.16</td><td><span class="formula">=F25*G25</span></td><td><span class="formula">=E25+H25</span></td></tr>
+      <tr><td class="coord">Fila 26</td><td>NISHIKAWA</td><td class="value">61</td><td><span class="formula">=B26/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C26*D26</span></td><td class="value">3</td><td class="value">104.16</td><td><span class="formula">=F26*G26</span></td><td><span class="formula">=E26+H26</span></td></tr>
+      <tr><td class="coord">Fila 27</td><td>PIELES AZTECA</td><td class="value">5</td><td><span class="formula">=B27/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C27*D27</span></td><td class="value">1</td><td class="value">104.16</td><td><span class="formula">=F27*G27</span></td><td><span class="formula">=E27+H27</span></td></tr>
+      <tr><td class="coord">Fila 28</td><td>RONGTAI</td><td class="value">28.2</td><td><span class="formula">=B28/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C28*D28</span></td><td class="value">3</td><td class="value">104.16</td><td><span class="formula">=F28*G28</span></td><td><span class="formula">=E28+H28</span></td></tr>
+      <tr><td class="coord">Fila 29</td><td>SAFE DEMO</td><td class="value">61.6</td><td><span class="formula">=B29/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C29*D29</span></td><td class="value">3</td><td class="value">104.16</td><td><span class="formula">=F29*G29</span></td><td><span class="formula">=E29+H29</span></td></tr>
+      <tr><td class="coord">Fila 30</td><td>ELECTROFORJADOS</td><td class="value">14.6</td><td><span class="formula">=B30/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C30*D30</span></td><td class="value">2</td><td class="value">104.16</td><td><span class="formula">=F30*G30</span></td><td><span class="formula">=E30+H30</span></td></tr>
+      <tr><td class="coord">Fila 31</td><td>SUACERO</td><td class="value">392</td><td><span class="formula">=B31/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C31*D31</span></td><td class="value">8</td><td class="value">104.16</td><td><span class="formula">=F31*G31</span></td><td><span class="formula">=E31+H31</span></td></tr>
+      <tr><td class="coord">Fila 32</td><td>TQ-1</td><td class="value">26</td><td><span class="formula">=B32/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C32*D32</span></td><td class="value">2</td><td class="value">104.16</td><td><span class="formula">=F32*G32</span></td><td><span class="formula">=E32+H32</span></td></tr>
+      <tr><td class="coord">Fila 33</td><td>MINO INDUSTRY</td><td class="value">29.2</td><td><span class="formula">=B33/9.5</span></td><td class="value">24.5</td><td><span class="formula">=C33*D33</span></td><td class="value">2</td><td class="value">104.16</td><td><span class="formula">=F33*G33</span></td><td><span class="formula">=E33+H33</span></td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Lógica de fórmulas — Hoja1</div>
+    <div style="padding:14px;font-size:0.82rem;line-height:1.8;">
+      <b>C (Litros)</b> = KM×2 / 9.5 &nbsp;→ rendimiento gasolina 9.5 km/litro<br>
+      <b>E ($ Gasolina)</b> = C × D &nbsp;→ litros × precio por litro ($24.5)<br>
+      <b>H ($ Dani)</b> = F × G &nbsp;→ horas × tarifa hora ($104.16)<br>
+      <b>I (Total)</b> = E + H &nbsp;→ costo gasolina + costo tiempo Dani
+    </div>
+  </div>
+</div>
+
+<!-- ======== LABORATORIO ======== -->
+<div id="laboratorio" class="sheet">
+  <div class="section">
+    <div class="section-header green">LABORATORIO — Tarifas Base (Fila 1)</div>
+    <div class="rate-box">
+      <div class="rate"><label>C1 — Gasolina ($/L)</label><div class="val">$30.00</div></div>
+      <div class="rate"><label>D1 — Ventas ($/hr)</label><div class="val">$87.00</div></div>
+      <div class="rate"><label>F1 — Tiempo Invertido ($/hr)</label><div class="val">$80.00</div></div>
+      <div class="rate"><label>H1 — Gastos Fijos x Hora</label><div class="val">$161.85</div></div>
+      <div class="rate"><label>J1 — Camioneta x Hora</label><div class="val">$52.67</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-header green">LABORATORIO — Columnas y Fórmulas</div>
+    <table>
+      <tr><th>Col</th><th>Nombre</th><th>Fórmula tipo</th><th>Descripción</th></tr>
+      <tr><td>A</td><td>EMPRESA</td><td>—</td><td>Nombre del cliente</td></tr>
+      <tr><td>B</td><td>TIEMPO ENTREGA</td><td>Valor fijo</td><td>Días de entrega</td></tr>
+      <tr><td>C</td><td>GASOLINA</td><td><span class="formula">=((KM*2)/10)*$C$1</span></td><td>Costo gasolina; KM varía por empresa</td></tr>
+      <tr><td>D</td><td>VENTAS</td><td><span class="formula">=B*$D$1</span></td><td>Días × tarifa ventas $87/día</td></tr>
+      <tr><td>E</td><td>TOTAL</td><td><span class="formula">=C+D</span></td><td>Gasolina + Ventas</td></tr>
+      <tr><td>F</td><td>TIEMP. INVERTIDO</td><td>Valor fijo</td><td>Horas invertidas en el cliente</td></tr>
+      <tr><td>G</td><td>TOTAL T.INVERTIDO</td><td><span class="formula">=F*$F$1</span></td><td>Horas × $80/hr</td></tr>
+      <tr><td>H</td><td>GASTOS FIJOS X HORA</td><td><span class="formula">=F*$H$1</span></td><td>Horas × $161.85/hr</td></tr>
+      <tr><td>I</td><td>REFACCIONES</td><td>Valor fijo</td><td>Costo de refacciones estimado</td></tr>
+      <tr><td>J</td><td>CAMIONETA X HORA</td><td><span class="formula">=B*$J$1</span></td><td>Días × $52.67/hr camioneta</td></tr>
+      <tr><td>K</td><td>GASTOS GENERALES</td><td><span class="formula">=E+G+H+I+J</span></td><td>Suma de todos los costos</td></tr>
+      <tr><td>L</td><td>UTILIDAD 45%</td><td><span class="formula">=K*1.4</span> ó <span class="formula">=K*1.45</span></td><td>Margen 40% ó 45% según cliente</td></tr>
+      <tr><td>M</td><td>CRÉDITO 3%</td><td><span class="formula">=L*1.03</span></td><td>Precio final con crédito 3%</td></tr>
+    </table>
+  </div>
+  <div class="section">
+    <div class="section-header green">LABORATORIO — Datos por Empresa (KM y Horas)</div>
+    <table>
+      <tr><th>Empresa</th><th>Días Entrega (B)</th><th>KM usado en C</th><th>Hrs Invertidas (F)</th><th>Refacciones (I)</th><th>Factor Utilidad</th></tr>
+      <tr><td>BOLSAS DE LOS ALTOS</td><td>5</td><td>100</td><td>16</td><td>5000</td><td>×1.4</td></tr>
+      <tr><td>ANGUIPLAST</td><td>5</td><td>100</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>ECOBOLSAS</td><td>5</td><td>100</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>BADER TABACHINES</td><td>2</td><td>10</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>BODYCOTE</td><td>3</td><td>45</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>COFICAB</td><td>3</td><td>40</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>CONDUMEX</td><td>3</td><td>45</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>ECSA</td><td>2</td><td>16</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>EPC1 / EPC2</td><td>5</td><td>200</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>FRAENKISCHE</td><td>3</td><td>45</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>GEDNEY</td><td>3</td><td>11</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>GRUPO ACERERO</td><td>5</td><td>200</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>HALL / HIRUTA P1</td><td>3</td><td>35</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>IK PLASTIC</td><td>3</td><td>37</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>IMPRENTA JM</td><td>2</td><td>9</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>JARDÍN LA ALEMANA</td><td>2</td><td>6</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>MAFLOW</td><td>2</td><td>36</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>MARQUARDT</td><td>3</td><td>70</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>MICROONDA</td><td>1</td><td>27</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>MR LUCKY</td><td>3</td><td>76</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>NHK / MARQUARDT</td><td>3</td><td>70</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>NISHIKAWA</td><td>3</td><td>36</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>PIELES AZTECA</td><td>2</td><td>3</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>RONGTAI</td><td>3</td><td>16</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>SAFE DEMO</td><td>2</td><td>32</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>ELECTROFORJADOS</td><td>2</td><td>8</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>SUACERO</td><td>5</td><td>200</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>TQ-1</td><td>2</td><td>13</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>MINO INDUSTRY</td><td>2</td><td>15</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>FAS</td><td>4</td><td>80</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>GRANOS Y SEMILLAS</td><td>4</td><td>80</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>DI CENTRAL</td><td>3</td><td>9</td><td>—</td><td>—</td><td>×1.4</td></tr>
+      <tr><td>FAMO ALIMENTOS</td><td>3</td><td>20</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>GRUPO ZAHONERO</td><td>2</td><td>6</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>CARTO MICRO</td><td>2</td><td>8</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>EMMSA LEÓN</td><td>2</td><td>8</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>EMMSA SILAO</td><td>2</td><td>40</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>TORNIMASTER</td><td>3</td><td>7</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>HORMAS PALACIOS</td><td>2</td><td>8</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>SADDLEBACK</td><td>2</td><td>10</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>PILSAC</td><td>2</td><td>6</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>BRUSAROSCO</td><td>2</td><td>8</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>HIELO REGIA</td><td>2</td><td>20</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>AEROPUERTO</td><td>2</td><td>36</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>PRELOSA</td><td>3</td><td>25</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>TENERÍA VARGAS</td><td>2</td><td>10</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>SOSER</td><td>2</td><td>8</td><td>—</td><td>—</td><td>×1.45</td></tr>
+      <tr><td>ARCOSA</td><td>4</td><td>80</td><td>8</td><td>1500</td><td>×1.45</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ======== MOTORES ======== -->
+<div id="motores" class="sheet">
+  <div class="section">
+    <div class="section-header orange">MOTORES — Tarifas Base (Fila 1)</div>
+    <div class="rate-box">
+      <div class="rate"><label>C1 — Gasolina ($/L)</label><div class="val">$30.00</div></div>
+      <div class="rate"><label>D1 — Ventas ($/día)</label><div class="val">$87.00</div></div>
+      <div class="rate"><label>G1 — Camioneta x Hora</label><div class="val">$52.67</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-header orange">MOTORES — Columnas y Fórmulas</div>
+    <table>
+      <tr><th>Col</th><th>Nombre</th><th>Fórmula tipo</th><th>Descripción</th></tr>
+      <tr><td>A</td><td>EMPRESA</td><td>—</td><td>Nombre del cliente</td></tr>
+      <tr><td>B</td><td>TIEMPO ENTREGA</td><td>Valor fijo</td><td>Días</td></tr>
+      <tr><td>C</td><td>GASOLINA</td><td><span class="formula">=((KM*2)/10)*C1</span></td><td>KM ida/vuelta ÷ 10 × $30/L</td></tr>
+      <tr><td>D</td><td>VENTAS</td><td><span class="formula">=B*$D$1</span></td><td>Días × $87</td></tr>
+      <tr><td>E</td><td>TOTAL</td><td><span class="formula">=C+D</span></td><td>Gasolina + Ventas</td></tr>
+      <tr><td>F</td><td>BECERRA</td><td>Valor fijo</td><td>Costo técnico Becerra</td></tr>
+      <tr><td>G</td><td>CAMIONETA X HORA</td><td><span class="formula">=B*$G$1</span></td><td>Días × $52.67</td></tr>
+      <tr><td>H</td><td>GASTOS S/U</td><td><span class="formula">=E+F+G</span></td><td>Subtotal sin utilidad</td></tr>
+      <tr><td>I</td><td>UTILIDAD 45%</td><td><span class="formula">=H*1.4</span> ó <span class="formula">=H*1.45</span></td><td>Con margen</td></tr>
+      <tr><td>J</td><td>CRÉDITO 3%</td><td><span class="formula">=I*1.03</span></td><td>Precio final</td></tr>
+    </table>
+  </div>
+  <div class="info-box">
+    <b>⚠️ Nota ECSA (fila 10):</b> La fórmula C10 hace referencia a C8 en lugar de C1 → <code>=((16*2)/10)*C8</code>. Probablemente sea un error — debería ser C1. Revisar al reconstruir el Excel.
+  </div>
+</div>
+
+<!-- ======== AUTOMATIZACIÓN ======== -->
+<div id="automatizacion" class="sheet">
+  <div class="section">
+    <div class="section-header purple">AUTOMATIZACIÓN — Tarifas x Servicio (Fila 1)</div>
+    <div class="rate-box">
+      <div class="rate"><label>B1 — Programación PLC/HMI ($/hr)</label><div class="val">$650</div></div>
+      <div class="rate"><label>C1 — Servomotor ($/hr)</label><div class="val">$700</div></div>
+      <div class="rate"><label>D1 — Diseño Tablero ($/hr)</label><div class="val">$450</div></div>
+      <div class="rate"><label>E1 — Diseño Mecánico ($/hr)</label><div class="val">$900</div></div>
+      <div class="rate"><label>F1 — Instalación ($/hr)</label><div class="val">$350</div></div>
+      <div class="rate"><label>G1 — Fabricación ($/hr)</label><div class="val">$600</div></div>
+      <div class="rate"><label>H1 — Soporte ($/hr)</label><div class="val">$1,100</div></div>
+      <div class="rate"><label>I1 — Arquitectura ($/hr)</label><div class="val">$150</div></div>
+      <div class="rate"><label>O1 — Camioneta x Hora</label><div class="val">$52.67</div></div>
+      <div class="rate"><label>P1 — Gasolina ($/L)</label><div class="val">$30</div></div>
+      <div class="rate"><label>R1 — Gastos Fijos x Hora</label><div class="val">$161.85</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-header purple">AUTOMATIZACIÓN — Columnas y Fórmulas</div>
+    <table>
+      <tr><th>Col</th><th>Nombre</th><th>Fórmula tipo</th></tr>
+      <tr><td>B–I</td><td>Horas por servicio</td><td>Valores fijos de horas</td></tr>
+      <tr><td>J</td><td>TIEMPO PLANTA</td><td><span class="formula">=SUM(B:I)</span> — total horas</td></tr>
+      <tr><td>K</td><td>TOTAL $</td><td><span class="formula">=$D$1*D + $E$1*E + $F$1*F + $B$1*B + $C$1*C + $G$1*G + $H$1*H + $I$1*I</span></td></tr>
+      <tr><td>L</td><td>MATERIALES</td><td>Valor fijo</td></tr>
+      <tr><td>M</td><td>TOTAL 30%</td><td><span class="formula">=SUM(L)*1.3</span> — materiales +30%</td></tr>
+      <tr><td>N</td><td>VIÁTICOS</td><td>Valor fijo</td></tr>
+      <tr><td>O</td><td>HR CAMIONETA</td><td><span class="formula">=J*$O$1</span> — horas totales × $52.67</td></tr>
+      <tr><td>P</td><td>GASOLINA</td><td><span class="formula">=((KM*2)/10)*P1</span></td></tr>
+      <tr><td>Q</td><td>TIEMPO INVEST</td><td>Valor fijo (horas investigación)</td></tr>
+      <tr><td>R</td><td>GASTOS GENERALES</td><td><span class="formula">=Q*$R$1</span> — hrs × $161.85</td></tr>
+      <tr><td>S</td><td>TOTAL</td><td><span class="formula">=K+M+L+N+O+P+R</span></td></tr>
+      <tr><td>T</td><td>3% CRÉDITO</td><td><span class="formula">=S*0.03</span></td></tr>
+      <tr><td>U</td><td>TOTAL VENTA</td><td><span class="formula">=S+T</span></td></tr>
+      <tr><td>V</td><td>DESCUENTO 5%</td><td><span class="formula">=U*0.05</span></td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ======== SUMINISTROS ======== -->
+<div id="suministros" class="sheet">
+  <div class="section">
+    <div class="section-header teal">SUMINISTROS — Tarifas Base (Fila 1)</div>
+    <div class="rate-box">
+      <div class="rate"><label>C1 — Gasolina ($/L)</label><div class="val">$30.00</div></div>
+      <div class="rate"><label>D1 — Ventas ($/día)</label><div class="val">$87.00</div></div>
+      <div class="rate"><label>G1 — Camioneta x Hora</label><div class="val">$52.67</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-header teal">SUMINISTROS — Columnas y Fórmulas</div>
+    <table>
+      <tr><th>Col</th><th>Nombre</th><th>Fórmula tipo</th><th>Descripción</th></tr>
+      <tr><td>A</td><td>EMPRESA</td><td>—</td><td>Nombre del cliente</td></tr>
+      <tr><td>B</td><td>TIEMPO ENTREGA</td><td>Valor fijo</td><td>Días</td></tr>
+      <tr><td>C</td><td>GASOLINA</td><td><span class="formula">=((KM*2)/10)*C1</span></td><td>KM × $30</td></tr>
+      <tr><td>D</td><td>VENTAS</td><td><span class="formula">=B*$D$1</span></td><td>Días × $87</td></tr>
+      <tr><td>E</td><td>TOTAL</td><td><span class="formula">=C+D</span></td><td></td></tr>
+      <tr><td>F</td><td>PROVEEDOR</td><td>Valor fijo</td><td>Costo proveedor</td></tr>
+      <tr><td>G</td><td>CAMIONETA X HORA</td><td><span class="formula">=B*$G$1</span></td><td>Días × $52.67</td></tr>
+      <tr><td>H</td><td>GASTOS S/U</td><td><span class="formula">=E+F+G</span></td><td>Subtotal</td></tr>
+      <tr><td>I</td><td>UTILIDAD</td><td><span class="formula">=H*1.4</span> ó <span class="formula">=H*1.45</span></td><td>Con margen</td></tr>
+      <tr><td>J</td><td>CRÉDITO 3%</td><td><span class="formula">=I*1.03</span></td><td>Precio final</td></tr>
+    </table>
+  </div>
+  <div class="info-box">
+    <b>Estructura idéntica a MOTORES</b> — mismas tarifas base, mismas fórmulas, solo cambia la columna F (Proveedor vs Becerra).
+  </div>
+</div>
+
+<!-- ======== PROMPT LISTO ======== -->
+<div id="prompt" class="sheet">
+  <div class="section">
+    <div class="section-header" style="background:#2d3748;display:flex;justify-content:space-between;align-items:center;">
+      <span>📋 PROMPT COMPLETO — Copia y pega en Claude Code / CMD / Ollama</span>
+      <button class="copy-btn" onclick="copyPrompt()">📋 Copiar todo</button>
+    </div>
+<pre class="prompt" id="promptText">
+=== TABULADOR DE COTIZACIÓN — ESTRUCTURA COMPLETA ===
+
+Tienes un archivo Excel "TABULADOR_DE_COTIZACIÓN.xlsx" con 5 hojas.
+A continuación se documenta TODA la estructura, tarifas base y fórmulas
+para que puedas regenerar el Excel exacto con openpyxl o cualquier herramienta.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOJA 1: "Hoja1" — Cálculo de viajes
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COLUMNAS (fila 1 = encabezados):
+  A=EMPRESA, B=KM X2, C=LITROS, D=$ GASOLINA, E=$ GASOLINA2,
+  F=HRS, G=HR DANI, H=$ DANI, I=TOTAL
+
+FÓRMULAS (se repiten en cada fila de datos):
+  C = =Hoja1!$B{row}/9.5
+  E = =C{row}*D{row}
+  H = =F{row}*G{row}
+  I = =E{row}+H{row}
+
+DATOS (Empresa | KM×2 | $ Gasolina | HRS):
+  BOLSAS DE LOS ALTOS  | 226   | 24.5 | 5
+  ANGUIPALST           | 234   | 24.5 | 6
+  ECOBOLSAS            | 216   | 24.5 | 5
+  BADER TABACHINES     | 17.2  | 24.5 | 2
+  BODYCOTE             | 90.6  | 24.5 | 3
+  COFICAB              | 80    | 24.5 | 3
+  CONDUMEX             | 90.6  | 24.5 | 3
+  ECSA                 | 32    | 24.5 | 2
+  EMMSA                | 21.6  | 24.5 | 2
+  EPC 1                | 400   | 24.5 | 7
+  EPC 2                | 402   | 24.5 | 8
+  FRAENKISCHE          | (vacío)| 24.5| 3
+  GEDNEY               | 23.6  | 24.5 | 3
+  GRUPO ACERERO        | 386   | 24.5 | 7
+  HALL PLANTA 1        | 73.8  | 24.5 | 3
+  HIRUTA PLANTA 1      | 58.4  | 24.5 | 3
+  IK PLASTIC           | 61.4  | 24.5 | 3
+  IMPRENTA JM          | 16.2  | 24.5 | 2
+  JARDÍN LA ALEMANA    | 12    | 24.5 | 2
+  MAFLOW               | 59.8  | 24.5 | 3
+  MARQUARDT            | 125.4 | 24.5 | 4
+  MICROONDA            | 41.6  | 24.5 | 3
+  MR LUCKY             | 157   | 24.5 | 4
+  NHK                  | 138.6 | 24.5 | 4
+  NISHIKAWA            | 61    | 24.5 | 3
+  PIELES AZTECA        | 5     | 24.5 | 1
+  RONGTAI              | 28.2  | 24.5 | 3
+  SAFE DEMO            | 61.6  | 24.5 | 3
+  ELECTROFORJADOS      | 14.6  | 24.5 | 2
+  SUACERO              | 392   | 24.5 | 8
+  TQ-1                 | 26    | 24.5 | 2
+  MINO INDUSTRY        | 29.2  | 24.5 | 2
+  (HR DANI es 104.16 en todas las filas — columna G)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOJA 2: "LABORATORIO"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TARIFAS BASE (fila 1):
+  C1=30 ($/L gasolina), D1=87 ($/día ventas), F1=80 ($/hr tiempo inv.)
+  H1=161.85 (gastos fijos/hr), J1=52.67 (camioneta/hr)
+
+COLUMNAS:
+  A=EMPRESA, B=TIEMPO ENTREGA (días), C=GASOLINA, D=VENTAS,
+  E=TOTAL, F=TIEMP.INVERTIDO (hrs), G=TOTAL T.INV, H=GASTOS FIJOS X HR,
+  I=REFACCIONES, J=CAMIONETA X HORA, K=GASTOS GENERALES,
+  L=UTILIDAD 45%, M=CREDITO 3%
+
+FÓRMULAS (por fila):
+  C = =((KM*2)/10)*$C$1     ← KM depende de la empresa (ver tabla)
+  D = =B{row}*$D$1
+  E = =C{row}+D{row}
+  G = =F{row}*$F$1
+  H = =F{row}*$H$1
+  J = =B{row}*$J$1
+  K = =E{row}+G{row}+H{row}+I{row}+J{row}
+  L = =K{row}*1.4   (ó *1.45 para clientes de filas 37-52)
+  M = =L{row}*1.03
+
+DATOS (Empresa | Días | KM | Hrs.Inv | Refacciones | Factor.Util):
+  BOLSAS DE LOS ALTOS | 5 | 100 | 16 | 5000 | 1.4
+  ANGUIPLAST          | 5 | 100 | — | — | 1.4
+  ECOBOLSAS           | 5 | 100 | — | — | 1.4
+  BADER TABACHINES    | 2 | 10  | — | — | 1.4
+  BODYCOTE            | 3 | 45  | — | — | 1.4
+  COFICAB             | 3 | 40  | — | — | 1.4
+  CONDUMEX            | 3 | 45  | — | — | 1.4
+  ECSA                | 2 | 16  | — | — | 1.4
+  EPC1                | 5 | 200 | — | — | 1.4
+  EPC 2               | 5 | 200 | — | — | 1.4
+  FRAENKISCHE         | 3 | 45  | — | — | 1.4
+  GEDNEY              | 3 | 11  | — | — | 1.4
+  GRUPO ACERERO       | 5 | 200 | — | — | 1.4
+  HALL PLANTA 1       | 3 | 35  | — | — | 1.4
+  HIRUTA PLANTA 1     | 3 | 35  | — | — | 1.4
+  IK PLASTIC          | 3 | 37  | — | — | 1.4
+  IMPRENTA JM         | 2 | 9   | — | — | 1.4
+  JARDÍN LA ALEMANA   | 2 | 6   | — | — | 1.4
+  MAFLOW              | 2 | 36  | — | — | 1.4
+  MARQUARDT           | 3 | 70  | — | — | 1.4
+  MICROONDA           | 1 | 27  | — | — | 1.4
+  MR LUCKY            | 3 | 76  | — | — | 1.4
+  NHK                 | 3 | 70  | — | — | 1.4
+  NISHIKAWA           | 3 | 36  | — | — | 1.4
+  PIELES AZTECA       | 2 | 3   | — | — | 1.4
+  RONGTAI             | 3 | 16  | — | — | 1.4
+  SAFE DEMO           | 2 | 32  | — | — | 1.4
+  ELECTROFORJADOS     | 2 | 8   | — | — | 1.4
+  SUACERO             | 5 | 200 | — | — | 1.4
+  TQ-1                | 2 | 13  | — | — | 1.4
+  MINO INDUSTRY       | 2 | 15  | — | — | 1.4
+  FAS                 | 4 | 80  | — | — | 1.4
+  GRANOS Y SEMILLAS   | 4 | 80  | — | — | 1.4
+  DI CENTRAL          | 3 | 9   | — | — | 1.4
+  FAMO ALIMENTOS      | 3 | 20  | — | — | 1.45
+  GRUPO ZAHONERO      | 2 | 6   | — | — | 1.45
+  CARTO MICRO         | 2 | 8   | — | — | 1.45
+  EMMSA LEÓN          | 2 | 8   | — | — | 1.45
+  EMMSA SILAO         | 2 | 40  | — | — | 1.45
+  TORNIMASTER         | 3 | 7   | — | — | 1.45
+  HORMAS PALACIOS     | 2 | 8   | — | — | 1.45
+  SADDLEBACK          | 2 | 10  | — | — | 1.45
+  PILSAC              | 2 | 6   | — | — | 1.45
+  BRUSAROSCO          | 2 | 8   | — | — | 1.45
+  HIELO REGIA         | 2 | 20  | — | — | 1.45
+  AEROPUERTO          | 2 | 36  | — | — | 1.45
+  PRELOSA             | 3 | 25  | — | — | 1.45
+  TENERÍA VARGAS      | 2 | 10  | — | — | 1.45
+  SOSER               | 2 | 8   | — | — | 1.45
+  ARCOSA              | 4 | 80  | 8 | 1500 | 1.45
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOJA 3: "MOTORES" — Estructura idéntica a SUMINISTROS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TARIFAS BASE: C1=30, D1=87, G1=52.67
+
+COLUMNAS:
+  A=EMPRESA, B=TIEMPO ENTREGA, C=GASOLINA, D=VENTAS,
+  E=TOTAL, F=BECERRA (técnico), G=CAMIONETA X HORA,
+  H=GASTOS S/U, I=UTILIDAD 45%, J=CREDITO 3%
+
+FÓRMULAS:
+  C = =((KM*2)/10)*C1
+  D = =B*$D$1
+  E = =C+D
+  G = =B*$G$1
+  H = =E+F+G
+  I = =H*1.4  (ó *1.45 para filas 38-52)
+  J = =I*1.03
+
+(Los datos de empresa/KM/días son los mismos que LABORATORIO)
+
+⚠️ BUG en ECSA fila 10: C10=((16*2)/10)*C8 — debería ser *C1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOJA 4: "AUTOMATIZACIÓN"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TARIFAS POR SERVICIO (fila 1):
+  B1=650 (PLC/HMI/hr), C1=700 (Servomotor/hr), D1=450 (Dis.Tablero/hr)
+  E1=900 (Dis.Mecánico/hr), F1=350 (Instalación/hr), G1=600 (Fabricación/hr)
+  H1=1100 (Soporte/hr), I1=150 (Arquitectura/hr)
+  O1=52.67 (camioneta/hr), P1=30 (gasolina), R1=161.85 (gastos fijos/hr)
+
+COLUMNAS:
+  A=EMPRESA, B=Prog.PLC/HMI(hrs), C=Servomotor(hrs), D=Dis.Tablero(hrs)
+  E=Dis.Mecanico(hrs), F=Instalacion(hrs), G=Fabricacion(hrs)
+  H=Soporte(hrs), I=Arquitectura(hrs), J=TIEMPO PLANTA, K=TOTAL $
+  L=MATERIALES, M=TOTAL+30%, N=VIÁTICOS, O=HR CAMIONETA
+  P=GASOLINA, Q=TIEMPO INVEST, R=GASTOS GENERALES
+  S=TOTAL, T=3% CREDITO, U=TOTAL VENTA, V=DESCUENTO 5%
+
+FÓRMULAS:
+  J = =SUM(B:I)
+  K = =$B$1*B + $C$1*C + $D$1*D + $E$1*E + $F$1*F + $G$1*G + $H$1*H + $I$1*I
+  M = =L*1.3
+  O = =J*$O$1
+  P = =((KM*2)/10)*P1
+  R = =Q*$R$1
+  S = =K+M+L+N+O+P+R
+  T = =S*0.03
+  U = =S+T
+  V = =U*0.05
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOJA 5: "SUMINISTROS" — Idéntica a MOTORES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TARIFAS BASE: C1=30, D1=87, G1=52.67
+COLUMNAS: igual que MOTORES pero col F = PROVEEDOR (en lugar de BECERRA)
+FÓRMULAS: exactamente las mismas que MOTORES
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TAREA: Reconstruye este Excel con openpyxl en Python,
+incluyendo las fórmulas como strings (no valores calculados).
+Genera el archivo como TABULADOR_COTIZACION_NUEVO.xlsx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+</pre>
+  </div>
+</div>
+
+<script>
+function showSheet(id) {
+  document.querySelectorAll('.sheet').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+function copyPrompt() {
+  const text = document.getElementById('promptText').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = '📋 Copiar todo', 2000);
+  });
+}
+</script>
+</body>
+</html>
