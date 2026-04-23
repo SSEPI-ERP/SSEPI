@@ -158,7 +158,12 @@ const ComprasModule = (function() {
     }
 
     async function _loadCompras() {
-        compras = await comprasService.select({}, { orderBy: 'fecha_creacion', ascending: false, page: 0, pageSize: 500 });
+        try {
+            compras = await comprasService.select({}, { orderBy: 'created_at', ascending: false, page: 0, pageSize: 500 });
+        } catch (e) {
+            console.warn('[Compras] Error cargando compras:', e);
+            compras = [];
+        }
         _applyFilters();
     }
 
@@ -696,7 +701,7 @@ const ComprasModule = (function() {
                 accion: 'Borrador guardado'
             }],
             confirmado_ventas: false,
-            fecha_creacion: new Date().toISOString(),
+            created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
         const csrfToken = sessionStorage.getItem('csrfToken');
@@ -782,7 +787,7 @@ const ComprasModule = (function() {
                 accion: compraId ? 'Orden confirmada desde borrador' : 'Orden creada'
             }],
             confirmado_ventas: false,
-            fecha_creacion: (currentCompra && currentCompra.fecha_creacion) || new Date().toISOString(),
+            created_at: (currentCompra && currentCompra.created_at) || new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
 
