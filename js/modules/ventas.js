@@ -2468,131 +2468,131 @@ const VentasModule = (function() {
         };
         const columnName = columnMap[tipo] || 'cotizacion_id';
 
+        let data = [], userMap = {};
         try {
             // Fetch historial sin join (PostgREST requiere FK para joins embebidos)
-            let data, error;
-            // Intentar con la columna específica primero
+            let error;
             const query = window.supabase
                 .from('orden_historial')
                 .select('*');
 
             if (columnName === 'cotizacion_id') {
-                // cotizacion_id puede no existir — buscar por descripción como fallback
                 const res = await query
                     .or(`cotizacion_id.eq.${id},descripcion.ilike.%${id}%`)
                     .order('creado_en', { ascending: false });
-                data = res.data;
+                data = res.data || [];
                 error = res.error;
-                // Si falla por columna faltante, buscar solo por descripción
                 if (error && (error.message?.includes('does not exist') || error.code === '42703')) {
                     const fallback = await window.supabase
                         .from('orden_historial')
                         .select('*')
                         .ilike('descripcion', `%${id}%`)
                         .order('created_at', { ascending: false });
-                    data = fallback.data;
+                    data = fallback.data || [];
                     error = fallback.error;
                 }
             } else {
                 const res = await query
                     .eq(columnName, id)
                     .order('creado_en', { ascending: false });
-                data = res.data;
+                data = res.data || [];
                 error = res.error;
-                // Fallback si creado_en no existe
                 if (error && (error.message?.includes('does not exist') || error.code === '42703')) {
                     const fallback = await window.supabase
                         .from('orden_historial')
                         .select('*')
                         .eq(columnName, id)
                         .order('created_at', { ascending: false });
-                    data = fallback.data;
+                    data = fallback.data || [];
                     error = fallback.error;
                 }
             }
 
-            if (error) throw error;
-
-            // Resolve creado_por → nombre de usuario en segunda consulta
-            let events = data || [];
-            const userIds = [...new Set(events.map(e => e.creado_por).filter(Boolean))];
-            let userMap = {};
-            if (userIds.length > 0) {
-                const { data: users } = await window.supabase
-                    .from('usuarios')
-                    .select('id, nombre, email')
-                    .in('id', userIds);
-                if (users) users.forEach(u => { userMap[u.id] = u; });
+            // Si hay error pero tenemos datos, continuar sin tirar error
+            if (error && data.length === 0) {
+                console.warn('[Ventas] Error cargando historial (sin datos):', error);
             }
-            events = events.map(e => ({
-                ...e,
-                creado_por_usuario: e.creado_por ? { nombre: userMap[e.creado_por]?.nombre, email: userMap[e.creado_por]?.email } : null
-            }));
-            const item = [...ventas, ...cotizaciones].find(i => i.id === id);
-            const estadoActual = item?.estado || item?.estatus_pago || 'registro';
-            const cerebro = item?.cerebro_registro || {};
-            const equipoInfo = cerebro.producto_servicio || cerebro.nombre_producto || item?.descripcion || item?.equipo || null;
-            const marcaInfo = cerebro.marca || null;
-            const modeloInfo = cerebro.modelo || null;
-            const serieInfo = cerebro.serie || null;
-            const fallaInfo = cerebro.falla_reportada || null;
 
-            const equipoHtml = equipoInfo ? `
-                <div style="background:var(--bg-hover); border-radius:8px; padding:14px 16px; margin-bottom:20px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                    <div><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Equipo</span><div style="font-weight:600; margin-top:2px;">${equipoInfo}</div></div>
-                    ${marcaInfo ? `<div><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Marca</span><div style="font-weight:600; margin-top:2px;">${marcaInfo}</div></div>` : ''}
-                    ${modeloInfo ? `<div><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Modelo</span><div style="font-weight:600; margin-top:2px;">${modeloInfo}</div></div>` : ''}
-                    ${serieInfo ? `<div><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Serie</span><div style="font-weight:600; margin-top:2px;">${serieInfo}</div></div>` : ''}
-                    ${fallaInfo ? `<div style="grid-column:1/-1;"><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Falla reportada</span><div style="margin-top:2px;">${fallaInfo}</div></div>` : ''}
-                </div>
-            ` : '';
+            // Resolve creado_por → nombre de usuario en segunda consulta (ignorar errores)
+            const events = data || [];
+            const userIds = [...new Set(events.map(e => e.creado_por).filter(Boolean))];
+            if (userIds.length > 0) {
+                try {
+                    const { data: users } = await window.supabase
+                        .from('usuarios')
+                        .select('id, nombre, email')
+                        .in('id', userIds);
+                    if (users) users.forEach(u => { userMap[u.id] = u; });
+                } catch (e) { /* ignorar */ }
+            }
+            events.forEach(e => {
+                e.creado_por_usuario = e.creado_por ? { nombre: userMap[e.creado_por]?.nombre, email: userMap[e.creado_por]?.email } : null;
+            });
+        } catch (err) {
+            console.warn('[Ventas] Error en historial:', err);
+        }
 
-            body.innerHTML = `
-                ${equipoHtml}
-                ${_renderTimeline(estadoActual)}
-                <div style="margin-top:24px;">
-                    <h4 style="margin-bottom:16px; color:var(--text-primary);"><i class="fas fa-history"></i> Historial de Eventos</h4>
-                    ${events.length === 0 ? `
-                        <div style="text-align:center; padding:40px; color:var(--text-secondary);">
-                            <i class="fas fa-history" style="font-size:48px; margin-bottom:16px; opacity:0.5;"></i>
-                            <p>No hay eventos registrados.</p>
-                        </div>
-                    ` : `
-                        <div style="max-height:50vh; overflow-y:auto;">
-                            ${events.map(e => {
-                                const fecha = new Date(e.creado_en || e.created_at).toLocaleString('es-MX');
-                                const usuario = e.creado_por_usuario?.nombre || e.creado_por_usuario?.email?.split('@')[0] || 'Sistema';
-                                const iconMap = {
-                                    'creacion': '🆕', 'cotizacion_guardada': '💾', 'cotizacion_enviada': '📧',
-                                    'cotizacion_autorizada': '✅', 'cotizacion_rechazada': '❌', 'cambio_estado': '🔄',
-                                    'costo_agregado': '💰', 'compra_vinculada': '🔗', 'folio_generado': '📄', 'venta_cerrada': '💵'
-                                };
-                                const icon = iconMap[e.evento] || '📝';
-                                return `<div style="padding:12px 16px; border-bottom:1px solid var(--border); display:flex; gap:12px; align-items:flex-start;">
-                                    <span style="font-size:20px;">${icon}</span><div style="flex:1;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <strong style="color:var(--c-ventas);">${e.evento.replace(/_/g, ' ').toUpperCase()}</strong>
-                                        <span style="font-size:12px; color:var(--text-secondary);">${fecha}</span>
-                                    </div><p style="margin:4px 0; color:var(--text-secondary);">${e.descripcion || ''}</p>
-                                    <span style="font-size:11px; color:var(--text-muted);">Por: ${usuario}</span></div></div>`;
-                            }).join('')}
-                        </div>
-                    `}
-                </div>
-                <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
-                    <button class="btn btn-warning" onclick="ventasModule._editarVenta('${id}', '${tipo}')">
-                        <i class="fas fa-edit"></i> Editar
-                    </button>
-                    <button class="btn btn-danger" onclick="ventasModule._eliminarVenta('${id}', '${tipo}')">
-                        <i class="fas fa-trash"></i> Eliminar
-                    </button>
-                </div>
-            `;
-            modal.classList.add('active');
-        } catch (error) {
-            console.error('[Ventas] mostrarHistorial:', error);
-            body.innerHTML = `<p style="color:#c62828;">Error: ${error.message}</p>`;
-            modal.classList.add('active');
+        const item = [...ventas, ...cotizaciones].find(i => i.id === id);
+        const estadoActual = item?.estado || item?.estatus_pago || 'registro';
+        const cerebro = item?.cerebro_registro || {};
+        const equipoInfo = cerebro.producto_servicio || cerebro.nombre_producto || item?.descripcion || item?.equipo || null;
+        const marcaInfo = cerebro.marca || null;
+        const modeloInfo = cerebro.modelo || null;
+        const serieInfo = cerebro.serie || null;
+        const fallaInfo = cerebro.falla_reportada || null;
+
+        const equipoHtml = equipoInfo ? `
+            <div style="background:var(--bg-hover); border-radius:8px; padding:14px 16px; margin-bottom:20px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Equipo</span><div style="font-weight:600; margin-top:2px;">${equipoInfo}</div></div>
+                ${marcaInfo ? `<div><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Marca</span><div style="font-weight:600; margin-top:2px;">${marcaInfo}</div></div>` : ''}
+                ${modeloInfo ? `<div><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Modelo</span><div style="font-weight:600; margin-top:2px;">${modeloInfo}</div></div>` : ''}
+                ${serieInfo ? `<div><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Serie</span><div style="font-weight:600; margin-top:2px;">${serieInfo}</div></div>` : ''}
+                ${fallaInfo ? `<div style="grid-column:1/-1;"><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">Falla reportada</span><div style="margin-top:2px;">${fallaInfo}</div></div>` : ''}
+            </div>
+        ` : '';
+
+        body.innerHTML = `
+            ${equipoHtml}
+            ${_renderTimeline(estadoActual)}
+            <div style="margin-top:24px;">
+                <h4 style="margin-bottom:16px; color:var(--text-primary);"><i class="fas fa-history"></i> Historial de Eventos</h4>
+                ${events.length === 0 ? `
+                    <div style="text-align:center; padding:40px; color:var(--text-secondary);">
+                        <i class="fas fa-history" style="font-size:48px; margin-bottom:16px; opacity:0.5;"></i>
+                        <p>No hay eventos registrados.</p>
+                    </div>
+                ` : `
+                    <div style="max-height:50vh; overflow-y:auto;">
+                        ${events.map(e => {
+                            const fecha = new Date(e.creado_en || e.created_at).toLocaleString('es-MX');
+                            const usuario = e.creado_por_usuario?.nombre || e.creado_por_usuario?.email?.split('@')[0] || 'Sistema';
+                            const iconMap = {
+                                'creacion': '🆕', 'cotizacion_guardada': '💾', 'cotizacion_enviada': '📧',
+                                'cotizacion_autorizada': '✅', 'cotizacion_rechazada': '❌', 'cambio_estado': '🔄',
+                                'costo_agregado': '💰', 'compra_vinculada': '🔗', 'folio_generado': '📄', 'venta_cerrada': '💵'
+                            };
+                            const icon = iconMap[e.evento] || '📝';
+                            return `<div style="padding:12px 16px; border-bottom:1px solid var(--border); display:flex; gap:12px; align-items:flex-start;">
+                                <span style="font-size:20px;">${icon}</span><div style="flex:1;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <strong style="color:var(--c-ventas);">${e.evento.replace(/_/g, ' ').toUpperCase()}</strong>
+                                    <span style="font-size:12px; color:var(--text-secondary);">${fecha}</span>
+                                </div><p style="margin:4px 0; color:var(--text-secondary);">${e.descripcion || ''}</p>
+                                <span style="font-size:11px; color:var(--text-muted);">Por: ${usuario}</span></div></div>`;
+                        }).join('')}
+                    </div>
+                `}
+            </div>
+            <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                <button class="btn btn-warning" onclick="ventasModule._editarVenta('${id}', '${tipo}')">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+                <button class="btn btn-danger" onclick="ventasModule._eliminarVenta('${id}', '${tipo}')">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        `;
+        modal.classList.add('active');
         }
     }
 
