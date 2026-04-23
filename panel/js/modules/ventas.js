@@ -413,17 +413,34 @@ const VentasModule = (function() {
                     estado: 'Nuevo',
                     notas_generales: notasAlta
                 };
-                const inserted = await tallerService.insert(row, csrfToken);
-                if (!inserted) {
-                    throw new Error('No se recibió confirmación del servidor al crear la orden de Taller.');
+
+                // Verificar si ya existe una orden similar
+                const { data: existing } = await window.supabase
+                    .from('ordenes_taller')
+                    .select('*')
+                    .eq('cliente_nombre', clienteNombre)
+                    .eq('falla_reportada', falla)
+                    .eq('fecha_ingreso', fechaIso)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                let inserted;
+                if (existing) {
+                    inserted = existing;
+                    _showToast('📋 Orden existente recuperada: ' + (existing.folio || ''), 'info');
+                } else {
+                    inserted = await tallerService.insert(row, csrfToken);
+                    if (!inserted) throw new Error('No se recibió confirmación del servidor al crear la orden de Taller.');
                 }
+
                 if (inserted && taller && !taller.some((o) => o.id === inserted.id)) taller.unshift(inserted);
                 compraActual = {
                     id: inserted.id,
-                    vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'taller', folio_taller: folio },
+                    vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'taller', folio_taller: inserted.folio || folio },
                     _origen: 'taller'
                 };
-                return { folio, ordenId: inserted.id, tipo: 'taller' };
+                return { folio: inserted.folio || folio, ordenId: inserted.id, tipo: 'taller' };
             }
 
             if (dept === 'Taller Motores') {
@@ -438,17 +455,34 @@ const VentasModule = (function() {
                     estado: 'Nuevo',
                     notas_generales: notasAlta
                 };
-                const inserted = await motoresService.insert(row, csrfToken);
-                if (!inserted) {
-                    throw new Error('No se recibió confirmación del servidor al crear la orden de Motores.');
+
+                // Verificar si ya existe una orden similar
+                const { data: existing } = await window.supabase
+                    .from('ordenes_motores')
+                    .select('*')
+                    .eq('cliente_nombre', clienteNombre)
+                    .eq('falla_reportada', falla)
+                    .eq('fecha_ingreso', fechaIso)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                let inserted;
+                if (existing) {
+                    inserted = existing;
+                    _showToast('📋 Orden existente recuperada: ' + (existing.folio || ''), 'info');
+                } else {
+                    inserted = await motoresService.insert(row, csrfToken);
+                    if (!inserted) throw new Error('No se recibió confirmación del servidor al crear la orden de Motores.');
                 }
+
                 if (inserted && motores && !motores.some((o) => o.id === inserted.id)) motores.unshift(inserted);
                 compraActual = {
                     id: inserted.id,
                     vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'motor' },
                     _origen: 'motores'
                 };
-                return { folio, ordenId: inserted.id, tipo: 'motor' };
+                return { folio: inserted.folio || folio, ordenId: inserted.id, tipo: 'motor' };
             }
 
             if (dept === 'Automatización' || dept === 'Proyectos') {
@@ -468,10 +502,26 @@ const VentasModule = (function() {
                     notas_generales: [falla, prioLine].filter(Boolean).join('\n\n'),
                     estado: 'pendiente'
                 };
-                const inserted = await proyectosService.insert(row, csrfToken);
-                if (!inserted) {
-                    throw new Error('No se recibió confirmación del servidor al crear el registro de Automatización/Proyectos.');
+
+                // Verificar si ya existe un proyecto similar
+                const { data: existing } = await window.supabase
+                    .from('proyectos_automatizacion')
+                    .select('*')
+                    .eq('cliente', clienteNombre)
+                    .eq('fecha', fechaStr || new Date().toISOString().split('T')[0])
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                let inserted;
+                if (existing) {
+                    inserted = existing;
+                    _showToast('📋 Proyecto existente recuperado: ' + (existing.folio || ''), 'info');
+                } else {
+                    inserted = await proyectosService.insert(row, csrfToken);
+                    if (!inserted) throw new Error('No se recibió confirmación del servidor al crear el registro de Automatización/Proyectos.');
                 }
+
                 if (inserted && proyectos && !proyectos.some((p) => p.id === inserted.id)) proyectos.unshift(inserted);
                 const origen = dept === 'Automatización' ? 'automatizacion' : 'proyecto';
                 compraActual = {
@@ -479,7 +529,7 @@ const VentasModule = (function() {
                     vinculacion: { id: inserted.id, nombre: clienteNombre, tipo: 'proyecto' },
                     _origen: origen
                 };
-                return { folio, ordenId: inserted.id, tipo: 'proyecto' };
+                return { folio: inserted.folio || folio, ordenId: inserted.id, tipo: 'proyecto' };
             }
 
             throw new Error('Departamento no soportado para alta de orden');
@@ -3750,13 +3800,15 @@ const VentasModule = (function() {
             // Nota: El auto-guardado al paso 2 ya no es necesario porque el usuario guarda manualmente en paso 1
             // Solo guardar si por algún motivo no se guardó antes
             if (ventasAutosaveCtrl && !ventasDraftSessionKey) {
-                ventasAutosaveCtrl.save({
+                const payload = {
                     wizardPaso: 2,
                     calculadoraClienteActual,
                     compraActual,
                     ventasWizardCerebro,
                     paso1Fields: _collectPaso1Fields()
-                });
+                };
+                ventasAutosaveCtrl.collectPayload = () => payload;
+                ventasAutosaveCtrl.schedule();
             }
         }
         // Auto-guardar al cambiar de paso (solo pasos 2→3 y 3→4)
@@ -3780,7 +3832,8 @@ const VentasModule = (function() {
             if (wizardPaso + 1 === 4) {
                 payload.paso3Fields = _collectPaso3Fields();
             }
-            ventasAutosaveCtrl.save(payload);
+            ventasAutosaveCtrl.collectPayload = () => payload;
+            ventasAutosaveCtrl.schedule();
         }
         if (wizardPaso === 4) return;
         (async () => { await _renderWizardPaso(wizardPaso + 1); })();
@@ -3950,13 +4003,15 @@ const VentasModule = (function() {
 
             // Guardar borrador local para continuar después
             if (ventasAutosaveCtrl) {
-                ventasAutosaveCtrl.save({
+                const payload = {
                     wizardPaso: 1,
                     calculadoraClienteActual,
                     compraActual: dept === 'Administración' ? { id: null, vinculacion: null, _origen: 'directo' } : null,
                     ventasWizardCerebro,
                     paso1Fields: _collectPaso1Fields()
-                });
+                };
+                ventasAutosaveCtrl.collectPayload = () => payload;
+                ventasAutosaveCtrl.schedule();
             }
 
             _showToast('✅ Orden guardada. Puedes cerrar y esperar a que Laboratorio/Compras completen su información.', 'success');
@@ -3970,7 +4025,7 @@ const VentasModule = (function() {
         // PASOS 2 y 3: Guardar borrador
         if (wizardPaso < 4) {
             if (ventasAutosaveCtrl) {
-                ventasAutosaveCtrl.save({
+                const payload = {
                     wizardPaso,
                     calculadoraClienteActual,
                     calculadoraComponentes: calculadoraComponentes.slice(),
@@ -3982,7 +4037,9 @@ const VentasModule = (function() {
                     lastIva,
                     lastTotal,
                     actividadesDiarias: actividadesDiarias.slice()
-                });
+                };
+                ventasAutosaveCtrl.collectPayload = () => payload;
+                ventasAutosaveCtrl.schedule();
             }
             _showToast('✅ Borrador guardado. Puedes continuar editando.', 'success');
             _addToFeed('💾', 'Borrador de cotización guardado');
