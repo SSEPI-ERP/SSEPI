@@ -3283,6 +3283,7 @@ const VentasModule = (function() {
                     subtotal: items.reduce((s, i) => s + i.importe, 0),
                     iva: finalTotal * 0.16 / 1.16,
                     total: finalTotal,
+                    fecha: item.fecha || new Date().toISOString().split('T')[0],
                     cerebro_registro: _cerebroRegistroPayload(),
                     updated_at: new Date().toISOString()
                 }, csrfToken);
