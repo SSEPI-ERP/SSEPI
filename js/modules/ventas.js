@@ -2948,8 +2948,9 @@ const VentasModule = (function() {
         if (prevBtn) prevBtn.style.display = paso > 1 ? 'inline-block' : 'none';
         var nextBtn = footer.querySelector('#wizardNextBtn');
         if (nextBtn) nextBtn.style.display = paso < 4 ? 'inline-block' : 'none';
+        // Botón Guardar: visible en pasos 2, 3, 4 (desde que hay componentes calculados)
         var guardarBtn = footer.querySelector('#guardarCotizacionWizardBtn');
-        if (guardarBtn) guardarBtn.style.display = paso === 4 ? 'inline-block' : 'none';
+        if (guardarBtn) guardarBtn.style.display = paso >= 2 ? 'inline-block' : 'none';
         var descargarPDFWizard = footer.querySelector('#descargarPDFWizardBtn');
         if (descargarPDFWizard) descargarPDFWizard.style.display = paso === 4 ? 'inline-block' : 'none';
         var generarBtn = footer.querySelector('#generarCotizacionBtn');
