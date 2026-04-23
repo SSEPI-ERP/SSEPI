@@ -400,7 +400,7 @@ const ComprasModule = (function() {
         const tbody = document.getElementById('comprasTableBody');
         if (!tbody) return;
         if (ordenes.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">No hay órdenes</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px;">No hay órdenes</td></tr>';
             return;
         }
         tbody.innerHTML = ordenes.map(c => `
@@ -411,6 +411,14 @@ const ComprasModule = (function() {
                 <td>${c.vinculacion ? `${c.vinculacion.tipo}: ${c.vinculacion.nombre || ''}` : '—'}</td>
                 <td>$${(c.total || 0).toFixed(2)}</td>
                 <td><span class="status-badge estado-${c.estado}">${_getEstadoLabel(c.estado)}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-warning" onclick="event.stopPropagation(); comprasModule._editarOrden('${c.id}')" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); comprasModule._eliminarOrden('${c.id}')" title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
             </tr>
         `).join('');
     }
@@ -582,6 +590,24 @@ const ComprasModule = (function() {
         const detalleModal = document.getElementById('detalleModal');
         if (detalleModal) detalleModal.classList.remove('active');
         modal.classList.add('active');
+    }
+
+    async function _eliminarOrden(id) {
+        const compra = compras.find(c => c.id === id);
+        if (!compra) { _showToast('Orden no encontrada', 'error'); return; }
+        const folio = compra.folio || id.slice(-6);
+        const proveedor = compra.proveedor || 'N/A';
+        if (!confirm(`¿Eliminar orden ${folio} de ${proveedor}?`)) return;
+        try {
+            const { error } = await window.supabase.from('compras').delete().eq('id', id);
+            if (error) throw error;
+            _showToast('Orden eliminada correctamente', 'success');
+            await _loadCompras();
+            _applyFilters();
+        } catch (e) {
+            console.error(e);
+            _showToast('Error al eliminar: ' + e.message, 'error');
+        }
     }
 
     // ==================== NUEVA ORDEN ====================
@@ -1174,7 +1200,9 @@ const ComprasModule = (function() {
         init,
         _abrirDetalle,
         _crearOrdenDesdeSolicitud,
-        _verProveedor
+        _verProveedor,
+        _editarOrden,
+        _eliminarOrden
     };
 })();
 
