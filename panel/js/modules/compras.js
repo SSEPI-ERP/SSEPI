@@ -688,6 +688,7 @@ const ComprasModule = (function() {
             folio,
             proveedor: proveedor || 'PENDIENTE',
             departamento: departamento || 'Taller Electrónica',
+            fecha: new Date().toISOString(),
             fecha_requerida: fechaRequerida || new Date().toISOString().split('T')[0],
             prioridad: prioridad || 'Normal',
             vinculacion,
@@ -854,55 +855,45 @@ const ComprasModule = (function() {
     async function _crearOrdenDesdeSolicitud(id, tipo) {
         console.log('[Compras] Crear orden desde solicitud', { id, tipo });
 
-        // Obtener datos de la orden vinculada
-        let ordenData = null;
+        let compraData = null;
+        let ordenTallerData = null;
         let departamentoPorDefecto = 'Taller Electrónica';
-        let itemsAImportar = [];
-        let equipoInfo = { nombre: '', marca: '', modelo: '', serie: '' };
 
         try {
+            // Primero obtener datos de la orden de taller
             if (tipo === 'taller') {
-                ordenData = await tallerService.getById(id);
+                ordenTallerData = await tallerService.getById(id);
                 departamentoPorDefecto = 'Taller Electrónica';
-                // Obtener info del equipo
-                equipoInfo = {
-                    nombre: ordenData?.equipo || '',
-                    marca: ordenData?.marca || '',
-                    modelo: ordenData?.modelo || '',
-                    serie: ordenData?.serie || ''
-                };
+                console.log('[Compras] Orden taller:', ordenTallerData);
             } else if (tipo === 'motor') {
-                ordenData = await motoresService.getById(id);
+                ordenTallerData = await motoresService.getById(id);
                 departamentoPorDefecto = 'Taller Motores';
-                equipoInfo = {
-                    nombre: ordenData?.equipo || ordenData?.motor || '',
-                    marca: ordenData?.marca || '',
-                    modelo: ordenData?.modelo || '',
-                    serie: ordenData?.serie || ''
-                };
             } else if (tipo === 'proyecto' || tipo === 'automatizacion') {
-                ordenData = await proyectosService.getById(id);
+                ordenTallerData = await proyectosService.getById(id);
                 departamentoPorDefecto = tipo === 'automatizacion' ? 'Automatización' : 'Proyectos';
             }
-        } catch (e) {
-            console.warn('[Compras] Error obteniendo datos de orden:', e);
-        }
 
-        // Intentar obtener items desde la cotización vinculada en ventas
-        if (ordenData && ordenData.cotizacion_id) {
-            try {
-                const { data: cotizacion } = await window.supabase
-                    .from('cotizaciones')
-                    .select('items')
-                    .eq('id', ordenData.cotizacion_id)
-                    .single();
-                if (cotizacion?.items && cotizacion.items.length > 0) {
-                    itemsAImportar = cotizacion.items;
-                    console.log('[Compras] Items importados desde cotización:', itemsAImportar.length);
+            // Buscar la orden de compra vinculada (creada por Laboratorio)
+            if (ordenTallerData) {
+                const { data: comprasList, error } = await window.supabase
+                    .from('compras')
+                    .select('*')
+                    .eq('vinculacion->>tipo', 'taller')
+                    .eq('vinculacion->>id', id)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                if (error) {
+                    console.error('[Compras] Error buscando compra vinculada:', error);
+                } else if (comprasList && comprasList.length > 0) {
+                    compraData = comprasList[0];
+                    console.log('[Compras] Solicitud de compra encontrada:', compraData);
+                } else {
+                    console.log('[Compras] No hay solicitud de compra creada aún para esta orden');
                 }
-            } catch (e) {
-                console.warn('[Compras] No se pudo obtener cotización vinculada:', e);
             }
+        } catch (e) {
+            console.error('[Compras] Error obteniendo datos:', e);
         }
 
         // Precargar formulario
@@ -910,13 +901,13 @@ const ComprasModule = (function() {
         document.getElementById('vinculacionId').value = id;
         document.getElementById('departamentoSelect').value = departamentoPorDefecto;
 
-        // Mostrar info de vinculación en consola
-        console.log('[Compras] Equipo:', equipoInfo);
-        console.log('[Compras] Items a importar:', itemsAImportar.length);
-
-        // Si hay items, importarlos
+        // Importar items desde la orden de compras (creada por Laboratorio)
         const itemsBody = document.getElementById('itemsBody');
         itemsBody.innerHTML = '';
+        const itemsAImportar = compraData?.items || [];
+
+        console.log('[Compras] Items a importar:', itemsAImportar.length);
+        console.log('[Compras] Equipo info:', ordenTallerData?.equipo, ordenTallerData?.marca, ordenTallerData?.modelo, ordenTallerData?.serie);
 
         if (itemsAImportar.length > 0) {
             itemsAImportar.forEach(item => {
@@ -931,10 +922,16 @@ const ComprasModule = (function() {
                 `;
                 itemsBody.appendChild(row);
             });
-        } else if (ordenData && ordenData.falla_reportada) {
-            // Si no hay items, crear un item con la falla como descripción
+        } else {
+            // Sin items - crear uno con info del equipo
+            const equipo = ordenTallerData?.equipo || 'Equipo sin nombre';
+            const marca = ordenTallerData?.marca || '';
+            const modelo = ordenTallerData?.modelo || '';
+            const serie = ordenTallerData?.serie || '';
+            const falla = ordenTallerData?.falla_reportada || 'Servicio requerido';
+
             const row = document.createElement('tr');
-            const desc = `${ordenData.falla_reportada || 'Servicio requerido'} - ${equipoInfo.nombre || 'Equipo sin nombre'}`;
+            const desc = `${falla} - ${equipo}${marca ? ' ' + marca : ''}${modelo ? ' ' + modelo : ''}${serie ? ' S/N: ' + serie : ''}`;
             row.innerHTML = `
                 <td><input type="text" value="${desc}" class="item-desc"></td>
                 <td><input type="text" placeholder="SKU" class="item-sku"></td>
@@ -944,8 +941,6 @@ const ComprasModule = (function() {
                 <td><button type="button" class="btn-remove" onclick="this.closest('tr').remove()">✖</button></td>
             `;
             itemsBody.appendChild(row);
-        } else {
-            _agregarItemRow();
         }
 
         _nuevaOrden();
