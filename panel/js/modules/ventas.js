@@ -4086,6 +4086,19 @@ const VentasModule = (function() {
             _showToast('✅ Orden guardada. Puedes cerrar y esperar a que Laboratorio/Compras completen su información.', 'success');
             _addToFeed('📋', `Orden guardada - ${dept}`);
 
+            // Recargar vistas para mostrar la orden creada
+            try {
+                await Promise.all([
+                    dept === 'Taller Electrónica' ? _loadTaller() : Promise.resolve(),
+                    dept === 'Taller Motores' ? _loadMotores() : Promise.resolve(),
+                    (dept === 'Automatización' || dept === 'Proyectos') ? _loadProyectos() : Promise.resolve()
+                ]);
+                await _loadCotizaciones();
+                _applyFilters();
+            } catch (e) {
+                console.warn('[Ventas] Error recargando vistas:', e);
+            }
+
             // Cerrar wizard para permitir que el usuario espere
             document.getElementById('calculadoraModal').classList.remove('active');
             return;
