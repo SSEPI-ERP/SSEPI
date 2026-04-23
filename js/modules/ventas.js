@@ -2468,7 +2468,7 @@ const VentasModule = (function() {
         };
         const columnName = columnMap[tipo] || 'cotizacion_id';
 
-        let data = [], userMap = {};
+        let data = [], userMap = {}, events = [];
         try {
             // Fetch historial sin join (PostgREST requiere FK para joins embebidos)
             let error;
@@ -2514,7 +2514,7 @@ const VentasModule = (function() {
             }
 
             // Resolve creado_por → nombre de usuario en segunda consulta (ignorar errores)
-            const events = data || [];
+            events = data || [];
             const userIds = [...new Set(events.map(e => e.creado_por).filter(Boolean))];
             if (userIds.length > 0) {
                 try {
