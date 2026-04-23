@@ -1930,10 +1930,11 @@ const TallerModule = (function() {
 
     function _recolectarDatos() {
         const nullIfEmpty = (v) => (v && v.trim()) ? v.trim() : null;
+        const now = new Date().toISOString();
         return {
             cliente_nombre: document.getElementById('selClient').value,
             referencia: document.getElementById('inpClientRef').value,
-            fecha_ingreso: nullIfEmpty(document.getElementById('inpDateTime').value),
+            fecha_ingreso: nullIfEmpty(document.getElementById('inpDateTime').value) || now,
             equipo: document.getElementById('inpEquip').value,
             marca: document.getElementById('inpBrand').value,
             modelo: document.getElementById('inpModel').value,
@@ -1946,7 +1947,7 @@ const TallerModule = (function() {
             notas_internas: document.getElementById('internalNotes').value,
             notas_generales: document.getElementById('generalNotes').value,
             horas_estimadas: parseFloat(document.getElementById('horasEstimadas').value) || 0,
-            fecha_entrega: nullIfEmpty(document.getElementById('fechaEntrega').value),
+            fecha_entrega: nullIfEmpty(document.getElementById('fechaEntrega').value) || null,
             recibe_nombre: document.getElementById('recibeNombre').value,
             recibe_identificacion: document.getElementById('recibeIdentificacion').value,
             factura_numero: document.getElementById('facturaNumero').value,
