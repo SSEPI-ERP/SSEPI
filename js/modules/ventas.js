@@ -363,11 +363,19 @@ const VentasModule = (function() {
             if (dept === 'Taller Electrónica') {
                 const folioFn = window.folioFormats && window.folioFormats.getNextFolioLaboratorio;
                 const folio = folioFn ? await folioFn() : 'SP-E' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '001';
+                const nombreProducto = (document.getElementById('wizardNombreProducto') || {}).value || '';
+                const marca = (document.getElementById('wizardMarca') || {}).value || '';
+                const modelo = (document.getElementById('wizardModelo') || {}).value || '';
+                const serie = (document.getElementById('wizardSerie') || {}).value || '';
+                const fallaReportada = (document.getElementById('wizardFallaReportada') || {}).value || falla;
                 const row = {
                     folio,
                     cliente_nombre: clienteNombre,
-                    equipo: '—',
-                    falla_reportada: falla,
+                    equipo: nombreProducto || '—',
+                    marca: marca,
+                    modelo: modelo,
+                    serie: serie,
+                    falla_reportada: fallaReportada,
                     fecha_ingreso: fechaIso,
                     estado: 'Nuevo',
                     notas_generales: notasAlta
