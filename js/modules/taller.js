@@ -864,7 +864,7 @@ const TallerModule = (function() {
         _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
     }
 
-    function _eliminarOrden(id) {
+    async function _eliminarOrden(id) {
         const orden = orders.find(o => o.id === id);
         if (!orden) { _showErrorModal('Orden no encontrada', 'No se encontró la orden especificada.'); return; }
         const folio = orden.folio || id.slice(-6);
@@ -872,14 +872,40 @@ const TallerModule = (function() {
         const equipo = orden.equipo || '—';
         _showDeleteConfirm(folio, cliente, equipo, async () => {
             try {
-                const { error } = await window.supabase.from('ordenes_taller').delete().eq('id', id);
-                if (error) throw error;
-                _addToFeed('🗑️', 'Orden eliminada: ' + folio);
+                // Borrado lógico: marcar como Cancelado en lugar de eliminar físicamente
+                const csrfToken = sessionStorage.getItem('csrfToken');
+                await ordenesService.update(id, {
+                    estado: 'Cancelado',
+                    notas_generales: (orden.notas_generales || '') + '\n\n[Cancelada: ' + new Date().toISOString() + ']',
+                    updated_at: new Date().toISOString()
+                }, csrfToken);
+
+                // Notificar a ventas si hay cotización vinculada
+                if (orden.cotizacion_id) {
+                    try {
+                        const cotizacionesService = createDataService('cotizaciones');
+                        await cotizacionesService.update(orden.cotizacion_id, {
+                            estado: 'cancelado',
+                            updated_at: new Date().toISOString()
+                        }, csrfToken);
+                        // Registrar evento en historial
+                        if (window.ventasModule && typeof window.ventasModule._insertarEventoHistorial === 'function') {
+                            await window.ventasModule._insertarEventoHistorial('cotizacion', orden.cotizacion_id, 'cancelacion', 'Orden de taller vinculada fue cancelada', csrfToken);
+                        }
+                    } catch (e) { console.warn('[Taller] Error notificando cancelación a ventas:', e); }
+                }
+
+                // Registrar evento en historial de la orden
+                if (window.tallerModule && typeof window.tallerModule._insertarEventoHistorial === 'function') {
+                    await window.tallerModule._insertarEventoHistorial('taller', id, 'cancelacion', `Orden ${folio} cancelada por ${cliente}`, csrfToken);
+                }
+
+                _addToFeed('🗑️', `Orden ${folio} cancelada`);
                 await _loadOrders();
                 _applyFilters();
             } catch (e) {
                 console.error(e);
-                _showErrorModal('Error al eliminar', e.message);
+                _showErrorModal('Error al cancelar', e.message);
             }
         });
     }
@@ -1941,6 +1967,10 @@ const TallerModule = (function() {
                         if (nuevoEstadoVentas && cot.estado !== nuevoEstadoVentas) {
                             await cotizacionesService.update(cot.id, { estado: nuevoEstadoVentas, updated_at: new Date().toISOString() }, csrfToken);
                             _addToFeed('📊', `Cotización ${cot.folio} actualizada a ${nuevoEstadoVentas}`);
+                            // Registrar evento en historial de la cotización
+                            if (window.ventasModule && typeof window.ventasModule._insertarEventoHistorial === 'function') {
+                                await window.ventasModule._insertarEventoHistorial('cotizacion', cot.id, 'cambio_estado', `Estado actualizado automáticamente desde Taller: ${data.estado}`, csrfToken);
+                            }
                         }
                     }
                 } catch (e) {
