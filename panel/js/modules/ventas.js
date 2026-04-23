@@ -66,6 +66,18 @@ const VentasModule = (function() {
         return (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
     }
 
+    function _showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer') || document.body;
+        const toast = document.createElement('div');
+        const colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
+        const bg = colors[type] || colors.info;
+        toast.style.cssText = `position:fixed;top:20px;right:20px;z-index:99999;background:${bg};color:white;padding:12px 20px;border-radius:8px;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-width:350px;cursor:pointer;`;
+        toast.textContent = message;
+        toast.onclick = () => toast.remove();
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+
     function _cerebroRegistroPayload() {
         return ventasWizardCerebro && typeof ventasWizardCerebro === 'object' ? { ...ventasWizardCerebro } : {};
     }
