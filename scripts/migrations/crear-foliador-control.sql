@@ -47,24 +47,10 @@ CREATE POLICY "Usuarios autenticados pueden leer foliador_control"
     TO authenticated
     USING (true);
 
--- Policy: permitir escritura solo a roles administrativos y ventas
-CREATE POLICY "Roles administrativos pueden escribir en foliador_control"
+-- Policy: permitir escritura a todos los autenticados (el control de permisos se hace en aplicación)
+CREATE POLICY "Usuarios autenticados pueden escribir en foliador_control"
     ON foliador_control
     FOR ALL
     TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM user_roles ur
-            JOIN roles r ON ur.role_id = r.id
-            WHERE ur.user_id = (auth.jwt() ->> 'sub')::uuid
-            AND r.name IN ('admin', 'superadmin', 'ventas')
-        )
-    )
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM user_roles ur
-            JOIN roles r ON ur.role_id = r.id
-            WHERE ur.user_id = (auth.jwt() ->> 'sub')::uuid
-            AND r.name IN ('admin', 'superadmin', 'ventas')
-        )
-    );
+    USING (true)
+    WITH CHECK (true);
