@@ -1241,7 +1241,7 @@ const VentasModule = (function() {
                 : '';
 
             return `
-                <div class="kanban-card" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}">
+                <div class="kanban-card" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}" onclick="ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')" style="cursor:pointer;">
                     <div class="card-header">
                         <span class="folio">${item.folio || item.id.slice(-6)}</span>
                     </div>
@@ -3285,6 +3285,7 @@ const VentasModule = (function() {
         try {
             // Si estamos editando una cotizacion existente, actualizar en lugar de insertar
             if (editingCotizacionId) {
+                const existing = cotizaciones.find(c => c.id === editingCotizacionId);
                 const updated = await cotizacionesService.update(editingCotizacionId, {
                     cliente,
                     email: calculadoraClienteActual?.email || '',
@@ -3294,13 +3295,13 @@ const VentasModule = (function() {
                     subtotal: items.reduce((s, i) => s + i.importe, 0),
                     iva: finalTotal * 0.16 / 1.16,
                     total: finalTotal,
-                    fecha: item.fecha || new Date().toISOString().split('T')[0],
+                    fecha: existing?.fecha || new Date().toISOString().split('T')[0],
                     cerebro_registro: _cerebroRegistroPayload(),
                     updated_at: new Date().toISOString()
                 }, csrfToken);
                 editingCotizacionId = null;
-                _showToast('✅ Cotización actualizada. Folio: ' + (updated?.folio || item.folio || folio), 'success');
-                _addToFeed('💾', `Cotización ${folio} actualizada`);
+                _showToast('✅ Cotización actualizada. Folio: ' + (updated?.folio || existing?.folio || folio), 'success');
+                _addToFeed('💾', `Cotización ${updated?.folio || folio} actualizada`);
                 _afterVentasPersistOk();
                 document.getElementById('calculadoraModal').classList.remove('active');
                 await _loadCotizaciones();
