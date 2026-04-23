@@ -135,6 +135,7 @@
                     <option value="ejecucion">En Ejecución</option>
                     <option value="entregado">Entregado</option>
                     <option value="pagado">Pagado</option>
+                    <option value="cancelado">Cancelado</option>
                 </select>
             </div>
             <div class="filtro-chips">
@@ -147,10 +148,17 @@
                 <button type="button" class="chip-filtro" data-estado="ejecucion">En Ejecución</button>
                 <button type="button" class="chip-filtro" data-estado="entregado">Entregado</button>
                 <button type="button" class="chip-filtro" data-estado="pagado">Pagado</button>
+                <button type="button" class="chip-filtro" data-estado="cancelado">Cancelado</button>
             </div>
             <div class="filtro-grupo">
                 <label>Buscar:</label>
                 <input type="text" id="filtroBuscar" placeholder="Cliente, folio">
+            </div>
+            <div class="filtro-grupo">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                    <input type="checkbox" id="chkMostrarCanceladas">
+                    <span>Mostrar canceladas</span>
+                </label>
             </div>
             <button class="btn-filtro" id="aplicarFiltrosBtn"><i class="fas fa-search"></i> Aplicar</button>
             <div class="vistas">
