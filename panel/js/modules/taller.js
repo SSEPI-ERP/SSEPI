@@ -1890,7 +1890,7 @@ const TallerModule = (function() {
             const pasoEstado = _pasoToEstado(currentStep);
             if (pasoEstado && data.estado !== pasoEstado) {
                 // Solo avanzar, nunca retroceder
-                const ordenActual = ordenes.find(o => String(o.id) === String(orderId));
+                const ordenActual = orders.find(o => String(o.id) === String(orderId));
                 const estadoActual = ordenActual?.estado || 'Nuevo';
                 const ordenPrioridad = _estadoPrioridad(estadoActual);
                 const nuevoPrioridad = _estadoPrioridad(pasoEstado);
