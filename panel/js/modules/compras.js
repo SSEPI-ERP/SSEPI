@@ -846,11 +846,72 @@ const ComprasModule = (function() {
         return '';
     }
 
-    function _crearOrdenDesdeSolicitud(id, tipo) {
-        console.log('[Compras] Click en Crear Orden desde Solicitud', { id, tipo });
-        // Precargar vinculación
+    async function _crearOrdenDesdeSolicitud(id, tipo) {
+        console.log('[Compras] Crear orden desde solicitud', { id, tipo });
+
+        // Obtener datos de la orden vinculada
+        let ordenData = null;
+        let departamentoPorDefecto = 'Taller Electrónica';
+
+        try {
+            if (tipo === 'taller') {
+                ordenData = await tallerService.getById(id);
+                departamentoPorDefecto = 'Taller Electrónica';
+            } else if (tipo === 'motor') {
+                ordenData = await motoresService.getById(id);
+                departamentoPorDefecto = 'Taller Motores';
+            } else if (tipo === 'proyecto' || tipo === 'automatizacion') {
+                ordenData = await proyectosService.getById(id);
+                departamentoPorDefecto = tipo === 'automatizacion' ? 'Automatización' : 'Proyectos';
+            }
+        } catch (e) {
+            console.warn('[Compras] Error obteniendo datos de orden:', e);
+        }
+
+        // Precargar formulario
         document.getElementById('vinculacionTipo').value = tipo;
         document.getElementById('vinculacionId').value = id;
+        document.getElementById('departamentoSelect').value = departamentoPorDefecto;
+
+        // Si hay items en la orden, importarlos
+        const itemsBody = document.getElementById('itemsBody');
+        itemsBody.innerHTML = '';
+
+        if (ordenData && ordenData.items && ordenData.items.length > 0) {
+            // Importar items desde la orden
+            ordenData.items.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><input type="text" value="${item.descripcion || item.desc || ''}" class="item-desc"></td>
+                    <td><input type="text" value="${item.sku || ''}" class="item-sku"></td>
+                    <td><input type="number" value="${item.cantidad || item.qty || 1}" min="1" class="item-qty"></td>
+                    <td><input type="number" value="${item.precio_unitario || item.price || 0}" step="0.01" class="item-price"></td>
+                    <td><input type="url" value="${item.link || ''}" placeholder="Link" class="item-link"></td>
+                    <td><button type="button" class="btn-remove" onclick="this.closest('tr').remove()">✖</button></td>
+                `;
+                itemsBody.appendChild(row);
+            });
+        } else if (ordenData && ordenData.falla_reportada) {
+            // Si no hay items pero hay falla, crear un item con la descripción
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="text" value="${ordenData.falla_reportada || 'Servicio requerido'}" class="item-desc"></td>
+                <td><input type="text" placeholder="SKU" class="item-sku"></td>
+                <td><input type="number" value="1" min="1" class="item-qty"></td>
+                <td><input type="number" value="0" step="0.01" class="item-price"></td>
+                <td><input type="url" placeholder="Link" class="item-link"></td>
+                <td><button type="button" class="btn-remove" onclick="this.closest('tr').remove()">✖</button></td>
+            `;
+            itemsBody.appendChild(row);
+        } else {
+            // Sin items, agregar row vacío
+            _agregarItemRow();
+        }
+
+        // Mostrar nombre de vinculación
+        const nombreVinculacion = ordenData?.cliente_nombre || ordenData?.cliente || '';
+        console.log('[Compras] Vinculado a:', nombreVinculacion);
+
         _nuevaOrden();
     }
 
