@@ -852,14 +852,29 @@ const ComprasModule = (function() {
         // Obtener datos de la orden vinculada
         let ordenData = null;
         let departamentoPorDefecto = 'Taller Electrónica';
+        let itemsAImportar = [];
+        let equipoInfo = { nombre: '', marca: '', modelo: '', serie: '' };
 
         try {
             if (tipo === 'taller') {
                 ordenData = await tallerService.getById(id);
                 departamentoPorDefecto = 'Taller Electrónica';
+                // Obtener info del equipo
+                equipoInfo = {
+                    nombre: ordenData?.equipo || '',
+                    marca: ordenData?.marca || '',
+                    modelo: ordenData?.modelo || '',
+                    serie: ordenData?.serie || ''
+                };
             } else if (tipo === 'motor') {
                 ordenData = await motoresService.getById(id);
                 departamentoPorDefecto = 'Taller Motores';
+                equipoInfo = {
+                    nombre: ordenData?.equipo || ordenData?.motor || '',
+                    marca: ordenData?.marca || '',
+                    modelo: ordenData?.modelo || '',
+                    serie: ordenData?.serie || ''
+                };
             } else if (tipo === 'proyecto' || tipo === 'automatizacion') {
                 ordenData = await proyectosService.getById(id);
                 departamentoPorDefecto = tipo === 'automatizacion' ? 'Automatización' : 'Proyectos';
@@ -868,18 +883,38 @@ const ComprasModule = (function() {
             console.warn('[Compras] Error obteniendo datos de orden:', e);
         }
 
+        // Intentar obtener items desde la cotización vinculada en ventas
+        if (ordenData && ordenData.cotizacion_id) {
+            try {
+                const { data: cotizacion } = await window.supabase
+                    .from('cotizaciones')
+                    .select('items')
+                    .eq('id', ordenData.cotizacion_id)
+                    .single();
+                if (cotizacion?.items && cotizacion.items.length > 0) {
+                    itemsAImportar = cotizacion.items;
+                    console.log('[Compras] Items importados desde cotización:', itemsAImportar.length);
+                }
+            } catch (e) {
+                console.warn('[Compras] No se pudo obtener cotización vinculada:', e);
+            }
+        }
+
         // Precargar formulario
         document.getElementById('vinculacionTipo').value = tipo;
         document.getElementById('vinculacionId').value = id;
         document.getElementById('departamentoSelect').value = departamentoPorDefecto;
 
-        // Si hay items en la orden, importarlos
+        // Mostrar info de vinculación en consola
+        console.log('[Compras] Equipo:', equipoInfo);
+        console.log('[Compras] Items a importar:', itemsAImportar.length);
+
+        // Si hay items, importarlos
         const itemsBody = document.getElementById('itemsBody');
         itemsBody.innerHTML = '';
 
-        if (ordenData && ordenData.items && ordenData.items.length > 0) {
-            // Importar items desde la orden
-            ordenData.items.forEach(item => {
+        if (itemsAImportar.length > 0) {
+            itemsAImportar.forEach(item => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td><input type="text" value="${item.descripcion || item.desc || ''}" class="item-desc"></td>
@@ -892,10 +927,11 @@ const ComprasModule = (function() {
                 itemsBody.appendChild(row);
             });
         } else if (ordenData && ordenData.falla_reportada) {
-            // Si no hay items pero hay falla, crear un item con la descripción
+            // Si no hay items, crear un item con la falla como descripción
             const row = document.createElement('tr');
+            const desc = `${ordenData.falla_reportada || 'Servicio requerido'} - ${equipoInfo.nombre || 'Equipo sin nombre'}`;
             row.innerHTML = `
-                <td><input type="text" value="${ordenData.falla_reportada || 'Servicio requerido'}" class="item-desc"></td>
+                <td><input type="text" value="${desc}" class="item-desc"></td>
                 <td><input type="text" placeholder="SKU" class="item-sku"></td>
                 <td><input type="number" value="1" min="1" class="item-qty"></td>
                 <td><input type="number" value="0" step="0.01" class="item-price"></td>
@@ -904,13 +940,8 @@ const ComprasModule = (function() {
             `;
             itemsBody.appendChild(row);
         } else {
-            // Sin items, agregar row vacío
             _agregarItemRow();
         }
-
-        // Mostrar nombre de vinculación
-        const nombreVinculacion = ordenData?.cliente_nombre || ordenData?.cliente || '';
-        console.log('[Compras] Vinculado a:', nombreVinculacion);
 
         _nuevaOrden();
     }
