@@ -59,6 +59,7 @@ const VentasModule = (function() {
     let filtroVendedor = 'todos';
     let filtroEstado = 'todos';
     let filtroBuscar = '';
+    let mostrarCanceladas = false;  // Por defecto ocultar canceladas
     let vistaActual = 'kanban';
     let chartInstance = null;
 
@@ -996,6 +997,14 @@ const VentasModule = (function() {
     function _applyFilters() {
         let filtered = _mergeVentasCotizaciones();
 
+        // Filtrar canceladas por defecto (solo mostrar si mostrarCanceladas === true)
+        if (!mostrarCanceladas) {
+            filtered = filtered.filter(item => {
+                const estado = String(item.estado || item.estatus_pago || '').toLowerCase();
+                return estado !== 'cancelado' && estado !== 'cancelada';
+            });
+        }
+
         filtered = filtered.filter(_fechaItemEnRango);
         if (filtroVendedor !== 'todos') {
             filtered = filtered.filter(item => item.vendedor === filtroVendedor);
@@ -1022,6 +1031,11 @@ const VentasModule = (function() {
                 filtered = filtered.filter(item => item.estado === 'entregado' || item.estatus_pago === 'Pendiente');
             } else if (filtroEstado === 'pagado') {
                 filtered = filtered.filter(item => item.estatus_pago === 'Pagado' || item.estado === 'pagado');
+            } else if (filtroEstado === 'cancelado') {
+                filtered = filtered.filter(item => {
+                    const estado = String(item.estado || item.estatus_pago || '').toLowerCase();
+                    return estado === 'cancelado' || estado === 'cancelada';
+                });
             }
         }
         if (filtroBuscar) {
@@ -1239,14 +1253,23 @@ const VentasModule = (function() {
                     <span>${iconos[folioVinculado.tipo]}</span> ${etiquetas[folioVinculado.tipo]}: ${folioVinculado.folio}
                    </div>`
                 : '';
+            const esCancelado = (item.estado || item.estatus_pago || '').toLowerCase().includes('cancelad');
 
             return `
-                <div class="kanban-card" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}" onclick="ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')" style="cursor:pointer;">
+                <div class="kanban-card ${esCancelado ? 'kanban-card-cancelada' : ''}" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}">
                     <div class="card-header">
                         <span class="folio">${item.folio || item.id.slice(-6)}</span>
+                        <div class="card-actions">
+                            <button class="btn-icon btn-edit" onclick="event.stopPropagation(); ventasModule._editarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon btn-delete" onclick="event.stopPropagation(); ventasModule._eliminarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
                     ${etiquetaHtml ? `<div class="card-vinculacion">${etiquetaHtml}</div>` : ''}
-                    <div class="card-body">
+                    <div class="card-body" onclick="ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')" style="cursor:pointer;">
                         <div class="cliente">${item.cliente || 'Cliente'}</div>
                         <div class="total">$${(item.total || 0).toFixed(2)}</div>
                     </div>
@@ -1263,21 +1286,32 @@ const VentasModule = (function() {
         // Wrapper síncrono para compatibilidad - se llama desde _renderKanban
         // Para versión con folios vinculados, usar _renderKanbanCardsAsync
         if (items.length === 0) return '<div style="text-align:center; padding:20px; color:var(--text-muted);">Sin elementos</div>';
-        return items.map(item => `
-            <div class="kanban-card" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}">
-                <div class="card-header">
-                    <span class="folio">${item.folio || item.id.slice(-6)}</span>
+        return items.map(item => {
+            const esCancelado = (item.estado || item.estatus_pago || '').toLowerCase().includes('cancelad');
+            return `
+                <div class="kanban-card ${esCancelado ? 'kanban-card-cancelada' : ''}" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}">
+                    <div class="card-header">
+                        <span class="folio">${item.folio || item.id.slice(-6)}</span>
+                        <div class="card-actions">
+                            <button class="btn-icon btn-edit" onclick="event.stopPropagation(); ventasModule._editarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon btn-delete" onclick="event.stopPropagation(); ventasModule._eliminarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" onclick="ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')" style="cursor:pointer;">
+                        <div class="cliente">${item.cliente || 'Cliente'}</div>
+                        <div class="total">$${(item.total || 0).toFixed(2)}</div>
+                    </div>
+                    <div class="card-footer">
+                        <small>${item.fecha ? new Date(item.fecha).toLocaleDateString() : ''}</small>
+                        <small>${item.vendedor || ''}</small>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="cliente">${item.cliente || 'Cliente'}</div>
-                    <div class="total">$${(item.total || 0).toFixed(2)}</div>
-                </div>
-                <div class="card-footer">
-                    <small>${item.fecha ? new Date(item.fecha).toLocaleDateString() : ''}</small>
-                    <small>${item.vendedor || ''}</small>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     function _renderLista(items) {
@@ -2695,20 +2729,51 @@ const VentasModule = (function() {
         const item = [...ventas, ...cotizaciones].find(i => i.id === id);
         if (!item) { _showToast('Registro no encontrado', 'error'); return; }
         const folio = item.folio || id.slice(-6);
-        if (!confirm(`¿Eliminar ${tipo || 'registro'} ${folio}?`)) return;
+        if (!confirm(`¿Cancelar ${tipo || 'registro'} ${folio}?`)) return;
         try {
             const csrfToken = sessionStorage.getItem('csrfToken');
             const tableName = tipo === 'cotizacion' ? 'cotizaciones' : 'ventas';
-            const { error } = await window.supabase.from(tableName).delete().eq('id', id);
-            if (error) throw error;
-            _showToast('Eliminado correctamente', 'success');
+            const service = createDataService(tableName);
+
+            // Borrado lógico: marcar como Cancelado en lugar de eliminar físicamente
+            await service.update(id, {
+                estado: 'cancelado',
+                estatus_pago: tipo === 'venta' ? 'cancelado' : undefined,
+                updated_at: new Date().toISOString(),
+                notas_cancelacion: 'Cancelado por usuario ' + new Date().toLocaleString('es-MX')
+            }, csrfToken);
+
+            // Registrar evento en historial
+            await _insertarEventoHistorial(tipo || 'cotizacion', id, 'cancelacion', `${tipo === 'venta' ? 'Venta' : 'Cotización'} ${folio} cancelada`, csrfToken);
+
+            // Si hay orden operativa vinculada, también cancelarla
+            if (item.orden_origen_id) {
+                try {
+                    const ordenOrigen = item.origen || 'directo';
+                    let ordenTable = null;
+                    if (ordenOrigen === 'taller' || ordenOrigen === 'laboratorio') ordenTable = 'ordenes_taller';
+                    else if (ordenOrigen === 'motor' || ordenOrigen === 'motores') ordenTable = 'ordenes_motores';
+                    else if (ordenOrigen === 'proyecto' || ordenOrigen === 'automatizacion') ordenTable = 'proyectos_automatizacion';
+
+                    if (ordenTable) {
+                        const ordenService = createDataService(ordenTable);
+                        await ordenService.update(item.orden_origen_id, {
+                            estado: 'Cancelado',
+                            updated_at: new Date().toISOString()
+                        }, csrfToken);
+                    }
+                } catch (e) { console.warn('[Ventas] Error cancelando orden vinculada:', e); }
+            }
+
+            _showToast('Registro cancelado correctamente', 'success');
             document.getElementById('historialModal').classList.remove('active');
+            _addToFeed('🗑️', `${tipo === 'venta' ? 'Venta' : 'Cotización'} ${folio} cancelada`);
             await _loadVentas();
             await _loadCotizaciones();
             _applyFilters();
         } catch (e) {
             console.error(e);
-            _showToast('Error al eliminar: ' + e.message, 'error');
+            _showToast('Error al cancelar: ' + e.message, 'error');
         }
     }
 
@@ -3162,6 +3227,47 @@ const VentasModule = (function() {
                 origen_cotizacion: origenCot,
                 nombre_producto: nombreProducto
             };
+
+            // Registrar evento en historial inmediatamente al crear orden (paso 1 → 2)
+            if (creado.ordenId) {
+                try {
+                    await _insertarEventoHistorial(creado.tipo, creado.ordenId, 'creacion', `Orden ${creado.folio} creada desde Ventas`, csrfToken);
+                } catch (e) { console.warn('[Ventas] Error registrando evento en historial:', e); }
+            }
+
+            // Auto-guardar borrador al pasar del paso 1 al 2
+            if (ventasAutosaveCtrl) {
+                ventasAutosaveCtrl.save({
+                    wizardPaso: 2,
+                    calculadoraClienteActual,
+                    compraActual,
+                    ventasWizardCerebro,
+                    paso1Fields: _collectPaso1Fields()
+                });
+            }
+        }
+        // Auto-guardar al cambiar de paso
+        if (ventasAutosaveCtrl && wizardPaso < 4) {
+            const payload = {
+                wizardPaso: wizardPaso + 1,
+                calculadoraClienteActual: calculadoraClienteActual ? { ...calculadoraClienteActual } : null,
+                calculadoraComponentes: calculadoraComponentes.slice(),
+                compraActual: compraActual ? { ...compraActual } : null,
+                ventasWizardCerebro: ventasWizardCerebro ? { ...ventasWizardCerebro } : null,
+                lastGastosGenerales,
+                lastPrecioConUtilidad,
+                lastPrecioAntesIVA,
+                lastIva,
+                lastTotal
+            };
+            if (wizardPaso + 1 === 2) payload.paso1Fields = _collectPaso1Fields();
+            if (wizardPaso + 1 >= 3) {
+                payload.paso2Fields = _collectPaso2Fields();
+            }
+            if (wizardPaso + 1 === 4) {
+                payload.paso3Fields = _collectPaso3Fields();
+            }
+            ventasAutosaveCtrl.save(payload);
         }
         if (wizardPaso === 4) return;
         (async () => { await _renderWizardPaso(wizardPaso + 1); })();
@@ -3510,9 +3616,19 @@ const VentasModule = (function() {
             filtroEstado = fe ? fe.value : 'todos';
             var fb = document.getElementById('filtroBuscar');
             filtroBuscar = fb ? fb.value.trim() : '';
+            var mc = document.getElementById('chkMostrarCanceladas');
+            mostrarCanceladas = mc ? mc.checked : false;
             _syncChipEstado();
             _applyFilters();
         });
+        // Toggle mostrar canceladas - cambio reactivo
+        var chkCanceladas = document.getElementById('chkMostrarCanceladas');
+        if (chkCanceladas) {
+            chkCanceladas.addEventListener('change', function() {
+                mostrarCanceladas = this.checked;
+                _applyFilters();
+            });
+        }
         document.querySelectorAll('.chip-filtro').forEach(function (chip) {
             chip.addEventListener('click', function () {
                 var estado = chip.getAttribute('data-estado');
