@@ -31,6 +31,7 @@ const VentasModule = (function() {
     let currentVenta = null;
     let ventaId = null;
     let isNewVenta = true;
+    let editingCotizacionId = null;
 
     // Estado de la calculadora
     let calculadoraComponentes = [];
@@ -2632,6 +2633,9 @@ const VentasModule = (function() {
     async function _editarVenta(id, tipo) {
         const item = [...ventas, ...cotizaciones].find(i => i.id === id);
         if (!item) { _showToast('Registro no encontrado', 'error'); return; }
+
+        // Marcar que estamos editando esta cotizacion
+        editingCotizacionId = id;
 
         // Cargar datos en el wizard
         calculadoraClienteActual = {

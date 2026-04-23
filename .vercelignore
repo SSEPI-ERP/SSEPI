@@ -1,0 +1,45 @@
+# Exclude unnecessary files from Vercel deployment
+.git
+.gitignore
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+
+# Exclude large directories
+node_modules/
+ollama-data/
+backups/
+evidencias/
+clientes/
+
+# Exclude development/docs
+docs/
+scripts/migrations/
+scripts/*.xlsx
+scripts/*.sql
+scripts/*.html
+
+# Exclude build artifacts
+.vercel/
+.vercelignore
+dist/
+
+# Exclude other projects
+ssepinext/
+landing/node_modules/
+mi-coi/
+WEB/
+
+# Exclude large files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Exclude temp files
+*.temp
+*.cache
+.DS_Store
+Thumbs.db
