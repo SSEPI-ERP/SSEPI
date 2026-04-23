@@ -1930,12 +1930,12 @@ const TallerModule = (function() {
                     if (cotizaciones && cotizaciones.length > 0) {
                         const cot = cotizaciones[0];
                         const estadoMap = {
-                            'Diagnóstico': 'cotizacion_en_proceso',
-                            'En Espera': 'cotizacion_en_proceso',
-                            'En reparación': 'cotizacion_en_proceso',
-                            'Reparado': 'cotizacion_autorizada',
-                            'Entregado': 'venta_cerrada',
-                            'Facturado': 'venta_cerrada'
+                            'Diagnóstico': 'diagnostico',
+                            'En Espera': 'cotizacion',
+                            'En reparación': 'cotizacion',
+                            'Reparado': 'autorizado',
+                            'Entregado': 'entregado',
+                            'Facturado': 'pagado'
                         };
                         const nuevoEstadoVentas = estadoMap[data.estado];
                         if (nuevoEstadoVentas && cot.estado !== nuevoEstadoVentas) {

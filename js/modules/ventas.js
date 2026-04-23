@@ -2779,7 +2779,7 @@ const VentasModule = (function() {
                 await _insertarEventoHistorial('cotizacion', inserted.id, 'creacion', `Cotización rápida ${folio} creada en Registro`, csrfToken);
             }
 
-            _showToast('✅ Cotización guardada en 📝 Registro. Folio: ' + folio, 'error');
+            _showToast('✅ Cotización guardada en 📝 Registro. Folio: ' + folio, 'success');
             _addToFeed('💾', `Cotización ${folio} guardada en Registro`);
             document.getElementById('registroRapidoModal').classList.remove('active');
             await _loadCotizaciones();
@@ -3272,6 +3272,30 @@ const VentasModule = (function() {
 
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
+            // Si estamos editando una cotizacion existente, actualizar en lugar de insertar
+            if (editingCotizacionId) {
+                const updated = await cotizacionesService.update(editingCotizacionId, {
+                    cliente,
+                    email: calculadoraClienteActual?.email || '',
+                    telefono: calculadoraClienteActual?.telefono || '',
+                    rfc: calculadoraClienteActual?.rfc || '',
+                    items,
+                    subtotal: items.reduce((s, i) => s + i.importe, 0),
+                    iva: finalTotal * 0.16 / 1.16,
+                    total: finalTotal,
+                    cerebro_registro: _cerebroRegistroPayload(),
+                    updated_at: new Date().toISOString()
+                }, csrfToken);
+                editingCotizacionId = null;
+                _showToast('✅ Cotización actualizada. Folio: ' + (updated?.folio || item.folio || folio), 'success');
+                _addToFeed('💾', `Cotización ${folio} actualizada`);
+                _afterVentasPersistOk();
+                document.getElementById('calculadoraModal').classList.remove('active');
+                await _loadCotizaciones();
+                _applyFilters();
+                return;
+            }
+            // Nueva cotizacion
             const inserted = await cotizacionesService.insert(cotizacionData, csrfToken);
             await _syncFolioTrasCotizacion(inserted, cotizacionData, calculadoraComponentes, csrfToken);
 
@@ -3287,7 +3311,7 @@ const VentasModule = (function() {
                 }
             }
 
-            _showToast('✅ Cotización guardada. Folio: ' + folio, 'error');
+            _showToast('✅ Cotización guardada. Folio: ' + folio, 'success');
             _addToFeed('💾', `Cotización ${folio} guardada`);
             _afterVentasPersistOk();
             document.getElementById('calculadoraModal').classList.remove('active');
@@ -3357,7 +3381,7 @@ const VentasModule = (function() {
                 }
             }
 
-            _showToast('✅ Cotización guardada y enviada. Folio: ' + folio, 'error');
+            _showToast('✅ Cotización guardada y enviada. Folio: ' + folio, 'success');
             _addToFeed('📧', `Cotización ${folio} enviada a ${cliente}`);
             _afterVentasPersistOk();
             document.getElementById('calculadoraModal').classList.remove('active');
@@ -3526,6 +3550,18 @@ const VentasModule = (function() {
             vistaGrafica.classList.add('active');
             _applyFilters();
         });
+
+        // Delegated click handler para tarjetas Kanban (abre historial)
+        var kanbanContainer = document.getElementById('kanbanContainer');
+        if (kanbanContainer) {
+            kanbanContainer.addEventListener('click', function (e) {
+                var card = e.target.closest('.kanban-card');
+                if (!card) return;
+                var id = card.getAttribute('data-id');
+                var tipo = card.getAttribute('data-tipo') || 'cotizacion';
+                if (id) ventasModule._abrirDetalle(id, tipo);
+            });
+        }
 
         // Setup de tabs de Historia Comercial (Operativo/Comercial/Gráfica y Pendientes/Emitidas)
         _setupHistoriaComercialTabs();
