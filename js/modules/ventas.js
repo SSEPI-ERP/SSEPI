@@ -1476,7 +1476,12 @@ const VentasModule = (function() {
         if (!ordenTallerId) { _showToast('No hay orden de taller vinculada', 'info'); return; }
         const orden = taller.find(o => o.id === ordenTallerId);
         if (!orden) { _showToast('Orden no encontrada en Taller', 'info'); return; }
-        _showToast('Función de edición en implementación. ID: ' + ordenTallerId, 'error');
+        // Abrir el modal de Taller para editar la orden
+        if (window.tallerModule && typeof window.tallerModule._editarOrden === 'function') {
+            window.tallerModule._editarOrden(ordenTallerId);
+        } else {
+            _showToast('Módulo de Taller no disponible', 'error');
+        }
     }
 
     function _eliminarOrdenTaller(compraId) {
