@@ -2593,7 +2593,6 @@ const VentasModule = (function() {
             </div>
         `;
         modal.classList.add('active');
-        }
     }
 
     function _renderTimeline(estadoActual) {
