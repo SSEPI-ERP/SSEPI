@@ -50,7 +50,24 @@
       "Bash(npx supabase *)",
       "Bash(npx serve *)",
       "Bash(]+)",
-      "Bash(npx vercel *)"
+      "Bash(npx vercel *)",
+      "Bash(gh auth *)",
+      "Bash(gh repo *)",
+      "Bash(docker-compose up *)",
+      "Bash(ls -la .vercel)",
+      "Bash(cat .vercel/project.json)",
+      "Bash(npm list *)",
+      "Bash(vercel --prod)",
+      "Bash(vercel --prod --yes)",
+      "Bash(vercel projects *)",
+      "Bash(vercel whoami *)",
+      "Bash(vercel --token vcp_0gUKWHIHCoHDN8M9X85x3EACBN6HVs8OK7N4rmRvoG6N1DTa7t01UlQo --prod)",
+      "Bash(vercel --token vcp_0gUKWHIHCoHDN8M9X85x3EACBN6HVs8OK7N4rmRvoG6N1DTa7t01UlQo --prod --scope ssepi-erp)",
+      "Bash(vercel link *)",
+      "Bash(rm -rf .vercel)",
+      "Bash(vercel --prod --token vcp_0gUKWHIHCoHDN8M9X85x3EACBN6HVs8OK7N4rmRvoG6N1DTa7t01UlQo --yes --scope team_NrvkxAoeWwyVZCjWCxwg9ASf)",
+      "Bash(vercel --prod --token vcp_0gUKWHIHCoHDN8M9X85x3EACBN6HVs8OK7N4rmRvoG6N1DTa7t01UlQo --yes --scope team_NrvkxAoeWwyVZCjWCxwg9ASf --archive=tgz)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }
