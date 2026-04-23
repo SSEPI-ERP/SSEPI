@@ -855,7 +855,7 @@ const TallerModule = (function() {
 
     async function _editarOrden(id) {
         const orden = orders.find(o => o.id === id);
-        if (!orden) { alert('Orden no encontrada'); return; }
+        if (!orden) { _showToast('Orden no encontrada', 'error'); return; }
         currentOrder = orden;
         orderId = id;
         isNewOrder = false;
@@ -921,6 +921,15 @@ const TallerModule = (function() {
             _resetForm();
             _generarFolio();
             _populateClientSelect();
+
+            // Autofill: encargado_recepcion con nombre del usuario actual
+            try {
+                const profile = await authService.getCurrentProfile();
+                if (profile && profile.nombre) {
+                    const encEl = document.getElementById('inpReceptionBy');
+                    if (encEl && !encEl.value) encEl.value = profile.nombre;
+                }
+            } catch (e) { /* ignore */ }
             _irPaso(1);
             document.getElementById('fechaInicioDisplay').innerText = new Date().toLocaleString();
             _renderPrioritySupplierBarTaller();
@@ -1035,9 +1044,20 @@ const TallerModule = (function() {
 
         _resetForm();
 
-        // Llenar datos desde la cotización
+        // Generar folio usando folioFormats (formato SP-E)
         const folioEl = document.getElementById('inpFolio');
-        if (folioEl) folioEl.value = 'SP-E' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-001';
+        if (folioEl) {
+            if (window.folioFormats && window.folioFormats.getNextFolioLaboratorio) {
+                try {
+                    const folio = await window.folioFormats.getNextFolioLaboratorio();
+                    folioEl.value = folio;
+                } catch (e) {
+                    folioEl.value = 'SP-E' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-001';
+                }
+            } else {
+                folioEl.value = 'SP-E' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-001';
+            }
+        }
 
         // Cliente
         const clientSel = document.getElementById('selClient');
@@ -1045,16 +1065,22 @@ const TallerModule = (function() {
             clientSel.value = cotizacion.cliente;
         }
 
-        // Equipo/Descripción
+        // Equipo/Descripción - usar producto_servicio del cerebro_registro (wizard) o descripcion/nombre_producto como fallback
         const equipEl = document.getElementById('inpEquip');
-        if (equipEl && cotizacion.descripcion) {
-            equipEl.value = cotizacion.descripcion;
+        if (equipEl) {
+            const nombreProducto = cotizacion.cerebro_registro?.producto_servicio || cotizacion.descripcion || cotizacion.nombre_producto;
+            if (nombreProducto) {
+                equipEl.value = nombreProducto;
+            }
         }
 
         // Falla reportada
         const failEl = document.getElementById('inpFail');
-        if (failEl && cotizacion.falla) {
-            failEl.value = cotizacion.falla;
+        if (failEl) {
+            const fallaReportada = cotizacion.cerebro_registro?.falla_reportada || cotizacion.falla || cotizacion.falla_reportada;
+            if (fallaReportada) {
+                failEl.value = fallaReportada;
+            }
         }
 
         // Notas
@@ -1072,7 +1098,7 @@ const TallerModule = (function() {
         document.getElementById('fechaInicioDisplay').innerText = new Date().toLocaleString();
         _renderPrioritySupplierBarTaller();
 
-        alert('✅ Orden cargada desde cotización ' + cotizacion.folio);
+        _showToast('Orden cargada desde cotización ' + cotizacion.folio, 'success');
     }
 
     function _estadoToPaso(estado) {
@@ -1095,10 +1121,38 @@ const TallerModule = (function() {
         return mapa[paso] || 'Nuevo';
     }
 
+    function _estadoPrioridad(estado) {
+        const mapa = {
+            'Nuevo': 1, 'Confirmado': 2, 'Diagnóstico': 2,
+            'En Espera': 3, 'En reparación': 3, 'Reparado': 4,
+            'Entregado': 5, 'Facturado': 5, 'Cancelado': 0
+        };
+        return mapa[estado] || 1;
+    }
+
+    function _toDateLocalInput(iso) {
+        if (!iso) return '';
+        try {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '';
+            const pad = (n) => String(n).padStart(2, '0');
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        } catch (_) { return ''; }
+    }
+    function _toDateInput(iso) {
+        if (!iso) return '';
+        try {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '';
+            const pad = (n) => String(n).padStart(2, '0');
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+        } catch (_) { return ''; }
+    }
+
     function _cargarDatosEnModal(orden) {
         document.getElementById('inpFolio').value = orden.folio || '';
         document.getElementById('selClient').value = orden.cliente_nombre || '';
-        document.getElementById('inpDateTime').value = (orden.fecha_ingreso ? orden.fecha_ingreso.slice(0, 16) : '');
+        document.getElementById('inpDateTime').value = _toDateLocalInput(orden.fecha_ingreso);
         document.getElementById('inpClientRef').value = orden.referencia || '';
         document.getElementById('inpEquip').value = orden.equipo || '';
         document.getElementById('inpBrand').value = orden.marca || '';
@@ -1229,7 +1283,7 @@ const TallerModule = (function() {
             _addToFeed('📝', `Nota registrada en ${currentOrder.folio || 'orden'}`);
         } catch (e) {
             console.error(e);
-            alert('No se pudo registrar la nota: ' + String(e?.message || e));
+            _showToast('No se pudo registrar la nota', 'error');
         }
     }
 
@@ -1313,7 +1367,7 @@ const TallerModule = (function() {
         `).join('');
     }
 
-    /** Notas generales (resumen) solo en fase 5 (Entregado / Facturado), no fijas en cabecera. */
+    /** Notas generales (resumen) solo en fase 5 (Entregado / Facturado). */
     function _syncWsGnrlVisibility() {
         const box = document.getElementById('wsGnrlBox');
         if (!box) return;
@@ -1346,6 +1400,14 @@ const TallerModule = (function() {
         const saveBtn = document.getElementById('saveOrderBtn');
         const completeBtn = document.getElementById('completeOrderBtn');
         const sinReparacionBtn = document.getElementById('sinReparacionBtn');
+        // Botones PDF - solo visibles en paso 5 (Entregado / Facturado)
+        const ejemploPDFBtn = document.getElementById('btnEjemploPDFTaller');
+        const vistaPreviaBtn = document.getElementById('btnVistaPreviaOrdenTaller');
+        const imprimirBtn = document.getElementById('btnImprimirOrdenTaller');
+        const isPaso5 = currentStep === 5;
+        if (ejemploPDFBtn) ejemploPDFBtn.classList.toggle('hidden', !isPaso5);
+        if (vistaPreviaBtn) vistaPreviaBtn.classList.toggle('hidden', !isPaso5);
+        if (imprimirBtn) imprimirBtn.classList.toggle('hidden', !isPaso5);
 
         if (currentStep === 1) {
             prevBtn.style.display = 'none';
@@ -1374,16 +1436,16 @@ const TallerModule = (function() {
     function _validarPasoActual() {
         switch(currentStep) {
             case 1:
-                if (!document.getElementById('selClient').value) { alert('Seleccione un cliente'); return false; }
-                if (!document.getElementById('inpEquip').value) { alert('Ingrese el equipo'); return false; }
+                if (!document.getElementById('selClient').value) { _showToast('Seleccione un cliente', 'warning'); return false; }
+                if (!document.getElementById('inpEquip').value) { _showToast('Ingrese el equipo', 'warning'); return false; }
                 break;
             case 2:
-                if (!document.getElementById('techSelect').value) { alert('Seleccione técnico responsable'); return false; }
-                if (parseFloat(document.getElementById('horasEstimadas').value) <= 0) { alert('Ingrese horas estimadas válidas'); return false; }
+                if (!document.getElementById('techSelect').value) { _showToast('Seleccione técnico responsable', 'warning'); return false; }
+                if (parseFloat(document.getElementById('horasEstimadas').value) <= 0) { _showToast('Ingrese horas estimadas válidas', 'warning'); return false; }
                 break;
             case 5:
-                if (!document.getElementById('recibeNombre').value) { alert('Ingrese el nombre de quien recibe'); return false; }
-                if (!document.getElementById('fechaEntrega').value) { alert('Ingrese la fecha de entrega'); return false; }
+                if (!document.getElementById('recibeNombre').value) { _showToast('Ingrese el nombre de quien recibe', 'warning'); return false; }
+                if (!document.getElementById('fechaEntrega').value) { _showToast('Ingrese la fecha de entrega', 'warning'); return false; }
                 break;
         }
         return true;
@@ -1619,24 +1681,24 @@ const TallerModule = (function() {
             _addToFeed('⚠️', `Orden marcada sin reparación`);
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
     async function _generarSolicitudCompra() {
         console.log('[Taller] Click en Generar Solicitud de Compra');
         if (!orderId && !isNewOrder) {
-            alert('Primero guarde la orden de taller');
+            _showToast('Primero guarde la orden de taller', 'warning');
             return;
         }
 
         await _guardarOrden(true);
 
         const data = _recolectarDatos();
-        if (!data.cliente_nombre) { alert('Seleccione cliente'); _irPaso(1); return; }
-        if (!data.equipo) { alert('Ingrese el equipo'); _irPaso(1); return; }
+        if (!data.cliente_nombre) { _showToast('Seleccione cliente', 'warning'); _irPaso(1); return; }
+        if (!data.equipo) { _showToast('Ingrese el equipo', 'warning'); _irPaso(1); return; }
         if (diagnosticoEnlaces.length === 0 && diagnosticoInventario.length === 0) {
-            alert('Debe agregar al menos una refacción a comprar');
+            _showToast('Debe agregar al menos una refacción', 'warning');
             return;
         }
 
@@ -1712,7 +1774,7 @@ const TallerModule = (function() {
 
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
@@ -1770,11 +1832,11 @@ const TallerModule = (function() {
 
             _irPaso(4);
             _afterTallerPersistOk();
-            alert('✅ Reparación finalizada');
+            _showToast('Reparación finalizada');
             _addToFeed('✅', `Reparación completada para ${data.folio}`);
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
@@ -1800,16 +1862,14 @@ const TallerModule = (function() {
             await _generarSolicitudCompra();
         }
 
-        alert(`✅ Etapa ${etapa} finalizada`);
+        _showToast(`Etapa ${etapa} finalizada`, 'success');
         if (etapa < 5) _irPaso(etapa + 1);
     }
 
     async function _guardarOrden(silencioso = false) {
         const data = _recolectarDatos();
-        // Auto-guardado: siempre guardar, solo advertir en modo manual si faltan campos
-        if (!silencioso && (!data.cliente_nombre || !data.equipo)) {
-            if (!confirm('Faltan campos obligatorios. ¿Guardar como borrador?')) { _irPaso(1); return; }
-        }
+        if (!data.cliente_nombre) { if (!silencioso) _showToast('Seleccione cliente', 'warning'); _irPaso(1); return; }
+        if (!data.equipo) { if (!silencioso) _showToast('Ingrese el equipo', 'warning'); _irPaso(1); return; }
 
         const fotoInput = document.getElementById('productImage');
         if (fotoInput && fotoInput.files[0]) {
@@ -1825,6 +1885,21 @@ const TallerModule = (function() {
         data.fechas_etapas = fechasEtapas;
         data.recibido_por = document.getElementById('recibidoPor')?.value || '';
 
+        // Auto-avanzar estado según paso actual
+        if (!isNewOrder) {
+            const pasoEstado = _pasoToEstado(currentStep);
+            if (pasoEstado && data.estado !== pasoEstado) {
+                // Solo avanzar, nunca retroceder
+                const ordenActual = ordenes.find(o => String(o.id) === String(orderId));
+                const estadoActual = ordenActual?.estado || 'Nuevo';
+                const ordenPrioridad = _estadoPrioridad(estadoActual);
+                const nuevoPrioridad = _estadoPrioridad(pasoEstado);
+                if (nuevoPrioridad > ordenPrioridad) {
+                    data.estado = pasoEstado;
+                }
+            }
+        }
+
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
             if (isNewOrder) {
@@ -1835,24 +1910,56 @@ const TallerModule = (function() {
                 const inserted = await ordenesService.insert(data, csrfToken);
                 orderId = inserted.id;
                 isNewOrder = false;
-                if (!silencioso) alert('✅ Orden guardada correctamente');
+                if (!silencioso) _showToast('Orden guardada correctamente');
             } else {
                 await ordenesService.update(orderId, data, csrfToken);
-                if (!silencioso) alert('✅ Orden actualizada correctamente');
+                if (!silencioso) _showToast('Orden actualizada correctamente');
             }
             _afterTallerPersistOk();
             _addToFeed('💾', `Orden ${data.folio} guardada`);
+
+            // Notificar a ventas: actualizar estado de la cotización vinculada
+            if (data.estado && data.estado !== 'Nuevo' && orderId) {
+                try {
+                    const cotizacionesService = createDataService('cotizaciones');
+                    const { data: cotizaciones } = await window.supabase
+                        .from('cotizaciones')
+                        .select('id, folio, estado')
+                        .eq('orden_origen_id', orderId)
+                        .limit(1);
+                    if (cotizaciones && cotizaciones.length > 0) {
+                        const cot = cotizaciones[0];
+                        const estadoMap = {
+                            'Diagnóstico': 'diagnostico',
+                            'En Espera': 'cotizacion',
+                            'En reparación': 'cotizacion',
+                            'Reparado': 'autorizado',
+                            'Entregado': 'entregado',
+                            'Facturado': 'pagado'
+                        };
+                        const nuevoEstadoVentas = estadoMap[data.estado];
+                        if (nuevoEstadoVentas && cot.estado !== nuevoEstadoVentas) {
+                            await cotizacionesService.update(cot.id, { estado: nuevoEstadoVentas, updated_at: new Date().toISOString() }, csrfToken);
+                            _addToFeed('📊', `Cotización ${cot.folio} actualizada a ${nuevoEstadoVentas}`);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[Taller] Error notificando a ventas:', e);
+                }
+            }
         } catch (error) {
             console.error(error);
-            if (!silencioso) alert('Error al guardar: ' + error.message);
+            if (!silencioso) _showToast('Error al guardar: ' + error.message, 'error');
         }
     }
 
     function _recolectarDatos() {
+        const nullIfEmpty = (v) => (v && v.trim()) ? v.trim() : null;
+        const now = new Date().toISOString();
         return {
             cliente_nombre: document.getElementById('selClient').value,
             referencia: document.getElementById('inpClientRef').value,
-            fecha_ingreso: document.getElementById('inpDateTime').value,
+            fecha_ingreso: nullIfEmpty(document.getElementById('inpDateTime').value) || now,
             equipo: document.getElementById('inpEquip').value,
             marca: document.getElementById('inpBrand').value,
             modelo: document.getElementById('inpModel').value,
@@ -1865,7 +1972,7 @@ const TallerModule = (function() {
             notas_internas: document.getElementById('internalNotes').value,
             notas_generales: document.getElementById('generalNotes').value,
             horas_estimadas: parseFloat(document.getElementById('horasEstimadas').value) || 0,
-            fecha_entrega: document.getElementById('fechaEntrega').value,
+            fecha_entrega: nullIfEmpty(document.getElementById('fechaEntrega').value) || null,
             recibe_nombre: document.getElementById('recibeNombre').value,
             recibe_identificacion: document.getElementById('recibeIdentificacion').value,
             factura_numero: document.getElementById('facturaNumero').value,
@@ -1910,10 +2017,10 @@ const TallerModule = (function() {
 
             _afterTallerPersistOk();
             _cerrarModal();
-            alert('✅ Orden entregada a ventas');
+            _showToast('Orden entregada a ventas');
         } catch (error) {
             console.error(error);
-            alert('Error: ' + error.message);
+            _showToast('Error: ' + error.message, 'error');
         }
     }
 
@@ -2219,7 +2326,7 @@ ${printScript}
 
         const w = window.open('', '_blank', 'noopener,noreferrer');
         if (!w) {
-            alert('Permite ventanas emergentes para la vista previa o impresión.');
+            _showToast('Permite ventanas emergentes para impresión', 'info');
             return;
         }
         w.document.write(html);
