@@ -1,49 +1,55 @@
 // ================================================
 // ARCHIVO: costos-engine.js
 // DESCRIPCIÓN: Motor de cálculo financiero unificado
+// BASADO EN: TABULADOR_DE_COTIZACIÓN.xlsx
 // SEGURIDAD: No contiene datos sensibles, solo lógica de negocio
 // ================================================
 
 export const CostosEngine = (function() {
-    // Configuración base (puede ser sobreescrita desde BD)
+    // Configuración base según tabulador (valores pueden venir de BD)
     const CONFIG = {
-        gasolina: 24.50,
-        rendimiento: 9.5,
-        costoTecnico: 104.16,
-        gastosFijosHora: 124.18,
-        camionetaHora: 39.35,
-        utilidad: 40,
+        gasolina_precio_litro: 30.00,
+        rendimiento_km_litro: 9.5,
+        ventas_por_dia: 87.00,
+        tiempo_invertido_hr: 80.00,
+        gastos_fijos_hr: 161.85,
+        camioneta_hr: 52.67,
+        utilidad_base: 40,
+        utilidad_premium: 45,
         credito: 3,
         iva: 16
     };
 
-    // ==================== FÓRMULAS BASE ====================
+    // ==================== FÓRMULAS BASE (según tabulador) ====================
+    // Fórmula: litros = (km * 2) / 9.5  (ida y vuelta)
     function calcularLitros(km) {
-        return km <= 0 ? 0 : km / CONFIG.rendimiento;
+        return km <= 0 ? 0 : (km * 2) / CONFIG.rendimiento_km_litro;
     }
 
+    // Fórmula: $ gasolina = litros * 30
     function calcularCostoGasolina(km) {
-        return calcularLitros(km) * CONFIG.gasolina;
+        const litros = calcularLitros(km);
+        return litros * CONFIG.gasolina_precio_litro;
     }
 
+    // Fórmula: $ ventas = días * 87
+    function calcularCostoVentas(dias) {
+        return dias * CONFIG.ventas_por_dia;
+    }
+
+    // Fórmula: $ técnico = horas * 80
     function calcularCostoTrasladoTecnico(horasViaje) {
-        return horasViaje * CONFIG.costoTecnico;
+        return horasViaje * CONFIG.tiempo_invertido_hr;
     }
 
-    function calcularGasolinaMasTraslado(km, horasViaje) {
-        return calcularCostoGasolina(km) + calcularCostoTrasladoTecnico(horasViaje);
-    }
-
-    function calcularManoObra(horasTaller) {
-        return horasTaller * CONFIG.costoTecnico;
-    }
-
+    // Fórmula: gastos fijos = horas * 161.85
     function calcularGastosFijos(horasTaller) {
-        return horasTaller * CONFIG.gastosFijosHora;
+        return horasTaller * CONFIG.gastos_fijos_hr;
     }
 
+    // Fórmula: camioneta = horas * 52.67
     function calcularCostoCamioneta(horasViaje) {
-        return horasViaje * CONFIG.camionetaHora;
+        return horasViaje * CONFIG.camioneta_hr;
     }
 
     function calcularGastosGenerales(gasolinaMasTraslado, manoObra, gastosFijos, refacciones, camioneta) {
@@ -118,9 +124,13 @@ export const CostosEngine = (function() {
 
             const params = {};
             data.forEach(p => {
-                const key = p.clave === 'costo_tecnico' ? 'costoTecnico' :
-                           p.clave === 'gastos_fijos_hora' ? 'gastosFijosHora' :
-                           p.clave === 'camioneta_hora' ? 'camionetaHora' :
+                const key = p.clave === 'gasolina_precio_litro' ? 'gasolina_precio_litro' :
+                           p.clave === 'ventas_por_dia' ? 'ventas_por_dia' :
+                           p.clave === 'tiempo_invertido_hr' ? 'tiempo_invertido_hr' :
+                           p.clave === 'gastos_fijos_hr' ? 'gastos_fijos_hr' :
+                           p.clave === 'camioneta_hr' ? 'camioneta_hr' :
+                           p.clave === 'utilidad_base' ? 'utilidad_base' :
+                           p.clave === 'utilidad_premium' ? 'utilidad_premium' :
                            p.clave;
                 if (key in CONFIG) {
                     params[key] = Number(p.valor);
