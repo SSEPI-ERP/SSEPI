@@ -2948,9 +2948,15 @@ const VentasModule = (function() {
         if (prevBtn) prevBtn.style.display = paso > 1 ? 'inline-block' : 'none';
         var nextBtn = footer.querySelector('#wizardNextBtn');
         if (nextBtn) nextBtn.style.display = paso < 4 ? 'inline-block' : 'none';
-        // Botón Guardar: visible en todos los pasos (1, 2, 3, 4) para guardar borrador
+        // Botón Guardar: visible solo en pasos 2, 3, 4 (en paso 1 no hay datos que guardar aún)
         var guardarBtn = footer.querySelector('#guardarCotizacionWizardBtn');
-        if (guardarBtn) guardarBtn.style.display = 'inline-block';
+        if (guardarBtn) {
+            guardarBtn.style.display = paso >= 2 ? 'inline-block' : 'none';
+            // Cambiar texto del botón según el paso
+            guardarBtn.innerHTML = paso === 4
+                ? '<i class="fas fa-save"></i> GUARDAR COTIZACIÓN'
+                : '<i class="fas fa-save"></i> Guardar borrador';
+        }
         var descargarPDFWizard = footer.querySelector('#descargarPDFWizardBtn');
         if (descargarPDFWizard) descargarPDFWizard.style.display = paso === 4 ? 'inline-block' : 'none';
         var generarBtn = footer.querySelector('#generarCotizacionBtn');
@@ -3346,13 +3352,35 @@ const VentasModule = (function() {
 
     async function _guardarCotizacionDesdeWizard() {
         const cliente = _nombreClienteWizardResuelto();
+        if (!cliente) { _showToast('Falta el nombre del cliente.', 'warning'); return; }
 
-        // Try both resTotal (paso 3/4) and previewTotal (paso 2)
+        // Si estamos en paso 2 o 3, solo guardar borrador (no crear cotización aún)
+        if (wizardPaso < 4) {
+            // Guardar borrador local
+            if (ventasAutosaveCtrl) {
+                ventasAutosaveCtrl.save({
+                    wizardPaso,
+                    calculadoraClienteActual,
+                    calculadoraComponentes: calculadoraComponentes.slice(),
+                    compraActual,
+                    ventasWizardCerebro,
+                    lastGastosGenerales,
+                    lastPrecioConUtilidad,
+                    lastPrecioAntesIVA,
+                    lastIva,
+                    lastTotal
+                });
+            }
+            _showToast('✅ Borrador guardado. Puedes continuar editando.', 'success');
+            _addToFeed('💾', 'Borrador de cotización guardado');
+            return;
+        }
+
+        // Paso 4: Guardar cotización final
         const resTotalEl = document.getElementById('resTotal');
         const previewTotalEl = document.getElementById('previewTotal');
         const totalStr = resTotalEl?.innerText || previewTotalEl?.innerText || '0';
         const total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
-        if (!cliente) { _showToast('Falta el nombre del cliente.', 'warning'); return; }
         if (total <= 0) {
             _recalcular();
             const totalAfter = parseFloat((document.getElementById('resTotal')?.innerText || document.getElementById('previewTotal')?.innerText || '0').replace(/[$,]/g, '')) || 0;
