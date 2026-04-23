@@ -52,6 +52,7 @@ const VentasModule = (function() {
     let ventasDraftSessionKey = null;
     let ventasAutosaveCtrl = null;
     let currentUserName = '';
+    let actividadesDiarias = []; // Tabla de actividades para Automatización
 
     // Filtros
     let filtroFechaInicio = null;
@@ -195,6 +196,7 @@ const VentasModule = (function() {
         if (p.lastPrecioAntesIVA !== undefined) lastPrecioAntesIVA = p.lastPrecioAntesIVA;
         if (p.lastIva !== undefined) lastIva = p.lastIva;
         if (p.lastTotal !== undefined) lastTotal = p.lastTotal;
+        if (Array.isArray(p.actividadesDiarias)) actividadesDiarias = p.actividadesDiarias.slice();
 
         // Abrir modal y renderizar paso guardado
         const modal = document.getElementById('calculadoraModal');
@@ -557,8 +559,90 @@ const VentasModule = (function() {
             { area: "Soporte", servicio: "Optimización de tiempos de ciclo", tipo: "O", valorAgregado: 1111, unidad: "por hora" },
             { area: "Soporte", servicio: "Respaldo y documentación", tipo: "O", valorAgregado: 333.3, unidad: "por hora" },
             { area: "Soporte", servicio: "Capacitación a personal", tipo: "O", valorAgregado: 888.8, unidad: "por hora" }
+        ],
+        // Actividades diarias - Tipos de actividad (23 tipos)
+        tiposActividad: [
+            "ADMINISTRACION DE PROYECTOS", "ASESORAMIENTO", "BUSQUEDA DE COMPONENTES", "COMIDA",
+            "DISEÑO ELECTRICO", "DISEÑO MECANICO", "ENTRENAMIENTO", "EQUIPOS ELECTRÓNICA",
+            "INCAPACIDAD", "LEVANTAMIENTO", "MANTENIMIENTO", "OTRA", "PROGRAMACION APLICACIÓN",
+            "PROGRAMACION HMI", "PROGRAMACION PLC", "PROGRAMACION SERVO", "PROGRAMACION VARIADOR",
+            "REPORTES", "RESPALDOS", "SOPORTE A PLANTA", "TRANSPORTE", "TXT", "VACACIONES", "HVAC"
+        ],
+        // Empresas / Servicios (48 empresas)
+        empresas: [
+            "ACEROMEX", "AFRA", "ALFAMEX", "AM", "ANTOLIN", "AVON CELAYA", "AVON LEON",
+            "BACHOCO AGUASCALIENTES", "BACHOCO CELAYA", "BACHOCO LAGOS", "BADER", "BAUMANN",
+            "BIOFLEX", "BIOPAPEL LEON", "BIOPAPEL TEPATITLAN", "BODYCOTE", "BOLSAS DE LOS ALTOS",
+            "CALDERAS LEON", "CARTONERA DE LOS ALTOS", "CME LEON", "COLESA", "CONCURMEX",
+            "DATWYLER", "DEACERO CELAYA", "DEACERO LEON", "ECOBOLSA", "EPC", "FAREVA",
+            "FORVIA", "FREUDEMBERG", "HIROTAI", "HIROTEC", "KCHM", "KRABICA", "LABORATORIO GIGA",
+            "MAJOSE", "MASECA", "MEXIPAC", "MR LUCKY", "NHK", "NIVEA CELAYA", "NIVEA LEON",
+            "NOVATEC", "PANGEA", "POLISHAPE", "ROKY", "SEROC", "SERVICARTON", "STARCHE LION",
+            "TENERIA VARGAS", "WALDASCHAFF", "WASION", "WINKELMAN", "OFICINA GIGA INDUSTRIAL",
+            "COFICAB", "SERVIACERO", "COMETA", "ENERTAM", "ESECSA", "CUERO CENTRO", "ALFADRY",
+            "GUILLERMO"
         ]
     };
+
+    /**
+     * Genera el siguiente folio según el tipo de departamento
+     * @param {string} departamento - 'Automatización' | 'Taller Electrónica' | 'Taller Motores' | 'Proyectos' | 'Suministro'
+     * @returns {Promise<string>} Folio generado
+     */
+    async function generarFolioPorTipo(departamento) {
+        const { data, error } = await window.supabase
+            .from('foliador_control')
+            .select('ultimo_folio')
+            .eq('tipo', 'SP-' + departamento.charAt(0).toUpperCase())
+            .single();
+
+        if (error && error.code !== 'PGRST116') {
+            console.warn('[Folios] Error leyendo foliador:', error);
+        }
+
+        const ultimoFolio = data?.ultimo_folio || 0;
+        const nuevoFolio = ultimoFolio + 1;
+
+        // Actualizar el foliador
+        await window.supabase
+            .from('foliador_control')
+            .upsert({
+                tipo: 'SP-' + departamento.charAt(0).toUpperCase(),
+                ultimo_folio: nuevoFolio,
+                ultimo_folio_entero: nuevoFolio
+            }, { onConflict: 'tipo' });
+
+        switch (departamento) {
+            case 'Taller Electrónica':
+                // SP-E: Consecutivo simple de 4 dígitos (ej: 0742, 0843)
+                return 'SP-E' + String(nuevoFolio).padStart(4, '0');
+
+            case 'Taller Motores':
+                // SP-M: SP-M[Vendedor 2 letras]-[Cliente 3 dígitos]-[Motor 2 dígitos]-[Consecutivo]
+                // El vendedor y cliente se pasan como parámetros adicionales
+                const perfil = await authService.getCurrentProfile();
+                const iniciales = (perfil?.nombre || 'VE').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                return `SP-M${iniciales}-000-01-${String(nuevoFolio).padStart(2, '0')}`;
+
+            case 'Automatización':
+            case 'Proyectos':
+                // SP-A: Folio principal + subproyecto (ej: 26139-7)
+                const folioPrincipal = Math.floor(nuevoFolio / 10);
+                const subProyecto = nuevoFolio % 10;
+                return `SP-A${folioPrincipal}-${subProyecto || 1}`;
+
+            case 'Suministro':
+                // SP-S: Fecha YYMMDD + consecutivo si hay múltiples el mismo día
+                const hoy = new Date();
+                const fechaStr = hoy.getFullYear().toString().slice(-2) +
+                    String(hoy.getMonth() + 1).padStart(2, '0') +
+                    String(hoy.getDate()).padStart(2, '0');
+                return `SP-S${fechaStr}-${String(nuevoFolio).padStart(2, '0')}`;
+
+            default:
+                return 'SP-' + nuevoFolio;
+        }
+    }
 
     // ==================== INICIALIZACIÓN ====================
     async function init() {
@@ -604,6 +688,9 @@ const VentasModule = (function() {
         // Inicializar autosave y reanudar borradores
         _initVentasAutosave();
         _tryResumeVentasDraft();
+
+        // Exportar funciones de folios para uso global
+        _exportFunctions();
 
         console.log('✅ Módulo ventas iniciado');
     }
@@ -795,6 +882,305 @@ const VentasModule = (function() {
             console.warn('[Ventas] compras:', e);
             solicitudesTaller = [];
         }
+    }
+
+    // ==================== TABULADOR DE COTIZACIÓN (CSV) ====================
+    /**
+     * Carga el tabulador de cotización desde el CSV
+     * Retorna estructura: { EMPRESA, KM, LITROS, $GASOLINA, $GASOLINA2, HRS, $HR_DANI, $DANI, TOTAL }
+     */
+    async function _cargarTabuladorCotizacion() {
+        try {
+            const response = await fetch('docs/TABULADOR DE COTIZACIÓN (1).csv');
+            const csvText = await response.text();
+            const lines = csvText.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+
+            const tabulador = [];
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line || line === ',,,,,,,,') continue;
+
+                // Parsear CSV considerando comillas y comas
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+                for (let char of line) {
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim().replace(/"/g, ''));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim().replace(/"/g, ''));
+
+                const empresa = values[0] || '';
+                if (!empresa) continue;
+
+                tabulador.push({
+                    empresa: empresa,
+                    km: parseFloat(values[1]) || 0,
+                    litros: parseFloat(values[2]) || 0,
+                    gasolina: parseFloat((values[3] || '0').replace(/[$,]/g, '')) || 0,
+                    gasolina2: parseFloat((values[4] || '0').replace(/[$,]/g, '')) || 0,
+                    horas: parseFloat(values[5]) || 0,
+                    hrDani: parseFloat((values[6] || '0').replace(/[$,]/g, '')) || 0,
+                    dani: parseFloat((values[7] || '0').replace(/[$,]/g, '')) || 0,
+                    total: parseFloat((values[8] || '0').replace(/[$,]/g, '')) || 0
+                });
+            }
+            return tabulador;
+        } catch (e) {
+            console.warn('[Tabulador] Error cargando CSV:', e);
+            return [];
+        }
+    }
+
+    /**
+     * Calcula el costo final basado en el tabulador de cotización
+     * @param {string} empresa - Nombre de la empresa
+     * @param {number} km - Kilómetros (ida y vuelta)
+     * @param {number} horas - Horas estimadas
+     * @param {number} refacciones - Costo de refacciones/componentes
+     * @returns {object} Desglose de costos
+     */
+    function _calcularCostoPorTabulador(empresa, km, horas, refacciones = 0) {
+        const gasPrice = CostosEngine.CONFIG.gasolina || 24.50;
+        const rendimiento = 9.5;
+        const costoHoraTecnico = 104.16;
+
+        // Calcular litros necesarios
+        const litros = km / rendimiento;
+
+        // Costos
+        const gasolina = litros * gasPrice;
+        const manoObra = horas * costoHoraTecnico;
+        const gastosFijos = horas * (CostosEngine.CONFIG.gastosFijosHora || 124.18);
+        const costoCamioneta = horas * (CostosEngine.CONFIG.camionetaHora || 39.35);
+
+        // Subtotal
+        const subtotal = gasolina + manoObra + gastosFijos + costoCamioneta + refacciones;
+
+        // Utilidad (40% por defecto)
+        const utilidad = subtotal * (CostosEngine.CONFIG.utilidad / 100);
+        const conUtilidad = subtotal + utilidad;
+
+        // Crédito (3% por defecto)
+        const credito = conUtilidad * (CostosEngine.CONFIG.credito / 100);
+        const antesIva = conUtilidad + credito;
+
+        // IVA (16%)
+        const iva = antesIva * 0.16;
+        const total = antesIva + iva;
+
+        return {
+            empresa,
+            km,
+            litros: litros.toFixed(2),
+            gasolina: gasolina.toFixed(2),
+            horas,
+            manoObra: manoObra.toFixed(2),
+            gastosFijos: gastosFijos.toFixed(2),
+            camioneta: costoCamioneta.toFixed(2),
+            refacciones: refacciones.toFixed(2),
+            subtotal: subtotal.toFixed(2),
+            utilidad: utilidad.toFixed(2),
+            credito: credito.toFixed(2),
+            antesIva: antesIva.toFixed(2),
+            iva: iva.toFixed(2),
+            total: total.toFixed(2)
+        };
+    }
+
+    // ==================== ACTIVIDADES DIARIAS AUTOMATIZACIÓN ====================
+    /**
+     * Calcula el tiempo total entre dos horas
+     * @param {string} inicio - Hora inicio (HH:MM)
+     * @param {string} fin - Hora fin (HH:MM)
+     * @returns {string} Tiempo total formato HH:MM
+     */
+    function _calcularTiempoTotal(inicio, fin) {
+        if (!inicio || !fin) return '00:00';
+
+        const [h1, m1] = inicio.split(':').map(Number);
+        const [h2, m2] = fin.split(':').map(Number);
+
+        const start = new Date(0, 0, 0, h1, m1);
+        const end = new Date(0, 0, 0, h2, m2);
+
+        let diff = end - start;
+        if (diff < 0) {
+            // Cruza medianoche
+            end.setDate(end.getDate() + 1);
+            diff = end - start;
+        }
+
+        const horas = Math.floor(diff / (1000 * 60 * 60));
+        const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+        return String(horas).padStart(2, '0') + ':' + String(minutos).padStart(2, '0');
+    }
+
+    /**
+     * Renderiza la tabla de actividades diarias para Automatización
+     */
+    function _renderTablaActividadesDiarias(actividades = []) {
+        const tiposActividad = tabuladorAutomatizacion.tiposActividad;
+        const empresas = tabuladorAutomatizacion.empresas;
+
+        const tiposOptions = tiposActividad.map(t => `<option value="${t}">${t}</option>`).join('');
+        const empresasOptions = empresas.map(e => `<option value="${e}">${e}</option>`).join('');
+
+        let rows = '';
+        actividades.forEach((act, idx) => {
+            rows += `
+                <tr data-idx="${idx}">
+                    <td><input type="date" class="act-fecha" value="${act.fecha || ''}" style="width:120px;"></td>
+                    <td>
+                        <select class="act-actividad" style="width:180px;">
+                            <option value="">-- Actividad --</option>
+                            ${tiposOptions}
+                        </select>
+                    </td>
+                    <td><input type="text" class="act-desc" value="${act.descripcion || ''}" style="width:200px;"></td>
+                    <td>
+                        <select class="act-servicio" style="width:180px;">
+                            <option value="">-- Empresa --</option>
+                            ${empresasOptions}
+                        </select>
+                    </td>
+                    <td><input type="time" class="act-inicio" value="${act.inicio || '08:00'}" style="width:90px;"></td>
+                    <td><input type="time" class="act-fin" value="${act.fin || '17:00'}" style="width:90px;"></td>
+                    <td><input type="text" class="act-total" readonly value="${act.tiempoTotal || '08:00'}" style="width:70px; background:#f5f5f5;"></td>
+                    <td><input type="number" class="act-extras" value="${act.extras || 0}" min="0" step="0.5" style="width:60px;"></td>
+                    <td><button class="btn-trash" onclick="ventasModule._eliminarActividad(${idx})"><i class="fas fa-trash"></i></button></td>
+                </tr>
+            `;
+        });
+
+        return rows;
+    }
+
+    /**
+     * Agrega una nueva fila de actividad diaria
+     */
+    function _agregarActividadDiaria() {
+        const tbody = document.getElementById('tablaActividadesBody');
+        if (!tbody) return;
+
+        const idx = actividadesDiarias.length;
+        actividadesDiarias.push({
+            fecha: new Date().toISOString().split('T')[0],
+            actividad: '',
+            descripcion: '',
+            servicio: '',
+            inicio: '08:00',
+            fin: '17:00',
+            tiempoTotal: '08:00',
+            extras: 0
+        });
+
+        _renderTablaActividadesDiarias(actividadesDiarias);
+        _attachActividadesEvents();
+    }
+
+    /**
+     * Elimina una actividad de la lista
+     */
+    function _eliminarActividad(idx) {
+        if (idx >= 0 && idx < actividadesDiarias.length) {
+            actividadesDiarias.splice(idx, 1);
+            _renderTablaActividadesDiarias(actividadesDiarias);
+            _attachActividadesEvents();
+        }
+    }
+
+    /**
+     * Adjunta eventos para cálculo automático de tiempo
+     */
+    function _attachActividadesEvents() {
+        document.querySelectorAll('#tablaActividadesBody tr').forEach(tr => {
+            const inicioInput = tr.querySelector('.act-inicio');
+            const finInput = tr.querySelector('.act-fin');
+            const totalInput = tr.querySelector('.act-total');
+
+            if (inicioInput && finInput && totalInput) {
+                const calcTime = () => {
+                    totalInput.value = _calcularTiempoTotal(inicioInput.value, finInput.value);
+                };
+                inicioInput.addEventListener('change', calcTime);
+                finInput.addEventListener('change', calcTime);
+            }
+        });
+    }
+
+    /**
+     * Exporta la bitácora de actividades a CSV
+     */
+    function _exportarBitacoraCSV() {
+        if (actividadesDiarias.length === 0) {
+            _showToast('No hay actividades para exportar', 'warning');
+            return;
+        }
+
+        const perfil = authService.getCurrentProfile();
+        const empleadoNombre = perfil?.nombre || 'EMPLEADO';
+        const empleadoId = perfil?.id || '00';
+
+        // Encabezados del CSV
+        let csv = 'N. EMPLEADO,NOMBRE EMPLEADO,FECHA,ACTIVIDAD,DESCRIPCION,SERVICIO,INICIO,FIN,TIEMPO TOTAL,EXTRAS\n';
+
+        // Filas de actividades
+        actividadesDiarias.forEach(act => {
+            const tiempoTotal = _calcularTiempoTotal(act.inicio || '08:00', act.fin || '17:00');
+            const row = [
+                empleadoId,
+                `"${empleadoNombre}"`,
+                act.fecha || '',
+                `"${act.actividad || ''}"`,
+                `"${act.descripcion || ''}"`,
+                `"${act.servicio || ''}"`,
+                act.inicio || '08:00',
+                act.fin || '17:00',
+                tiempoTotal,
+                act.extras || 0
+            ].join(',');
+            csv += row + '\n';
+        });
+
+        // Crear blob y descargar
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        const fechaStr = new Date().toISOString().split('T')[0];
+        link.setAttribute('href', url);
+        link.setAttribute('download', `bitacora_${empleadoId}_${fechaStr}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        _showToast('Bitácora exportada correctamente', 'success');
+    }
+
+    /**
+     * Exporta funciones para uso desde HTML
+     */
+    function _exportFunctions() {
+        window.folioFormats = window.folioFormats || {};
+        window.folioFormats.generarFolioPorTipo = generarFolioPorTipo;
+        window.folioFormats.getNextFolioLaboratorio = () => generarFolioPorTipo('Taller Electrónica');
+        window.folioFormats.getNextFolioMotores = () => generarFolioPorTipo('Taller Motores');
+        window.folioFormats.getNextFolioAutomatizacion = () => generarFolioPorTipo('Automatización');
+
+        // Exportar funciones de bitácora
+        window.ventasModule = window.ventasModule || {};
+        window.ventasModule._exportarBitacoraCSV = _exportarBitacoraCSV;
+        window.ventasModule._agregarActividadDiaria = _agregarActividadDiaria;
+        window.ventasModule._eliminarActividad = _eliminarActividad;
     }
 
     function _populateVendedoresFilter() {
@@ -1681,6 +2067,10 @@ const VentasModule = (function() {
         const rolActual = sessionStorage.getItem('ssepi_rol') || '';
         const esAdmin = ['admin', 'automatizacion', 'electronica', 'superadmin'].includes(rolActual);
 
+        // Verificar si es departamento de Automatización
+        const esAutomatizacion = ventasWizardCerebro?.departamento === 'Automatización' ||
+                                  ventasWizardCerebro?.departamento === 'Proyectos';
+
         // Calcular total final para todos
         const totalFinal = CostosEngine.calcularPrecioFinal({
             km: Number(cliente.km) || 0,
@@ -1735,7 +2125,8 @@ const VentasModule = (function() {
         const gastosFijosBase = CostosEngine.calcularGastosFijos(horasEstimadas);
         const camionetaBase = CostosEngine.calcularCostoCamioneta(cliente.horas);
 
-        return `
+        // HTML base para todos los departamentos
+        let html = `
             <div class="calculadora-section" style="background: linear-gradient(135deg, var(--c-ventas, #10b981), #059669); padding: 24px; border-radius: 12px; text-align: center;">
                 <div style="color: white; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">
                     <i class="fas fa-calculator"></i> Costo Final del Proyecto
@@ -1764,10 +2155,62 @@ const VentasModule = (function() {
                     <button class="btn btn-sm btn-primary" onclick="ventasModule._agregarComponente()">Agregar</button>
                 </div>
             </div>
+        `;
+
+        // TABLA DE ACTIVIDADES DIARIAS - Solo para Automatización
+        if (esAutomatizacion) {
+            const tiposActividad = tabuladorAutomatizacion.tiposActividad;
+            const empresas = tabuladorAutomatizacion.empresas;
+            const tiposOptions = tiposActividad.map(t => `<option value="${t}">${t}</option>`).join('');
+            const empresasOptions = empresas.map(e => `<option value="${e}">${e}</option>`).join('');
+
+            html += `
+                <div class="calculadora-section" style="margin-top: 20px;">
+                    <div class="calculadora-titulo" style="background: linear-gradient(135deg, #6b7280, #4b5563); color: white;">
+                        <i class="fas fa-calendar-week"></i> Bitácora de Actividades Diarias - Automatización
+                    </div>
+                    <p style="color:var(--text-muted); font-size:12px; margin-bottom:12px;">
+                        Registra las actividades diarias del proyecto. Los selectores incluyen todas las actividades y empresas disponibles.
+                    </p>
+                    <div style="overflow-x: auto; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <table class="calc-table" style="min-width: 1000px;">
+                            <thead>
+                                <tr>
+                                    <th style="width:120px;">Fecha</th>
+                                    <th style="width:180px;">Actividad</th>
+                                    <th>Descripción</th>
+                                    <th style="width:180px;">Empresa</th>
+                                    <th style="width:90px;">Inicio</th>
+                                    <th style="width:90px;">Fin</th>
+                                    <th style="width:70px;">Total</th>
+                                    <th style="width:60px;">Extras</th>
+                                    <th style="width:50px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaActividadesBody">
+                                ${_renderTablaActividadesDiarias(actividadesDiarias)}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="display:flex; gap:10px; margin-top:15px;">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="ventasModule._agregarActividadDiaria()">
+                            <i class="fas fa-plus-circle"></i> Agregar Actividad
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="ventasModule._exportarBitacoraCSV()">
+                            <i class="fas fa-file-csv"></i> Exportar CSV
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        html += `
             <button type="button" class="btn btn-sm btn-primary" onclick="ventasModule._abrirEditorCostos()" style="margin-top: 16px; width: 100%; background: linear-gradient(135deg, #6b7280, #4b5563);">
                 <i class="fas fa-table"></i> Ver Tablas de Costos y Gastos Fijos
             </button>
         `;
+
+        return html;
     }
 
     function _agregarComponente() {
@@ -2868,6 +3311,45 @@ const VentasModule = (function() {
 
     // ==================== NUEVA COTIZACIÓN DIRECTA (Wizard 4 pasos) ====================
     async function _nuevaCotizacion() {
+        // Verificar si hay un borrador guardado del paso 1
+        const draftKey = 'ventas_draft_' + (await authService.getCurrentProfile())?.nombre?.replace(/\s+/g, '_').toLowerCase();
+        const savedDraft = localStorage.getItem(draftKey);
+
+        if (savedDraft) {
+            try {
+                const draft = JSON.parse(savedDraft);
+                // Si hay un borrador del paso 1, preguntar si quiere continuar
+                if (draft.wizardPaso === 1 && draft.ventasWizardCerebro) {
+                    const dept = draft.ventasWizardCerebro.departamento || 'este departamento';
+                    const ordenFolio = draft.ventasWizardCerebro.folio_operativo || 'pendiente';
+                    const continuar = confirm(`Tienes una orden guardada en el paso 1 (${dept}, folio: ${ordenFolio}).\n\n¿Quieres continuar donde la dejaste?`);
+                    if (continuar) {
+                        // Restaurar borrador
+                        calculadoraComponentes = draft.calculadoraComponentes || [];
+                        calculadoraClienteActual = draft.calculadoraClienteActual || null;
+                        compraActual = draft.compraActual || null;
+                        ventasWizardCerebro = draft.ventasWizardCerebro || null;
+                        wizardPaso = 2; // Ir directo al paso 2
+                        ventasDraftSessionKey = draftKey;
+                        var modal = document.getElementById('calculadoraModal');
+                        if (!modal) {
+                            console.error('[Ventas] No se encontró #calculadoraModal');
+                            _showToast('No se pudo abrir el wizard. Recarga la página.', 'error');
+                            return;
+                        }
+                        await _renderWizardPaso(2);
+                        modal.classList.add('active');
+                        _bindWizardEvents();
+                        _showToast('📋 Borrador restaurado. Continúa en el paso 2.', 'info');
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn('[Ventas] Error al leer borrador:', e);
+            }
+        }
+
+        // Iniciar nueva cotización desde cero
         calculadoraComponentes = [];
         calculadoraClienteActual = null;
         compraActual = null;
@@ -2948,14 +3430,20 @@ const VentasModule = (function() {
         if (prevBtn) prevBtn.style.display = paso > 1 ? 'inline-block' : 'none';
         var nextBtn = footer.querySelector('#wizardNextBtn');
         if (nextBtn) nextBtn.style.display = paso < 4 ? 'inline-block' : 'none';
-        // Botón Guardar: visible solo en pasos 2, 3, 4 (en paso 1 no hay datos que guardar aún)
+        // Botón Guardar: visible en todos los pasos
+        // Paso 1: "GUARDAR ORDEN" → crea orden operativa
+        // Pasos 2-3: "Guardar borrador" → guarda estado local
+        // Paso 4: "GUARDAR COTIZACIÓN" → guarda cotización final
         var guardarBtn = footer.querySelector('#guardarCotizacionWizardBtn');
         if (guardarBtn) {
-            guardarBtn.style.display = paso >= 2 ? 'inline-block' : 'none';
-            // Cambiar texto del botón según el paso
-            guardarBtn.innerHTML = paso === 4
-                ? '<i class="fas fa-save"></i> GUARDAR COTIZACIÓN'
-                : '<i class="fas fa-save"></i> Guardar borrador';
+            guardarBtn.style.display = 'inline-block';
+            if (paso === 1) {
+                guardarBtn.innerHTML = '<i class="fas fa-save"></i> GUARDAR ORDEN';
+            } else if (paso === 4) {
+                guardarBtn.innerHTML = '<i class="fas fa-save"></i> GUARDAR COTIZACIÓN';
+            } else {
+                guardarBtn.innerHTML = '<i class="fas fa-save"></i> Guardar borrador';
+            }
         }
         var descargarPDFWizard = footer.querySelector('#descargarPDFWizardBtn');
         if (descargarPDFWizard) descargarPDFWizard.style.display = paso === 4 ? 'inline-block' : 'none';
@@ -3242,8 +3730,9 @@ const VentasModule = (function() {
                 } catch (e) { console.warn('[Ventas] Error registrando evento en historial:', e); }
             }
 
-            // Auto-guardar borrador al pasar del paso 1 al 2
-            if (ventasAutosaveCtrl) {
+            // Nota: El auto-guardado al paso 2 ya no es necesario porque el usuario guarda manualmente en paso 1
+            // Solo guardar si por algún motivo no se guardó antes
+            if (ventasAutosaveCtrl && !ventasDraftSessionKey) {
                 ventasAutosaveCtrl.save({
                     wizardPaso: 2,
                     calculadoraClienteActual,
@@ -3253,8 +3742,8 @@ const VentasModule = (function() {
                 });
             }
         }
-        // Auto-guardar al cambiar de paso
-        if (ventasAutosaveCtrl && wizardPaso < 4) {
+        // Auto-guardar al cambiar de paso (solo pasos 2→3 y 3→4)
+        if (ventasAutosaveCtrl && wizardPaso >= 2 && wizardPaso < 4) {
             const payload = {
                 wizardPaso: wizardPaso + 1,
                 calculadoraClienteActual: calculadoraClienteActual ? { ...calculadoraClienteActual } : null,
@@ -3352,11 +3841,117 @@ const VentasModule = (function() {
 
     async function _guardarCotizacionDesdeWizard() {
         const cliente = _nombreClienteWizardResuelto();
-        if (!cliente) { _showToast('Falta el nombre del cliente.', 'warning'); return; }
 
-        // Si estamos en paso 2 o 3, solo guardar borrador (no crear cotización aún)
+        // PASO 1: Guardar orden operativa (cerebro) y permitir cerrar el wizard
+        if (wizardPaso === 1) {
+            if (!cliente) { _showToast('Falta el nombre del cliente.', 'warning'); return; }
+
+            const fechaIn = document.getElementById('wizardFechaIngreso')?.value;
+            const nombreProducto = document.getElementById('wizardNombreProducto')?.value?.trim() || '';
+            const falla = document.getElementById('wizardFallaReportada')?.value?.trim() || '';
+            const prioridad = document.getElementById('wizardPrioridadSelect')?.value || 'Normal';
+            const dept = document.getElementById('wizardDepartamentoSelect')?.value || '';
+            const clienteId = document.getElementById('wizardClienteSelect')?.value;
+
+            if (!clienteId) { _showToast('Selecciona un cliente.', 'warning'); return; }
+            if (!fechaIn) { _showToast('Indica la fecha de ingreso.', 'warning'); return; }
+            if (!nombreProducto) { _showToast('Ingresa el nombre del producto.', 'warning'); return; }
+            if (!falla) { _showToast('Describe la falla o requerimiento.', 'warning'); return; }
+            if (!dept) { _showToast('Selecciona el departamento.', 'warning'); return; }
+
+            const contacto = contactos.find(c => String(c.id) === String(clienteId));
+            const optLabel = (document.getElementById('wizardClienteSelect')?.selectedOptions?.[0]?.textContent || '').trim();
+            let clienteNombre = '';
+            if (contacto) {
+                clienteNombre = (contacto.nombre || contacto.empresa || contacto.email || 'Cliente').trim() || 'Cliente';
+            } else if (optLabel && optLabel !== '-- Seleccionar cliente --') {
+                clienteNombre = optLabel === 'Sin nombre' ? 'Cliente' : optLabel;
+            } else {
+                clienteNombre = 'Cliente';
+            }
+
+            let origenCot = 'directo';
+            if (dept === 'Taller Electrónica') origenCot = 'taller';
+            else if (dept === 'Taller Motores') origenCot = 'motores';
+            else if (dept === 'Automatización') origenCot = 'automatizacion';
+            else if (dept === 'Proyectos') origenCot = 'proyecto';
+
+            const csrfToken = sessionStorage.getItem('csrfToken');
+            let creado = { folio: null, ordenId: null, tipo: null };
+
+            if (dept !== 'Administración') {
+                try {
+                    creado = await _ventasCrearOrdenOperativa(dept, clienteNombre, falla, fechaIn, prioridad, csrfToken);
+                } catch (e) {
+                    console.error('[Ventas] alta orden cerebro', e);
+                    _showToast('Error al crear orden: ' + e.message, 'error');
+                    return;
+                }
+            }
+
+            // Guardar registro cerebro
+            ventasWizardCerebro = {
+                fecha_ingreso: fechaIn,
+                falla_reportada: falla,
+                prioridad,
+                departamento: dept,
+                orden_id: creado.ordenId || null,
+                folio_operativo: creado.folio || null,
+                tipo_vinculo: creado.tipo || null,
+                origen_cotizacion: origenCot,
+                nombre_producto: nombreProducto
+            };
+
+            // Guardar cliente actual
+            if (contacto) {
+                calculadoraClienteActual = {
+                    contactoId: clienteId,
+                    nombre: clienteNombre,
+                    km: contacto.km || 0,
+                    horas: contacto.horas_viaje || 0,
+                    email: contacto.email,
+                    telefono: contacto.telefono,
+                    rfc: contacto.rfc,
+                    producto: nombreProducto
+                };
+            } else {
+                calculadoraClienteActual = {
+                    contactoId: clienteId,
+                    nombre: clienteNombre,
+                    km: 0,
+                    horas: 0,
+                    producto: nombreProducto
+                };
+            }
+
+            // Registrar evento en historial
+            if (creado.ordenId) {
+                try {
+                    await _insertarEventoHistorial(creado.tipo, creado.ordenId, 'creacion', `Orden ${creado.folio} creada desde Ventas`, csrfToken);
+                } catch (e) { console.warn('[Ventas] Error registrando evento en historial:', e); }
+            }
+
+            // Guardar borrador local para continuar después
+            if (ventasAutosaveCtrl) {
+                ventasAutosaveCtrl.save({
+                    wizardPaso: 1,
+                    calculadoraClienteActual,
+                    compraActual: dept === 'Administración' ? { id: null, vinculacion: null, _origen: 'directo' } : null,
+                    ventasWizardCerebro,
+                    paso1Fields: _collectPaso1Fields()
+                });
+            }
+
+            _showToast('✅ Orden guardada. Puedes cerrar y esperar a que Laboratorio/Compras completen su información.', 'success');
+            _addToFeed('📋', `Orden guardada - ${dept}`);
+
+            // Cerrar wizard para permitir que el usuario espere
+            document.getElementById('calculadoraModal').classList.remove('active');
+            return;
+        }
+
+        // PASOS 2 y 3: Guardar borrador
         if (wizardPaso < 4) {
-            // Guardar borrador local
             if (ventasAutosaveCtrl) {
                 ventasAutosaveCtrl.save({
                     wizardPaso,
@@ -3368,7 +3963,8 @@ const VentasModule = (function() {
                     lastPrecioConUtilidad,
                     lastPrecioAntesIVA,
                     lastIva,
-                    lastTotal
+                    lastTotal,
+                    actividadesDiarias: actividadesDiarias.slice()
                 });
             }
             _showToast('✅ Borrador guardado. Puedes continuar editando.', 'success');
@@ -3413,7 +4009,9 @@ const VentasModule = (function() {
             orden_origen_id: compraActual?.vinculacion?.id || compraActual?.id || null,
             cerebro_registro: _cerebroRegistroPayload(),
             vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas',
-            fecha_creacion: new Date().toISOString()
+            fecha_creacion: new Date().toISOString(),
+            actividades: actividadesDiarias.length > 0 ? [...actividadesDiarias] : null,
+            departamento: ventasWizardCerebro?.departamento || null
         };
 
         const csrfToken = sessionStorage.getItem('csrfToken');
@@ -3432,6 +4030,8 @@ const VentasModule = (function() {
                     total: finalTotal,
                     fecha: existing?.fecha || new Date().toISOString().split('T')[0],
                     cerebro_registro: _cerebroRegistroPayload(),
+                    actividades: actividadesDiarias.length > 0 ? [...actividadesDiarias] : null,
+                    departamento: ventasWizardCerebro?.departamento || null,
                     updated_at: new Date().toISOString()
                 }, csrfToken);
                 editingCotizacionId = null;
@@ -3916,6 +4516,7 @@ const VentasModule = (function() {
         const cliente = (document.getElementById('editCliente')?.value || document.getElementById('previewCliente')?.innerText || '').trim();
         const rfc = (document.getElementById('editRFC')?.value || '').trim();
         const total = parseFloat(document.getElementById('editTotal')?.value || '') || 0;
+        const departamento = ventasWizardCerebro?.departamento || 'Ventas';
 
         if (!cliente) {
             _showToast('Cliente requerido para generar el PDF.', 'info');
@@ -3953,13 +4554,15 @@ const VentasModule = (function() {
             items,
             subtotal,
             iva,
-            total
+            total,
+            departamento,
+            actividades: actividadesDiarias.length > 0 ? [...actividadesDiarias] : null
         };
 
         (async () => {
             try {
                 const { data: { user } } = await window.supabase.auth.getUser();
-                await pdfGenerator.generateCotizacion(pdfData, user);
+                await pdfGenerator.generate({ departamento, datos: pdfData, tipo: 'cotizacion' }, user);
                 _addToFeed('🧾', `PDF generado: ${folio}`);
             } catch (error) {
                 console.error(error);
