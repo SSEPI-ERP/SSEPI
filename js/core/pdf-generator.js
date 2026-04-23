@@ -216,6 +216,55 @@ export class PDFGenerator {
         };
 
         // ═══════════════════════════════════════════════════════════════════
+        // TABLA DE ACTIVIDADES (Solo Automatización)
+        // ═══════════════════════════════════════════════════════════════════
+        const drawActividadesTable = () => {
+            const actividades = data.actividades;
+            if (!actividades || !actividades.length) return;
+
+            if (y + 20 > BODY_BOTTOM) newPage();
+
+            tx('Bitácora de Actividades', ML + 4, y, 'bold', 13, COLORS.BLK);
+            y += 8;
+
+            const TBH = 8;
+            const TRH = 6;
+            const TBW = TW - 10;
+            const TBX = ML + 5;
+
+            // Header
+            fl(TBX, y, TBW, TBH, COLORS.TEAL, 2);
+            tx('Fecha', TBX + 4, y + TBH * 0.65, 'bold', 8, COLORS.WHT);
+            tx('Actividad', TBX + 25, y + TBH * 0.65, 'bold', 8, COLORS.WHT);
+            tx('Descripción', TBX + 70, y + TBH * 0.65, 'bold', 8, COLORS.WHT);
+            tx('Inicio', TBX + TBW - 45, y + TBH * 0.65, 'bold', 8, COLORS.WHT, { align: 'right' });
+            tx('Fin', TBX + TBW - 25, y + TBH * 0.65, 'bold', 8, COLORS.WHT, { align: 'right' });
+            tx('Total', TBX + TBW - 3, y + TBH * 0.65, 'bold', 8, COLORS.WHT, { align: 'right' });
+            hl(TBX, y + TBH, TBW, COLORS.TEAL, 0.5);
+            y += TBH + 2;
+
+            // Rows
+            actividades.forEach((act, idx) => {
+                const rowColor = idx % 2 === 0 ? COLORS.GR_ROW : COLORS.WHT;
+                fl(TBX, y, TBW, TRH, rowColor, 0);
+
+                tx(act.fecha || '', TBX + 4, y + TRH * 0.65, 'normal', 7, COLORS.GR_TXT);
+                tx(act.actividad || '', TBX + 25, y + TRH * 0.65, 'normal', 7, COLORS.GR_TXT, { maxWidth: 40 });
+                tx(act.descripcion || '', TBX + 70, y + TRH * 0.65, 'normal', 7, COLORS.GR_TXT, { maxWidth: 50 });
+                tx(act.inicio || '', TBX + TBW - 45, y + TRH * 0.65, 'normal', 7, COLORS.GR_TXT, { align: 'right' });
+                tx(act.fin || '', TBX + TBW - 25, y + TRH * 0.65, 'normal', 7, COLORS.GR_TXT, { align: 'right' });
+                tx(act.tiempoTotal || '', TBX + TBW - 3, y + TRH * 0.65, 'normal', 7, COLORS.GR_TXT, { align: 'right' });
+
+                hl(TBX, y + TRH, TBW, COLORS.GR_SEP, 0.2);
+                y += TRH;
+
+                if (y > BODY_BOTTOM) newPage();
+            });
+
+            y += 10;
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
         // NOTAS IMPORTANTES
         // ═══════════════════════════════════════════════════════════════════
         const drawNotas = () => {
@@ -305,6 +354,7 @@ export class PDFGenerator {
         y = drawHeader();
         drawClientInfo();
         drawConceptsTable();
+        drawActividadesTable();
         drawNotas();
         drawFirmas();
         drawFooter(pgNum);
