@@ -150,6 +150,13 @@
         .btn-secondary:hover {
             background: #e0e0e0;
         }
+        .btn-edit {
+            background: #2196f3;
+            color: white;
+        }
+        .btn-edit:hover {
+            background: #1976d2;
+        }
         .loading {
             text-align: center;
             padding: 40px;
@@ -181,6 +188,113 @@
             border-radius: 8px;
             margin-bottom: 20px;
         }
+
+        /* Modal Editor */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .modal-header h2 {
+            color: #333;
+            font-size: 1.5rem;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #888;
+        }
+        .modal-close:hover {
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #17a598;
+            box-shadow: 0 0 0 3px rgba(23, 165, 152, 0.1);
+        }
+        .nota-editor-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .nota-editor-item textarea {
+            width: 100%;
+            min-height: 60px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+        .btn-save {
+            background: linear-gradient(135deg, #17a598, #0d9488);
+            color: white;
+        }
+        .btn-cancel {
+            background: #e0e0e0;
+            color: #333;
+        }
+
         footer {
             text-align: center;
             padding: 30px;
@@ -216,6 +330,63 @@
         </footer>
     </div>
 
+    <!-- Modal Editor de Políticas -->
+    <div id="editorModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">✏️ Editar Políticas</h2>
+                <button class="modal-close" onclick="cerrarEditor()">&times;</button>
+            </div>
+
+            <div class="form-group">
+                <label>Módulo</label>
+                <input type="text" id="editModulo" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>Título</label>
+                <input type="text" id="editTitulo" placeholder="Ej: Políticas para reparación de...">
+            </div>
+
+            <div class="form-group">
+                <label>Tiempo de entrega</label>
+                <input type="text" id="editTiempoEntrega" placeholder="Ej: INMEDIATA a partir de la OC">
+            </div>
+
+            <div class="form-group">
+                <label>Garantía (días)</label>
+                <input type="number" id="editGarantiaDias" min="0" max="365">
+            </div>
+
+            <div class="form-group">
+                <label>Moneda</label>
+                <input type="text" id="editMoneda" placeholder="Ej: MONEDA NACIONAL">
+            </div>
+
+            <div class="form-group">
+                <label>URL de términos</label>
+                <input type="url" id="editUrlTerminos" placeholder="https://www.ssepi.org/terms">
+            </div>
+
+            <div class="form-group">
+                <label>Notas Importantes (una por línea)</label>
+                <div id="notasEditor"></div>
+                <button type="button" class="btn btn-secondary" onclick="agregarNota()" style="margin-top: 10px;">
+                    ➕ Agregar nota
+                </button>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-save" onclick="guardarPoliticas()">
+                    💾 Guardar cambios
+                </button>
+                <button type="button" class="btn btn-cancel" onclick="cerrarEditor()">
+                    ❌ Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ═══════════════════════════════════════════════════════════════════
         // CONFIGURACIÓN DE SUPABASE
@@ -225,6 +396,9 @@
 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const { jsPDF } = window.jspdf;
+
+        let politicasData = {};
+        let moduloActualEditando = null;
 
         // ═══════════════════════════════════════════════════════════════════
         // DATOS DE MÓDULOS
@@ -266,8 +440,6 @@
                 colorHex: [211, 47, 47]
             }
         ];
-
-        let politicasData = {};
 
         // ═══════════════════════════════════════════════════════════════════
         // CARGAR POLÍTICAS DESDE BD
@@ -347,8 +519,8 @@
                         <button class="btn btn-primary" onclick="generarPDF('${mod.id}')">
                             📄 Generar PDF
                         </button>
-                        <button class="btn btn-secondary" onclick="verDetalles('${mod.id}')">
-                            👁 Ver detalles
+                        <button class="btn btn-edit" onclick="abrirEditor('${mod.id}')">
+                            ✏️ Editar
                         </button>
                     </div>
                 `;
@@ -357,6 +529,117 @@
 
             grid.style.display = 'grid';
             document.getElementById('loading').style.display = 'none';
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // ABRIR/CERRAR EDITOR
+        // ═══════════════════════════════════════════════════════════════════
+        function abrirEditor(moduloId) {
+            const mod = MODULES.find(m => m.id === moduloId);
+            const politicas = politicasData[moduloId];
+
+            if (!mod) return;
+
+            moduloActualEditando = moduloId;
+
+            document.getElementById('editModulo').value = mod.nombre;
+            document.getElementById('editTitulo').value = politicas?.titulo || '';
+            document.getElementById('editTiempoEntrega').value = politicas?.tiempo_entrega || '';
+            document.getElementById('editGarantiaDias').value = politicas?.garantia_dias || 0;
+            document.getElementById('editMoneda').value = politicas?.moneda || 'MONEDA NACIONAL';
+            document.getElementById('editUrlTerminos').value = politicas?.url_terminos || '';
+
+            // Notas
+            const notasContainer = document.getElementById('notasEditor');
+            notasContainer.innerHTML = '';
+
+            const notas = politicas?.notas_importantes || [];
+            notas.forEach((nota, idx) => {
+                agregarNotaEditor(nota);
+            });
+
+            document.getElementById('modalTitle').textContent = `✏️ Editar: ${mod.nombre}`;
+            document.getElementById('editorModal').classList.add('active');
+        }
+
+        function cerrarEditor() {
+            document.getElementById('editorModal').classList.remove('active');
+            moduloActualEditando = null;
+        }
+
+        function agregarNota() {
+            agregarNotaEditor('');
+        }
+
+        function agregarNotaEditor(texto = '') {
+            const container = document.getElementById('notasEditor');
+            const div = document.createElement('div');
+            div.className = 'nota-editor-item';
+            div.innerHTML = `
+                <textarea placeholder="Escribe la nota aquí...">${texto}</textarea>
+                <button type="button" class="btn btn-cancel" onclick="this.parentElement.remove()" style="margin-top: 5px; padding: 6px 12px; font-size: 12px;">
+                    🗑️ Eliminar
+                </button>
+            `;
+            container.appendChild(div);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // GUARDAR POLÍTICAS
+        // ═══════════════════════════════════════════════════════════════════
+        async function guardarPoliticas() {
+            if (!moduloActualEditando) return;
+
+            const titulo = document.getElementById('editTitulo').value.trim();
+            const tiempoEntrega = document.getElementById('editTiempoEntrega').value.trim();
+            const garantiaDias = parseInt(document.getElementById('editGarantiaDias').value) || 0;
+            const moneda = document.getElementById('editMoneda').value.trim();
+            const urlTerminos = document.getElementById('editUrlTerminos').value.trim();
+
+            // Obtener notas
+            const notas = [];
+            document.querySelectorAll('#notasEditor textarea').forEach(el => {
+                const texto = el.value.trim();
+                if (texto) notas.push(texto);
+            });
+
+            if (!titulo || !tiempoEntrega) {
+                alert('El título y tiempo de entrega son requeridos');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase
+                    .from('politicas_modulos')
+                    .upsert({
+                        modulo: moduloActualEditando,
+                        titulo,
+                        tiempo_entrega: tiempoEntrega,
+                        garantia_dias: garantiaDias,
+                        moneda,
+                        url_terminos: urlTerminos,
+                        notas_importantes: notas,
+                        updated_at: new Date().toISOString()
+                    }, {
+                        onConflict: 'modulo'
+                    })
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                // Actualizar caché local
+                politicasData[moduloActualEditando] = data;
+
+                // Re-renderizar
+                renderModules();
+
+                mostrarSuccess('Políticas guardadas correctamente');
+                cerrarEditor();
+            } catch (e) {
+                console.error('Error guardando políticas:', e);
+                alert('Error guardando: ' + e.message);
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -479,35 +762,6 @@
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // VER DETALLES
-        // ═══════════════════════════════════════════════════════════════════
-        function verDetalles(moduloId) {
-            const mod = MODULES.find(m => m.id === moduloId);
-            const politicas = politicasData[moduloId];
-
-            if (!mod || !politicas) return;
-
-            const detalles = `
-═══════════════════════════════════════════════════════════
-${mod.icon} ${mod.nombre}
-═══════════════════════════════════════════════════════════
-
-⏱️ Tiempo de entrega: ${politicas.tiempo_entrega || 'N/A'}
-📋 Garantía: ${politicas.garantia_dias || 0} días
-💰 Moneda: ${politicas.moneda || 'MONEDA NACIONAL'}
-📄 Requiere OC: ${politicas.requiere_oc ? 'Sí' : 'No'}
-❌ Acepta cancelaciones: ${politicas.acepta_cancelaciones ? 'Sí' : 'No'}
-
-📌 POLÍTICAS:
-${politicas.notas_importantes?.map((n, i) => `  ${i + 1}. ${n}`).join('\n') || 'Sin políticas'}
-
-🔗 Términos: ${politicas.url_terminos || 'N/A'}
-            `;
-
-            alert(detalles);
-        }
-
-        // ═══════════════════════════════════════════════════════════════════
         // INICIALIZAR
         // ═══════════════════════════════════════════════════════════════════
         async function init() {
@@ -519,7 +773,10 @@ ${politicas.notas_importantes?.map((n, i) => `  ${i + 1}. ${n}`).join('\n') || '
 
         // Exponer funciones globalmente
         window.generarPDF = generarPDF;
-        window.verDetalles = verDetalles;
+        window.abrirEditor = abrirEditor;
+        window.cerrarEditor = cerrarEditor;
+        window.agregarNota = agregarNota;
+        window.guardarPoliticas = guardarPoliticas;
 
         // Iniciar
         init();
