@@ -2586,13 +2586,14 @@ const VentasModule = (function() {
         try {
             const { data, error } = await window.supabase
                 .from('clientes_tabulador')
-                .select('nombre_cliente, km, horas_viaje')
-                .order('nombre_cliente');
+                .select('cliente_nombre, km_ida, horas_invertidas')
+                .eq('activo', true)
+                .order('cliente_nombre');
             if (error || !data) return [];
             return data.map(c => ({
-                nombre: c.nombre_cliente,
-                km: Number(c.km) || 0,
-                horas: Number(c.horas_viaje) || 0
+                nombre: c.cliente_nombre,
+                km: Number(c.km_ida) || 0,
+                horas: Number(c.horas_invertidas) || 0
             }));
         } catch (e) {
             console.warn('[Ventas] Error cargando clientes:', e);
