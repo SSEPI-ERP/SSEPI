@@ -13,7 +13,7 @@
     'use strict';
 
     // Configuración de Supabase
-    const SUPABASE_URL = window.SSEPI_SUPABASE_URL || 'https://foytizbicwnndegeorny.supabase.co';
+    const SUPABASE_URL = window.SSEPI_SUPABASE_URL || 'https://knzmdwjmrhcoytmebdwa.supabase.co';
     const SUPABASE_ANON_KEY = window.SUPABASE_CONFIG?.anonKey || '';
 
     /**
