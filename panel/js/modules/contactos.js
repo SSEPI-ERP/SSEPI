@@ -97,7 +97,7 @@ const ContactosModule = (function() {
             await _initUI();
             _startListeners();
             _startClock();
-            await _importInitialContacts();
+            // _importInitialContacts() eliminado - los contactos ya están en BD
         } catch (e) {
             console.error('[Contactos] init error:', e);
         }
@@ -232,49 +232,20 @@ const ContactosModule = (function() {
     async function _loadContactos(opts) {
         const skipPriorityEnsure = opts && opts.skipPriorityEnsure;
         try {
-            contactos = await contactosService.select({}, { orderBy: 'nombre', ascending: true });
+            const rawContactos = await contactosService.select({}, { orderBy: 'nombre', ascending: true }) || [];
+
+            // Deduplicar por clave única (email, teléfono, nombre+empresa)
+            const vistos = new Set();
+            contactos = rawContactos.filter(c => {
+                const k = _claveDedupeContacto(c);
+                if (vistos.has(k)) return false;
+                vistos.add(k);
+                return true;
+            });
         } catch (e) {
             console.warn('[Contactos] Error cargando contactos:', e?.message || e);
-            if (e?.message?.includes('Permiso denegado')) console.warn('[Contactos] Comprueba rol en public.users (debe ser "admin") y role_permissions.');
-            if (e?.code || e?.message) console.warn('[Contactos] Detalle:', e.code || '', e.message || '');
             contactos = [];
         }
-        try {
-            const supabase = _supabase();
-            if (supabase) {
-                const { data: clientesRows, error: errClientes } = await supabase.from('clientes').select('*').order('nombre', { ascending: true });
-                if (errClientes) console.warn('[Contactos] Error cargando clientes (RLS/permisos?):', errClientes.message);
-                if (clientesRows && clientesRows.length > 0) {
-                    const fromClientes = clientesRows.map(r => ({
-                        id: r.identificacion || r.identificación || r.id,
-                        nombre: r.nombre || '',
-                        empresa: r.nombre_comercial || r.nombre || '',
-                        tipo: 'client',
-                        color: '#0277bd',
-                        _fromClientes: true
-                    }));
-                    const keys = new Set((contactos || []).map(_claveDedupeContacto));
-                    const extra = [];
-                    for (const fc of fromClientes) {
-                        const k = _claveDedupeContacto(fc);
-                        if (keys.has(k)) continue;
-                        keys.add(k);
-                        extra.push(fc);
-                    }
-                    contactos = [...(contactos || []), ...extra];
-                }
-            }
-        } catch (e) {
-            console.warn('[Contactos] Tabla clientes no disponible o error RLS:', e?.message || e);
-        }
-        const emailVisto = new Set();
-        contactos = (contactos || []).filter(c => {
-            const k = _claveDedupeContacto(c);
-            if (!k.startsWith('e:')) return true;
-            if (emailVisto.has(k)) return false;
-            emailVisto.add(k);
-            return true;
-        });
         if (!skipPriorityEnsure && !_ensuringPrioritySuppliers) {
             _ensuringPrioritySuppliers = true;
             try {
@@ -321,76 +292,8 @@ const ContactosModule = (function() {
         }
     }
 
-    // ==================== IMPORTACIÓN INICIAL (si está vacío) ====================
-    async function _importInitialContacts() {
-        if (contactos.length > 0) return; // ya hay datos
-
-        const CONTACTOS_INICIALES = [
-            { nombre: 'Anguiplast, S.A. de C.V.', empresa: 'Anguiplast, S.A. de C.V.', telefono: '+52 348 784 6573', email: 'aluquin@anguiplast.com', direccion: 'Arandas, México', rfc: 'ANG101215PG0', sitio_web: 'http://www.anguiplast.com', tipo: 'client', avatar: 'A', color: '#2e7d32' },
-            { nombre: 'Jaziel Lopez', empresa: 'Anguiplast, S.A. de C.V.', puesto: 'Ventas', telefono: '+52 348 784 6573', email: 'ventas@anguiplast.com', direccion: 'Libramiento Norte Km. 2\nArandas Centro\n47180 Arandas, JAL\nMéxico', rfc: 'ANG101215PG0', sitio_web: 'http://www.anguiplast.com.mx', tipo: 'client', avatar: 'J', color: '#4caf50' },
-            { nombre: 'BADER', empresa: 'BADER', tipo: 'client', avatar: 'B', color: '#66bb6a' },
-            { nombre: 'BODYCOTE', empresa: 'BODYCOTE', telefono: '+52 472 103 5500', direccion: 'Silao, México', tipo: 'client', avatar: 'B', color: '#dc3545' },
-            { nombre: 'Christian Ramirez', empresa: 'BODYCOTE', telefono: '+52 462 188 0922', email: 'christian.ramirez@bodycote.com', direccion: 'Silao, México', tipo: 'client', avatar: 'C', color: '#9c27b0' },
-            { nombre: 'BOLSAS DE LOS ALTOS', empresa: 'BOLSAS DE LOS ALTOS', telefono: '+52 348 784 4666', direccion: 'Arandas, México', tipo: 'client', avatar: 'B', color: '#e53935' },
-            { nombre: 'Jennifer Gerrero', empresa: 'BOLSAS DE LOS ALTOS', telefono: '+52 348 784 4666', direccion: 'Arandas, México', tipo: 'client', avatar: 'J', color: '#7cb342' },
-            { nombre: 'COFICAB', empresa: 'COFICAB', telefono: '+52 477 162 2500', direccion: 'Silao, México', tipo: 'client', avatar: 'C', color: '#f5f5f5' },
-            { nombre: 'CONDUMEX', empresa: 'CONDUMEX', direccion: 'SILAO, México', tipo: 'client', avatar: 'C', color: '#212121' },
-            { nombre: 'DOMUM', empresa: 'DOMUM', telefono: '+52 477 312 0214', direccion: 'León, México', tipo: 'client', avatar: 'D', color: '#00acc1' },
-            { nombre: 'Ariel Diaz', empresa: 'DOMUM', puesto: 'Integrador', telefono: '+52 477 564 2981', email: 'ventas1@d-automation.com', direccion: 'León, México', tipo: 'client', avatar: 'A', color: '#00acc1' },
-            { nombre: 'Demo Technic Leon', empresa: 'Demo Technic Leon', telefono: '+52 477 344 1060', email: 'contact.demotechnic@safe-demo.com', direccion: 'Leon, México', tipo: 'client', avatar: 'D', color: '#1976d2' },
-            { nombre: 'Lic. Blanca Vanesa', empresa: 'Demo Technic Leon', tipo: 'client', avatar: 'L', color: '#e91e63' },
-            { nombre: 'ECOBOLSAS', empresa: 'ECOBOLSAS', telefono: '+52 348 784 4440', email: 'compras@eco-bolsas.com.mx', direccion: 'Arandas, México', tipo: 'client', avatar: 'E', color: '#7cb342' },
-            { nombre: 'Elio Cesar', empresa: 'ECOBOLSAS', telefono: '+52 348 784 4440', email: 'produccion@eco-bolsas.com.mx', direccion: 'Arandas, México', tipo: 'client', avatar: 'E', color: '#00897b' },
-            { nombre: 'ECSA', empresa: 'ECSA', tipo: 'client', avatar: 'E', color: '#3f51b5' },
-            { nombre: 'EPC 2', empresa: 'EPC 2', tipo: 'client', avatar: 'E', color: '#f5f5f5' },
-            { nombre: 'Envases Plásticos del Centro, S.A. de C.V.', empresa: 'Envases Plásticos del Centro, S.A. de C.V.', telefono: '+52 444 824 2454', email: 'compras@eplasticos.com.mx', direccion: 'San Luis Potosí, México', tipo: 'client', avatar: 'E', color: '#f5f5f5' },
-            { nombre: 'Mauricio Santiago', empresa: 'Envases Plásticos del Centro, S.A. de C.V.', telefono: '+52 444 824 2454', email: 'ventas@eplasticos.com.mx', direccion: 'San Luis Potosí, México', tipo: 'client', avatar: 'M', color: '#ff9800' },
-            { nombre: 'FAS', empresa: 'FAS', tipo: 'client', avatar: 'F', color: '#26a69a' },
-            { nombre: 'HALL ALUMINIUM', empresa: 'HALL ALUMINIUM', tipo: 'client', avatar: 'H', color: '#66bb6a' },
-            { nombre: 'HIRUTA', empresa: 'HIRUTA', tipo: 'client', avatar: 'H', color: '#26a69a' },
-            { nombre: 'HT6 INGENIERIA S DE RL DE CV', empresa: 'HT6 INGENIERIA S DE RL DE CV', telefono: '+52 477 711 2851', email: 'administracion@ika.technology', direccion: 'Leon, México', tipo: 'client', avatar: 'H', color: '#f5f5f5' },
-            { nombre: 'Maria Delucia', empresa: 'HT6 INGENIERIA S DE RL DE CV', telefono: '+52 477 449 1651', email: 'international@ika.technology', direccion: 'Leon, México', tipo: 'client', avatar: 'M', color: '#66bb6a' },
-            { nombre: 'Hebillas y Herrajes Robor S.A. de C.V.', empresa: 'Hebillas y Herrajes Robor S.A. de C.V.', tipo: 'client', avatar: 'H', color: '#00acc1' },
-            { nombre: 'ICEMAN', empresa: 'ICEMAN', tipo: 'client', avatar: 'I', color: '#c0ca33' },
-            { nombre: 'IK PLASTIC', empresa: 'IK PLASTIC', direccion: 'Silao, México', tipo: 'client', avatar: 'I', color: '#f5f5f5' },
-            { nombre: 'Iván Gutiérrez', email: 'betagtzm@gmail.com', tipo: 'client', avatar: 'I', color: '#9c27b0' },
-            { nombre: 'Javier Cruz', empresa: 'SSEPI', telefono: '4775747109', email: 'electronica@ssepi.org', direccion: 'Leon, México', tipo: 'provider', avatar: 'J', color: '#212121' },
-            { nombre: 'Javier Cruz Castro', empresa: 'SSEPI', email: 'electronica@ssepi.org', tipo: 'provider', avatar: 'J', color: '#7e57c2' },
-            { nombre: 'Jorge Villanueva', tipo: 'provider', avatar: 'J', color: '#ec407a' },
-            { nombre: 'MARQ', empresa: 'MARQ', tipo: 'provider', avatar: 'M', color: '#00acc1' },
-            { nombre: 'MARQUARDT', empresa: 'MARQUARDT', tipo: 'provider', avatar: 'M', color: '#f9a825' },
-            { nombre: 'MR LUCKY', empresa: 'MR LUCKY', telefono: '+52 462 626 2663', direccion: 'Irapuato, México', tipo: 'provider', avatar: 'M', color: '#f5f5f5' },
-            { nombre: 'Reina Medina', empresa: 'MR LUCKY', direccion: 'Irapuato, México', tipo: 'provider', avatar: 'R', color: '#c0ca33' },
-            { nombre: 'NHK Spring México, S.A. de C.V.', empresa: 'NHK Spring México, S.A. de C.V.', telefono: '+52 462 623 8000', email: 'omar.vargaz@nhkusa.com', direccion: 'Irapuato, México', tipo: 'provider', avatar: 'N', color: '#f5f5f5' },
-            { nombre: 'Felipe Garcia', empresa: 'NHK Spring México, S.A. de C.V.', email: 'felipe.garcia@nhkspgmx.com', direccion: 'Irapuato, México', tipo: 'provider', avatar: 'F', color: '#7e57c2' },
-            { nombre: 'Nishikawa Sealing Systems Mexico', empresa: 'Nishikawa Sealing Systems Mexico', telefono: '+52 472 722 6938', direccion: 'Silao, México', tipo: 'provider', avatar: 'N', color: '#f5f5f5' },
-            { nombre: 'Pieles Azteca, S.A. de C.V.', empresa: 'Pieles Azteca, S.A. de C.V.', telefono: '+52 477 778 3607', email: 'ahernandez@teneriaazateca.mx', direccion: 'León, México', tipo: 'client', avatar: 'P', color: '#f5f5f5' },
-            { nombre: 'Jesus Bolaños', empresa: 'Pieles Azteca, S.A. de C.V.', puesto: 'Mantenimiento', telefono: '+52 479 208 6446', direccion: 'Santa Crocce No. 213\nIndustrial Santa CROCCE\n37439 León, Guanajuato\nMéxico', rfc: 'PAZ970426LZ2', tipo: 'client', avatar: 'J', color: '#dc3545' },
-            { nombre: 'RONGTAI', empresa: 'RONGTAI', telefono: '+52 479 262 7503', email: 'compras3@rtco.com.cn', direccion: 'LEÓN, México', tipo: 'provider', avatar: 'R', color: '#f5f5f5' },
-            { nombre: 'Joatam álvarez', empresa: 'RONGTAI', telefono: '+52 479 262 7503', email: 'compras3@rtco.com.cn', direccion: 'LEÓN, México', tipo: 'provider', avatar: 'J', color: '#f9a825' },
-            { nombre: 'Ramiro', tipo: 'provider', avatar: 'R', color: '#c0ca33' },
-            { nombre: 'SADDLEBACK', empresa: 'SADDLEBACK', direccion: 'Leon, México', tipo: 'client', avatar: 'S', color: '#dc3545' },
-            { nombre: 'Genaro Morales', empresa: 'SADDLEBACK', telefono: '+52 33 4016 5336', direccion: 'Leon, México', tipo: 'client', avatar: 'G', color: '#00acc1' },
-            { nombre: 'SSEPI', empresa: 'SSEPI', email: 'administracion@ssepi.org', direccion: 'Leon, México', sitio_web: 'http://www.ssepi.org', tipo: 'provider', avatar: 'S', color: '#00a09d' },
-            { nombre: 'Aarón Garcia', empresa: 'SSEPI', telefono: '+52 477 134 2813', email: 'electronica.ssepi@gmail.com', direccion: 'Leon, México', tipo: 'provider', avatar: 'A', color: '#f5f5f5' },
-            { nombre: 'Arturo Moreno', empresa: 'SSEPI', telefono: '+52 477 630 5230', email: 'automatizacion@ssepi.org', direccion: 'Leon, México', tipo: 'provider', avatar: 'A', color: '#00a09d' },
-            { nombre: 'Daniel Zuñiga', empresa: 'SSEPI', telefono: '+52 477 737 3118', email: 'ventas@ssepi.org', direccion: 'Leon, México', tipo: 'provider', avatar: 'D', color: '#00a09d' },
-            { nombre: 'Iván Gutierrez', empresa: 'SSEPI', telefono: '+52 477 522 8007', email: 'ivang.ssepi@gmail.com', direccion: 'Leon, México', tipo: 'provider', avatar: 'I', color: '#dc3545' },
-            { nombre: 'TACSA', empresa: 'TACSA', telefono: '+52 33 1148 9204', tipo: 'provider', avatar: 'T', color: '#f5f5f5' },
-            { nombre: 'Delfino Ortega', empresa: 'TACSA', telefono: '+52 33 1148 9204', tipo: 'provider', avatar: 'D', color: '#f9a825' },
-            { nombre: 'TORNO', empresa: 'TORNO', tipo: 'provider', avatar: 'T', color: '#5e35b1' }
-        ];
-
-        const csrfToken = sessionStorage.getItem('csrfToken');
-        for (let c of CONTACTOS_INICIALES) {
-            try {
-                await contactosService.insert(c, csrfToken);
-            } catch (e) {
-                console.error('Error insertando contacto inicial:', e);
-            }
-        }
-        console.log('✅ Contactos iniciales importados');
-    }
+    // ==================== IMPORTACIÓN INICIAL ELIMINADA ====================
+    // Los contactos ya están en la base de datos - no insertar hardcoded
 
     // ==================== RENDERIZADO ====================
     function _renderView() {

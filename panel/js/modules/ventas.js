@@ -4042,7 +4042,7 @@ const VentasModule = (function() {
                 nombre_producto: nombreProducto
             };
 
-            // Guardar cliente actual
+            // Guardar cliente actual (usar datos de contactos, NO de clientes_tabulador)
             if (contacto) {
                 calculadoraClienteActual = {
                     contactoId: clienteId,
