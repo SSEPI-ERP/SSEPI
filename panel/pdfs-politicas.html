@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSEPI - PDFs y Políticas por Módulo</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            margin-bottom: 30px;
+        }
+        header h1 {
+            color: #17a598;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        header p {
+            color: #828282;
+            font-size: 1.1rem;
+        }
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        .module-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease;
+        }
+        .module-card:hover {
+            transform: translateY(-5px);
+        }
+        .module-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .module-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+        }
+        .module-title {
+            flex: 1;
+        }
+        .module-title h2 {
+            font-size: 1.4rem;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .module-title .tiempo-entrega {
+            font-size: 0.9rem;
+            color: #17a598;
+            font-weight: 500;
+        }
+        .politicas-section {
+            margin-bottom: 20px;
+        }
+        .politicas-section h3 {
+            font-size: 1rem;
+            color: #17a598;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nota-item {
+            padding: 10px 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #444;
+            border-left: 3px solid #17a598;
+        }
+        .nota-item strong {
+            color: #17a598;
+        }
+        .garantia-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #17a598, #0d9488);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .pdf-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #f0f0f0;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #17a598, #0d9488);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(23, 165, 152, 0.4);
+        }
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #828282;
+        }
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f0f0f0;
+            border-top-color: #17a598;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .error-msg {
+            background: #fee;
+            color: #c00;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .success-msg {
+            background: #efe;
+            color: #060;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #828282;
+            font-size: 0.9rem;
+        }
+        footer a {
+            color: #17a598;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📄 SSEPI - PDFs y Políticas por Módulo</h1>
+            <p>Genera documentos con las políticas actualizadas de cada departamento</p>
+        </header>
+
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p>Cargando políticas desde la base de datos...</p>
+        </div>
+
+        <div id="error" class="error-msg" style="display:none;"></div>
+        <div id="success" class="success-msg" style="display:none;"></div>
+
+        <div id="modulesGrid" class="modules-grid" style="display:none;"></div>
+
+        <footer>
+            <p>SSEPI - Soluciones de Servicios Enterprise</p>
+            <p>Términos y condiciones: <a href="https://www.ssepi.org/terms" target="_blank">ssepi.org/terms</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════════
+        // CONFIGURACIÓN DE SUPABASE
+        // ═══════════════════════════════════════════════════════════════════
+        const SUPABASE_URL = 'https://knzmdwjmrhcoytmebdwa.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtuem1kd2ptcmhjb3l0bWViZHdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTc2NzMsImV4cCI6MjA2MTA5MzY3M30.J2z5oK7iSvKzW6vqNqPUUz8YFZSv9qQqK3qXqYqKqYg';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const { jsPDF } = window.jspdf;
+
+        // ═══════════════════════════════════════════════════════════════════
+        // DATOS DE MÓDULOS
+        // ═══════════════════════════════════════════════════════════════════
+        const MODULES = [
+            {
+                id: 'taller_electronica',
+                nombre: 'Taller Electrónica',
+                icon: '🔧',
+                color: '#467d32',
+                colorHex: [70, 125, 50]
+            },
+            {
+                id: 'taller_motores',
+                nombre: 'Taller Motores',
+                icon: '⚙️',
+                color: '#ef6c00',
+                colorHex: [239, 108, 0]
+            },
+            {
+                id: 'ventas_suministros',
+                nombre: 'Ventas y Suministros',
+                icon: '📦',
+                color: '#ff9800',
+                colorHex: [255, 152, 0]
+            },
+            {
+                id: 'automatizacion',
+                nombre: 'Automatización',
+                icon: '🤖',
+                color: '#6a1b9a',
+                colorHex: [106, 27, 154]
+            },
+            {
+                id: 'soporte_planta',
+                nombre: 'Soporte a Planta',
+                icon: '🛠️',
+                color: '#d32f2f',
+                colorHex: [211, 47, 47]
+            }
+        ];
+
+        let politicasData = {};
+
+        // ═══════════════════════════════════════════════════════════════════
+        // CARGAR POLÍTICAS DESDE BD
+        // ═══════════════════════════════════════════════════════════════════
+        async function cargarPoliticas() {
+            try {
+                const { data, error } = await supabase
+                    .from('politicas_modulos')
+                    .select('*')
+                    .eq('activo', true);
+
+                if (error) throw error;
+
+                politicasData = {};
+                (data || []).forEach(p => {
+                    politicasData[p.modulo] = p;
+                });
+
+                return true;
+            } catch (e) {
+                console.error('Error cargando políticas:', e);
+                mostrarError('Error cargando políticas: ' + e.message);
+                return false;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // MOSTRAR MENSAJES
+        // ═══════════════════════════════════════════════════════════════════
+        function mostrarError(msg) {
+            const el = document.getElementById('error');
+            el.textContent = msg;
+            el.style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function mostrarSuccess(msg) {
+            const el = document.getElementById('success');
+            el.textContent = msg;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 3000);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // RENDERIZAR MÓDULOS
+        // ═══════════════════════════════════════════════════════════════════
+        function renderModules() {
+            const grid = document.getElementById('modulesGrid');
+            grid.innerHTML = '';
+
+            MODULES.forEach(mod => {
+                const políticas = politicasData[mod.id];
+
+                const card = document.createElement('div');
+                card.className = 'module-card';
+                card.innerHTML = `
+                    <div class="module-header">
+                        <div class="module-icon" style="background: ${mod.color}">${mod.icon}</div>
+                        <div class="module-title">
+                            <h2>${mod.nombre}</h2>
+                            <div class="tiempo-entrega">${políticas?.tiempo_entrega || 'N/A'}</div>
+                        </div>
+                    </div>
+
+                    ${políticas ? `<div class="garantia-badge">📋 Garantía: ${políticas.garantia_dias || 0} días</div>` : ''}
+
+                    <div class="politicas-section">
+                        <h3>📌 Políticas</h3>
+                        ${políticas?.notas_importantes?.map((nota, i) => `
+                            <div class="nota-item">
+                                <strong>${i + 1}.</strong> ${nota}
+                            </div>
+                        `).join('') || '<p style="color:#888">Sin políticas configuradas</p>'}
+                    </div>
+
+                    <div class="pdf-actions">
+                        <button class="btn btn-primary" onclick="generarPDF('${mod.id}')">
+                            📄 Generar PDF
+                        </button>
+                        <button class="btn btn-secondary" onclick="verDetalles('${mod.id}')">
+                            👁 Ver detalles
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            grid.style.display = 'grid';
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // GENERAR PDF
+        // ═══════════════════════════════════════════════════════════════════
+        async function generarPDF(moduloId) {
+            const mod = MODULES.find(m => m.id === moduloId);
+            const politicas = politicasData[moduloId];
+
+            if (!mod) return;
+
+            const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+            const PW = 210, PH = 297;
+            const ML = 15, MR = 15;
+            const TW = PW - ML - MR;
+
+            let y = 20;
+
+            // Header
+            doc.setFillColor(...mod.colorHex);
+            doc.roundedRect(ML, 10, TW, 25, 4, 4, 'F');
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(18);
+            doc.setTextColor(255, 255, 255);
+            doc.text(`${mod.icon} ${mod.nombre}`, ML + 10, 25);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(12);
+            doc.text(`Políticas y Condiciones`, ML + 10, 32);
+
+            // Fecha y folio
+            const fecha = new Date().toLocaleDateString('es-MX');
+            const folio = `POL-${Date.now().toString().slice(-6)}`;
+
+            doc.setFontSize(10);
+            doc.text(`Folio: ${folio}`, PW - MR - 40, 20, { align: 'right' });
+            doc.text(`Fecha: ${fecha}`, PW - MR - 40, 26, { align: 'right' });
+
+            y = 45;
+
+            // Tiempo de entrega
+            if (politicas?.tiempo_entrega) {
+                doc.setFillColor(235, 247, 245);
+                doc.roundedRect(ML, y, TW, 12, 3, 3, 'F');
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.setTextColor(23, 165, 152);
+                doc.text(`⏱️ Tiempo de entrega: ${politicas.tiempo_entrega}`, ML + 8, y + 8);
+
+                y += 20;
+            }
+
+            // Garantía
+            if (politicas?.garantia_dias && politicas.garantia_dias > 0) {
+                doc.setFillColor(255, 243, 224);
+                doc.roundedRect(ML, y, TW, 12, 3, 3, 'F');
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.setTextColor(255, 152, 0);
+                doc.text(`📋 Garantía: ${politicas.garantia_dias} días`, ML + 8, y + 8);
+
+                y += 20;
+            }
+
+            // Políticas
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.text('📌 Políticas y Condiciones', ML, y);
+            y += 10;
+
+            if (politicas?.notas_importantes) {
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.setTextColor(51, 51, 51);
+
+                politicas.notas_importantes.forEach((nota, idx) => {
+                    const lines = doc.splitTextToSize(`${idx + 1}. ${nota}`, TW - 5);
+
+                    if (y + (lines.length * 5) > PH - 30) {
+                        doc.addPage();
+                        y = 20;
+                    }
+
+                    doc.text(lines, ML + 5, y);
+                    y += lines.length * 5 + 3;
+                });
+            }
+
+            y += 10;
+
+            // URL de términos
+            if (politicas?.url_terminos) {
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(9);
+                doc.setTextColor(106, 27, 154);
+                doc.text(`Más información: ${politicas.url_terminos}`, ML, y);
+            }
+
+            // Footer
+            const footerY = PH - 15;
+            doc.setDrawColor(220, 220, 220);
+            doc.setLineWidth(0.5);
+            doc.line(ML, footerY - 5, PW - MR, footerY - 5);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(130, 130, 130);
+            doc.text('SSEPI - Soluciones de Servicios Enterprise', ML, footerY);
+            doc.text(`Página 1`, PW - MR - 20, footerY, { align: 'right' });
+
+            // Guardar
+            const fileName = `Politicas_${mod.nombre.replace(/\s+/g, '_')}_${folio}.pdf`;
+            doc.save(fileName);
+
+            mostrarSuccess(`PDF generado: ${fileName}`);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // VER DETALLES
+        // ═══════════════════════════════════════════════════════════════════
+        function verDetalles(moduloId) {
+            const mod = MODULES.find(m => m.id === moduloId);
+            const politicas = politicasData[moduloId];
+
+            if (!mod || !politicas) return;
+
+            const detalles = `
+═══════════════════════════════════════════════════════════
+${mod.icon} ${mod.nombre}
+═══════════════════════════════════════════════════════════
+
+⏱️ Tiempo de entrega: ${politicas.tiempo_entrega || 'N/A'}
+📋 Garantía: ${politicas.garantia_dias || 0} días
+💰 Moneda: ${politicas.moneda || 'MONEDA NACIONAL'}
+📄 Requiere OC: ${politicas.requiere_oc ? 'Sí' : 'No'}
+❌ Acepta cancelaciones: ${politicas.acepta_cancelaciones ? 'Sí' : 'No'}
+
+📌 POLÍTICAS:
+${politicas.notas_importantes?.map((n, i) => `  ${i + 1}. ${n}`).join('\n') || 'Sin políticas'}
+
+🔗 Términos: ${politicas.url_terminos || 'N/A'}
+            `;
+
+            alert(detalles);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // INICIALIZAR
+        // ═══════════════════════════════════════════════════════════════════
+        async function init() {
+            const cargado = await cargarPoliticas();
+            if (cargado) {
+                renderModules();
+            }
+        }
+
+        // Exponer funciones globalmente
+        window.generarPDF = generarPDF;
+        window.verDetalles = verDetalles;
+
+        // Iniciar
+        init();
+    </script>
+</body>
+</html>

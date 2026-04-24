@@ -2,6 +2,8 @@
  * pdf-generator.js — Generador de PDFs unificado para todos los módulos de SSEPI
  * Formato premium basado en ssepi_servicios (6).html
  * Uso: window.pdfGenerator.generate({ departamento, datos, ... })
+ *
+ * Ahora carga políticas desde politicas_modulos en Supabase
  */
 
 import { authService } from './auth-service.js';
@@ -9,6 +11,54 @@ import { authService } from './auth-service.js';
 export class PDFGenerator {
     constructor() {
         this.jsPDF = window.jspdf.jsPDF;
+        this.politicasCache = null;
+    }
+
+    /**
+     * Carga políticas desde la BD (con caché)
+     */
+    async cargarPoliticas() {
+        if (this.politicasCache) return this.politicasCache;
+
+        try {
+            const { data, error } = await window.supabase
+                .from('politicas_modulos')
+                .select('*')
+                .eq('activo', true);
+
+            if (error) throw error;
+
+            this.politicasCache = {};
+            (data || []).forEach(p => {
+                this.politicasCache[p.modulo] = p;
+            });
+
+            return this.politicasCache;
+        } catch (e) {
+            console.warn('[PDFGenerator] Error cargando políticas:', e);
+            return {};
+        }
+    }
+
+    /**
+     * Obtiene políticas para un departamento específico
+     */
+    async getPoliticasParaDepartamento(departamento) {
+        const moduloMap = {
+            'Taller Electrónica': 'taller_electronica',
+            'Taller': 'taller_electronica',
+            'Taller Motores': 'taller_motores',
+            'Motores': 'taller_motores',
+            'Automatización': 'automatizacion',
+            'Proyectos': 'automatizacion',
+            'Ventas': 'ventas_suministros',
+            'Compras': 'ventas_suministros',
+            'Soporte': 'soporte_planta'
+        };
+
+        const modulo = moduloMap[departamento] || 'ventas_suministros';
+        const politicas = await this.cargarPoliticas();
+        return politicas[modulo] || null;
     }
 
     /**
@@ -265,59 +315,61 @@ export class PDFGenerator {
         };
 
         // ═══════════════════════════════════════════════════════════════════
-        // NOTAS IMPORTANTES
+        // NOTAS IMPORTANTES (POLÍTICAS DESDE BD)
         // ═══════════════════════════════════════════════════════════════════
-        const drawNotas = () => {
+        const drawNotas = async () => {
             if (y + 16 > BODY_BOTTOM) newPage();
 
-            tx('Notas Importantes', ML + 4, y, 'bold', 13, COLORS.BLK);
-            y += 8;
+            const politicas = await this.getPoliticasParaDepartamento(opts.departamento);
 
-            const NOTAS = [
-                { n: '1.', b: 'únicamente', post: ' los suministros y/o refacciones descritas.' },
-                { n: '2.', b: 'sujeta a confirmación', post: ' al momento de la recepción del pago.' },
-                { n: '3.', pre: 'Precios expresados en ', b: 'MXN', post: ', salvo indicación contraria.' },
-                { n: '4.', pre: 'Los costos de envío ', b: 'no están incluidos', post: ', salvo que se indique explícitamente.' },
-                { n: '5.', pre: 'Los tiempos de entrega son ', b: 'estimados', post: ' y comienzan tras confirmación de pago.' },
-                { n: '6.', pre: 'Productos cuentan con ', b: 'garantía del fabricante', post: ', conforme a sus políticas.' }
-            ];
+            if (politicas) {
+                // Título con tiempo de entrega
+                tx(politicas.titulo || 'Políticas y Condiciones', ML + 4, y, 'bold', 13, COLORS.BLK);
+                y += 6;
+                tx(`Tiempo de entrega: ${politicas.tiempo_entrega}`, ML + 4, y, 'italic', 9, COLORS.TEAL);
+                y += 8;
 
-            const NL = 5.0;
-            const NMAX = TW - 12;
+                // Notas importantes desde JSONB
+                const notas = politicas.notas_importantes || [];
+                const NL = 5.0;
+                const NMAX = TW - 12;
 
-            NOTAS.forEach(nota => {
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(9);
-                const full = (nota.pre || '') + (nota.b || '') + (nota.post || '');
-                const lines = doc.splitTextToSize(full, NMAX);
-                const nH = lines.length * NL + 2;
+                notas.forEach((nota, idx) => {
+                    const full = String(nota);
+                    const lines = doc.splitTextToSize(full, NMAX);
+                    const nH = lines.length * NL + 2;
 
-                if (y + nH > BODY_BOTTOM) newPage();
+                    if (y + nH > BODY_BOTTOM) newPage();
 
-                doc.setFont('helvetica', 'bold');
-                doc.setTextColor(...COLORS.TEAL);
-                tx(nota.n, ML + 4, y, 'bold', 9, COLORS.TEAL);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    doc.setTextColor(...COLORS.GR_TXT);
 
-                doc.setFont('helvetica', 'normal');
-                doc.setTextColor(...COLORS.GR_TXT);
+                    const num = (idx + 1) + '.';
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...COLORS.TEAL);
+                    tx(num, ML + 4, y, 'bold', 9, COLORS.TEAL);
 
-                let xx = ML + 10;
-                if (nota.pre) {
-                    tx(nota.pre, xx, y, 'normal', 9, COLORS.GR_TXT);
-                    xx += doc.getTextWidth(nota.pre);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...COLORS.GR_TXT);
+                    tx(full, ML + 10, y, 'normal', 9, COLORS.GR_TXT);
+
+                    y += lines.length * NL + 1;
+                });
+
+                // URL de términos
+                y += 3;
+                if (politicas.url_terminos) {
+                    tx(politicas.url_terminos, ML + 4, y, 'italic', 8, COLORS.CARD_BL);
+                    y += 8;
                 }
-                if (nota.b) {
-                    tx(nota.b, xx, y, 'bold', 9, COLORS.TEAL);
-                    xx += doc.getTextWidth(nota.b);
-                }
-                if (nota.post) {
-                    tx(nota.post, xx, y, 'normal', 9, COLORS.GR_TXT);
-                }
-
-                y += lines.length * NL + 1;
-            });
-
-            y += 5;
+            } else {
+                // Fallback: notas genéricas
+                tx('Políticas y Condiciones', ML + 4, y, 'bold', 13, COLORS.BLK);
+                y += 8;
+                tx('Consulte las políticas vigentes en el momento de la contratación.', ML + 4, y, 'normal', 9, COLORS.GR_TXT);
+                y += 15;
+            }
         };
 
         // ═══════════════════════════════════════════════════════════════════
@@ -355,7 +407,7 @@ export class PDFGenerator {
         drawClientInfo();
         drawConceptsTable();
         drawActividadesTable();
-        drawNotas();
+        await drawNotas();  // Ahora es async porque carga políticas de BD
         drawFirmas();
         drawFooter(pgNum);
 
