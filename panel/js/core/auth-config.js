@@ -43,7 +43,7 @@
             redirectTo: window.location.origin + '/panel/panel.html',
 
             // URLs permitidas para deep links
-            onlyFirstParty = true
+            onlyFirstParty: true
         }
     };
 
