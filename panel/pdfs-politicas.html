@@ -189,6 +189,69 @@
             margin-bottom: 20px;
         }
 
+        /* Login Screen */
+        body.login-active {
+            overflow: hidden;
+        }
+        .login-screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-screen.active {
+            display: flex;
+        }
+        .login-box {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .login-box h2 {
+            color: #17a598;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+        }
+        .login-box p {
+            text-align: center;
+            color: #828282;
+            margin-bottom: 30px;
+        }
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .login-form input {
+            padding: 14px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        .login-form input:focus {
+            outline: none;
+            border-color: #17a598;
+        }
+        .login-error {
+            background: #fee;
+            color: #c00;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            display: none;
+        }
+
         /* Modal Editor */
         .modal-overlay {
             display: none;
@@ -307,11 +370,34 @@
         }
     </style>
 </head>
-<body>
+<body class="login-active">
+    <!-- Pantalla de Login -->
+    <div id="loginScreen" class="login-screen active">
+        <div class="login-box">
+            <h2>🔐 Acceso SSEPI</h2>
+            <p>Ingresa tus credenciales para continuar</p>
+            <div id="loginError" class="login-error"></div>
+            <div class="login-form">
+                <input type="email" id="loginEmail" placeholder="Correo electrónico" />
+                <input type="password" id="loginPassword" placeholder="Contraseña" onkeypress="if(event.key==='Enter')login()" />
+                <button type="button" class="btn btn-primary" onclick="login()" style="margin-top:10px;">
+                    🔑 Iniciar sesión
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <header>
-            <h1>📄 SSEPI - PDFs y Políticas por Módulo</h1>
-            <p>Genera documentos con las políticas actualizadas de cada departamento</p>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <h1>📄 SSEPI - PDFs y Políticas por Módulo</h1>
+                    <p>Genera documentos con las políticas actualizadas de cada departamento</p>
+                </div>
+                <button onclick="logout()" class="btn btn-secondary" style="max-width:150px;">
+                    🚪 Cerrar sesión
+                </button>
+            </div>
         </header>
 
         <div id="loading" class="loading">
@@ -399,6 +485,60 @@
 
         let politicasData = {};
         let moduloActualEditando = null;
+        let usuarioActual = null;
+
+        // ═══════════════════════════════════════════════════════════════════
+        // LOGIN
+        // ═══════════════════════════════════════════════════════════════════
+        async function login() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                mostrarLoginError('Ingresa email y contraseña');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+                if (error) throw error;
+
+                usuarioActual = data.user;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.body.classList.remove('login-active');
+                cargarPoliticas().then(ok => {
+                    if (ok) renderModules();
+                });
+            } catch (e) {
+                mostrarLoginError('Credenciales inválidas: ' + e.message);
+            }
+        }
+
+        function mostrarLoginError(msg) {
+            document.getElementById('loginError').textContent = msg;
+            document.getElementById('loginError').style.display = 'block';
+        }
+
+        async function logout() {
+            await supabase.auth.signOut();
+            window.location.reload();
+        }
+
+        // Auto-login si ya hay sesión
+        async function verificarSesion() {
+            const { data } = await supabase.auth.getSession();
+            if (data?.session) {
+                usuarioActual = data.session.user;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.body.classList.remove('login-active');
+                await cargarPoliticas();
+                renderModules();
+            } else {
+                document.getElementById('loginScreen').style.display = 'flex';
+            }
+            document.getElementById('loading').style.display = 'none';
+        }
 
         // ═══════════════════════════════════════════════════════════════════
         // DATOS DE MÓDULOS
@@ -765,10 +905,7 @@
         // INICIALIZAR
         // ═══════════════════════════════════════════════════════════════════
         async function init() {
-            const cargado = await cargarPoliticas();
-            if (cargado) {
-                renderModules();
-            }
+            await verificarSesion();
         }
 
         // Exponer funciones globalmente
@@ -777,6 +914,8 @@
         window.cerrarEditor = cerrarEditor;
         window.agregarNota = agregarNota;
         window.guardarPoliticas = guardarPoliticas;
+        window.login = login;
+        window.logout = logout;
 
         // Iniciar
         init();
