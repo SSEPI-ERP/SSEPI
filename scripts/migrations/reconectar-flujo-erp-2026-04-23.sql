@@ -187,6 +187,7 @@ CREATE INDEX IF NOT EXISTS idx_facturas_orden_id ON public.facturas USING btree 
 -- ================================================
 -- 8. FUNCIÓN para crear movimiento de inventario
 -- ================================================
+DROP FUNCTION IF EXISTS public.registrar_movimiento_inventario(TEXT, TEXT, NUMERIC, TEXT, UUID, UUID, TEXT);
 CREATE OR REPLACE FUNCTION public.registrar_movimiento_inventario(
     p_sku TEXT,
     p_tipo TEXT,
@@ -240,6 +241,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ================================================
 -- 9. FUNCIÓN para reservar material
 -- ================================================
+DROP FUNCTION IF EXISTS public.reservar_material(UUID, TEXT, JSONB);
 CREATE OR REPLACE FUNCTION public.reservar_material(
     p_orden_id UUID,
     p_orden_tipo TEXT,
@@ -286,6 +288,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ================================================
 -- 10. FUNCIÓN para recibir compra (actualizar inventario)
 -- ================================================
+DROP FUNCTION IF EXISTS public.recibir_compra(UUID, UUID);
 CREATE OR REPLACE FUNCTION public.recibir_compra(
     p_compra_id UUID,
     p_usuario_id UUID DEFAULT auth.uid()
