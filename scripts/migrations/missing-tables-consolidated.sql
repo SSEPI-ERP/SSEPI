@@ -1,6 +1,5 @@
 -- ================================================
--- SSEPI — Tablas faltantes en proyecto foytizbicwnndegeorny
--- Ejecutar TODO en Supabase SQL Editor (una vez)
+-- SSEPI — Tablas faltantes (archivo legacy - usar crear-tablas-costos.sql)
 -- ================================================
 
 -- 1) notificaciones
