@@ -1,78 +1,87 @@
 // ================================================
 // ARCHIVO: costos-engine.js
 // DESCRIPCIÓN: Motor de cálculo financiero unificado
-// BASADO EN: TABULADOR_DE_COTIZACIÓN.xlsx
-// SEGURIDAD: No contiene datos sensibles, solo lógica de negocio
+// TODOS LOS VALORES SE CARGAN DESDE BD (parametros_costos)
 // ================================================
 
 export const CostosEngine = (function() {
-    // Configuración base según tabulador (valores pueden venir de BD)
-    const CONFIG = {
-        gasolina_precio_litro: 30.00,
-        rendimiento_km_litro: 9.5,
-        ventas_por_dia: 87.00,
-        tiempo_invertido_hr: 80.00,
-        gastos_fijos_hr: 161.85,
-        camioneta_hr: 52.67,
-        utilidad_base: 40,
-        utilidad_premium: 45,
-        credito: 3,
-        iva: 16
-    };
+    let CONFIG = {};
+    let departamentoActual = 'laboratorio';
 
-    // ==================== FÓRMULAS BASE (según tabulador) ====================
-    // Fórmula: litros = (km * 2) / 9.5  (ida y vuelta)
-    function calcularLitros(km) {
-        return km <= 0 ? 0 : (km * 2) / CONFIG.rendimiento_km_litro;
+    // ==================== FÓRMULAS BASE ====================
+    function getParam(clave, valorPorDefecto) {
+        const key = `${departamentoActual}_${clave}`;
+        return CONFIG[key] !== undefined ? CONFIG[key] : valorPorDefecto;
     }
 
-    // Fórmula: $ gasolina = litros * 30
+    function calcularLitros(km) {
+        const rendimiento = getParam('rendimiento_km_litro', 10);
+        return km <= 0 ? 0 : (km * 2) / rendimiento;
+    }
+
     function calcularCostoGasolina(km) {
         const litros = calcularLitros(km);
-        return litros * CONFIG.gasolina_precio_litro;
+        const precio = getParam('gasolina_precio_litro', 30);
+        return litros * precio;
     }
 
-    // Fórmula: $ ventas = días * 87
     function calcularCostoVentas(dias) {
-        return dias * CONFIG.ventas_por_dia;
+        const tarifa = getParam('ventas_por_dia', 87);
+        return dias * tarifa;
     }
 
-    // Fórmula: $ técnico = horas * 80
     function calcularCostoTrasladoTecnico(horasViaje) {
-        return horasViaje * CONFIG.tiempo_invertido_hr;
+        const tarifa = getParam('tiempo_invertido_hr', 80);
+        return horasViaje * tarifa;
     }
 
-    // Fórmula: gastos fijos = horas * 161.85
     function calcularGastosFijos(horasTaller) {
-        return horasTaller * CONFIG.gastos_fijos_hr;
+        const tarifa = getParam('gastos_fijos_hr', 161.85);
+        return horasTaller * tarifa;
     }
 
-    // Fórmula: camioneta = horas * 52.67
     function calcularCostoCamioneta(horasViaje) {
-        return horasViaje * CONFIG.camioneta_hr;
+        const tarifa = getParam('camioneta_hr', 52.67);
+        return horasViaje * tarifa;
+    }
+
+    function calcularGasolinaMasTraslado(km, horasViaje) {
+        return calcularCostoGasolina(km) + calcularCostoTrasladoTecnico(horasViaje);
+    }
+
+    function calcularManoObra(horasTaller) {
+        const tarifa = getParam('mano_obra_hr', 0);
+        return horasTaller * tarifa;
     }
 
     function calcularGastosGenerales(gasolinaMasTraslado, manoObra, gastosFijos, refacciones, camioneta) {
         return gasolinaMasTraslado + manoObra + gastosFijos + refacciones + camioneta;
     }
 
-    function aplicarUtilidad(gastosGenerales) {
-        return gastosGenerales * (1 + CONFIG.utilidad / 100);
+    function aplicarUtilidad(gastosGenerales, factor) {
+        if (factor) return gastosGenerales * factor;
+        const utilidadBase = getParam('utilidad_base', 40);
+        const utilidadPremium = getParam('utilidad_premium', 45);
+        const factorDefault = 1 + (utilidadBase / 100);
+        return gastosGenerales * factorDefault;
     }
 
     function aplicarCredito(precioConUtilidad) {
-        return precioConUtilidad * (1 + CONFIG.credito / 100);
+        const credito = getParam('credito_pct', 3);
+        return precioConUtilidad * (1 + credito / 100);
     }
 
     function calcularIVA(monto) {
-        return monto * (CONFIG.iva / 100);
+        const iva = CONFIG['iva'] || 16;
+        return monto * (iva / 100);
     }
 
     function calcularTotalConIVA(montoBase) {
-        return montoBase * (1 + CONFIG.iva / 100);
+        const iva = CONFIG['iva'] || 16;
+        return montoBase * (1 + iva / 100);
     }
 
-    function calcularPrecioFinal({ km, horasViaje, horasTaller, costoRefacciones }) {
+    function calcularPrecioFinal({ km, horasViaje, horasTaller, costoRefacciones, utilidadFactor }) {
         const gasolinaMasTraslado = calcularGasolinaMasTraslado(km, horasViaje);
         const manoObra = calcularManoObra(horasTaller);
         const gastosFijos = calcularGastosFijos(horasTaller);
@@ -86,7 +95,7 @@ export const CostosEngine = (function() {
             camioneta
         );
 
-        const precioConUtilidad = aplicarUtilidad(gastosGenerales);
+        const precioConUtilidad = aplicarUtilidad(gastosGenerales, utilidadFactor);
         const precioAntesIVA = aplicarCredito(precioConUtilidad);
         const iva = calcularIVA(precioAntesIVA);
         const totalConIVA = calcularTotalConIVA(precioAntesIVA);
@@ -107,34 +116,76 @@ export const CostosEngine = (function() {
         };
     }
 
-    /** Sobreescribe constantes desde BD / calculadora_costos (sin persistir en código). */
+    // ==================== AUTOMATIZACIÓN (tarifas por servicio) ====================
+    function calcularAutomatizacion(servicios, km, horasInvestigacion, materiales, viaticos) {
+        const tarifas = {
+            plc_hmi: getParam('plc_hmi_hr', 650),
+            servomotor: getParam('servomotor_hr', 700),
+            diseno_tablero: getParam('diseno_tablero_hr', 450),
+            diseno_mecanico: getParam('diseno_mecanico_hr', 900),
+            instalacion: getParam('instalacion_hr', 350),
+            fabricacion: getParam('fabricacion_hr', 600),
+            soporte: getParam('soporte_hr', 1100),
+            arquitectura: getParam('arquitectura_hr', 150)
+        };
+
+        const tiempoPlanta = Object.values(servicios).reduce((a, b) => a + b, 0);
+        let totalServicios = 0;
+
+        totalServicios += (servicios.plc_hmi || 0) * tarifas.plc_hmi;
+        totalServicios += (servicios.servomotor || 0) * tarifas.servomotor;
+        totalServicios += (servicios.diseno_tablero || 0) * tarifas.diseno_tablero;
+        totalServicios += (servicios.diseno_mecanico || 0) * tarifas.diseno_mecanico;
+        totalServicios += (servicios.instalacion || 0) * tarifas.instalacion;
+        totalServicios += (servicios.fabricacion || 0) * tarifas.fabricacion;
+        totalServicios += (servicios.soporte || 0) * tarifas.soporte;
+        totalServicios += (servicios.arquitectura || 0) * tarifas.arquitectura;
+
+        const materialesCon30 = (materiales || 0) * 1.3;
+        const camioneta = tiempoPlanta * getParam('camioneta_hr', 52.67);
+        const gasolina = calcularCostoGasolina(km);
+        const gastosInvestigacion = (horasInvestigacion || 0) * getParam('gastos_fijos_hr', 161.85);
+
+        const subtotal = totalServicios + materialesCon30 + (materiales || 0) + (viaticos || 0) + camioneta + gasolina + gastosInvestigacion;
+        const credito = subtotal * 0.03;
+        const total = subtotal + credito;
+        const descuento = total * 0.05;
+
+        return {
+            tiempoPlanta,
+            totalServicios,
+            materiales,
+            materialesCon30,
+            viaticos: viaticos || 0,
+            camioneta,
+            gasolina,
+            gastosInvestigacion,
+            subtotal,
+            credito,
+            total,
+            descuento
+        };
+    }
+
+    // ==================== CARGA DESDE BD ====================
     function applyConfig(partial) {
         if (!partial || typeof partial !== 'object') return;
         Object.assign(CONFIG, partial);
     }
 
-    /** Carga configuración desde parametros_costos en BD */
-    async function loadFromDatabase() {
+    async function loadFromDatabase(departamento = 'laboratorio') {
+        departamentoActual = departamento;
         try {
             if (!window.supabase) return CONFIG;
             const { data, error } = await window.supabase
                 .from('parametros_costos')
-                .select('clave, valor');
+                .select('clave, valor, departamento')
+                .eq('activo', true);
             if (error || !data) return CONFIG;
 
             const params = {};
             data.forEach(p => {
-                const key = p.clave === 'gasolina_precio_litro' ? 'gasolina_precio_litro' :
-                           p.clave === 'ventas_por_dia' ? 'ventas_por_dia' :
-                           p.clave === 'tiempo_invertido_hr' ? 'tiempo_invertido_hr' :
-                           p.clave === 'gastos_fijos_hr' ? 'gastos_fijos_hr' :
-                           p.clave === 'camioneta_hr' ? 'camioneta_hr' :
-                           p.clave === 'utilidad_base' ? 'utilidad_base' :
-                           p.clave === 'utilidad_premium' ? 'utilidad_premium' :
-                           p.clave;
-                if (key in CONFIG) {
-                    params[key] = Number(p.valor);
-                }
+                params[`${p.departamento}_${p.clave}`] = Number(p.valor);
             });
             applyConfig(params);
             return CONFIG;
@@ -144,24 +195,40 @@ export const CostosEngine = (function() {
         }
     }
 
+    function setDepartamento(departamento) {
+        departamentoActual = departamento;
+    }
+
+    function getDepartamento() {
+        return departamentoActual;
+    }
+
+    function getConfig() {
+        return CONFIG;
+    }
+
     // ==================== API PÚBLICA ====================
     return {
-        CONFIG,
-        applyConfig,
         loadFromDatabase,
+        getConfig,
+        applyConfig,
+        setDepartamento,
+        getDepartamento,
         calcularLitros,
         calcularCostoGasolina,
+        calcularCostoVentas,
         calcularCostoTrasladoTecnico,
-        calcularGasolinaMasTraslado,
-        calcularManoObra,
         calcularGastosFijos,
         calcularCostoCamioneta,
+        calcularGasolinaMasTraslado,
+        calcularManoObra,
         calcularGastosGenerales,
         aplicarUtilidad,
         aplicarCredito,
         calcularIVA,
         calcularTotalConIVA,
-        calcularPrecioFinal
+        calcularPrecioFinal,
+        calcularAutomatizacion
     };
 })();
 
