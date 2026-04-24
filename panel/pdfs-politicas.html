@@ -377,11 +377,15 @@
             <h2>🔐 Acceso SSEPI</h2>
             <p>Ingresa tus credenciales para continuar</p>
             <div id="loginError" class="login-error"></div>
+            <div id="loginSuccess" class="success-msg" style="display:none;"></div>
             <div class="login-form">
                 <input type="email" id="loginEmail" placeholder="Correo electrónico" />
                 <input type="password" id="loginPassword" placeholder="Contraseña" onkeypress="if(event.key==='Enter')login()" />
                 <button type="button" class="btn btn-primary" onclick="login()" style="margin-top:10px;">
                     🔑 Iniciar sesión
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="resetPassword()" style="margin-top:10px;">
+                    📧 Resetear contraseña
                 </button>
             </div>
         </div>
@@ -523,6 +527,28 @@
         async function logout() {
             await supabase.auth.signOut();
             window.location.reload();
+        }
+
+        async function resetPassword() {
+            const email = document.getElementById('loginEmail').value.trim();
+            if (!email) {
+                mostrarLoginError('Ingresa tu email para resetear contraseña');
+                return;
+            }
+            try {
+                await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/panel/pdfs-politicas.html'
+                });
+                mostrarLoginSuccess('Se envió enlace de recuperación a: ' + email);
+            } catch (e) {
+                mostrarLoginError('Error: ' + e.message);
+            }
+        }
+
+        function mostrarLoginSuccess(msg) {
+            document.getElementById('loginSuccess').textContent = msg;
+            document.getElementById('loginSuccess').style.display = 'block';
+            document.getElementById('loginError').style.display = 'none';
         }
 
         // Auto-login si ya hay sesión
@@ -916,6 +942,7 @@
         window.guardarPoliticas = guardarPoliticas;
         window.login = login;
         window.logout = logout;
+        window.resetPassword = resetPassword;
 
         // Iniciar
         init();
