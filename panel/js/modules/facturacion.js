@@ -525,7 +525,7 @@ const FacturacionModule = (function() {
         const contacto = contactos.find(c => c.nombre === orden.cliente_nombre || c.empresa === orden.cliente_nombre);
 
         // Calcular costos usando el motor
-        const resultadoCalculo = _calcularCostosOrden(orden, contacto);
+        const resultadoCalculo = await _calcularCostosOrden(orden, contacto);
 
         _renderDetalleHTML(orden, contacto, resultadoCalculo);
 
@@ -534,7 +534,32 @@ const FacturacionModule = (function() {
         document.getElementById('generarFacturaBtn').onclick = () => _generarFactura(orden.id, tipo);
     }
 
-    function _calcularCostosOrden(orden, contacto) {
+    async function _calcularCostosOrden(orden, contacto) {
+        const ordenId = orden.id;
+        const ordenTipo = orden.orden_tipo || 'taller';
+
+        // Obtener costos reales desde la vista costos_por_orden
+        const { data: costos, error } = await window.supabase
+            .from('costos_por_orden')
+            .select('*')
+            .eq('orden_id', ordenId)
+            .eq('orden_tipo', ordenTipo)
+            .maybeSingle();
+
+        if (costos && costos.costo_total > 0) {
+            // Usar costos reales desde la base de datos
+            return {
+                compras: costos.compras_total || 0,
+                refacciones: costos.refacciones_total || 0,
+                mano_obra: costos.mano_obra_total || 0,
+                viaticos: costos.viaticos_total || 0,
+                gastos_fijos: costos.gastos_fijos_total || 0,
+                total: costos.costo_total || 0,
+                desdeBD: true
+            };
+        }
+
+        // Fallback: calcular con CostosEngine si no hay datos en BD
         const km = contacto ? ContactosFormulas.getKmPorCliente(contacto.nombre || contacto.empresa) : 0;
         const horasViaje = km > 0 ? Math.ceil(km / 50) : 0;
         const horasTaller = orden.horas_estimadas || 0;
@@ -571,25 +596,25 @@ const FacturacionModule = (function() {
             </div>
         `;
 
+        const desdeBD = calculo.desdeBD ? '<span style="color:var(--c-exitos); font-size:12px;">✓ Costos reales desde BD</span>' : '<span style="color:var(--c-advertencias); font-size:12px;">⚠ Costos estimados (sin datos en BD)</span>';
+
         html += `
             <div style="background:var(--bg-body); padding:20px; border-radius:12px; margin-bottom:20px;">
-                <h4 style="color:var(--c-facturacion); margin-bottom:15px;">Detalle de Costos</h4>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h4 style="color:var(--c-facturacion); margin:0;">Detalle de Costos</h4>
+                    ${desdeBD}
+                </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
-                    <div><strong>Gasolina:</strong> $${calculo.gasolina.toFixed(2)}</div>
-                    <div><strong>Traslado Técnico:</strong> $${calculo.trasladoTecnico.toFixed(2)}</div>
-                    <div><strong>Mano de Obra:</strong> $${calculo.manoObra.toFixed(2)}</div>
-                    <div><strong>Gastos Fijos:</strong> $${calculo.gastosFijos.toFixed(2)}</div>
-                    <div><strong>Camioneta:</strong> $${calculo.camioneta.toFixed(2)}</div>
+                    <div><strong>Compras:</strong> $${calculo.compras.toFixed(2)}</div>
                     <div><strong>Refacciones:</strong> $${calculo.refacciones.toFixed(2)}</div>
+                    <div><strong>Mano de Obra:</strong> $${calculo.mano_obra.toFixed(2)}</div>
+                    <div><strong>Viáticos:</strong> $${calculo.viaticos.toFixed(2)}</div>
+                    <div><strong>Gastos Fijos:</strong> $${calculo.gastos_fijos.toFixed(2)}</div>
                 </div>
                 <div style="margin-top:15px; padding-top:15px; border-top:1px dashed var(--border);">
-                    <div style="display:flex; justify-content:space-between;"><span><strong>Gastos Generales:</strong></span> <span>$${calculo.gastosGenerales.toFixed(2)}</span></div>
-                    <div style="display:flex; justify-content:space-between; color:var(--c-ventas);"><span><strong>+ Utilidad (${CostosEngine.CONFIG.utilidad}%):</strong></span> <span>$${calculo.precioConUtilidad.toFixed(2)}</span></div>
-                    <div style="display:flex; justify-content:space-between;"><span><strong>+ Crédito (${CostosEngine.CONFIG.credito}%):</strong></span> <span>$${calculo.precioAntesIVA.toFixed(2)}</span></div>
-                    <div style="display:flex; justify-content:space-between;"><span><strong>IVA (${CostosEngine.CONFIG.iva}%):</strong></span> <span>$${calculo.iva.toFixed(2)}</span></div>
-                </div>
-                <div style="margin-top:15px; font-size:18px; font-weight:800; color:var(--c-facturacion); text-align:right;">
-                    TOTAL: $${calculo.total.toFixed(2)}
+                    <div style="display:flex; justify-content:space-between; font-size:18px; font-weight:800; color:var(--c-facturacion);">
+                        <span>TOTAL:</span> <span>$${calculo.total.toFixed(2)}</span>
+                    </div>
                 </div>
             </div>
         `;
@@ -612,14 +637,14 @@ const FacturacionModule = (function() {
     }
 
     // ==================== GENERACIÓN DE FACTURA ====================
-    function _generarFactura(id, tipo) {
+    async function _generarFactura(id, tipo) {
         let orden = null;
         if (tipo === 'taller') orden = ordenesTaller.find(o => o.id === id);
         else if (tipo === 'motor') orden = ordenesMotores.find(o => o.id === id);
         if (!orden) return;
 
         const contacto = contactos.find(c => c.nombre === orden.cliente_nombre || c.empresa === orden.cliente_nombre);
-        const calculo = _calcularCostosOrden(orden, contacto);
+        const calculo = await _calcularCostosOrden(orden, contacto);
 
         const folioFactura = `F-${Date.now().toString().slice(-8)}`;
         const fecha = new Date().toISOString();
