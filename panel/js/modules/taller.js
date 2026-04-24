@@ -1741,13 +1741,29 @@ const TallerModule = (function() {
                 ...diagnosticoEnlaces.map(e => ({ sku: e.sku || '', descripcion: e.descripcion || '', cantidad: Number(e.cantidad) || 1, link: e.link || '' })),
                 ...diagnosticoInventario.map(i => ({ sku: i.sku || '', descripcion: i.descripcion || '', cantidad: Number(i.cantidad) || 1 }))
             ];
+
+            // 1. Intentar reservar material disponible
+            try {
+                const { error } = await window.supabase.rpc('reservar_material', {
+                    p_orden_id: ordenTallerId,
+                    p_orden_tipo: 'taller',
+                    p_items: JSON.stringify(itemsCompra)
+                });
+                if (error) throw error;
+                console.log('[Taller] Material reservado exitosamente');
+            } catch (error) {
+                console.warn('[Taller] No se pudo reservar material:', error.message);
+                // Continuar sin reserva - se generará compra
+            }
+
+            // 2. Crear compra con items vacíos (se llenarán en compras.js)
             const nuevaCompra = {
                 folio: `PO-${folioTaller}`,
                 proveedor: 'Por asignar',
                 departamento: 'Taller Electrónica',
                 fecha: new Date().toISOString(),
                 vinculacion: { tipo: 'taller', id: ordenTallerId, nombre: data.cliente_nombre, folio_taller: folioTaller },
-                items: itemsCompra,
+                items: itemsCompra,  // Se migrarán a compras_items
                 estado: 1,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()

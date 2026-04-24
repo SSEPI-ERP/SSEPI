@@ -40,6 +40,7 @@ const ComprasModule = (function() {
     const motoresService = createDataService('ordenes_motores');
     const proyectosService = createDataService('proyectos_automatizacion');
     const notificacionesService = createDataService('notificaciones');
+    const comprasItemsService = createDataService('compras_items');
 
     function _supabase() { return window.supabase; }
 
@@ -416,6 +417,42 @@ const ComprasModule = (function() {
         return labels[estado] || 'Desconocido';
     }
 
+    // ==================== RECIBIR COMPRA ====================
+    async function _recibirCompra(compraId) {
+        if (!confirm('¿Confirmar recepción de materiales? Esta acción actualizará el inventario.')) return;
+
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        const profile = await authService.getCurrentProfile();
+        const usuarioId = profile?.usuarios_id || profile?.id;
+
+        try {
+            const { error } = await window.supabase.rpc('recibir_compra', {
+                p_compra_id: compraId,
+                p_usuario_id: usuarioId
+            });
+
+            if (error) throw error;
+
+            _showToast('✅ Compra recibida. Inventario actualizado.', 'success');
+            await _loadCompras();
+            _abrirDetalle(compraId);
+        } catch (error) {
+            console.error('[Compras] Error al recibir:', error);
+            _showToast('Error: ' + error.message, 'error');
+        }
+    }
+
+    function _showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer') || document.body;
+        const toast = document.createElement('div');
+        const colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
+        toast.style.cssText = `position:fixed;top:20px;right:20px;z-index:99999;background:${colors[type]};color:white;padding:12px 20px;border-radius:8px;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-width:350px;cursor:pointer;`;
+        toast.textContent = message;
+        toast.onclick = () => toast.remove();
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+
     function _renderGrafica(ordenes) {
         const canvas = document.getElementById('comprasChart');
         if (!canvas) return;
@@ -478,6 +515,16 @@ const ComprasModule = (function() {
         contenido.innerHTML = '<div style="padding: 40px; text-align: center;"><i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i><p>Cargando...</p></div>';
         document.getElementById('editarOrdenBtn').style.display = 'inline-flex';
         document.getElementById('editarOrdenBtn').onclick = () => _editarOrden(id);
+
+        // Cargar items desde tabla compras_items
+        const { data: itemsData } = await window.supabase
+            .from('compras_items')
+            .select('*')
+            .eq('compra_id', id)
+            .order('created_at', { ascending: true });
+
+        currentCompra.itemsData = itemsData || [];
+
         const html = await _generarDetalleHTML(compra);
         contenido.innerHTML = html;
         modal.classList.add('active');
@@ -581,14 +628,14 @@ const ComprasModule = (function() {
                 <table class="items-table">
                     <thead><tr><th>Descripción</th><th>SKU</th><th>Cantidad</th><th>Precio Unit.</th><th>Total</th><th>Link</th></tr></thead>
                     <tbody>
-                        ${compra.items && compra.items.length ? compra.items.map(item => `
+                        ${currentCompra.itemsData && currentCompra.itemsData.length ? currentCompra.itemsData.map(item => `
                             <tr>
-                                <td>${item.desc || ''}</td>
+                                <td>${item.descripcion || ''}</td>
                                 <td>${item.sku || ''}</td>
-                                <td>${item.qty || 0}</td>
-                                <td>$${(item.price || 0).toFixed(2)}</td>
-                                <td>$${((item.qty || 0) * (item.price || 0)).toFixed(2)}</td>
-                                <td>${item.link ? `<a href="${item.link}" target="_blank">Ver</a>` : '—'}</td>
+                                <td>${item.cantidad || 0}</td>
+                                <td>$${(item.costo_unitario || 0).toFixed(2)}</td>
+                                <td>$${(item.costo_total || 0).toFixed(2)}</td>
+                                <td>${item.link_proveedor ? `<a href="${item.link_proveedor}" target="_blank">Ver</a>` : '—'}</td>
                             </tr>
                         `).join('') : '<tr><td colspan="6">No hay productos</td></tr>'}
                     </tbody>
@@ -604,6 +651,16 @@ const ComprasModule = (function() {
                         <div>${paso.accion} por ${paso.usuario}</div>
                     </div>
                 `).join('')}
+            </div>
+            ` : ''}
+            ${compra.estado < 4 ? `
+            <div style="margin-top: 20px; padding: 16px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;">
+                <h4 style="color: #166534; margin-bottom: 12px;">📦 Recepción de Materiales</h4>
+                <p style="color: #15803d; font-size: 14px; margin-bottom: 12px;">Confirma que todos los materiales han llegado y están en buen estado.</p>
+                <button onclick="comprasModule._recibirCompra('${compra.id}')"
+                    style="background: #16a34a; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    ✅ Confirmar Recepción
+                </button>
             </div>
             ` : ''}
         `;
@@ -778,7 +835,7 @@ const ComprasModule = (function() {
             fecha_requerida: fechaRequerida,
             prioridad,
             vinculacion,
-            items,
+            items: [],  // Items van en tabla compras_items
             total,
             estado: 1,
             pasos: [{
@@ -794,13 +851,30 @@ const ComprasModule = (function() {
 
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
+            let inserted;
             if (compraId) {
                 await comprasService.update(compraId, nuevaCompra, csrfToken);
+                inserted = { id: compraId };
                 alert('✅ Orden confirmada');
                 document.getElementById('nuevaOrdenModal').classList.remove('active');
                 _addToFeed('➕', `Orden ${folio} confirmada`);
             } else {
-                const inserted = await comprasService.insert(nuevaCompra, csrfToken);
+                inserted = await comprasService.insert(nuevaCompra, csrfToken);
+
+                // Insertar items en tabla compras_items
+                const itemsService = createDataService('compras_items');
+                for (const item of items) {
+                    await itemsService.insert({
+                        compra_id: inserted.id,
+                        sku: item.sku || '',
+                        descripcion: item.desc || '',
+                        cantidad: item.qty || 1,
+                        costo_unitario: item.price || 0,
+                        costo_total: (item.qty || 1) * (item.price || 0),
+                        link_proveedor: item.link || ''
+                    }, csrfToken);
+                }
+
                 if (window.emailService) {
                     const profile = await authService.getCurrentProfile();
                     const to = profile && profile.email ? profile.email : null;
@@ -1095,7 +1169,8 @@ const ComprasModule = (function() {
         init,
         _abrirDetalle,
         _crearOrdenDesdeSolicitud,
-        _verProveedor
+        _verProveedor,
+        _recibirCompra
     };
 })();
 
