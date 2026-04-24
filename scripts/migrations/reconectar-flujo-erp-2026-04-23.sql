@@ -73,14 +73,14 @@ CREATE TABLE IF NOT EXISTS public.movimientos_inventario (
     cantidad NUMERIC(10,2) NOT NULL,
     saldo_anterior NUMERIC(10,2) DEFAULT 0,
     saldo_nuevo NUMERIC(10,2) DEFAULT 0,
-    origen TEXT NOT NULL,
-    origen_id UUID,
+    tabla_origen TEXT NOT NULL,
+    id_origen UUID,
     usuario_id UUID,
     notas TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_movimientos_sku ON public.movimientos_inventario(sku);
-CREATE INDEX IF NOT EXISTS idx_movimientos_origen ON public.movimientos_inventario(origen, origen_id);
+CREATE INDEX IF NOT EXISTS idx_movimientos_origen ON public.movimientos_inventario(tabla_origen, id_origen);
 CREATE INDEX IF NOT EXISTS idx_movimientos_fecha ON public.movimientos_inventario(created_at);
 
 -- RLS para movimientos_inventario
@@ -191,8 +191,8 @@ CREATE OR REPLACE FUNCTION public.registrar_movimiento_inventario(
     p_sku TEXT,
     p_tipo TEXT,
     p_cantidad NUMERIC,
-    p_origen TEXT,
-    p_origen_id UUID,
+    p_tabla_origen TEXT,
+    p_id_origen UUID,
     p_usuario_id UUID DEFAULT auth.uid(),
     p_notas TEXT DEFAULT NULL
 )
@@ -232,8 +232,8 @@ BEGIN
     UPDATE public.inventario SET cantidad = v_saldo_nuevo WHERE sku = p_sku;
 
     -- Registrar movimiento
-    INSERT INTO public.movimientos_inventario (sku, tipo, cantidad, saldo_anterior, saldo_nuevo, origen, origen_id, usuario_id, notas)
-    VALUES (p_sku, p_tipo, p_cantidad, v_saldo_anterior, v_saldo_nuevo, p_origen, p_origen_id, p_usuario_id, p_notas);
+    INSERT INTO public.movimientos_inventario (sku, tipo, cantidad, saldo_anterior, saldo_nuevo, tabla_origen, id_origen, usuario_id, notas)
+    VALUES (p_sku, p_tipo, p_cantidad, v_saldo_anterior, v_saldo_nuevo, p_tabla_origen, p_id_origen, p_usuario_id, p_notas);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -304,8 +304,8 @@ BEGIN
             p_sku := v_item.sku,
             p_tipo := 'entrada',
             p_cantidad := v_item.cantidad_recibida,
-            p_origen := 'compra',
-            p_origen_id := p_compra_id,
+            p_tabla_origen := 'compras',
+            p_id_origen := p_compra_id,
             p_usuario_id := p_usuario_id,
             p_notas := 'Recepción de compra ' || p_compra_id
         );
