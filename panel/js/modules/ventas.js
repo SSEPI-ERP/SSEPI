@@ -2122,7 +2122,6 @@ const VentasModule = (function() {
             </div>`;
         }).join('');
     }
-    }
 
     function _showDeleteConfirm(folio, cliente, equipo, onConfirm) {
         const existing = document.getElementById('ssepiDeleteConfirmModal');
