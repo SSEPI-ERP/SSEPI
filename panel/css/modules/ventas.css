@@ -1297,3 +1297,85 @@
         align-items: stretch;
     }
 }
+
+/* ========== PIPELINE CARDS (Tarjetas de progreso unificado) ========== */
+.pipeline-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.pipeline-card {
+    background: var(--bg-panel);
+    border-radius: 8px;
+    border-top: 4px solid #ccc;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 16px;
+    transition: transform .15s, box-shadow .15s;
+    cursor: pointer;
+}
+
+.pipeline-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.pipeline-card[data-active-step="recepcion"]    { border-top-color: #3498db; }
+.pipeline-card[data-active-step="diagnostico"]  { border-top-color: #9b59b6; }
+.pipeline-card[data-active-step="cotizacion"]   { border-top-color: #f1c40f; }
+.pipeline-card[data-active-step="autorizacion"] { border-top-color: #2ecc71; }
+.pipeline-card[data-active-step="adquisicion"]  { border-top-color: #e67e22; }
+.pipeline-card[data-active-step="ejecucion"]    { border-top-color: #e74c3c; }
+.pipeline-card[data-active-step="facturacion"]  { border-top-color: #1abc9c; }
+.pipeline-card[data-active-step="entrega"]      { border-top-color: #27ae60; }
+.pipeline-card[data-active-step="cancelado"]    { border-top-color: #7f8c8d; }
+
+.pipeline-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.pipeline-card-folio {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--c-ventas);
+    background: var(--c-ventas-light);
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.pipeline-card-cliente {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.pipeline-card-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: var(--bg-hover);
+    color: var(--text-muted);
+}
+
+.pipeline-card-step.active {
+    background: var(--c-ventas);
+    color: #fff;
+}
+
+.pipeline-card-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    display: flex;
+    justify-content: space-between;
+}

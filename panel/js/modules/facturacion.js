@@ -207,6 +207,20 @@ const FacturacionModule = (function() {
             .subscribe();
         subscriptions.push(subNotif);
 
+        // Realtime para orden_historial: refrescar cuando órdenes cambien a reparado/entregado
+        const subHistorial = sb
+            .channel('facturacion_historial_realtime')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orden_historial' }, payload => {
+                const ev = payload.new;
+                if (ev.evento === 'cambio_estado' || ev.evento === 'actualizacion') {
+                    // Refrescar listas sin F5 cuando el estado de una orden cambia
+                    _loadTaller();
+                    _loadMotores();
+                }
+            })
+            .subscribe();
+        subscriptions.push(subHistorial);
+
         // Carga inicial
         _loadTaller();
         _loadMotores();

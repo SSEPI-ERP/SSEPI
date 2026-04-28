@@ -155,7 +155,6 @@ const ComprasModule = (function() {
         _rebuildProveedoresVista();
         _populateProveedoresSelect();
         _renderProveedores();
-        _renderSolicitudesTaller();
     }
 
     async function _loadCompras() {
@@ -244,33 +243,6 @@ const ComprasModule = (function() {
         });
     }
 
-    function _renderSolicitudesTaller() {
-        const container = document.getElementById('solicitudesTaller');
-        if (!container) return;
-        const solicitudes = [
-            ...ordenesTaller.map(o => ({ ...o, tipo: 'taller', folio: o.folio, cliente: o.cliente_nombre })),
-            ...ordenesMotores.map(o => ({ ...o, tipo: 'motor', folio: o.folio, cliente: o.cliente_nombre })),
-            ...proyectos.map(p => ({ ...p, tipo: 'proyecto', folio: p.folio, cliente: p.cliente }))
-        ].filter(s => s.estado !== 'Entregado' && s.estado !== 'completado');
-        if (solicitudes.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding:20px;">No hay solicitudes pendientes</div>';
-            return;
-        }
-        container.innerHTML = solicitudes.slice(0, 6).map(s => `
-            <div class="solicitud-card">
-                <div class="solicitud-header">
-                    <span class="solicitud-folio">${s.folio || s.id.slice(-6)}</span>
-                    <span class="solicitud-tipo">${s.tipo}</span>
-                </div>
-                <div class="solicitud-cliente">${s.cliente || 'Cliente'}</div>
-                <div class="solicitud-acciones">
-                    <button class="btn btn-sm btn-primary" onclick="comprasModule._crearOrdenDesdeSolicitud('${s.id}', '${s.tipo}')">
-                        <i class="fas fa-cart-plus"></i> Crear Orden
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    }
 
     function _setupRealtime() {
         const supabase = _supabase();
@@ -306,7 +278,20 @@ const ComprasModule = (function() {
                 _loadCompras();
                 _loadTaller();
                 _loadMotores();
-                _renderSolicitudesTaller();
+            })
+            .subscribe();
+        subscriptions.push(subNotificaciones);
+
+        // Realtime para orden_historial: refrescar cuando órdenes cambien de estado
+        const subHistorial = supabase
+            .channel('compras_historial_realtime')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orden_historial' }, payload => {
+                const ev = payload.new;
+                if (ev.evento === 'cambio_estado' || ev.evento === 'creacion' || ev.evento === 'compra_vinculada') {
+                    _loadCompras();
+                    _loadTaller();
+                    _loadMotores();
+                }
             })
             .subscribe();
         subscriptions.push(subNotificaciones);
@@ -858,6 +843,9 @@ const ComprasModule = (function() {
                 alert('✅ Orden confirmada');
                 document.getElementById('nuevaOrdenModal').classList.remove('active');
                 _addToFeed('➕', `Orden ${folio} confirmada`);
+                if (window.SSEPIStateMachine) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'compra', compraId, 'actualizacion', `Orden de compra ${folio} confirmada`, csrfToken);
+                }
             } else {
                 inserted = await comprasService.insert(nuevaCompra, csrfToken);
 
@@ -901,6 +889,9 @@ const ComprasModule = (function() {
                 alert('✅ Orden de compra creada');
                 document.getElementById('nuevaOrdenModal').classList.remove('active');
                 _addToFeed('➕', `Orden ${folio} creada`);
+                if (window.SSEPIStateMachine && inserted?.id) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'compra', inserted.id, 'creacion', `Orden de compra ${folio} creada`, csrfToken);
+                }
             }
         } catch (error) {
             console.error(error);

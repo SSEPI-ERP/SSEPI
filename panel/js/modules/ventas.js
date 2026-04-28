@@ -1076,8 +1076,7 @@ const VentasModule = (function() {
         ]);
         _populateVendedoresFilter();
         _applyFilters();
-        _renderSolicitudesTaller();
-        _renderPendientesAutorizacion();
+        _renderPipelineCards();
 
         // Fase 2: vínculos a taller/motores/proyectos/compras — no bloquea el primer pintado
         Promise.all([
@@ -1087,8 +1086,7 @@ const VentasModule = (function() {
             _loadCompras()
         ])
             .then(() => {
-                _renderSolicitudesTaller();
-                _renderPendientesAutorizacion();
+                _renderPipelineCards();
             })
             .catch((e) => console.warn('[Ventas] carga secundaria:', e));
     }
@@ -1491,6 +1489,7 @@ const VentasModule = (function() {
 
     /**
      * Inserta un evento en orden_historial para auditar cambios en cotizaciones/ventas/órdenes.
+     * Delegado a state-machine.js para deduplicación y unificación.
      * @param {string} tipo - 'cotizacion' | 'venta' | 'taller' | 'motor' | 'proyecto'
      * @param {string} id - ID del registro
      * @param {string} evento - Tipo de evento: 'creacion', 'cambio_estado', 'folio_generado', 'compra_vinculada', etc.
@@ -1498,47 +1497,12 @@ const VentasModule = (function() {
      * @param {string} csrfToken - Token de autenticación
      */
     async function _insertarEventoHistorial(tipo, id, evento, descripcion, csrfToken) {
-        if (!window.supabase) return;
-
-        const columnMap = {
-            'cotizacion': 'cotizacion_id',
-            'venta': 'cotizacion_id',
-            'taller': 'orden_taller_id',
-            'motor': 'orden_motor_id',
-            'proyecto': 'proyecto_id',
-            'automatizacion': 'proyecto_id'
-        };
-        const columnName = columnMap[tipo] || 'cotizacion_id';
-
-        const row = {
-            [columnName]: id,
-            evento,
-            descripcion,
-            creado_por: (await authService.getCurrentProfile())?.usuarios_id || null
-        };
-
+        if (!window.supabase) return null;
         try {
-            const { data, error } = await window.supabase
-                .from('orden_historial')
-                .insert(row)
-                .select()
-                .single();
-
-            if (error) {
-                // Si falla por columna faltante, intentar sin la FK de cotizacion
-                if (columnName === 'cotizacion_id' && (error.message?.includes('does not exist') || error.code === '42703')) {
-                    delete row.cotizacion_id;
-                    row.descripcion = `[cotización ${id}] ${descripcion}`;
-                    const { data: data2, error: error2 } = await window.supabase
-                        .from('orden_historial')
-                        .insert(row)
-                        .select()
-                        .single();
-                    if (error2) { console.warn('[Ventas] Error insertando evento (fallback):', error2); return null; }
-                    return data2;
-                }
-                console.warn('[Ventas] Error insertando evento en historial:', error);
-            } else {
+            const data = await SSEPIStateMachine.actualizarEstadoOrden(
+                window.supabase, tipo, id, evento, descripcion, csrfToken
+            );
+            if (data) {
                 console.log(`[Ventas] Evento registrado en historial: ${evento} para ${tipo} ${id}`);
                 const modalAbierto = document.getElementById('historialModal');
                 if (modalAbierto && modalAbierto.classList.contains('active')) {
@@ -1576,7 +1540,7 @@ const VentasModule = (function() {
             .channel('cotizaciones_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'cotizaciones' }, payload => {
                 _loadCotizaciones().then(() => {
-                    _renderPendientesAutorizacion();
+                    _renderPipelineCards();
                     _applyFilters();
                 });
             })
@@ -1588,7 +1552,7 @@ const VentasModule = (function() {
             .channel('compras_ventas')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'compras' }, payload => {
                 _loadCompras();
-                _renderSolicitudesTaller();
+                _renderPipelineCards();
             })
             .subscribe();
         subscriptions.push(subCompras);
@@ -1598,7 +1562,7 @@ const VentasModule = (function() {
             .channel('taller_realtime_ventas')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes_taller' }, payload => {
                 _loadTaller().then(() => {
-                    _renderSolicitudesTaller();
+                    _renderPipelineCards();
                     _applyFilters(); // Refrescar kanban por si hay cambios de estado
                 });
             })
@@ -1610,7 +1574,7 @@ const VentasModule = (function() {
             .channel('motores_realtime_ventas')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes_motores' }, payload => {
                 _loadMotores().then(() => {
-                    _renderSolicitudesTaller();
+                    _renderPipelineCards();
                     _applyFilters();
                 });
             })
@@ -1622,7 +1586,7 @@ const VentasModule = (function() {
             .channel('proyectos_realtime_ventas')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'proyectos_automatizacion' }, payload => {
                 _loadProyectos().then(() => {
-                    _renderSolicitudesTaller();
+                    _renderPipelineCards();
                     _applyFilters();
                 });
             })
@@ -2121,117 +2085,35 @@ const VentasModule = (function() {
         if (elTicket) elTicket.innerHTML = countVentasCerradas ? '$' + ticketPromedio.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '$0';
     }
 
-    // ==================== SOLICITUDES DE TALLER ====================
-    function _renderSolicitudesTaller() {
-        const container = document.getElementById('solicitudesTaller');
+    // ==================== PIPELINE CARDS (reemplaza solicitudes pendientes) ====================
+    function _renderPipelineCards() {
+        const container = document.getElementById('pipelineCardsContainer');
         if (!container) return;
-        if (solicitudesTaller.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">No hay solicitudes pendientes</div>';
+        // Render de órdenes con estatus_actual desde todas las tablas
+        const ordenes = [...ventas, ...cotizaciones, ...taller, ...motores, ...proyectos]
+            .filter(o => o.estatus_actual && o.estatus_actual !== 'entrega')
+            .sort((a, b) => new Date(b.created_at || b.creado_en || 0) - new Date(a.created_at || a.creado_en || 0))
+            .slice(0, 20);
+        if (ordenes.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">No hay órdenes activas en pipeline</div>';
             return;
         }
-        container.innerHTML = solicitudesTaller.map(s => `
-            <div class="solicitud-card">
-                <div class="solicitud-header">
-                    <span class="solicitud-folio">${s.folio || s.id.slice(-6)}</span>
-                    <span class="solicitud-cliente">${s.vinculacion?.nombre || 'Cliente'}</span>
+        container.innerHTML = ordenes.map(o => {
+            const info = SSEPIStateMachine.obtenerInfoPaso(o.estatus_actual);
+            return `
+            <div class="pipeline-card" data-active-step="${o.estatus_actual}" onclick="ventasModule._abrirDetalle('${o.id}', '${o.tipo || 'venta'}')">
+                <div class="pipeline-card-header">
+                    <span class="pipeline-card-folio">${o.folio || o.id?.slice(-6)}</span>
+                    <span class="pipeline-card-step active" style="background:${info.color};color:#fff;">${info.icono} ${info.label}</span>
                 </div>
-                <div class="solicitud-total">$${(s.total || 0).toFixed(2)}</div>
-                <div class="solicitud-items">${s.items?.length || 0} producto(s)</div>
-                <div class="solicitud-acciones">
-                    <button class="btn btn-sm btn-primary" onclick="ventasModule._abrirCalculadora('${s.id}')">
-                        <i class="fas fa-calculator"></i> Calcular
-                    </button>
-                    <button class="btn btn-sm btn-secondary" onclick="ventasModule._verOrdenTaller('${s.id}')" title="Ver orden">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn btn-sm btn-warning" onclick="ventasModule._editarOrdenTaller('${s.id}')" title="Editar">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="ventasModule._eliminarOrdenTaller('${s.id}')" title="Eliminar">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <div class="pipeline-card-cliente">${o.cliente || o.cliente_nombre || 'Cliente'}</div>
+                <div class="pipeline-card-meta">
+                    <span>${o.departamento || info.modulo}</span>
+                    <span>$${(o.total || 0).toFixed(2)}</span>
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     }
-
-    function _renderPendientesAutorizacion() {
-        const container = document.getElementById('pendientesAutorizacion');
-        if (!container) return;
-        const pendientes = cotizaciones.filter(c => c.estado === 'pendiente_autorizacion_ventas');
-        if (pendientes.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">No hay cotizaciones pendientes</div>';
-            return;
-        }
-        container.innerHTML = pendientes.map(c => `
-            <div class="solicitud-card">
-                <div class="solicitud-header">
-                    <span class="solicitud-folio">${c.folio || c.id.slice(-6)}</span>
-                    <span class="solicitud-cliente">${c.cliente}</span>
-                </div>
-                <div class="solicitud-total">$${(c.total || 0).toFixed(2)}</div>
-                <div class="solicitud-items">Origen: ${c.origen || 'Taller'}</div>
-                <div class="solicitud-acciones">
-                    <button class="btn btn-sm btn-success" onclick="ventasModule._autorizarCotizacion('${c.id}')">
-                        <i class="fas fa-check"></i> Autorizar
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="ventasModule._rechazarCotizacion('${c.id}')">
-                        <i class="fas fa-times"></i> Rechazar
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    // ==================== VER / EDITAR / ELIMINAR ÓRDENES DE TALLER ====================
-    async function _verOrdenTaller(compraId) {
-        const compra = solicitudesTaller.find(s => s.id === compraId);
-        if (!compra) return;
-        const ordenTallerId = compra.vinculacion?.id;
-        if (!ordenTallerId) { _showToast('No hay orden de taller vinculada', 'info'); return; }
-        const orden = taller.find(o => o.id === ordenTallerId);
-        if (!orden) { _showToast('Orden no encontrada en Taller', 'info'); return; }
-        _showToast(`Orden ${orden.folio}\nCliente: ${orden.cliente_nombre || 'N/A'}\nEstado: ${orden.estado || 'Pendiente'}\nEquipo: ${orden.equipo || 'N/A'}`, 'info');
-    }
-
-    async function _editarOrdenTaller(compraId) {
-        const compra = solicitudesTaller.find(s => s.id === compraId);
-        if (!compra) return;
-        const ordenTallerId = compra.vinculacion?.id;
-        if (!ordenTallerId) { _showToast('No hay orden de taller vinculada', 'info'); return; }
-        const orden = taller.find(o => o.id === ordenTallerId);
-        if (!orden) { _showToast('Orden no encontrada en Taller', 'info'); return; }
-        // Abrir el modal de Taller para editar la orden
-        if (window.tallerModule && typeof window.tallerModule._editarOrden === 'function') {
-            window.tallerModule._editarOrden(ordenTallerId);
-        } else {
-            _showToast('Módulo de Taller no disponible', 'error');
-        }
-    }
-
-    function _eliminarOrdenTaller(compraId) {
-        const compra = solicitudesTaller.find(s => s.id === compraId);
-        if (!compra) return;
-        const folio = compra.folio || compra.id.slice(-6);
-        const cliente = compra.vinculacion?.nombre || 'N/A';
-        const equipo = compra.vinculacion?.equipo || '—';
-        _showDeleteConfirm(folio, cliente, equipo, async () => {
-            try {
-                const ordenTallerId = compra.vinculacion?.id;
-                if (ordenTallerId) {
-                    const { error: err1 } = await window.supabase.from('ordenes_taller').delete().eq('id', ordenTallerId);
-                    if (err1) throw err1;
-                }
-                const { error: err2 } = await window.supabase.from('compras').delete().eq('id', compraId);
-                if (err2) throw err2;
-                _addToFeed('🗑️', 'Orden eliminada: ' + folio);
-                await _loadCompras();
-                _renderSolicitudesTaller();
-            } catch (e) {
-                console.error(e);
-                _showErrorModal('Error al eliminar', e.message);
-            }
-        });
     }
 
     function _showDeleteConfirm(folio, cliente, equipo, onConfirm) {
@@ -3213,7 +3095,7 @@ const VentasModule = (function() {
                 fecha: new Date().toISOString()
             }, csrfToken);
             _addToFeed('✅', 'Cotización autorizada - Orden actualizada y notificación enviada a Compras');
-            _renderPendientesAutorizacion();
+            _renderPipelineCards();
         } catch (error) {
             console.error(error);
             _showToast('Error: ' + error.message, 'error');
@@ -3226,7 +3108,7 @@ const VentasModule = (function() {
         try {
             await cotizacionesService.update(id, { estado: 'rechazada_por_ventas' }, csrfToken);
             _addToFeed('❌', 'Cotización rechazada');
-            _renderPendientesAutorizacion();
+            _renderPipelineCards();
         } catch (error) {
             console.error(error);
             _showToast('Error: ' + error.message, 'error');
@@ -3388,25 +3270,31 @@ const VentasModule = (function() {
     }
 
     function _renderTimeline(estadoActual) {
+        if (window.SSEPIStateMachine) {
+            return SSEPIStateMachine.renderTimelineHTML(estadoActual);
+        }
+        // Fallback si el core no cargó
         const pasos = [
-            { id: 'registro', icono: '📝', label: 'Registro' },
-            { id: 'diagnostico', icono: '🔍', label: 'Diagnóstico' },
+            { id: 'recepcion', icono: '📥', label: 'Recepción' },
+            { id: 'diagnostico', icono: '🔬', label: 'Diagnóstico' },
             { id: 'cotizacion', icono: '💰', label: 'Cotización' },
-            { id: 'autorizado', icono: '✅', label: 'Autorizado' },
-            { id: 'compra', icono: '🛒', label: 'Compra' },
-            { id: 'ejecucion', icono: '⚙️', label: 'Ejecución' },
-            { id: 'entregado', icono: '📦', label: 'Entregado' },
-            { id: 'pagado', icono: '💵', label: 'Pagado' }
+            { id: 'autorizacion', icono: '✅', label: 'Autorización' },
+            { id: 'adquisicion', icono: '🛒', label: 'Adquisición' },
+            { id: 'ejecucion', icono: '🔧', label: 'Ejecución' },
+            { id: 'facturacion', icono: '🧾', label: 'Facturación' },
+            { id: 'entrega', icono: '🚚', label: 'Entrega' }
         ];
         const ordenMap = {
-            'registro': 0, 'Nuevo': 0, 'diagnostico': 1, 'en_diagnostico': 1,
-            'cotizacion': 2, 'pendiente_autorizacion_ventas': 2,
-            'autorizado': 3, 'autorizada_por_ventas': 3,
-            'compra': 4, 'en_compra': 4, 'ejecucion': 5, 'en_ejecucion': 5,
-            'entregado': 6, 'pagado': 7
+            'recepcion': 0, 'Nuevo': 0,
+            'diagnostico': 1, 'Diagnóstico': 1,
+            'cotizacion': 2, 'En Espera': 2,
+            'autorizacion': 3, 'aprobada': 3,
+            'adquisicion': 4, 'en_compra': 4,
+            'ejecucion': 5, 'En reparación': 5,
+            'facturacion': 6, 'Reparado': 6,
+            'entrega': 7, 'Entregado': 7
         };
         const indiceActual = ordenMap[estadoActual] ?? 0;
-
         return `<div class="timeline-container"><div class="timeline">
             <div class="timeline-progress" style="width: ${(indiceActual / (pasos.length - 1)) * 100}%;"></div>
             ${pasos.map((paso, idx) => {

@@ -3,7 +3,7 @@
 -- Ejecutar TODO de una vez en Supabase SQL Editor
 -- =====================================================
 
--- 1) COMPRAS: agregar estatus_pago si no existe (el JS lo usa)
+-- 1) COMPRAS: agregar columnas que el JS inserta/ordena si no existen
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -11,6 +11,20 @@ BEGIN
         WHERE table_schema = 'public' AND table_name = 'compras' AND column_name = 'estatus_pago'
     ) THEN
         ALTER TABLE public.compras ADD COLUMN estatus_pago TEXT DEFAULT 'Pendiente';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'compras' AND column_name = 'created_at'
+    ) THEN
+        ALTER TABLE public.compras ADD COLUMN created_at TIMESTAMPTZ DEFAULT NOW();
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'compras' AND column_name = 'updated_at'
+    ) THEN
+        ALTER TABLE public.compras ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW();
     END IF;
 END $$;
 
@@ -36,8 +50,18 @@ BEGIN
     END IF;
 END $$;
 
--- 4) COTIZACIONES: corregir FK cliente_id para que apunte a contactos (no a clientes)
--- Primero averiguar si existe la FK y a quien apunta
+-- 4) COTIZACIONES: asegurar que cliente_id existe (JS lo usa para FK a contactos)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'cotizaciones' AND column_name = 'cliente_id'
+    ) THEN
+        ALTER TABLE public.cotizaciones ADD COLUMN cliente_id UUID;
+    END IF;
+END $$;
+
+-- 5) COTIZACIONES: corregir FK cliente_id para que apunte a contactos (no a clientes)
 DO $$
 DECLARE
     fk_name TEXT;
@@ -59,18 +83,15 @@ BEGIN
       );
 
     IF FOUND AND ref_table = 'clientes' THEN
-        -- Eliminar FK a clientes
         EXECUTE format('ALTER TABLE public.cotizaciones DROP CONSTRAINT %I', fk_name);
         RAISE NOTICE 'FK % eliminada. Re-creando apuntando a contactos...', fk_name;
 
-        -- Crear FK a contactos (si contactos existe)
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'contactos') THEN
             ALTER TABLE public.cotizaciones
                 ADD CONSTRAINT cotizaciones_cliente_id_fkey
                 FOREIGN KEY (cliente_id) REFERENCES public.contactos(id) ON DELETE SET NULL;
         END IF;
     ELSIF fk_name IS NULL THEN
-        -- No hay FK, crearla apuntando a contactos si existe
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'contactos') THEN
             ALTER TABLE public.cotizaciones
                 ADD CONSTRAINT cotizaciones_cliente_id_fkey
@@ -79,7 +100,18 @@ BEGIN
     END IF;
 END $$;
 
--- 5) FACTURAS: si venta_id apunta a ventas en vez de cotizaciones, corregir
+-- 6) FACTURAS: agregar venta_id si no existe (antes de crear la FK)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'facturas' AND column_name = 'venta_id'
+    ) THEN
+        ALTER TABLE public.facturas ADD COLUMN venta_id UUID;
+    END IF;
+END $$;
+
+-- 7) FACTURAS: corregir FK venta_id para que apunte a cotizaciones (no a ventas)
 DO $$
 DECLARE
     fk_name TEXT;
@@ -114,5 +146,5 @@ BEGIN
     END IF;
 END $$;
 
--- 6) Forzar recarga del schema cache de PostgREST
+-- 8) Forzar recarga del schema cache de PostgREST
 NOTIFY pgrst, 'reload schema';
