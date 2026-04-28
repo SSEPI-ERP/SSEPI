@@ -16,11 +16,12 @@ export function applyCSP() {
   })();
   meta.content = `
     default-src 'self';
-    script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline';
+    script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://vercel.live 'unsafe-inline' blob:;
     style-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline';
     font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:;
     img-src 'self' data: https://images.unsplash.com;
-    connect-src 'self' https://*.supabase.co wss://*.supabase.co ${supabaseHost ? `https://${supabaseHost} wss://${supabaseHost}` : ''} https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://api.ipify.org;
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co ${supabaseHost ? `https://${supabaseHost} wss://${supabaseHost}` : ''} https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://api.ipify.org https://vercel.live https://*.vercel.live wss://*.vercel.live;
+    frame-src 'self' https://vercel.live;
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';

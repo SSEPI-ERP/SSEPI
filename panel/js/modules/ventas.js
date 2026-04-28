@@ -434,9 +434,8 @@ const VentasModule = (function() {
                         .select('*')
                         .eq('cliente_nombre', clienteNombre)
                         .eq('falla_reportada', falla)
-                        .gte('fecha_ingreso', fechaSolo)
-                        .lte('fecha_ingreso', fechaSolo)
-                        .order('creado_en', { ascending: false })
+                        .eq('fecha_ingreso', fechaSolo)
+                        .order('created_at', { ascending: false })
                         .limit(1)
                         .maybeSingle();
                     existing = data;
@@ -474,9 +473,8 @@ const VentasModule = (function() {
                                     .from('ordenes_taller')
                                     .select('*')
                                     .eq('cliente_nombre', clienteNombre)
-                                    .gte('fecha_ingreso', fechaSolo)
-                                    .lte('fecha_ingreso', fechaSolo)
-                                    .order('creado_en', { ascending: false })
+                                    .eq('fecha_ingreso', fechaSolo)
+                                    .order('created_at', { ascending: false })
                                     .limit(1)
                                     .maybeSingle();
                                 if (fallback) {
@@ -538,9 +536,8 @@ const VentasModule = (function() {
                         .select('*')
                         .eq('cliente_nombre', clienteNombre)
                         .eq('falla_reportada', falla)
-                        .gte('fecha_ingreso', fechaSolo)
-                        .lte('fecha_ingreso', fechaSolo)
-                        .order('creado_en', { ascending: false })
+                        .eq('fecha_ingreso', fechaSolo)
+                        .order('created_at', { ascending: false })
                         .limit(1)
                         .maybeSingle();
                     existing = data;
@@ -571,9 +568,8 @@ const VentasModule = (function() {
                                     .from('ordenes_motores')
                                     .select('*')
                                     .eq('cliente_nombre', clienteNombre)
-                                    .gte('fecha_ingreso', fechaSolo)
-                                    .lte('fecha_ingreso', fechaSolo)
-                                    .order('creado_en', { ascending: false })
+                                    .eq('fecha_ingreso', fechaSolo)
+                                    .order('created_at', { ascending: false })
                                     .limit(1)
                                     .maybeSingle();
                                 if (fallback) { inserted = fallback; }
@@ -717,6 +713,43 @@ const VentasModule = (function() {
             if (!r.ok && r.error) console.warn('[Ventas] folio operativo:', r.error?.message || r.error);
         } catch (e) {
             console.warn('[Ventas] folio operativo:', e?.message || e);
+        }
+    }
+
+    async function _crearCompraVinculada(ordenFolio, ordenId, ordenTipo, clienteNombre, csrfToken) {
+        try {
+            const compraFolio = 'CMP-' + (ordenFolio || ordenId?.slice(-6) || Date.now().toString(36).toUpperCase());
+            const compraRow = {
+                folio: compraFolio,
+                proveedor_id: null,
+                fecha: new Date().toISOString().split('T')[0],
+                subtotal: 0,
+                iva: 0,
+                total: 0,
+                estatus_pago: 'Solicitud',
+                notas: 'Solicitud generada automáticamente desde Ventas para orden ' + (ordenFolio || '') + ' (' + ordenTipo + ')'
+            };
+            await comprasService.insert(compraRow, csrfToken);
+            _addToFeed('🛒', 'Solicitud de compra creada: ' + compraFolio);
+        } catch (e) {
+            console.warn('[Ventas] Error creando compra vinculada (no crítico):', e);
+        }
+    }
+
+    async function _crearFacturaVinculada(cotizacionId, folio, clienteNombre, total, csrfToken) {
+        try {
+            const factFolio = 'FAC-' + (folio || cotizacionId?.slice(-6) || Date.now().toString(36).toUpperCase());
+            await window.supabase.from('facturas').insert({
+                folio_factura: factFolio,
+                venta_id: cotizacionId,
+                cliente: clienteNombre,
+                total: total || 0,
+                estatus: 'pendiente',
+                fecha_emision: new Date().toISOString().split('T')[0]
+            });
+            _addToFeed('🧾', 'Factura pre-registrada: ' + factFolio);
+        } catch (e) {
+            console.warn('[Ventas] Error creando factura vinculada (no crítico):', e);
         }
     }
 
@@ -3078,7 +3111,7 @@ const VentasModule = (function() {
         const iva = total * 0.16 / 1.16;
         const cotizacionData = {
             folio,
-            fecha: new Date().toISOString().split('T')[0],
+            fecha_cotizacion: new Date().toISOString(),
             subtotal,
             iva,
             total,
@@ -3539,7 +3572,7 @@ const VentasModule = (function() {
             email: email || '',
             telefono: telefono || '',
             rfc: '',
-            fecha: new Date().toISOString().split('T')[0],
+            fecha_cotizacion: new Date().toISOString(),
             items: [{
                 descripcion: falla,
                 cantidad: 1,
@@ -4172,6 +4205,10 @@ const VentasModule = (function() {
                     console.error('[Ventas] alta orden cerebro', e);
                     _showToast('Error al crear orden: ' + e.message, 'error');
                     return;
+                }
+                if (creado?.ordenId) {
+                    await _crearCompraVinculada(creado.folio, creado.ordenId, creado.tipo, clienteNombre, csrfToken);
+                    await _crearFacturaVinculada(null, creado.folio, clienteNombre, 0, csrfToken);
                 }
             }
 
