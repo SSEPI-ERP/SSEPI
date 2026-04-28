@@ -1896,18 +1896,22 @@ const VentasModule = (function() {
                    </div>`
                 : '';
             const esCancelado = (item.estado || item.estatus_pago || '').toLowerCase().includes('cancelad');
+            const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(item);
+            const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(item) ?? true;
+            const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
 
             return `
-                <div class="kanban-card ${esCancelado ? 'kanban-card-cancelada' : ''}" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}">
+                <div class="kanban-card ${esCancelado ? 'kanban-card-cancelada' : ''} ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}">
                     <div class="card-header">
                         <span class="folio">${item.folio || item.id.slice(-6)}</span>
+                        ${badgeCuarentena}
                         <div class="card-actions">
                             <button class="btn-icon btn-edit" onclick="event.stopPropagation(); ventasModule._editarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn-icon btn-delete" onclick="event.stopPropagation(); ventasModule._eliminarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Eliminar">
+                            ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); ventasModule._eliminarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Eliminar">
                                 <i class="fas fa-trash"></i>
-                            </button>
+                            </button>` : ''}
                         </div>
                     </div>
                     ${etiquetaHtml ? `<div class="card-vinculacion">${etiquetaHtml}</div>` : ''}
@@ -1930,17 +1934,21 @@ const VentasModule = (function() {
         if (items.length === 0) return '<div style="text-align:center; padding:20px; color:var(--text-muted);">Sin elementos</div>';
         return items.map(item => {
             const esCancelado = (item.estado || item.estatus_pago || '').toLowerCase().includes('cancelad');
+            const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(item);
+            const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(item) ?? true;
+            const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
             return `
-                <div class="kanban-card ${esCancelado ? 'kanban-card-cancelada' : ''}" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}">
+                <div class="kanban-card ${esCancelado ? 'kanban-card-cancelada' : ''} ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}">
                     <div class="card-header">
                         <span class="folio">${item.folio || item.id.slice(-6)}</span>
+                        ${badgeCuarentena}
                         <div class="card-actions">
                             <button class="btn-icon btn-edit" onclick="event.stopPropagation(); ventasModule._editarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn-icon btn-delete" onclick="event.stopPropagation(); ventasModule._eliminarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Eliminar">
+                            ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); ventasModule._eliminarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Eliminar">
                                 <i class="fas fa-trash"></i>
-                            </button>
+                            </button>` : ''}
                         </div>
                     </div>
                     <div class="card-body" onclick="ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')" style="cursor:pointer;">
