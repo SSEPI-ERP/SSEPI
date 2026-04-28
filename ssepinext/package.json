@@ -8,14 +8,14 @@
     "start": "electron .",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
-    "local": "node server-local.js",
-    "dev": "node server-local.js"
+    "local": "node server-local.mjs",
+    "dev": "node server-local.mjs"
   },
   "author": "SSEPI",
   "license": "UNLICENSED",
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
-    "better-sqlite3": "^11.0.0",
+    "sql.js": "^1.12.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2"
@@ -36,7 +36,11 @@
       "index.html",
       "renderer.js",
       "styles.css",
-      "server-local.js"
+      "server-local.mjs",
+      "db.mjs",
+      "proxy.mjs",
+      "sync-engine.mjs",
+      "data"
     ],
     "win": {
       "target": "nsis",
