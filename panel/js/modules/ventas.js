@@ -739,14 +739,15 @@ const VentasModule = (function() {
     async function _crearFacturaVinculada(cotizacionId, folio, clienteNombre, total, csrfToken) {
         try {
             const factFolio = 'FAC-' + (folio || cotizacionId?.slice(-6) || Date.now().toString(36).toUpperCase());
-            await window.supabase.from('facturas').insert({
+            const payload = {
                 folio_factura: factFolio,
-                venta_id: cotizacionId,
-                cliente: clienteNombre,
+                cliente: clienteNombre || 'Cliente',
                 total: total || 0,
                 estatus: 'pendiente',
-                fecha_emision: new Date().toISOString().split('T')[0]
-            });
+                fecha_emision: new Date().toISOString()
+            };
+            if (cotizacionId) payload.venta_id = cotizacionId;
+            await window.supabase.from('facturas').insert(payload);
             _addToFeed('🧾', 'Factura pre-registrada: ' + factFolio);
         } catch (e) {
             console.warn('[Ventas] Error creando factura vinculada (no crítico):', e);
@@ -4235,7 +4236,6 @@ const VentasModule = (function() {
                         tipo_folio: 'COT',
                         cliente_nombre: clienteNombre,
                         cliente: clienteNombre,
-                        cliente_id: clienteId || null,
                         vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas',
                         subtotal: 0,
                         iva: 0,
