@@ -453,8 +453,22 @@ const VentasModule = (function() {
                     try {
                         inserted = await tallerService.insert(row, csrfToken);
                     } catch (err) {
-                        // Si es 409 Conflict, buscar la orden creada recientemente
-                        if (err.status === 409 || String(err.message).includes('duplicate')) {
+                        console.warn('[Ventas] Error insertando orden:', err);
+                        // Buscar por folio primero (más preciso)
+                        try {
+                            const { data: byFolio } = await window.supabase
+                                .from('ordenes_taller')
+                                .select('*')
+                                .eq('folio', folio)
+                                .maybeSingle();
+                            if (byFolio) {
+                                inserted = byFolio;
+                                _showToast('📋 Orden recuperada por folio: ' + (byFolio.folio || ''), 'info');
+                            }
+                        } catch (e2) { /* ignorar */ }
+
+                        // Si no, buscar por cliente + fecha
+                        if (!inserted) {
                             try {
                                 const { data: fallback } = await window.supabase
                                     .from('ordenes_taller')
@@ -467,13 +481,22 @@ const VentasModule = (function() {
                                     .maybeSingle();
                                 if (fallback) {
                                     inserted = fallback;
-                                    _showToast('📋 Orden existente recuperada (conflicto): ' + (fallback.folio || ''), 'info');
+                                    _showToast('📋 Orden recuperada por cliente/fecha: ' + (fallback.folio || ''), 'info');
                                 }
-                            } catch (e2) {
-                                console.warn('[Ventas] Error buscando fallback:', e2);
+                            } catch (e3) {
+                                console.warn('[Ventas] Error buscando fallback:', e3);
                             }
-                        } else {
-                            throw err;
+                        }
+
+                        // Último recurso: reintentar con folio único
+                        if (!inserted) {
+                            row.folio = folio + '-' + Date.now().toString(36).toUpperCase();
+                            try {
+                                inserted = await tallerService.insert(row, csrfToken);
+                            } catch (err2) {
+                                console.error('[Ventas] Falló reintento de insert:', err2);
+                                throw new Error('No se pudo crear la orden de Taller: ' + (err2.message || err2));
+                            }
                         }
                     }
                     if (!inserted) throw new Error('No se recibió confirmación del servidor al crear la orden de Taller.');
@@ -533,8 +556,16 @@ const VentasModule = (function() {
                     try {
                         inserted = await motoresService.insert(row, csrfToken);
                     } catch (err) {
-                        // Si es 409 Conflict, buscar la orden creada recientemente
-                        if (err.status === 409 || String(err.message).includes('duplicate')) {
+                        console.warn('[Ventas] Error insertando orden motores:', err);
+                        try {
+                            const { data: byFolio } = await window.supabase
+                                .from('ordenes_motores')
+                                .select('*')
+                                .eq('folio', folio)
+                                .maybeSingle();
+                            if (byFolio) { inserted = byFolio; }
+                        } catch (e2) { /* ignorar */ }
+                        if (!inserted) {
                             try {
                                 const { data: fallback } = await window.supabase
                                     .from('ordenes_motores')
@@ -545,15 +576,13 @@ const VentasModule = (function() {
                                     .order('creado_en', { ascending: false })
                                     .limit(1)
                                     .maybeSingle();
-                                if (fallback) {
-                                    inserted = fallback;
-                                    _showToast('📋 Orden existente recuperada (conflicto): ' + (fallback.folio || ''), 'info');
-                                }
-                            } catch (e2) {
-                                console.warn('[Ventas] Error buscando fallback motores:', e2);
-                            }
-                        } else {
-                            throw err;
+                                if (fallback) { inserted = fallback; }
+                            } catch (e3) { console.warn('[Ventas] Error fallback motores:', e3); }
+                        }
+                        if (!inserted) {
+                            row.folio = folio + '-' + Date.now().toString(36).toUpperCase();
+                            try { inserted = await motoresService.insert(row, csrfToken); }
+                            catch (err2) { throw new Error('No se pudo crear orden de Motores: ' + (err2.message || err2)); }
                         }
                     }
                     if (!inserted) throw new Error('No se recibió confirmación del servidor al crear la orden de Motores.');
@@ -616,8 +645,16 @@ const VentasModule = (function() {
                     try {
                         inserted = await proyectosService.insert(row, csrfToken);
                     } catch (err) {
-                        // Si es 409 Conflict, buscar el proyecto creado recientemente
-                        if (err.status === 409 || String(err.message).includes('duplicate')) {
+                        console.warn('[Ventas] Error insertando proyecto:', err);
+                        try {
+                            const { data: byFolio } = await window.supabase
+                                .from('proyectos_automatizacion')
+                                .select('*')
+                                .eq('folio', folio)
+                                .maybeSingle();
+                            if (byFolio) { inserted = byFolio; }
+                        } catch (e2) { /* ignorar */ }
+                        if (!inserted) {
                             try {
                                 const { data: fallback } = await window.supabase
                                     .from('proyectos_automatizacion')
@@ -627,15 +664,13 @@ const VentasModule = (function() {
                                     .order('creado_en', { ascending: false })
                                     .limit(1)
                                     .maybeSingle();
-                                if (fallback) {
-                                    inserted = fallback;
-                                    _showToast('📋 Proyecto existente recuperado (conflicto): ' + (fallback.folio || ''), 'info');
-                                }
-                            } catch (e2) {
-                                console.warn('[Ventas] Error buscando fallback proyectos:', e2);
-                            }
-                        } else {
-                            throw err;
+                                if (fallback) { inserted = fallback; }
+                            } catch (e3) { console.warn('[Ventas] Error fallback proyectos:', e3); }
+                        }
+                        if (!inserted) {
+                            row.folio = folio + '-' + Date.now().toString(36).toUpperCase();
+                            try { inserted = await proyectosService.insert(row, csrfToken); }
+                            catch (err2) { throw new Error('No se pudo crear proyecto: ' + (err2.message || err2)); }
                         }
                     }
                     if (!inserted) throw new Error('No se recibió confirmación del servidor al crear el registro de Automatización/Proyectos.');
