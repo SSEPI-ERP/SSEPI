@@ -1181,7 +1181,6 @@ const MotoresModule = (function() {
                     folio: folioTaller,
                     estado: 'En Espera',
                     fecha_ingreso: new Date().toISOString(),
-                    historial: [{ fecha: new Date().toISOString(), usuario: 'Motores', accion: 'Orden creada y enviada a compras' }],
                     fecha_inicio: fechaInicioOrden,
                     fechas_etapas: fechasEtapas
                 };
@@ -1193,10 +1192,16 @@ const MotoresModule = (function() {
                 ordenTallerId = inserted.id;
                 orderId = ordenTallerId;
                 isNewOrder = false;
+                if (window.SSEPIStateMachine) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', ordenTallerId, 'creacion', `Orden ${folioTaller} creada y enviada a compras`, csrfToken);
+                }
             } else {
                 data.estado = 'En Espera';
                 data.fecha_envio_compra = new Date().toISOString();
                 await ordenesService.update(orderId, data, csrfToken);
+                if (window.SSEPIStateMachine) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', orderId, 'cambio_estado', `Estado cambiado a En Espera (solicitud de compra generada)`, csrfToken);
+                }
             }
 
             const itemsCompra = [
@@ -1345,14 +1350,27 @@ const MotoresModule = (function() {
                 data.folio = document.getElementById('inpFolio').value;
                 data.estado = 'Nuevo';
                 data.fecha_ingreso = new Date().toISOString();
-                data.historial = [{ fecha: new Date().toISOString(), usuario: 'Motores', accion: 'Orden creada' }];
                 const inserted = await ordenesService.insert(data, csrfToken);
                 orderId = inserted.id;
                 isNewOrder = false;
                 if (!silencioso) alert('✅ Orden guardada correctamente');
+                if (window.SSEPIStateMachine) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', orderId, 'creacion', `Orden ${data.folio} creada en Motores`, csrfToken);
+                }
+                // Auto-avance: si guardó paso 1, pasar a Diagnóstico
+                if (currentStep === 1 && data.estado === 'Nuevo') {
+                    await ordenesService.update(orderId, { estado: 'Diagnóstico' }, csrfToken);
+                    data.estado = 'Diagnóstico';
+                    if (window.SSEPIStateMachine) {
+                        await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', orderId, 'cambio_estado', `Estado cambiado a Diagnóstico (auto-avance paso 1)`, csrfToken);
+                    }
+                }
             } else {
                 await ordenesService.update(orderId, data, csrfToken);
                 if (!silencioso) alert('✅ Orden actualizada correctamente');
+                if (window.SSEPIStateMachine && data.estado) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', orderId, 'actualizacion', `Orden ${data.folio} actualizada`, csrfToken);
+                }
             }
             _afterMotoresPersistOk();
             _addToFeed('💾', `Orden ${data.folio} guardada`);
