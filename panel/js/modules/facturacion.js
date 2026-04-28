@@ -366,11 +366,14 @@ const FacturacionModule = (function() {
 
     function _crearCardPendiente(orden) {
         const fecha = orden.fecha_reparacion ? new Date(orden.fecha_reparacion).toLocaleDateString() : '';
+        const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(orden);
+        const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
         return `
-            <div class="kanban-card" data-id="${orden.id}" data-tipo="${orden.tipoOrigen}">
+            <div class="kanban-card ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${orden.id}" data-tipo="${orden.tipoOrigen}">
                 <div class="card-header">
                     <span class="folio">${orden.folio || orden.id.slice(-6)}</span>
                     <span class="badge tipo-${orden.tipoOrigen}">${orden.tipoOrigen === 'taller' ? '🔧 Taller' : '⚙️ Motor'}</span>
+                    ${badgeCuarentena}
                 </div>
                 <div class="card-body">
                     <div class="cliente">${orden.cliente_nombre || 'Cliente'}</div>
@@ -409,16 +412,18 @@ const FacturacionModule = (function() {
             const folio = o.folio || o.id.slice(-6);
             const cliente = o.cliente_nombre || 'N/A';
             const tipo = o.tipoOrigen === 'taller' ? 'Taller' : 'Motor';
+            const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(o);
+            const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
             html += `
-                <tr onclick="facturacionModule._abrirDetalle('${o.id}', '${o.tipoOrigen}')">
+                <tr class="${enCuarentena ? 'row-cuarentena' : ''}" onclick="facturacionModule._abrirDetalle('${o.id}', '${o.tipoOrigen}')">
                     <td><span class="tipo-badge tipo-${o.tipoOrigen}">${tipo}</span></td>
-                    <td><strong>${folio}</strong></td>
+                    <td><strong>${folio}</strong> ${badgeCuarentena}</td>
                     <td>${cliente}</td>
                     <td>${fecha}</td>
                     <td><span class="status-badge status-pendiente">Pendiente</span></td>
                     <td>—</td>
                     <td>
-                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); facturacionModule._generarFactura('${o.id}', '${o.tipoOrigen}')">
+                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); facturacionModule._generarFactura('${o.id}', '${o.tipoOrigen}')" ${enCuarentena ? 'disabled' : ''}>
                             <i class="fas fa-file-invoice"></i> Facturar
                         </button>
                     </td>
@@ -731,6 +736,12 @@ const FacturacionModule = (function() {
     }
 
     async function _timbrarFactura(orden, folioFactura, uuid, calculo, contacto) {
+        // REGLA 2: validar cuarentena antes de timbrar
+        if (window.SSEPIStateMachine && window.SSEPIStateMachine.estaEnCuarentena(orden)) {
+            alert('La orden está en cuarentena contable. No se puede facturar hasta desbloquearla.');
+            return;
+        }
+
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
             // Buscar la venta/cotización vinculada a esta orden
@@ -775,10 +786,20 @@ const FacturacionModule = (function() {
 
             // Actualizar la orden de taller/motor a "Facturado"
             const updateData = { estado: 'Facturado', factura_id: facturaRef.id, folio_factura: folioFactura, fecha_factura: new Date().toISOString() };
+            const tipoOrden = orden.tipoOrigen === 'taller' ? 'taller' : 'motor';
             if (orden.tipoOrigen === 'taller') {
                 await tallerService.update(orden.id, updateData, csrfToken);
             } else {
                 await motoresService.update(orden.id, updateData, csrfToken);
+            }
+
+            // Registrar evento en historial unificado
+            if (window.SSEPIStateMachine) {
+                await window.SSEPIStateMachine.actualizarEstadoOrden(
+                    window.supabase, tipoOrden, orden.id,
+                    'facturacion', `Factura ${folioFactura} emitida. Orden pasó a Facturado.`,
+                    csrfToken, { folio_factura: folioFactura, uuid_cfdi: uuid }
+                );
             }
 
             // Actualizar la venta vinculada como facturada

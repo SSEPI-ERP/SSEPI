@@ -659,15 +659,15 @@ const MotoresModule = (function() {
 
     async function _eliminarOrden(id) {
         const orden = orders.find(o => o.id === id);
-        if (!orden) { alert('Orden no encontrada'); return; }
+        if (!orden) { _showErrorModal('Orden no encontrada', 'No se encontró la orden especificada.'); return; }
         // REGLA 1 + REGLA 2: validar cuarentena y etapa antes de eliminar
         if (window.SSEPIStateMachine) {
             if (window.SSEPIStateMachine.estaEnCuarentena(orden)) {
-                alert('No se puede eliminar una orden en cuarentena contable. Desactive la cuarentena primero.');
+                _showErrorModal('Orden en cuarentena', 'No se puede eliminar una orden en cuarentena contable. Desactive la cuarentena primero.');
                 return;
             }
             if (!window.SSEPIStateMachine.puedeEliminar(orden)) {
-                alert(`La orden ${orden.folio} ya avanzó más allá de Diagnóstico. Solo puede cancelarse, no eliminarse.`);
+                _showErrorModal('Punto de no retorno', `La orden ${orden.folio} ya avanzó más allá de Diagnóstico. Solo puede cancelarse, no eliminarse.`);
                 return;
             }
         }
@@ -682,7 +682,7 @@ const MotoresModule = (function() {
             _applyFilters();
         } catch (e) {
             console.error(e);
-            alert('Error al eliminar: ' + e.message);
+            _showErrorModal('Error al eliminar', e.message);
         }
     }
 
@@ -1741,6 +1741,37 @@ const MotoresModule = (function() {
             localStorage.setItem('theme', 'dark');
             btn.innerHTML = '<i class="fas fa-sun"></i>';
         }
+    }
+
+    // ==================== MODALES ====================
+    function _showErrorModal(title, message) {
+        const existing = document.getElementById('ssepiErrorModal');
+        if (existing) existing.remove();
+        const modal = document.createElement('div');
+        modal.id = 'ssepiErrorModal';
+        modal.className = 'ssepi-modal-overlay';
+        modal.innerHTML = `
+            <div class="ssepi-error-modal">
+                <div class="ssepi-modal-header">
+                    <div class="ssepi-modal-icon error">
+                        <i class="fas fa-circle-xmark"></i>
+                    </div>
+                    <h3 class="ssepi-modal-title">${title}</h3>
+                </div>
+                <div class="ssepi-modal-body">
+                    <p class="ssepi-error-message">${message}</p>
+                </div>
+                <div class="ssepi-modal-footer">
+                    <button class="ssepi-btn ssepi-btn-primary">Aceptar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        setTimeout(() => modal.classList.add('active'), 10);
+        modal.querySelector('.ssepi-btn-primary').addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        });
     }
 
     // ==================== LIMPIEZA ====================
