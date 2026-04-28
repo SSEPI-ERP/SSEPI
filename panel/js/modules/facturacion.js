@@ -531,7 +531,7 @@ const FacturacionModule = (function() {
     }
 
     // ==================== DETALLE DE ORDEN ====================
-    function _abrirDetalle(id, tipo) {
+    async function _abrirDetalle(id, tipo) {
         let orden = null;
         if (tipo === 'taller') orden = ordenesTaller.find(o => o.id === id);
         else if (tipo === 'motor') orden = ordenesMotores.find(o => o.id === id);
