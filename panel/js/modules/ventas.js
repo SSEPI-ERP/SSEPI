@@ -4927,9 +4927,6 @@ const VentasModule = (function() {
         _reenviarCotizacion,
         _abrirDetalle,
         _mostrarHistorial,
-        _verOrdenTaller,
-        _editarOrdenTaller,
-        _eliminarOrdenTaller,
         _eliminarVenta,
         _generarPDFDesdeHistorial,
         _insertarEventoHistorial,  // Expuesto para otros módulos que registren eventos
