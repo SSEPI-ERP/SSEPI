@@ -1095,6 +1095,17 @@ const VentasModule = (function() {
                 }
             }
         }
+        // Parsear notas JSON para compatibilidad con datos almacenados como JSON
+        cotizaciones.forEach(c => {
+            if (c.notas && typeof c.notas === 'string') {
+                try {
+                    const parsed = JSON.parse(c.notas);
+                    Object.assign(c, parsed);
+                } catch (e) { /* ignorar JSON inválido */ }
+            } else if (c.notas && typeof c.notas === 'object') {
+                Object.assign(c, c.notas);
+            }
+        });
     }
 
     async function _loadInventario() {
@@ -3067,21 +3078,21 @@ const VentasModule = (function() {
         const iva = total * 0.16 / 1.16;
         const cotizacionData = {
             folio,
-            tipo: 'cotizacion',
-            cliente,
-            email,
-            telefono,
-            rfc,
             fecha: new Date().toISOString().split('T')[0],
-            items,
             subtotal,
             iva,
             total,
-            estado: 'registro',
-            origen: compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo',
-            orden_origen_id: compraActual?.id,
-            vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas',
-            fecha_creacion: new Date().toISOString()
+            estado: 'Pendiente',
+            notas: JSON.stringify({
+                cliente,
+                email,
+                telefono,
+                rfc,
+                items,
+                origen: compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo',
+                orden_origen_id: compraActual?.id,
+                vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas'
+            })
         };
 
         const csrfToken = sessionStorage.getItem('csrfToken');
@@ -4184,23 +4195,9 @@ const VentasModule = (function() {
                     const folioCot = await generarFolioCotizacion();
                     const cotProv = {
                         folio: folioCot,
-                        tipo: 'cotizacion',
-                        cliente: clienteNombre,
-                        email: calculadoraClienteActual?.email || '',
-                        telefono: calculadoraClienteActual?.telefono || '',
-                        rfc: calculadoraClienteActual?.rfc || '',
                         fecha: new Date().toISOString().split('T')[0],
-                        items: [],
-                        subtotal: 0,
-                        iva: 0,
-                        total: 0,
-                        estado: 'registro',
-                        origen: origenCot,
-                        orden_origen_id: creado.ordenId || null,
-                        cerebro_registro: ventasWizardCerebro,
-                        vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas',
-                        fecha_creacion: new Date().toISOString(),
-                        departamento: dept
+                        estado: 'Pendiente',
+                        notas: JSON.stringify(ventasWizardCerebro)
                     };
                     const insertedCot = await cotizacionesService.insert(cotProv, csrfToken);
                     if (insertedCot?.id) {
@@ -4318,24 +4315,24 @@ const VentasModule = (function() {
         const folio = await generarFolioCotizacion();
         const cotizacionData = {
             folio,
-            tipo: 'cotizacion',
-            cliente,
-            email: calculadoraClienteActual?.email || '',
-            telefono: calculadoraClienteActual?.telefono || '',
-            rfc: calculadoraClienteActual?.rfc || '',
             fecha: new Date().toISOString().split('T')[0],
-            items,
             subtotal: items.reduce((s, i) => s + i.importe, 0),
             iva: finalTotal * 0.16 / 1.16,
             total: finalTotal,
-            estado: 'registro',
-            origen: (ventasWizardCerebro && ventasWizardCerebro.origen_cotizacion) || (compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo'),
-            orden_origen_id: compraActual?.vinculacion?.id || compraActual?.id || null,
-            cerebro_registro: _cerebroRegistroPayload(),
-            vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas',
-            fecha_creacion: new Date().toISOString(),
-            actividades: actividadesDiarias.length > 0 ? [...actividadesDiarias] : null,
-            departamento: ventasWizardCerebro?.departamento || null
+            estado: 'Pendiente',
+            notas: JSON.stringify({
+                cliente,
+                email: calculadoraClienteActual?.email || '',
+                telefono: calculadoraClienteActual?.telefono || '',
+                rfc: calculadoraClienteActual?.rfc || '',
+                items,
+                origen: (ventasWizardCerebro && ventasWizardCerebro.origen_cotizacion) || (compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo'),
+                orden_origen_id: compraActual?.vinculacion?.id || compraActual?.id || null,
+                cerebro_registro: _cerebroRegistroPayload(),
+                vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas',
+                actividades: actividadesDiarias.length > 0 ? [...actividadesDiarias] : null,
+                departamento: ventasWizardCerebro?.departamento || null
+            })
         };
 
         const csrfToken = sessionStorage.getItem('csrfToken');
@@ -4344,19 +4341,22 @@ const VentasModule = (function() {
             if (editingCotizacionId) {
                 const existing = cotizaciones.find(c => c.id === editingCotizacionId);
                 const updated = await cotizacionesService.update(editingCotizacionId, {
-                    cliente,
-                    email: calculadoraClienteActual?.email || '',
-                    telefono: calculadoraClienteActual?.telefono || '',
-                    rfc: calculadoraClienteActual?.rfc || '',
-                    items,
+                    fecha: existing?.fecha || new Date().toISOString().split('T')[0],
                     subtotal: items.reduce((s, i) => s + i.importe, 0),
                     iva: finalTotal * 0.16 / 1.16,
                     total: finalTotal,
-                    fecha: existing?.fecha || new Date().toISOString().split('T')[0],
-                    cerebro_registro: _cerebroRegistroPayload(),
-                    actividades: actividadesDiarias.length > 0 ? [...actividadesDiarias] : null,
-                    departamento: ventasWizardCerebro?.departamento || null,
-                    updated_at: new Date().toISOString()
+                    estado: 'Pendiente',
+                    notas: JSON.stringify({
+                        cliente,
+                        email: calculadoraClienteActual?.email || '',
+                        telefono: calculadoraClienteActual?.telefono || '',
+                        rfc: calculadoraClienteActual?.rfc || '',
+                        items,
+                        cerebro_registro: _cerebroRegistroPayload(),
+                        actividades: actividadesDiarias.length > 0 ? [...actividadesDiarias] : null,
+                        departamento: ventasWizardCerebro?.departamento || null,
+                        vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas'
+                    })
                 }, csrfToken);
                 editingCotizacionId = null;
                 _showToast('✅ Cotización actualizada. Folio: ' + (updated?.folio || existing?.folio || folio), 'success');
