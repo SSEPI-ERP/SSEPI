@@ -7,12 +7,17 @@
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
-    "build:win": "electron-builder --win"
+    "build:win": "electron-builder --win",
+    "local": "node server-local.js",
+    "dev": "node server-local.js"
   },
   "author": "SSEPI",
   "license": "UNLICENSED",
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.0"
+    "@supabase/supabase-js": "^2.45.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
   },
   "devDependencies": {
     "electron": "^28.0.0",
@@ -29,7 +34,8 @@
       "preload.js",
       "index.html",
       "renderer.js",
-      "styles.css"
+      "styles.css",
+      "server-local.js"
     ],
     "win": {
       "target": "nsis",

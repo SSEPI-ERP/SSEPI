@@ -3,8 +3,10 @@
 // Cargar SIEMPRE después de <script src="...@supabase/supabase-js@2"></script>
 // ============================================================================
 (function() {
-    var URL = 'https://knzmdwjmrhcoytmebdwa.supabase.co';
-    var ANON_KEY = '***ANON_REMOVED***';
+    var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+    var URL = isLocal ? 'http://127.0.0.1:54321' : 'https://knzmdwjmrhcoytmebdwa.supabase.co';
+    // Para local: reemplaza con la clave que te da `supabase status` (anon key)
+    var ANON_KEY = isLocal ? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvY2FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NzQwNTAwMDAsImV4cCI6MTk4OTYyNjAwMH0.LOCAL_PLACEHOLDER_REPLACE_WITH_SUPABASE_STATUS' : '***ANON_REMOVED***';
 
     if (window.__SUPABASE_INITIALIZED__) {
         console.log('[supabase-config] Ya inicializado, saltando');
