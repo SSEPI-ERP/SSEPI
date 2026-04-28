@@ -118,4 +118,5 @@ ON CONFLICT (modulo) DO UPDATE SET
 
 -- 3. RLS
 ALTER TABLE politicas_modulos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS politicas_modulos_all ON politicas_modulos;
 CREATE POLICY politicas_modulos_all ON politicas_modulos FOR ALL TO authenticated USING (true) WITH CHECK (true);
