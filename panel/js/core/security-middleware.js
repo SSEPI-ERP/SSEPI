@@ -8,6 +8,15 @@
 // CSP se aplica vía <meta>; en producción conviene enviarla también por cabecera HTTP desde el servidor.
 // Cabeceras HSTS, X-Frame-Options, X-Content-Type-Options: deben configurarse en el servidor (ver scripts/serve-with-headers.js o proxy).
 export function applyCSP() {
+  // Bypass completo en desarrollo local
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    console.log('[CSP] Modo local: CSP relajada');
+    const meta = document.createElement('meta');
+    meta.httpEquiv = 'Content-Security-Policy';
+    meta.content = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src * ws: wss:; style-src * 'unsafe-inline'; img-src * data: blob:; font-src * data:;";
+    document.head.appendChild(meta);
+    return;
+  }
   const meta = document.createElement('meta');
   meta.httpEquiv = 'Content-Security-Policy';
   const supabaseUrl = (window.SSEPI_SUPABASE_URL || '').trim();
