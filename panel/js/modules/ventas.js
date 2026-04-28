@@ -4178,6 +4178,40 @@ const VentasModule = (function() {
                 nombre_producto: nombreProducto
             };
 
+            // Crear cotización provisional (visible en lista de Ventas)
+            if (dept !== 'Administración') {
+                try {
+                    const folioCot = await generarFolioCotizacion();
+                    const cotProv = {
+                        folio: folioCot,
+                        tipo: 'cotizacion',
+                        cliente: clienteNombre,
+                        email: calculadoraClienteActual?.email || '',
+                        telefono: calculadoraClienteActual?.telefono || '',
+                        rfc: calculadoraClienteActual?.rfc || '',
+                        fecha: new Date().toISOString().split('T')[0],
+                        items: [],
+                        subtotal: 0,
+                        iva: 0,
+                        total: 0,
+                        estado: 'registro',
+                        origen: origenCot,
+                        orden_origen_id: creado.ordenId || null,
+                        cerebro_registro: ventasWizardCerebro,
+                        vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas',
+                        fecha_creacion: new Date().toISOString(),
+                        departamento: dept
+                    };
+                    const insertedCot = await cotizacionesService.insert(cotProv, csrfToken);
+                    if (insertedCot?.id) {
+                        editingCotizacionId = insertedCot.id;
+                        _showToast('Cotización provisional creada: ' + folioCot, 'success');
+                    }
+                } catch (e) {
+                    console.warn('[Ventas] Error creando cotización provisional (no crítico):', e);
+                }
+            }
+
             // Guardar cliente actual (usar datos de contactos, NO de clientes_tabulador)
             if (contacto) {
                 calculadoraClienteActual = {
