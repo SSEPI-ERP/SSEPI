@@ -3,8 +3,12 @@
 // Cargar SIEMPRE después de <script src="...@supabase/supabase-js@2"></script>
 // ============================================================================
 (function() {
-    var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
-    var URL = isLocal ? 'http://127.0.0.1:54321' : 'https://knzmdwjmrhcoytmebdwa.supabase.co';
+    // Detect SSEPI NEXT local proxy mode (server-local.js on port 3333)
+    var isSSEPINEXT = window.location.port === '3333' || window.__SSEPI_NEXT_MODE__ === true;
+    var isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+    var isLocal = isLocalDev && !isSSEPINEXT;
+
+    var URL = isSSEPINEXT ? (window.location.origin + '/proxy') : (isLocal ? 'http://127.0.0.1:54321' : 'https://knzmdwjmrhcoytmebdwa.supabase.co');
     // IMPORTANTE: Ejecuta `supabase status` y reemplaza ANON_KEY_LOCAL con tu clave real
     var ANON_KEY_LOCAL = window.__SSEPI_LOCAL_ANON_KEY__ || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvY2FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NzQwNTAwMDAsImV4cCI6MTk4OTYyNjAwMH0.REPLACE_WITH_SUPABASE_STATUS_ANON_KEY';
     var ANON_KEY = isLocal ? ANON_KEY_LOCAL : '***ANON_REMOVED***';
