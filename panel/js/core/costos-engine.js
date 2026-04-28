@@ -204,9 +204,21 @@ export const CostosEngine = (function() {
             if (error || !data) return CONFIG;
 
             const params = {};
+            const keyMap = {
+                'utilidad_base': 'utilidad',
+                'utilidad_premium': 'utilidad',
+                'credito_pct': 'credito',
+                'gasolina_precio_litro': 'gasolina',
+                'gastos_fijos_hr': 'gastosFijosHora',
+                'camioneta_hr': 'camionetaHora',
+                'iva': 'iva'
+            };
             data.forEach(p => {
                 const prefix = p.departamento || 'general';
                 params[`${prefix}_${p.clave}`] = Number(p.valor);
+                // Alias sin prefijo para compatibilidad con ventas.js
+                const alias = keyMap[p.clave];
+                if (alias) params[alias] = Number(p.valor);
             });
             applyConfig(params);
             return CONFIG;

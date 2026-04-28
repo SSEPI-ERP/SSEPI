@@ -401,7 +401,12 @@ const VentasModule = (function() {
         try {
             if (dept === 'Taller Electrónica') {
                 const folioFn = window.folioFormats && window.folioFormats.getNextFolioLaboratorio;
-                const folio = folioFn ? await folioFn() : 'SP-E' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '001';
+                let folio;
+                try {
+                    folio = folioFn ? await folioFn() : 'SP-E' + Date.now().toString(36).toUpperCase();
+                } catch (e) {
+                    folio = 'SP-E' + Date.now().toString(36).toUpperCase();
+                }
                 const nombreProducto = (document.getElementById('wizardNombreProducto') || {}).value || '';
                 const marca = (document.getElementById('wizardMarca') || {}).value || '';
                 const modelo = (document.getElementById('wizardModelo') || {}).value || '';
@@ -485,7 +490,12 @@ const VentasModule = (function() {
 
             if (dept === 'Taller Motores') {
                 const folioFn = window.folioFormats && window.folioFormats.getNextFolioMotores;
-                const folio = folioFn ? await folioFn() : 'SP-M' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '001';
+                let folio;
+                try {
+                    folio = folioFn ? await folioFn() : 'SP-M' + Date.now().toString(36).toUpperCase();
+                } catch (e) {
+                    folio = 'SP-M' + Date.now().toString(36).toUpperCase();
+                }
                 const row = {
                     folio,
                     cliente_nombre: clienteNombre,
@@ -562,9 +572,14 @@ const VentasModule = (function() {
                 const profile = await authService.getCurrentProfile();
                 const userName = profile?.nombre || 'Ventas';
                 const folioFn = window.folioFormats && window.folioFormats.getNextFolioAutomatizacion;
-                const folio = folioFn
-                    ? await folioFn()
-                    : 'SP-A' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '/1';
+                let folio;
+                try {
+                    folio = folioFn
+                        ? await folioFn()
+                        : 'SP-A' + Date.now().toString(36).toUpperCase();
+                } catch (e) {
+                    folio = 'SP-A' + Date.now().toString(36).toUpperCase();
+                }
                 const nombre = dept === 'Proyectos' ? 'Proyecto (Ventas)' : 'Automatización (Ventas)';
                 const row = {
                     folio,
@@ -1153,11 +1168,11 @@ const VentasModule = (function() {
         const subtotal = gasolina + manoObra + gastosFijos + costoCamioneta + refacciones;
 
         // Utilidad (40% por defecto)
-        const utilidad = subtotal * (CostosEngine.CONFIG.utilidad / 100);
+        const utilidad = subtotal * ((CostosEngine.CONFIG?.utilidad || 40) / 100);
         const conUtilidad = subtotal + utilidad;
 
         // Crédito (3% por defecto)
-        const credito = conUtilidad * (CostosEngine.CONFIG.credito / 100);
+        const credito = conUtilidad * ((CostosEngine.CONFIG?.credito || 3) / 100);
         const antesIva = conUtilidad + credito;
 
         // IVA (16%)
@@ -2861,8 +2876,8 @@ const VentasModule = (function() {
         const inpTechHours = document.getElementById('inpTechHours');
         const inpUtilidadPct = document.getElementById('inpUtilidadPct');
         const inpCreditoPct = document.getElementById('inpCreditoPct');
-        const utilidadPct = parseFloat(inpUtilidadPct?.value) || CostosEngine.CONFIG.utilidad;
-        const creditoPct = parseFloat(inpCreditoPct?.value) || CostosEngine.CONFIG.credito;
+        const utilidadPct = parseFloat(inpUtilidadPct?.value) || CostosEngine.CONFIG?.utilidad || 40;
+        const creditoPct = parseFloat(inpCreditoPct?.value) || CostosEngine.CONFIG?.credito || 3;
 
         let gastosGenerales = lastGastosGenerales;
         if (inpTechHours) {
@@ -3751,8 +3766,8 @@ const VentasModule = (function() {
         const creditoVal = document.getElementById('resCredit')?.innerText || '$0.00';
         const ivaVal = document.getElementById('resIVA')?.innerText || '$0.00';
         const totalVal = document.getElementById('resTotal')?.innerText || '$0.00';
-        const utilidadPct = CostosEngine.CONFIG.utilidad;
-        const creditoPct = CostosEngine.CONFIG.credito;
+        const utilidadPct = CostosEngine.CONFIG?.utilidad || 40;
+        const creditoPct = CostosEngine.CONFIG?.credito || 3;
 
         return `
             <div class="calculadora-section">
@@ -3772,7 +3787,7 @@ const VentasModule = (function() {
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>GASTOS GENERALES</strong></span><span id="resGeneralExpenses">${gastos}</span></div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px; color:var(--c-ventas);"><span><strong>UTILIDAD <span id="lblUtilidadPct">${utilidadPct}</span>%</strong></span><span id="resUtility">${utilidadVal}</span></div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>CRÉDITO <span id="lblCreditoPct">${creditoPct}</span>%</strong></span><span id="resCredit">${creditoVal}</span></div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>IVA ${CostosEngine.CONFIG.iva}%</strong></span><span id="resIVA">${ivaVal}</span></div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>IVA ${CostosEngine.CONFIG?.iva || 16}%</strong></span><span id="resIVA">${ivaVal}</span></div>
                 </div>
                 <div class="total-box" style="margin-top:20px;">
                     <div class="label">TOTAL CON IVA</div>
