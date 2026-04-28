@@ -177,15 +177,36 @@ export const CostosEngine = (function() {
         departamentoActual = departamento;
         try {
             if (!window.supabase) return CONFIG;
-            const { data, error } = await window.supabase
-                .from('parametros_costos')
-                .select('clave, valor, departamento')
-                .eq('activo', true);
+            let data, error;
+            try {
+                // Intentar con columnas nuevas (departamento, activo)
+                const res = await window.supabase
+                    .from('parametros_costos')
+                    .select('clave, valor, departamento')
+                    .eq('activo', true);
+                data = res.data;
+                error = res.error;
+            } catch (e) {
+                error = e;
+            }
+            // Fallback si falla (columnas no existen aún)
+            if (error || !data) {
+                try {
+                    const res2 = await window.supabase
+                        .from('parametros_costos')
+                        .select('clave, valor');
+                    data = res2.data;
+                    error = res2.error;
+                } catch (e2) {
+                    return CONFIG;
+                }
+            }
             if (error || !data) return CONFIG;
 
             const params = {};
             data.forEach(p => {
-                params[`${p.departamento}_${p.clave}`] = Number(p.valor);
+                const prefix = p.departamento || 'general';
+                params[`${prefix}_${p.clave}`] = Number(p.valor);
             });
             applyConfig(params);
             return CONFIG;
