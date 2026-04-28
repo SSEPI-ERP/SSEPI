@@ -509,11 +509,24 @@ const MotoresModule = (function() {
             badgeHtml = `<span class="badge-success" title="Material recibido">✅ Material listo</span>`;
         }
 
+        const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(orden);
+        const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(orden) ?? true;
+        const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
+
         return `
-            <div class="kanban-card" data-id="${orden.id}">
+            <div class="kanban-card ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${orden.id}">
                 <div class="card-header">
                     <span class="folio">${orden.folio || orden.id.slice(-6)}</span>
                     ${badgeHtml}
+                    ${badgeCuarentena}
+                    <div class="card-actions">
+                        <button class="btn-icon btn-edit" onclick="event.stopPropagation(); motoresModule._abrirOrden('${orden.id}')" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); motoresModule._eliminarOrden('${orden.id}')" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </button>` : ''}
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="cliente">${orden.cliente_nombre || 'Cliente'}</div>
@@ -531,11 +544,13 @@ const MotoresModule = (function() {
     function _renderLista(ordenes) {
         const container = document.getElementById('listaContainer');
         if (!container) return;
-        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Cliente</th><th>Motor</th><th>HP</th><th>Técnico</th><th>Estado</th><th>Ingreso</th><th>Reparación</th><th>Recibido por</th></tr></thead><tbody>';
+        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Cliente</th><th>Motor</th><th>HP</th><th>Técnico</th><th>Estado</th><th>Ingreso</th><th>Reparación</th><th>Recibido por</th><th>Acciones</th></tr></thead><tbody>';
         ordenes.forEach(o => {
             const compraInfo = comprasVinculadas[o.id];
             const recibidoPor = o.recibido_por || '—';
-            html += `<tr onclick="motoresModule._abrirOrden('${o.id}')">
+            const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(o);
+            const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(o) ?? true;
+            html += `<tr data-id="${o.id}" class="${enCuarentena ? 'row-cuarentena' : ''}" onclick="motoresModule._abrirOrden('${o.id}')">
                 <td>${o.folio || o.id.slice(-6)} ${compraInfo ? '🛒' : ''}</td>
                 <td>${o.cliente_nombre || ''}</td>
                 <td>${o.motor || ''}</td>
@@ -545,6 +560,10 @@ const MotoresModule = (function() {
                 <td>${o.fecha_ingreso ? new Date(o.fecha_ingreso).toLocaleDateString() : ''}</td>
                 <td>${o.fecha_reparacion ? new Date(o.fecha_reparacion).toLocaleDateString() : ''}</td>
                 <td>${recibidoPor}</td>
+                <td class="acciones">
+                    <button class="btn-icon btn-edit" onclick="event.stopPropagation(); motoresModule._abrirOrden('${o.id}')" title="Editar"><i class="fas fa-edit"></i></button>
+                    ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); motoresModule._eliminarOrden('${o.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
+                </td>
             </tr>`;
         });
         html += '</tbody></table>';
@@ -636,6 +655,35 @@ const MotoresModule = (function() {
         document.getElementById('wsModal').classList.add('active');
         document.getElementById('fechaInicioDisplay').innerText = new Date().toLocaleString();
         _renderPrioritySupplierBarMotores();
+    }
+
+    async function _eliminarOrden(id) {
+        const orden = orders.find(o => o.id === id);
+        if (!orden) { alert('Orden no encontrada'); return; }
+        // REGLA 1 + REGLA 2: validar cuarentena y etapa antes de eliminar
+        if (window.SSEPIStateMachine) {
+            if (window.SSEPIStateMachine.estaEnCuarentena(orden)) {
+                alert('No se puede eliminar una orden en cuarentena contable. Desactive la cuarentena primero.');
+                return;
+            }
+            if (!window.SSEPIStateMachine.puedeEliminar(orden)) {
+                alert(`La orden ${orden.folio} ya avanzó más allá de Diagnóstico. Solo puede cancelarse, no eliminarse.`);
+                return;
+            }
+        }
+        const folio = orden.folio || id.slice(-6);
+        const cliente = orden.cliente_nombre || 'N/A';
+        if (!confirm(`¿Eliminar orden ${folio} de ${cliente}?`)) return;
+        try {
+            const { error } = await window.supabase.from('ordenes_motores').delete().eq('id', id);
+            if (error) throw error;
+            _addToFeed('🗑️', 'Orden eliminada: ' + folio);
+            await _loadOrders();
+            _applyFilters();
+        } catch (e) {
+            console.error(e);
+            alert('Error al eliminar: ' + e.message);
+        }
     }
 
     async function _buscarCotizacionesPendientes() {
@@ -1706,6 +1754,8 @@ const MotoresModule = (function() {
     return {
         init,
         _abrirOrden,
+        _abrirNuevaOrden,
+        _eliminarOrden,
         _actualizarEnlace,
         _eliminarEnlace,
         _actualizarInventarioSeleccion,

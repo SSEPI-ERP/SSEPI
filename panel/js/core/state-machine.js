@@ -200,6 +200,36 @@
         return '<span class="badge-cuarentena" title="Orden en cuarentena contable. Acciones congeladas.">🚫 CUARENTENA</span>';
     }
 
+    // =====================================================
+    // CONEXIÓN SSEPI-COI: helpers para UI
+    // =====================================================
+    async function obtenerEventoCOI(supabase, tablaOrigen, registroId) {
+        if (!supabase || !tablaOrigen || !registroId) return null;
+        try {
+            const { data, error } = await supabase
+                .from('eventos_contables_coi')
+                .select('*')
+                .eq('tabla_origen', tablaOrigen)
+                .eq('registro_id', registroId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (error) { console.warn('[state-machine] Error consultando COI:', error); return null; }
+            return data;
+        } catch (e) {
+            console.warn('[state-machine] Excepción consultando COI:', e);
+            return null;
+        }
+    }
+
+    function badgeCOIHTML(evento) {
+        if (!evento) return '';
+        const estatus = evento.estatus_coi || 'pendiente';
+        const cls = estatus === 'procesado' ? 'coi-badge-ok' : estatus === 'error' ? 'coi-badge-err' : 'coi-badge-pend';
+        const icon = estatus === 'procesado' ? '✅' : estatus === 'error' ? '⚠️' : '⏳';
+        return `<span class="coi-badge ${cls}" title="Evento contable COI: ${estatus} | ${evento.concepto || ''}">${icon} COI</span>`;
+    }
+
     // Exponer globalmente
     window.SSEPIStateMachine = {
         PIPELINE_PASOS,
@@ -211,6 +241,8 @@
         obtenerHistorialUnificado,
         puedeEliminar,
         estaEnCuarentena,
-        badgeCuarentenaHTML
+        badgeCuarentenaHTML,
+        obtenerEventoCOI,
+        badgeCOIHTML
     };
 })();

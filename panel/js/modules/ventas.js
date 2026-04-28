@@ -3375,6 +3375,13 @@ const VentasModule = (function() {
         const item = [...ventas, ...cotizaciones].find(i => i.id === id);
         if (!item) { _showToast('Registro no encontrado', 'error'); return; }
         const folio = item.folio || id.slice(-6);
+
+        // REGLA 2: validar cuarentena antes de cualquier acción de cancelación
+        if (window.SSEPIStateMachine && window.SSEPIStateMachine.estaEnCuarentena(item)) {
+            _showToast('Registro en cuarentena contable. No se puede cancelar.', 'error');
+            return;
+        }
+
         if (!confirm(`¿Cancelar ${tipo || 'registro'} ${folio}?`)) return;
         try {
             const csrfToken = sessionStorage.getItem('csrfToken');
