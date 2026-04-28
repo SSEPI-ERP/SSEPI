@@ -624,8 +624,9 @@ const VentasModule = (function() {
                         .from('proyectos_automatizacion')
                         .select('*')
                         .eq('cliente', clienteNombre)
-                        .eq('fecha', fechaSolo)
-                        .order('creado_en', { ascending: false })
+                        .gte('created_at', fechaSolo + 'T00:00:00')
+                        .lte('created_at', fechaSolo + 'T23:59:59')
+                        .order('created_at', { ascending: false })
                         .limit(1)
                         .maybeSingle();
                     existing = data;
@@ -656,8 +657,9 @@ const VentasModule = (function() {
                                     .from('proyectos_automatizacion')
                                     .select('*')
                                     .eq('cliente', clienteNombre)
-                                    .eq('fecha', fechaSolo)
-                                    .order('creado_en', { ascending: false })
+                                    .gte('created_at', fechaSolo + 'T00:00:00')
+                                    .lte('created_at', fechaSolo + 'T23:59:59')
+                                    .order('created_at', { ascending: false })
                                     .limit(1)
                                     .maybeSingle();
                                 if (fallback) { inserted = fallback; }
@@ -722,7 +724,6 @@ const VentasModule = (function() {
             const compraRow = {
                 folio: compraFolio,
                 proveedor_id: null,
-                fecha: new Date().toISOString().split('T')[0],
                 subtotal: 0,
                 iva: 0,
                 total: 0,
@@ -1499,7 +1500,7 @@ const VentasModule = (function() {
     async function _insertarEventoHistorial(tipo, id, evento, descripcion, csrfToken) {
         if (!window.supabase) return null;
         try {
-            const data = await SSEPIStateMachine.actualizarEstadoOrden(
+            const data = await window.SSEPIStateMachine.actualizarEstadoOrden(
                 window.supabase, tipo, id, evento, descripcion, csrfToken
             );
             if (data) {
@@ -1817,7 +1818,7 @@ const VentasModule = (function() {
                     .from('ordenes_taller')
                     .select('folio')
                     .eq('id', cotizacion.orden_origen_id)
-                    .single();
+                    .maybeSingle();
                 if (data?.folio) return { tipo: 'taller', folio: data.folio };
             }
 
@@ -1827,7 +1828,7 @@ const VentasModule = (function() {
                     .from('ordenes_motores')
                     .select('folio')
                     .eq('id', cotizacion.orden_origen_id)
-                    .single();
+                    .maybeSingle();
                 if (data?.folio) return { tipo: 'motor', folio: data.folio };
             }
 
@@ -1837,7 +1838,7 @@ const VentasModule = (function() {
                     .from('proyectos_automatizacion')
                     .select('folio')
                     .eq('id', cotizacion.orden_origen_id)
-                    .single();
+                    .maybeSingle();
                 if (data?.folio) return { tipo: 'proyecto', folio: data.folio };
             }
 
@@ -1847,7 +1848,7 @@ const VentasModule = (function() {
                     .from(tabla)
                     .select('folio')
                     .eq('id', cotizacion.orden_origen_id)
-                    .single();
+                    .maybeSingle();
                 if (data?.folio) {
                     const tipoMap = { ordenes_taller: 'taller', ordenes_motores: 'motor', proyectos_automatizacion: 'proyecto' };
                     return { tipo: tipoMap[tabla], folio: data.folio };
