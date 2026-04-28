@@ -1,16 +1,25 @@
-// ============================================================================
-// supabase-config.js - Configuración centralizada para Supabase
-// (Solo se declara una vez, se usa en todo el sistema)
-// ============================================================================
+// Configuración centralizada — ver panel/js/core/supabase-config.js
+// Este archivo es para uso desde la raíz del sitio (landing page, etc.)
+// Cargar SIEMPRE después de <script src="...@supabase/supabase-js@2"></script>
+(function() {
+    var URL = 'https://knzmdwjmrhcoytmebdwa.supabase.co';
+    var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtuem1kd2ptcmhjb3l0bWViZHdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwNDk5NzAsImV4cCI6MjA4NzYyNTk3MH0.y9AEScz9PWu3Tqnd-7R7fxf0smvVCosZF0edLg2j31A';
 
-const SUPABASE_URL = 'https://knzmdwjmrhcoytmebdwa.supabase.co';
-// Pega aquí tu Anon Key desde el dashboard de Supabase (Project Settings > API):
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtuem1kd2ptcmhjb3l0bWViZHdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwNDk5NzAsImV4cCI6MjA4NzYyNTk3MH0.y9AEScz9PWu3Tqnd-7R7fxf0smvVCosZF0edLg2j31A';
+    if (window.__SUPABASE_INITIALIZED__) {
+        console.log('[supabase-config] Ya inicializado, saltando');
+        return;
+    }
 
-if (!window.__SUPABASE_INITIALIZED__) {
-    // Exponer URL para que otros módulos (p. ej. CSP) puedan ajustarse sin hardcode.
-    window.SSEPI_SUPABASE_URL = SUPABASE_URL;
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    if (typeof supabase === 'undefined') {
+        console.error('[supabase-config] SDK de Supabase no cargado');
+        return;
+    }
+
+    window.SUPABASE_URL = URL;
+    window.SUPABASE_ANON_KEY = ANON_KEY;
+    window.SSEPI_SUPABASE_URL = URL;
+
+    window.supabase = supabase.createClient(URL, ANON_KEY, {
         auth: {
             autoRefreshToken: true,
             persistSession: true,
@@ -18,14 +27,10 @@ if (!window.__SUPABASE_INITIALIZED__) {
             flowType: 'pkce'
         },
         global: {
-            headers: {
-                'X-Client-Info': 'ssepi-erp'
-            }
+            headers: { 'X-Client-Info': 'ssepi-erp' }
         }
     });
-    window.supabase = client;
+
     window.__SUPABASE_INITIALIZED__ = true;
-    console.log('Supabase Core: Cliente inicializado');
-} else {
-    console.log('Supabase ya estaba inicializado');
-}
+    console.log('[supabase-config] Cliente Supabase inicializado');
+})();

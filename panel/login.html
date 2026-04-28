@@ -7,6 +7,7 @@
     <title>SSEPI · Iniciar sesión</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/panel/js/core/supabase-config.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -136,20 +137,7 @@
         </div>
     </div>
 
-    <script type="module">
-        // Inicializar Supabase
-        const SUPABASE_URL = 'https://knzmdwjmrhcoytmebdwa.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtuem1kd2ptcmhjb3l0bWViZHdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTc2NzMsImV4cCI6MjA2MTA5MzY3M30.J2z5oK7iSvKzW6vqNqPUUz8YFZSv9qQqK3qXqYqKqYg';
-
-        window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-            auth: {
-                autoRefreshToken: true,
-                persistSession: true,
-                detectSessionInUrl: true,
-                flowType: 'pkce'
-            }
-        });
-
+    <script>
         const form = document.getElementById('loginForm');
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
@@ -158,9 +146,13 @@
 
         // Verificar sesión existente
         (async () => {
-            const { data: { session } } = await window.supabase.auth.getSession();
-            if (session) {
-                window.location.href = '/panel/panel.html';
+            try {
+                const { data: { session } } = await window.supabase.auth.getSession();
+                if (session) {
+                    window.location.href = '/panel/panel.html';
+                }
+            } catch (e) {
+                console.error('[login] Error al verificar sesión:', e);
             }
         })();
 
