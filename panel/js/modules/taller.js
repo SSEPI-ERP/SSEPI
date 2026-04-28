@@ -1070,10 +1070,10 @@ const TallerModule = (function() {
             clientSel.value = cotizacion.cliente;
         }
 
-        // Equipo/Descripción - usar producto_servicio del cerebro_registro (wizard) o descripcion/nombre_producto como fallback
+        // Equipo/Descripción - usar nombre_producto del cerebro_registro (wizard) o descripcion/producto_servicio como fallback
         const equipEl = document.getElementById('inpEquip');
         if (equipEl) {
-            const nombreProducto = cotizacion.cerebro_registro?.producto_servicio || cotizacion.descripcion || cotizacion.nombre_producto;
+            const nombreProducto = cotizacion.cerebro_registro?.nombre_producto || cotizacion.cerebro_registro?.producto_servicio || cotizacion.descripcion || cotizacion.nombre_producto;
             if (nombreProducto) {
                 equipEl.value = nombreProducto;
             }
@@ -1405,14 +1405,14 @@ const TallerModule = (function() {
         const saveBtn = document.getElementById('saveOrderBtn');
         const completeBtn = document.getElementById('completeOrderBtn');
         const sinReparacionBtn = document.getElementById('sinReparacionBtn');
-        // Botones PDF - solo visibles en paso 5 (Entregado / Facturado)
-        const ejemploPDFBtn = document.getElementById('btnEjemploPDFTaller');
+        // Botones PDF - solo visibles en paso 5 Y estado Entregado/Facturado
         const vistaPreviaBtn = document.getElementById('btnVistaPreviaOrdenTaller');
         const imprimirBtn = document.getElementById('btnImprimirOrdenTaller');
         const isPaso5 = currentStep === 5;
-        if (ejemploPDFBtn) ejemploPDFBtn.classList.toggle('hidden', !isPaso5);
-        if (vistaPreviaBtn) vistaPreviaBtn.classList.toggle('hidden', !isPaso5);
-        if (imprimirBtn) imprimirBtn.classList.toggle('hidden', !isPaso5);
+        const isEntregadoFacturado = currentOrder && (currentOrder.estado === 'Entregado' || currentOrder.estado === 'Facturado');
+        const mostrarPdf = isPaso5 && isEntregadoFacturado;
+        if (vistaPreviaBtn) vistaPreviaBtn.classList.toggle('hidden', !mostrarPdf);
+        if (imprimirBtn) imprimirBtn.classList.toggle('hidden', !mostrarPdf);
 
         if (currentStep === 1) {
             prevBtn.style.display = 'none';
@@ -1969,6 +1969,10 @@ const TallerModule = (function() {
                 } catch (e) {
                     console.warn('[Taller] Error notificando a ventas:', e);
                 }
+            }
+            if (!silencioso) {
+                await _loadOrders();
+                _applyFilters();
             }
         } catch (error) {
             console.error(error);
