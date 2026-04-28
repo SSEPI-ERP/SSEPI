@@ -136,11 +136,11 @@ app.post('/api/coi/webhook', async (req, res) => {
 app.use('/proxy', createProxyRouter(db, supabaseConfig));
 
 // =====================================================
-// Auth passthrough
+// Auth passthrough (también bajo /proxy/auth para el Supabase client)
 // =====================================================
-app.all('/auth/v1/*', async (req, res) => {
+async function authPassthrough(req, res) {
   try {
-    const target = `${SUPABASE_URL}${req.path}`;
+    const target = `${SUPABASE_URL}${req.path.replace('/proxy', '')}`;
     const response = await fetch(target, {
       method: req.method,
       headers: {
@@ -156,7 +156,10 @@ app.all('/auth/v1/*', async (req, res) => {
   } catch (err) {
     res.status(503).json({ message: 'Auth service unavailable', error: err.message });
   }
-});
+}
+
+app.all('/auth/v1/*', authPassthrough);
+app.all('/proxy/auth/v1/*', authPassthrough);
 
 // =====================================================
 // SERVIR ERP WEB
