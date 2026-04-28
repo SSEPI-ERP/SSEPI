@@ -140,7 +140,7 @@ app.use('/proxy', createProxyRouter(db, supabaseConfig));
 // =====================================================
 async function authPassthrough(req, res) {
   try {
-    const target = `${SUPABASE_URL}${req.path.replace('/proxy', '')}`;
+    const target = `${SUPABASE_URL}${req.originalUrl.replace('/proxy', '')}`;
     const response = await fetch(target, {
       method: req.method,
       headers: {
