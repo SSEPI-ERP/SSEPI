@@ -422,16 +422,23 @@ const VentasModule = (function() {
 
                 // Verificar si ya existe una orden similar (comparar solo fecha YYYY-MM-DD)
                 const fechaSolo = fechaIso.split('T')[0];
-                const { data: existing } = await window.supabase
-                    .from('ordenes_taller')
-                    .select('*')
-                    .eq('cliente_nombre', clienteNombre)
-                    .eq('falla_reportada', falla)
-                    .filter('fecha_ingreso', 'gte', fechaSolo + 'T00:00:00')
-                    .filter('fecha_ingreso', 'lte', fechaSolo + 'T23:59:59')
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
+                let existing = null;
+                try {
+                    const { data } = await window.supabase
+                        .from('ordenes_taller')
+                        .select('*')
+                        .eq('cliente_nombre', clienteNombre)
+                        .eq('falla_reportada', falla)
+                        .gte('fecha_ingreso', fechaSolo)
+                        .lte('fecha_ingreso', fechaSolo)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    existing = data;
+                } catch (e) {
+                    // Si falla (columnas no existen), continuar sin verificación
+                    console.warn('[Ventas] No se pudo verificar duplicados:', e);
+                }
 
                 let inserted;
                 if (existing) {
@@ -443,18 +450,22 @@ const VentasModule = (function() {
                     } catch (err) {
                         // Si es 409 Conflict, buscar la orden creada recientemente
                         if (err.status === 409 || String(err.message).includes('duplicate')) {
-                            const { data: fallback } = await window.supabase
-                                .from('ordenes_taller')
-                                .select('*')
-                                .eq('cliente_nombre', clienteNombre)
-                                .filter('fecha_ingreso', 'gte', fechaSolo + 'T00:00:00')
-                                .filter('fecha_ingreso', 'lte', fechaSolo + 'T23:59:59')
-                                .order('created_at', { ascending: false })
-                                .limit(1)
-                                .maybeSingle();
-                            if (fallback) {
-                                inserted = fallback;
-                                _showToast('📋 Orden existente recuperada (conflicto): ' + (fallback.folio || ''), 'info');
+                            try {
+                                const { data: fallback } = await window.supabase
+                                    .from('ordenes_taller')
+                                    .select('*')
+                                    .eq('cliente_nombre', clienteNombre)
+                                    .gte('fecha_ingreso', fechaSolo)
+                                    .lte('fecha_ingreso', fechaSolo)
+                                    .order('created_at', { ascending: false })
+                                    .limit(1)
+                                    .maybeSingle();
+                                if (fallback) {
+                                    inserted = fallback;
+                                    _showToast('📋 Orden existente recuperada (conflicto): ' + (fallback.folio || ''), 'info');
+                                }
+                            } catch (e2) {
+                                console.warn('[Ventas] Error buscando fallback:', e2);
                             }
                         } else {
                             throw err;
@@ -487,16 +498,22 @@ const VentasModule = (function() {
 
                 // Verificar si ya existe una orden similar (comparar solo fecha YYYY-MM-DD)
                 const fechaSolo = fechaIso.split('T')[0];
-                const { data: existing } = await window.supabase
-                    .from('ordenes_motores')
-                    .select('*')
-                    .eq('cliente_nombre', clienteNombre)
-                    .eq('falla_reportada', falla)
-                    .filter('fecha_ingreso', 'gte', fechaSolo + 'T00:00:00')
-                    .filter('fecha_ingreso', 'lte', fechaSolo + 'T23:59:59')
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
+                let existing = null;
+                try {
+                    const { data } = await window.supabase
+                        .from('ordenes_motores')
+                        .select('*')
+                        .eq('cliente_nombre', clienteNombre)
+                        .eq('falla_reportada', falla)
+                        .gte('fecha_ingreso', fechaSolo)
+                        .lte('fecha_ingreso', fechaSolo)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    existing = data;
+                } catch (e) {
+                    console.warn('[Ventas] No se pudo verificar duplicados motores:', e);
+                }
 
                 let inserted;
                 if (existing) {
@@ -508,18 +525,22 @@ const VentasModule = (function() {
                     } catch (err) {
                         // Si es 409 Conflict, buscar la orden creada recientemente
                         if (err.status === 409 || String(err.message).includes('duplicate')) {
-                            const { data: fallback } = await window.supabase
-                                .from('ordenes_motores')
-                                .select('*')
-                                .eq('cliente_nombre', clienteNombre)
-                                .filter('fecha_ingreso', 'gte', fechaSolo + 'T00:00:00')
-                                .filter('fecha_ingreso', 'lte', fechaSolo + 'T23:59:59')
-                                .order('created_at', { ascending: false })
-                                .limit(1)
-                                .maybeSingle();
-                            if (fallback) {
-                                inserted = fallback;
-                                _showToast('📋 Orden existente recuperada (conflicto): ' + (fallback.folio || ''), 'info');
+                            try {
+                                const { data: fallback } = await window.supabase
+                                    .from('ordenes_motores')
+                                    .select('*')
+                                    .eq('cliente_nombre', clienteNombre)
+                                    .gte('fecha_ingreso', fechaSolo)
+                                    .lte('fecha_ingreso', fechaSolo)
+                                    .order('created_at', { ascending: false })
+                                    .limit(1)
+                                    .maybeSingle();
+                                if (fallback) {
+                                    inserted = fallback;
+                                    _showToast('📋 Orden existente recuperada (conflicto): ' + (fallback.folio || ''), 'info');
+                                }
+                            } catch (e2) {
+                                console.warn('[Ventas] Error buscando fallback motores:', e2);
                             }
                         } else {
                             throw err;
@@ -557,14 +578,20 @@ const VentasModule = (function() {
 
                 // Verificar si ya existe un proyecto similar
                 const fechaSolo = fechaStr || new Date().toISOString().split('T')[0];
-                const { data: existing } = await window.supabase
-                    .from('proyectos_automatizacion')
-                    .select('*')
-                    .eq('cliente', clienteNombre)
-                    .eq('fecha', fechaSolo)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
+                let existing = null;
+                try {
+                    const { data } = await window.supabase
+                        .from('proyectos_automatizacion')
+                        .select('*')
+                        .eq('cliente', clienteNombre)
+                        .eq('fecha', fechaSolo)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    existing = data;
+                } catch (e) {
+                    console.warn('[Ventas] No se pudo verificar duplicados proyectos:', e);
+                }
 
                 let inserted;
                 if (existing) {
@@ -576,17 +603,21 @@ const VentasModule = (function() {
                     } catch (err) {
                         // Si es 409 Conflict, buscar el proyecto creado recientemente
                         if (err.status === 409 || String(err.message).includes('duplicate')) {
-                            const { data: fallback } = await window.supabase
-                                .from('proyectos_automatizacion')
-                                .select('*')
-                                .eq('cliente', clienteNombre)
-                                .eq('fecha', fechaSolo)
-                                .order('created_at', { ascending: false })
-                                .limit(1)
-                                .maybeSingle();
-                            if (fallback) {
-                                inserted = fallback;
-                                _showToast('📋 Proyecto existente recuperado (conflicto): ' + (fallback.folio || ''), 'info');
+                            try {
+                                const { data: fallback } = await window.supabase
+                                    .from('proyectos_automatizacion')
+                                    .select('*')
+                                    .eq('cliente', clienteNombre)
+                                    .eq('fecha', fechaSolo)
+                                    .order('created_at', { ascending: false })
+                                    .limit(1)
+                                    .maybeSingle();
+                                if (fallback) {
+                                    inserted = fallback;
+                                    _showToast('📋 Proyecto existente recuperado (conflicto): ' + (fallback.folio || ''), 'info');
+                                }
+                            } catch (e2) {
+                                console.warn('[Ventas] Error buscando fallback proyectos:', e2);
                             }
                         } else {
                             throw err;
