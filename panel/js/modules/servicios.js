@@ -446,6 +446,18 @@ const ServiciosModule = (function() {
             })
             .subscribe();
         subscriptions.push(subNotif);
+
+        // Listener de orden_historial para sincronizar cambios de estado desde otros módulos
+        const subHistorial = supabase
+            .channel('automatizacion_historial')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orden_historial' }, payload => {
+                const ev = payload.new;
+                if (ev && ev.proyecto_id) {
+                    _loadProjects();
+                }
+            })
+            .subscribe();
+        subscriptions.push(subHistorial);
     }
 
     // ==================== FILTROS Y VISTAS ====================
@@ -512,10 +524,13 @@ const ServiciosModule = (function() {
     function _crearCardKanban(proyecto) {
         const { avance, proceso } = _getAvanceYProceso(proyecto);
         const linea = _getLineaTiempo(proyecto);
+        const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(proyecto);
+        const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
         return `
-            <div class="kanban-card" data-id="${proyecto.id}">
+            <div class="kanban-card ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${proyecto.id}">
                 <div class="card-header">
                     <span class="folio">${proyecto.folio || proyecto.id.slice(-6)}</span>
+                    ${badgeCuarentena}
                 </div>
                 <div class="card-body">
                     <div class="cliente">${proyecto.nombre || 'Sin nombre'}</div>
@@ -541,8 +556,9 @@ const ServiciosModule = (function() {
         proyectos.forEach(p => {
             const { avance, proceso } = _getAvanceYProceso(p);
             const linea = _getLineaTiempo(p);
-            html += `<tr onclick="serviciosModule._abrirProyecto('${p.id}')">
-                <td>${p.folio || p.id.slice(-6)}</td>
+            const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(p);
+            html += `<tr onclick="serviciosModule._abrirProyecto('${p.id}')" class="${enCuarentena ? 'row-cuarentena' : ''}">
+                <td>${p.folio || p.id.slice(-6)} ${enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : ''}</td>
                 <td>${p.nombre || ''}</td>
                 <td>${p.cliente || ''}</td>
                 <td>${p.vendedor || ''}</td>
@@ -1215,6 +1231,12 @@ const ServiciosModule = (function() {
 
     // ==================== GUARDAR PROYECTO ====================
     async function _guardarProyecto() {
+        // REGLA 2: validar cuarentena si es edición de proyecto existente
+        if (!isNewProject && currentProject && window.SSEPIStateMachine && window.SSEPIStateMachine.estaEnCuarentena(currentProject)) {
+            alert('Proyecto en cuarentena contable. No se puede modificar hasta desbloquearlo.');
+            return;
+        }
+
         const data = {
             folio: document.getElementById('inpFolio').value,
             nombre: document.getElementById('paso1_nombre').value,
@@ -1244,9 +1266,23 @@ const ServiciosModule = (function() {
                 projectId = inserted.id;
                 isNewProject = false;
                 alert('✅ Proyecto guardado');
+                // Registrar en historial unificado
+                if (window.SSEPIStateMachine) {
+                    await window.SSEPIStateMachine.actualizarEstadoOrden(
+                        window.supabase, 'proyecto', projectId,
+                        'creacion', `Proyecto ${data.folio} creado en Automatización`, csrfToken
+                    );
+                }
             } else {
                 await proyectosService.update(projectId, data, csrfToken);
                 alert('✅ Proyecto actualizado');
+                // Registrar cambio de estado en historial si aplica
+                if (window.SSEPIStateMachine && currentProject && currentProject.estado !== data.estado) {
+                    await window.SSEPIStateMachine.actualizarEstadoOrden(
+                        window.supabase, 'proyecto', projectId,
+                        'cambio_estado', `Proyecto ${data.folio} pasó a ${data.estado}`, csrfToken
+                    );
+                }
             }
             _afterServiciosPersistOk();
             _addToFeed('💾', `Proyecto ${data.folio} guardado`);

@@ -361,10 +361,13 @@ const ComprasModule = (function() {
     }
 
     function _crearCardKanban(compra) {
+        const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(compra);
+        const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
         return `
-            <div class="kanban-card" data-id="${compra.id}">
+            <div class="kanban-card ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${compra.id}">
                 <div class="card-header">
                     <span class="folio">${compra.folio || compra.id.slice(-6)}</span>
+                    ${badgeCuarentena}
                 </div>
                 <div class="card-body">
                     <div class="proveedor">${compra.proveedor || 'Proveedor'}</div>
@@ -385,16 +388,20 @@ const ComprasModule = (function() {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">No hay órdenes</td></tr>';
             return;
         }
-        tbody.innerHTML = ordenes.map(c => `
-            <tr onclick="comprasModule._abrirDetalle('${c.id}')">
-                <td><strong>${c.folio || c.id.slice(-6)}</strong></td>
+        tbody.innerHTML = ordenes.map(c => {
+            const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(c);
+            const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
+            return `
+            <tr class="${enCuarentena ? 'row-cuarentena' : ''}" onclick="comprasModule._abrirDetalle('${c.id}')">
+                <td><strong>${c.folio || c.id.slice(-6)}</strong> ${badgeCuarentena}</td>
                 <td>${c.proveedor || '—'}</td>
                 <td>${c.departamento || '—'}</td>
                 <td>${c.vinculacion ? `${c.vinculacion.tipo}: ${c.vinculacion.nombre || ''}` : '—'}</td>
                 <td>$${(c.total || 0).toFixed(2)}</td>
                 <td><span class="status-badge estado-${c.estado}">${_getEstadoLabel(c.estado)}</span></td>
             </tr>
-        `).join('');
+            `;
+        }).join('');
     }
 
     function _getEstadoLabel(estado) {
@@ -404,6 +411,15 @@ const ComprasModule = (function() {
 
     // ==================== RECIBIR COMPRA ====================
     async function _recibirCompra(compraId) {
+        const compra = compras.find(c => c.id === compraId);
+        if (!compra) { _showToast('Compra no encontrada', 'error'); return; }
+
+        // REGLA 2: validar cuarentena antes de recibir
+        if (window.SSEPIStateMachine && window.SSEPIStateMachine.estaEnCuarentena(compra)) {
+            _showToast('Compra en cuarentena contable. No se puede recibir.', 'error');
+            return;
+        }
+
         if (!confirm('¿Confirmar recepción de materiales? Esta acción actualizará el inventario.')) return;
 
         const csrfToken = sessionStorage.getItem('csrfToken');

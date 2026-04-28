@@ -3382,6 +3382,12 @@ const VentasModule = (function() {
             return;
         }
 
+        // REGLA 1: validar punto de no retorno (no cancelar si ya avanzó más allá de borrador/pendiente)
+        if (window.SSEPIStateMachine && !window.SSEPIStateMachine.puedeEliminar(item)) {
+            _showToast(`El registro ${folio} ya avanzó en el pipeline. Solo puede cancelarse desde etapas iniciales.`, 'error');
+            return;
+        }
+
         if (!confirm(`¿Cancelar ${tipo || 'registro'} ${folio}?`)) return;
         try {
             const csrfToken = sessionStorage.getItem('csrfToken');
