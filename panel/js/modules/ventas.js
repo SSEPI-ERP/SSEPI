@@ -1720,7 +1720,7 @@ const VentasModule = (function() {
 
         // Nuevos estatus para kanban
         const es = (i) => String(i.estado || '').trim().toLowerCase();
-        const registro = items.filter((i) => es(i) === 'registro' || es(i) === 'nuevo');
+        const registro = items.filter((i) => es(i) === 'registro' || es(i) === 'nuevo' || es(i) === 'borrador');
         const diagnostico = items.filter((i) => es(i) === 'diagnostico' || es(i) === 'en_diagnostico');
         const cotizacion = items.filter((i) => es(i) === 'cotizacion' || es(i) === 'pendiente_autorizacion_ventas');
         const autorizado = items.filter((i) => es(i) === 'autorizado' || es(i) === 'autorizada_por_ventas');
@@ -1914,11 +1914,11 @@ const VentasModule = (function() {
                     </div>
                     ${etiquetaHtml ? `<div class="card-vinculacion">${etiquetaHtml}</div>` : ''}
                     <div class="card-body" onclick="ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')" style="cursor:pointer;">
-                        <div class="cliente">${item.cliente || 'Cliente'}</div>
+                        <div class="cliente">${item.cliente_nombre || item.cliente || 'Cliente'}</div>
                         <div class="total">$${(item.total || 0).toFixed(2)}</div>
                     </div>
                     <div class="card-footer">
-                        <small>${item.fecha ? new Date(item.fecha).toLocaleDateString() : ''}</small>
+                        <small>${item.fecha_cotizacion || item.fecha || item.fecha_creacion ? new Date(item.fecha_cotizacion || item.fecha || item.fecha_creacion).toLocaleDateString() : ''}</small>
                         <small>${item.vendedor || ''}</small>
                     </div>
                 </div>
@@ -1946,11 +1946,11 @@ const VentasModule = (function() {
                         </div>
                     </div>
                     <div class="card-body" onclick="ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')" style="cursor:pointer;">
-                        <div class="cliente">${item.cliente || 'Cliente'}</div>
+                        <div class="cliente">${item.cliente_nombre || item.cliente || 'Cliente'}</div>
                         <div class="total">$${(item.total || 0).toFixed(2)}</div>
                     </div>
                     <div class="card-footer">
-                        <small>${item.fecha ? new Date(item.fecha).toLocaleDateString() : ''}</small>
+                        <small>${item.fecha_cotizacion || item.fecha || item.fecha_creacion ? new Date(item.fecha_cotizacion || item.fecha || item.fecha_creacion).toLocaleDateString() : ''}</small>
                         <small>${item.vendedor || ''}</small>
                     </div>
                 </div>
@@ -1966,9 +1966,9 @@ const VentasModule = (function() {
             return;
         }
         tbody.innerHTML = items.map(item => {
-            const fecha = item.fecha ? new Date(item.fecha).toLocaleDateString('es-MX') : '--/--/----';
+            const fecha = item.fecha_cotizacion || item.fecha || item.fecha_creacion ? new Date(item.fecha_cotizacion || item.fecha || item.fecha_creacion).toLocaleDateString('es-MX') : '--/--/----';
             const folio = item.folio || item.id.slice(-6);
-            const cliente = item.cliente || 'N/A';
+            const cliente = item.cliente_nombre || item.cliente || 'N/A';
             const tipo = item.tipo === 'cotizacion' ? 'Cotización' : 'Venta';
             const estatus = item.tipo === 'cotizacion' ? (item.estado || 'Pendiente') : (item.estatus_pago || 'Pendiente');
             const total = item.total || 0;
@@ -4195,9 +4195,26 @@ const VentasModule = (function() {
                     const folioCot = await generarFolioCotizacion();
                     const cotProv = {
                         folio: folioCot,
-                        fecha: new Date().toISOString().split('T')[0],
-                        estado: 'Pendiente',
-                        notas: JSON.stringify(ventasWizardCerebro)
+                        tipo_folio: 'COT',
+                        cliente_nombre: clienteNombre,
+                        cliente: clienteNombre,
+                        cliente_id: clienteId || null,
+                        vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas',
+                        subtotal: 0,
+                        iva: 0,
+                        total: 0,
+                        km_distancia: contacto?.km || 0,
+                        horas_viaje: contacto?.horas_viaje || 0,
+                        costo_gasolina: 0,
+                        estado: 'borrador',
+                        origen: origenCot,
+                        departamento: dept,
+                        orden_origen_id: creado.ordenId || null,
+                        cerebro_registro: ventasWizardCerebro || {},
+                        items: [],
+                        email: contacto?.email || '',
+                        telefono: contacto?.telefono || '',
+                        rfc: contacto?.rfc || ''
                     };
                     const insertedCot = await cotizacionesService.insert(cotProv, csrfToken);
                     if (insertedCot?.id) {
@@ -4313,26 +4330,29 @@ const VentasModule = (function() {
         }));
 
         const folio = await generarFolioCotizacion();
+        const vendedorNombre = (await authService.getCurrentProfile())?.nombre || 'Ventas';
         const cotizacionData = {
             folio,
-            fecha: new Date().toISOString().split('T')[0],
+            tipo_folio: 'COT',
+            cliente_nombre: cliente || 'Cliente',
+            cliente: cliente || 'Cliente',
+            cliente_id: calculadoraClienteActual?.contactoId || null,
+            vendedor: vendedorNombre,
             subtotal: items.reduce((s, i) => s + i.importe, 0),
             iva: finalTotal * 0.16 / 1.16,
             total: finalTotal,
+            km_distancia: calculadoraClienteActual?.km || 0,
+            horas_viaje: calculadoraClienteActual?.horas || 0,
+            costo_gasolina: 0,
             estado: 'Pendiente',
-            notas: JSON.stringify({
-                cliente,
-                email: calculadoraClienteActual?.email || '',
-                telefono: calculadoraClienteActual?.telefono || '',
-                rfc: calculadoraClienteActual?.rfc || '',
-                items,
-                origen: (ventasWizardCerebro && ventasWizardCerebro.origen_cotizacion) || (compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo'),
-                orden_origen_id: compraActual?.vinculacion?.id || compraActual?.id || null,
-                cerebro_registro: _cerebroRegistroPayload(),
-                vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas',
-                actividades: actividadesDiarias.length > 0 ? [...actividadesDiarias] : null,
-                departamento: ventasWizardCerebro?.departamento || null
-            })
+            origen: (ventasWizardCerebro && ventasWizardCerebro.origen_cotizacion) || (compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo'),
+            departamento: ventasWizardCerebro?.departamento || null,
+            orden_origen_id: compraActual?.vinculacion?.id || compraActual?.id || null,
+            cerebro_registro: _cerebroRegistroPayload() || {},
+            items: items || [],
+            email: calculadoraClienteActual?.email || '',
+            telefono: calculadoraClienteActual?.telefono || '',
+            rfc: calculadoraClienteActual?.rfc || ''
         };
 
         const csrfToken = sessionStorage.getItem('csrfToken');
@@ -4341,22 +4361,19 @@ const VentasModule = (function() {
             if (editingCotizacionId) {
                 const existing = cotizaciones.find(c => c.id === editingCotizacionId);
                 const updated = await cotizacionesService.update(editingCotizacionId, {
-                    fecha: existing?.fecha || new Date().toISOString().split('T')[0],
+                    cliente_nombre: cliente || 'Cliente',
+                    cliente: cliente || 'Cliente',
                     subtotal: items.reduce((s, i) => s + i.importe, 0),
                     iva: finalTotal * 0.16 / 1.16,
                     total: finalTotal,
                     estado: 'Pendiente',
-                    notas: JSON.stringify({
-                        cliente,
-                        email: calculadoraClienteActual?.email || '',
-                        telefono: calculadoraClienteActual?.telefono || '',
-                        rfc: calculadoraClienteActual?.rfc || '',
-                        items,
-                        cerebro_registro: _cerebroRegistroPayload(),
-                        actividades: actividadesDiarias.length > 0 ? [...actividadesDiarias] : null,
-                        departamento: ventasWizardCerebro?.departamento || null,
-                        vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas'
-                    })
+                    items: items || [],
+                    email: calculadoraClienteActual?.email || '',
+                    telefono: calculadoraClienteActual?.telefono || '',
+                    rfc: calculadoraClienteActual?.rfc || '',
+                    cerebro_registro: _cerebroRegistroPayload() || {},
+                    departamento: ventasWizardCerebro?.departamento || null,
+                    vendedor: vendedorNombre
                 }, csrfToken);
                 editingCotizacionId = null;
                 _showToast('✅ Cotización actualizada. Folio: ' + (updated?.folio || existing?.folio || folio), 'success');
@@ -4413,24 +4430,29 @@ const VentasModule = (function() {
         const folio = await generarFolioCotizacion();
         const subtotal = items.reduce((s, i) => s + i.importe, 0);
         const iva = total * 0.16 / 1.16;
+        const vendedorNombre = (await authService.getCurrentProfile())?.nombre || 'Ventas';
         const cotizacionData = {
             folio,
-            tipo: 'cotizacion',
-            cliente,
+            tipo_folio: 'COT',
+            cliente_nombre: cliente || 'Cliente',
+            cliente: cliente || 'Cliente',
+            cliente_id: calculadoraClienteActual?.contactoId || null,
             email: calculadoraClienteActual?.email || '',
             telefono: calculadoraClienteActual?.telefono || '',
             rfc: calculadoraClienteActual?.rfc || '',
-            fecha: new Date().toISOString().split('T')[0],
             items,
             subtotal,
             iva,
             total,
-            estado: 'registro',
+            km_distancia: calculadoraClienteActual?.km || 0,
+            horas_viaje: calculadoraClienteActual?.horas || 0,
+            costo_gasolina: 0,
+            estado: 'Pendiente',
             origen: (ventasWizardCerebro && ventasWizardCerebro.origen_cotizacion) || (compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo'),
+            departamento: ventasWizardCerebro?.departamento || null,
             orden_origen_id: compraActual?.vinculacion?.id || compraActual?.id || null,
-            cerebro_registro: _cerebroRegistroPayload(),
-            vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas',
-            fecha_creacion: new Date().toISOString()
+            cerebro_registro: _cerebroRegistroPayload() || {},
+            vendedor: vendedorNombre
         };
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
