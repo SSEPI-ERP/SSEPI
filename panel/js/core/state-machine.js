@@ -179,6 +179,27 @@
         _cargarMapaDesdeSupabase();
     }
 
+    // =====================================================
+    // REGLAS DE INTEGRIDAD: helpers para UI
+    // =====================================================
+    function puedeEliminar(item) {
+        if (!item) return false;
+        // Cuarentena bloquea TODO
+        if (item.bloqueo_contable === true) return false;
+        // Solo permitir eliminar en etapas iniciales
+        const estatus = item.estatus_actual || item.estado || '';
+        const eliminables = ['recepcion', 'diagnostico', 'Nuevo', 'Diagnostico', 'pendiente', 'borrador'];
+        return eliminables.includes(estatus);
+    }
+
+    function estaEnCuarentena(item) {
+        return item?.bloqueo_contable === true;
+    }
+
+    function badgeCuarentenaHTML() {
+        return '<span class="badge-cuarentena" title="Orden en cuarentena contable. Acciones congeladas.">🚫 CUARENTENA</span>';
+    }
+
     // Exponer globalmente
     window.SSEPIStateMachine = {
         PIPELINE_PASOS,
@@ -187,6 +208,9 @@
         obtenerInfoPaso,
         renderTimelineHTML,
         actualizarEstadoOrden,
-        obtenerHistorialUnificado
+        obtenerHistorialUnificado,
+        puedeEliminar,
+        estaEnCuarentena,
+        badgeCuarentenaHTML
     };
 })();

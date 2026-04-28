@@ -872,6 +872,17 @@ const TallerModule = (function() {
     function _eliminarOrden(id) {
         const orden = orders.find(o => o.id === id);
         if (!orden) { _showErrorModal('Orden no encontrada', 'No se encontró la orden especificada.'); return; }
+        // REGLA 1 + REGLA 2: validar cuarentena y etapa antes de eliminar
+        if (window.SSEPIStateMachine) {
+            if (window.SSEPIStateMachine.estaEnCuarentena(orden)) {
+                _showErrorModal('Orden en cuarentena', 'No se puede eliminar una orden en cuarentena contable. Desactive la cuarentena primero.');
+                return;
+            }
+            if (!window.SSEPIStateMachine.puedeEliminar(orden)) {
+                _showErrorModal('Punto de no retorno', `La orden ${orden.folio} ya avanzó más allá de Diagnóstico. Solo puede cancelarse, no eliminarse.`);
+                return;
+            }
+        }
         const folio = orden.folio || id.slice(-6);
         const cliente = orden.cliente_nombre || 'N/A';
         const equipo = orden.equipo || '—';
