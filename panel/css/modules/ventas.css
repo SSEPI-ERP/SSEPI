@@ -1366,6 +1366,23 @@
     cursor: not-allowed;
 }
 
+.row-cuarentena {
+    opacity: 0.7;
+    background: #fafafa;
+}
+
+.row-cuarentena td {
+    text-decoration: line-through;
+    color: #999;
+}
+
+/* ========== BADGE COI ========== */
+.coi-badge-pend {
+    background: #fff8e1;
+    color: #f57f17;
+    border: 1px solid #ffcc80;
+}
+
 .pipeline-card-header {
     display: flex;
     justify-content: space-between;

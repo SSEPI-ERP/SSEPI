@@ -661,18 +661,23 @@ const TallerModule = (function() {
             badgeHtml = `<span class="badge-success" title="Material recibido">✅ Material listo</span>`;
         }
 
+        const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(orden);
+        const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(orden) ?? true;
+        const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
+
         return `
-            <div class="kanban-card" data-id="${orden.id}">
+            <div class="kanban-card ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${orden.id}">
                 <div class="card-header">
                     <span class="folio">${orden.folio || orden.id.slice(-6)}</span>
                     ${badgeHtml}
+                    ${badgeCuarentena}
                     <div class="card-actions">
                         <button class="btn-icon btn-edit" onclick="event.stopPropagation(); tallerModule._editarOrden('${orden.id}')" title="Editar">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn-icon btn-delete" onclick="event.stopPropagation(); tallerModule._eliminarOrden('${orden.id}')" title="Eliminar">
+                        ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); tallerModule._eliminarOrden('${orden.id}')" title="Eliminar">
                             <i class="fas fa-trash"></i>
-                        </button>
+                        </button>` : ''}
                     </div>
                 </div>
                 <div class="card-body">
@@ -694,11 +699,13 @@ const TallerModule = (function() {
         const vis = _getListaVisibleCols();
         const th = (id, text) => (vis[id] !== false ? `<th>${text}</th>` : '');
         const heads = th('folio', 'Folio') + th('cliente', 'Cliente') + th('equipo', 'Equipo') + th('tecnico', 'Técnico') +
-            th('estado', 'Estado') + th('ingreso', 'Ingreso') + th('reparacion', 'Reparación') + th('recibido', 'Recibido por');
+            th('estado', 'Estado') + th('ingreso', 'Ingreso') + th('reparacion', 'Reparación') + th('recibido', 'Recibido por') + th('acciones', 'Acciones');
         let html = `<table class="lista-table"><thead><tr>${heads}</tr></thead><tbody>`;
         ordenes.forEach(o => {
             const compraInfo = comprasVinculadas[o.id];
             const recibidoPor = o.recibido_por || '—';
+            const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(o);
+            const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(o) ?? true;
             const cells = [];
             if (vis.folio !== false) cells.push(`<td>${o.folio || o.id.slice(-6)} ${compraInfo ? '🛒' : ''}</td>`);
             if (vis.cliente !== false) cells.push(`<td>${o.cliente_nombre || ''}</td>`);
@@ -708,7 +715,13 @@ const TallerModule = (function() {
             if (vis.ingreso !== false) cells.push(`<td>${o.fecha_ingreso ? new Date(o.fecha_ingreso).toLocaleDateString() : ''}</td>`);
             if (vis.reparacion !== false) cells.push(`<td>${o.fecha_reparacion ? new Date(o.fecha_reparacion).toLocaleDateString() : ''}</td>`);
             if (vis.recibido !== false) cells.push(`<td>${recibidoPor}</td>`);
-            html += `<tr onclick="tallerModule._abrirOrden('${o.id}')">${cells.join('')}</tr>`;
+            if (vis.acciones !== false) {
+                cells.push(`<td class="acciones">
+                    <button class="btn-icon btn-edit" onclick="event.stopPropagation(); tallerModule._editarOrden('${o.id}')" title="Editar"><i class="fas fa-edit"></i></button>
+                    ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); tallerModule._eliminarOrden('${o.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
+                </td>`);
+            }
+            html += `<tr data-id="${o.id}" class="${enCuarentena ? 'row-cuarentena' : ''}" onclick="tallerModule._abrirOrden('${o.id}')">${cells.join('')}</tr>`;
         });
         html += '</tbody></table>';
         container.innerHTML = html;
