@@ -49,8 +49,8 @@ export class SyncEngine {
   async checkConnectivity() {
     try {
       const supabase = createClient(this.supabaseConfig.url, this.supabaseConfig.anonKey, { auth: { autoRefreshToken: false, persistSession: false } });
-      const { error } = await supabase.from('ventas').select('id', { head: true, count: 'exact' }).limit(1);
-      const online = !error;
+      const { data, error } = await supabase.from('usuarios').select('id').limit(1);
+      const online = !error && data !== null;
       await setSyncState(this.db, { server_online: online ? 1 : 0, server_checked_at: new Date().toISOString() });
       return online;
     } catch {
