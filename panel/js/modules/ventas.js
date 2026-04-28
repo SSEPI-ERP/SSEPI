@@ -436,7 +436,7 @@ const VentasModule = (function() {
                         .eq('falla_reportada', falla)
                         .gte('fecha_ingreso', fechaSolo)
                         .lte('fecha_ingreso', fechaSolo)
-                        .order('created_at', { ascending: false })
+                        .order('creado_en', { ascending: false })
                         .limit(1)
                         .maybeSingle();
                     existing = data;
@@ -462,7 +462,7 @@ const VentasModule = (function() {
                                     .eq('cliente_nombre', clienteNombre)
                                     .gte('fecha_ingreso', fechaSolo)
                                     .lte('fecha_ingreso', fechaSolo)
-                                    .order('created_at', { ascending: false })
+                                    .order('creado_en', { ascending: false })
                                     .limit(1)
                                     .maybeSingle();
                                 if (fallback) {
@@ -517,7 +517,7 @@ const VentasModule = (function() {
                         .eq('falla_reportada', falla)
                         .gte('fecha_ingreso', fechaSolo)
                         .lte('fecha_ingreso', fechaSolo)
-                        .order('created_at', { ascending: false })
+                        .order('creado_en', { ascending: false })
                         .limit(1)
                         .maybeSingle();
                     existing = data;
@@ -542,7 +542,7 @@ const VentasModule = (function() {
                                     .eq('cliente_nombre', clienteNombre)
                                     .gte('fecha_ingreso', fechaSolo)
                                     .lte('fecha_ingreso', fechaSolo)
-                                    .order('created_at', { ascending: false })
+                                    .order('creado_en', { ascending: false })
                                     .limit(1)
                                     .maybeSingle();
                                 if (fallback) {
@@ -600,7 +600,7 @@ const VentasModule = (function() {
                         .select('*')
                         .eq('cliente', clienteNombre)
                         .eq('fecha', fechaSolo)
-                        .order('created_at', { ascending: false })
+                        .order('creado_en', { ascending: false })
                         .limit(1)
                         .maybeSingle();
                     existing = data;
@@ -624,7 +624,7 @@ const VentasModule = (function() {
                                     .select('*')
                                     .eq('cliente', clienteNombre)
                                     .eq('fecha', fechaSolo)
-                                    .order('created_at', { ascending: false })
+                                    .order('creado_en', { ascending: false })
                                     .limit(1)
                                     .maybeSingle();
                                 if (fallback) {
@@ -793,10 +793,19 @@ const VentasModule = (function() {
      * @returns {Promise<string>} Folio generado
      */
     async function generarFolioPorTipo(departamento) {
+        const tipoMap = {
+            'Taller Electrónica': 'SP-E',
+            'Taller Motores': 'SP-M',
+            'Automatización': 'SP-A',
+            'Proyectos': 'SP-P',
+            'Suministro': 'SP-S'
+        };
+        const tipoFolio = tipoMap[departamento] || 'SP-' + departamento.charAt(0).toUpperCase();
+
         const { data, error } = await window.supabase
             .from('foliador_control')
             .select('ultimo_folio')
-            .eq('tipo', 'SP-' + departamento.charAt(0).toUpperCase())
+            .eq('tipo', tipoFolio)
             .single();
 
         if (error && error.code !== 'PGRST116') {
@@ -810,7 +819,7 @@ const VentasModule = (function() {
         await window.supabase
             .from('foliador_control')
             .upsert({
-                tipo: 'SP-' + departamento.charAt(0).toUpperCase(),
+                tipo: tipoFolio,
                 ultimo_folio: nuevoFolio,
                 ultimo_folio_entero: nuevoFolio
             }, { onConflict: 'tipo' });
@@ -3186,7 +3195,7 @@ const VentasModule = (function() {
                         .from('orden_historial')
                         .select('*')
                         .ilike('descripcion', `%${id}%`)
-                        .order('created_at', { ascending: false });
+                        .order('creado_en', { ascending: false });
                     data = fallback.data || [];
                     error = fallback.error;
                 }
@@ -3201,7 +3210,7 @@ const VentasModule = (function() {
                         .from('orden_historial')
                         .select('*')
                         .eq(columnName, id)
-                        .order('created_at', { ascending: false });
+                        .order('creado_en', { ascending: false });
                     data = fallback.data || [];
                     error = fallback.error;
                 }
