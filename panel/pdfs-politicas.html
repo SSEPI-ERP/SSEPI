@@ -360,6 +360,56 @@
             color: #333;
         }
 
+        /* Modal Vista Previa PDF */
+        .preview-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .preview-overlay.active {
+            display: flex;
+        }
+        .preview-box {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 900px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: #1a1a2e;
+            color: white;
+        }
+        .preview-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+        .preview-frame {
+            flex: 1;
+            border: none;
+            width: 100%;
+        }
+        .preview-actions {
+            display: flex;
+            gap: 10px;
+            padding: 12px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+        }
+
         footer {
             text-align: center;
             padding: 30px;
@@ -401,6 +451,25 @@
             <p>SSEPI - Soluciones de Servicios Enterprise</p>
             <p>Términos y condiciones: <a href="https://www.ssepi.org/terms" target="_blank">ssepi.org/terms</a></p>
         </footer>
+    </div>
+
+    <!-- Modal Vista Previa PDF -->
+    <div id="previewModal" class="preview-overlay">
+        <div class="preview-box">
+            <div class="preview-header">
+                <h3 id="previewTitle">👁️ Vista previa del PDF</h3>
+                <button onclick="cerrarVistaPrevia()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;">&times;</button>
+            </div>
+            <iframe id="previewFrame" class="preview-frame"></iframe>
+            <div class="preview-actions">
+                <button class="btn btn-primary" onclick="descargarPDFDesdePreview()">
+                    ⬇️ Descargar PDF
+                </button>
+                <button class="btn btn-cancel" onclick="cerrarVistaPrevia()">
+                    ❌ Cerrar
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Modal Editor de Políticas -->
@@ -630,8 +699,11 @@
                     </div>
 
                     <div class="pdf-actions">
-                        <button class="btn btn-primary" onclick="generarPDF('${mod.id}')">
-                            📄 Generar PDF
+                        <button class="btn btn-primary" onclick="generarPDF('${mod.id}', true)">
+                            👁️ Vista previa
+                        </button>
+                        <button class="btn btn-secondary" onclick="generarPDF('${mod.id}')">
+                            ⬇️ Descargar
                         </button>
                         <button class="btn btn-edit" onclick="abrirEditor('${mod.id}')">
                             ✏️ Editar
@@ -757,9 +829,12 @@
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // GENERAR PDF
+        // GENERAR PDF (con vista previa inline)
         // ═══════════════════════════════════════════════════════════════════
-        async function generarPDF(moduloId) {
+        let ultimoDocPDF = null;
+        let ultimoNombrePDF = '';
+
+        async function generarPDF(moduloId, soloPreview = false) {
             const mod = MODULES.find(m => m.id === moduloId);
             const politicas = politicasData[moduloId];
 
@@ -770,109 +845,174 @@
             const ML = 15, MR = 15;
             const TW = PW - ML - MR;
 
+            // Paleta premium
+            const TEAL    = [23, 165, 152];
+            const TEAL_LT = [235, 247, 245];
+            const GR_HDR  = [245, 245, 245];
+            const GR_TXT  = [80, 80, 80];
+            const DK      = [26, 26, 46];
+
             let y = 20;
-
-            // Header
-            doc.setFillColor(...mod.colorHex);
-            doc.roundedRect(ML, 10, TW, 25, 4, 4, 'F');
-
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(18);
-            doc.setTextColor(255, 255, 255);
-            doc.text(`${mod.icon} ${mod.nombre}`, ML + 10, 25);
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(12);
-            doc.text(`Políticas y Condiciones`, ML + 10, 32);
-
-            // Fecha y folio
             const fecha = new Date().toLocaleDateString('es-MX');
             const folio = `POL-${Date.now().toString().slice(-6)}`;
 
-            doc.setFontSize(10);
-            doc.text(`Folio: ${folio}`, PW - MR - 40, 20, { align: 'right' });
-            doc.text(`Fecha: ${fecha}`, PW - MR - 40, 26, { align: 'right' });
+            // ===== HEADER PREMIUM =====
+            doc.setFillColor(...mod.colorHex);
+            doc.roundedRect(ML, 8, TW, 28, 5, 5, 'F');
+
+            // Logo placeholder (texto)
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(20);
+            doc.setTextColor(255, 255, 255);
+            doc.text(`${mod.icon} SSEPI`, ML + 8, 24);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(11);
+            doc.text(`${mod.nombre} — Políticas y Condiciones`, ML + 8, 32);
+
+            // Folio y fecha a la derecha
+            doc.setFontSize(9);
+            doc.text(`Folio: ${folio}`, PW - MR - 5, 20, { align: 'right' });
+            doc.text(`Fecha: ${fecha}`, PW - MR - 5, 26, { align: 'right' });
 
             y = 45;
 
-            // Tiempo de entrega
+            // ===== INFO BOXES =====
             if (politicas?.tiempo_entrega) {
-                doc.setFillColor(235, 247, 245);
-                doc.roundedRect(ML, y, TW, 12, 3, 3, 'F');
-
+                doc.setFillColor(...TEAL_LT);
+                doc.roundedRect(ML, y, TW, 14, 3, 3, 'F');
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(11);
-                doc.setTextColor(23, 165, 152);
-                doc.text(`⏱️ Tiempo de entrega: ${politicas.tiempo_entrega}`, ML + 8, y + 8);
-
-                y += 20;
+                doc.setFontSize(10);
+                doc.setTextColor(...TEAL);
+                doc.text(`⏱️  Tiempo de entrega: ${politicas.tiempo_entrega}`, ML + 8, y + 9);
+                y += 22;
             }
 
-            // Garantía
             if (politicas?.garantia_dias && politicas.garantia_dias > 0) {
                 doc.setFillColor(255, 243, 224);
-                doc.roundedRect(ML, y, TW, 12, 3, 3, 'F');
-
+                doc.roundedRect(ML, y, TW, 14, 3, 3, 'F');
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(11);
-                doc.setTextColor(255, 152, 0);
-                doc.text(`📋 Garantía: ${politicas.garantia_dias} días`, ML + 8, y + 8);
-
-                y += 20;
+                doc.setFontSize(10);
+                doc.setTextColor(200, 100, 0);
+                doc.text(`📋  Garantía: ${politicas.garantia_dias} días`, ML + 8, y + 9);
+                y += 22;
             }
 
-            // Políticas
+            if (politicas?.moneda) {
+                doc.setFillColor(240, 240, 255);
+                doc.roundedRect(ML, y, TW, 12, 3, 3, 'F');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(80, 80, 180);
+                doc.text(`💰  Moneda: ${politicas.moneda}`, ML + 8, y + 8);
+                y += 18;
+            }
+
+            // ===== TÍTULO POLÍTICAS =====
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(14);
-            doc.setTextColor(0, 0, 0);
-            doc.text('📌 Políticas y Condiciones', ML, y);
-            y += 10;
+            doc.setTextColor(...DK);
+            doc.text('📌  Políticas y Condiciones del Servicio', ML, y);
+            y += 12;
 
-            if (politicas?.notas_importantes) {
+            // Línea separadora
+            doc.setDrawColor(...TEAL);
+            doc.setLineWidth(0.8);
+            doc.line(ML, y - 4, ML + 80, y - 4);
+
+            // ===== LISTADO DE NOTAS =====
+            if (politicas?.notas_importantes && politicas.notas_importantes.length > 0) {
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(10);
-                doc.setTextColor(51, 51, 51);
+                doc.setTextColor(...GR_TXT);
 
                 politicas.notas_importantes.forEach((nota, idx) => {
-                    const lines = doc.splitTextToSize(`${idx + 1}. ${nota}`, TW - 5);
+                    const bullet = `${idx + 1}.`;
+                    const lines = doc.splitTextToSize(nota, TW - 15);
 
-                    if (y + (lines.length * 5) > PH - 30) {
+                    if (y + (lines.length * 5.5) > PH - 40) {
                         doc.addPage();
                         y = 20;
                     }
 
-                    doc.text(lines, ML + 5, y);
-                    y += lines.length * 5 + 3;
+                    // Fondo alternado suave
+                    if (idx % 2 === 0) {
+                        doc.setFillColor(250, 250, 250);
+                        doc.roundedRect(ML - 2, y - 3, TW + 4, (lines.length * 5.5) + 6, 2, 2, 'F');
+                    }
+
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...TEAL);
+                    doc.text(bullet, ML + 2, y + 4);
+
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...GR_TXT);
+                    doc.text(lines, ML + 12, y + 4);
+                    y += lines.length * 5.5 + 8;
                 });
+            } else {
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(10);
+                doc.setTextColor(150, 150, 150);
+                doc.text('No hay políticas configuradas para este módulo.', ML, y);
             }
 
             y += 10;
 
-            // URL de términos
+            // ===== URL TÉRMINOS =====
             if (politicas?.url_terminos) {
+                if (y > PH - 50) { doc.addPage(); y = 20; }
                 doc.setFont('helvetica', 'italic');
                 doc.setFontSize(9);
-                doc.setTextColor(106, 27, 154);
+                doc.setTextColor(100, 100, 200);
                 doc.text(`Más información: ${politicas.url_terminos}`, ML, y);
             }
 
-            // Footer
-            const footerY = PH - 15;
+            // ===== FOOTER PREMIUM =====
+            const footerY = PH - 12;
             doc.setDrawColor(220, 220, 220);
             doc.setLineWidth(0.5);
-            doc.line(ML, footerY - 5, PW - MR, footerY - 5);
+            doc.line(ML, footerY - 8, PW - MR, footerY - 8);
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8);
             doc.setTextColor(130, 130, 130);
-            doc.text('SSEPI - Soluciones de Servicios Enterprise', ML, footerY);
-            doc.text(`Página 1`, PW - MR - 20, footerY, { align: 'right' });
+            doc.text('SSEPI — Soluciones de Servicios Enterprise', ML, footerY);
+            doc.text(`Documento generado el ${fecha} • Folio ${folio}`, PW - MR, footerY, { align: 'right' });
 
-            // Guardar
-            const fileName = `Politicas_${mod.nombre.replace(/\s+/g, '_')}_${folio}.pdf`;
-            doc.save(fileName);
+            // Guardar referencia para preview/descarga
+            ultimoDocPDF = doc;
+            ultimoNombrePDF = `Politicas_${mod.nombre.replace(/\s+/g, '_')}_${folio}.pdf`;
 
-            mostrarSuccess(`PDF generado: ${fileName}`);
+            if (soloPreview) {
+                abrirVistaPrevia(mod.nombre);
+            } else {
+                doc.save(ultimoNombrePDF);
+                mostrarSuccess(`PDF descargado: ${ultimoNombrePDF}`);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // VISTA PREVIA INLINE
+        // ═══════════════════════════════════════════════════════════════════
+        function abrirVistaPrevia(tituloModulo) {
+            if (!ultimoDocPDF) return;
+            const dataUri = ultimoDocPDF.output('datauristring');
+            document.getElementById('previewFrame').src = dataUri;
+            document.getElementById('previewTitle').textContent = `👁️ Vista previa: ${tituloModulo}`;
+            document.getElementById('previewModal').classList.add('active');
+        }
+
+        function cerrarVistaPrevia() {
+            document.getElementById('previewModal').classList.remove('active');
+            document.getElementById('previewFrame').src = '';
+        }
+
+        function descargarPDFDesdePreview() {
+            if (ultimoDocPDF && ultimoNombrePDF) {
+                ultimoDocPDF.save(ultimoNombrePDF);
+                mostrarSuccess(`PDF descargado: ${ultimoNombrePDF}`);
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -888,6 +1028,9 @@
         window.cerrarEditor = cerrarEditor;
         window.agregarNota = agregarNota;
         window.guardarPoliticas = guardarPoliticas;
+        window.abrirVistaPrevia = abrirVistaPrevia;
+        window.cerrarVistaPrevia = cerrarVistaPrevia;
+        window.descargarPDFDesdePreview = descargarPDFDesdePreview;
 
         // Iniciar
         init();
