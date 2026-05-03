@@ -372,26 +372,7 @@
         }
     </style>
 </head>
-<body class="login-active">
-    <!-- Pantalla de Login -->
-    <div id="loginScreen" class="login-screen active">
-        <div class="login-box">
-            <h2>🔐 Acceso SSEPI</h2>
-            <p>Ingresa tus credenciales para continuar</p>
-            <div id="loginError" class="login-error"></div>
-            <div id="loginSuccess" class="success-msg" style="display:none;"></div>
-            <div class="login-form">
-                <input type="email" id="loginEmail" placeholder="Correo electrónico" />
-                <input type="password" id="loginPassword" placeholder="Contraseña" onkeypress="if(event.key==='Enter')login()" />
-                <button type="button" class="btn btn-primary" onclick="login()" style="margin-top:10px;">
-                    🔑 Iniciar sesión
-                </button>
-                <button type="button" class="btn btn-secondary" onclick="resetPassword()" style="margin-top:10px;">
-                    📧 Resetear contraseña
-                </button>
-            </div>
-        </div>
-    </div>
+<body>
 
     <div class="container">
         <header>
@@ -400,8 +381,8 @@
                     <h1>📄 SSEPI - PDFs y Políticas por Módulo</h1>
                     <p>Genera documentos con las políticas actualizadas de cada departamento</p>
                 </div>
-                <button onclick="logout()" class="btn btn-secondary" style="max-width:150px;">
-                    🚪 Cerrar sesión
+                <button onclick="window.location.href='/panel/panel.html'" class="btn btn-secondary" style="max-width:180px;">
+                    🏠 Volver al Panel
                 </button>
             </div>
         </header>
@@ -484,7 +465,7 @@
         // CONFIGURACIÓN DE SUPABASE
         // Usa la configuración centralizada de supabase-config.js
         // ═══════════════════════════════════════════════════════════════════
-        const supabase = window.supabase;
+        const sb = window.supabase;
         const { jsPDF } = window.jspdf;
 
         let politicasData = {};
@@ -492,69 +473,11 @@
         let usuarioActual = null;
 
         // ═══════════════════════════════════════════════════════════════════
-        // LOGIN
+        // SESIÓN (heredada del panel — si no hay sesión, redirige al panel)
         // ═══════════════════════════════════════════════════════════════════
-        async function login() {
-            const email = document.getElementById('loginEmail').value.trim();
-            const password = document.getElementById('loginPassword').value;
-
-            if (!email || !password) {
-                mostrarLoginError('Ingresa email y contraseña');
-                return;
-            }
-
-            try {
-                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-                if (error) throw error;
-
-                usuarioActual = data.user;
-                document.getElementById('loginScreen').style.display = 'none';
-                document.body.classList.remove('login-active');
-                cargarPoliticas().then(ok => {
-                    if (ok) renderModules();
-                });
-            } catch (e) {
-                mostrarLoginError('Credenciales inválidas: ' + e.message);
-            }
-        }
-
-        function mostrarLoginError(msg) {
-            document.getElementById('loginError').textContent = msg;
-            document.getElementById('loginError').style.display = 'block';
-        }
-
-        async function logout() {
-            await supabase.auth.signOut();
-            window.location.reload();
-        }
-
-        async function resetPassword() {
-            const email = document.getElementById('loginEmail').value.trim();
-            if (!email) {
-                mostrarLoginError('Ingresa tu email para resetear contraseña');
-                return;
-            }
-            try {
-                await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.origin + '/panel/pdfs-politicas.html'
-                });
-                mostrarLoginSuccess('Se envió enlace de recuperación a: ' + email);
-            } catch (e) {
-                mostrarLoginError('Error: ' + e.message);
-            }
-        }
-
-        function mostrarLoginSuccess(msg) {
-            document.getElementById('loginSuccess').textContent = msg;
-            document.getElementById('loginSuccess').style.display = 'block';
-            document.getElementById('loginError').style.display = 'none';
-        }
-
-        // Auto-login si ya hay sesión (compartida con el panel ERP)
         async function verificarSesion() {
             try {
-                const { data } = await supabase.auth.getSession();
+                const { data } = await sb.auth.getSession();
                 if (data?.session) {
                     usuarioActual = data.session.user;
                     _entrarModulo();
@@ -567,9 +490,9 @@
             // Fallback: verificar token en localStorage (el panel usa Supabase Auth)
             const hasToken = !!localStorage.getItem('sb-knzmdwjmrhcoytmebdwa-auth-token') ||
                              !!localStorage.getItem('sb-foytizbicwnndegeorny-auth-token');
-            if (hasToken && supabase) {
+            if (hasToken && sb) {
                 try {
-                    const { data: { user }, error } = await supabase.auth.getUser();
+                    const { data: { user }, error } = await sb.auth.getUser();
                     if (user && !error) {
                         usuarioActual = user;
                         _entrarModulo();
@@ -585,8 +508,6 @@
         }
 
         function _entrarModulo() {
-            document.getElementById('loginScreen').style.display = 'none';
-            document.body.classList.remove('login-active');
             cargarPoliticas().then(ok => {
                 if (ok) renderModules();
             });
@@ -967,9 +888,6 @@
         window.cerrarEditor = cerrarEditor;
         window.agregarNota = agregarNota;
         window.guardarPoliticas = guardarPoliticas;
-        window.login = login;
-        window.logout = logout;
-        window.resetPassword = resetPassword;
 
         // Iniciar
         init();
