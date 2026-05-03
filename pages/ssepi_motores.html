@@ -3,26 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="/assets/logo-ssepi.png">
-    <link rel="shortcut icon" type="image/png" href="/assets/logo-ssepi.png">
+    <link rel="icon" type="image/png" href="/panel/assets/logo-ssepi.png">
+    <link rel="shortcut icon" type="image/png" href="/panel/assets/logo-ssepi.png">
     <title>SSEPI · Taller de Motores</title>
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/modules/motores.css">
+    <link rel="stylesheet" href="/panel/css/main.css">
+    <link rel="stylesheet" href="/panel/css/modules/motores.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .timeline-track{ display:flex; align-items:flex-start; justify-content:space-between; padding:12px 16px; background:var(--bg-card,#fff); border-bottom:1px solid var(--border,#e0e0e0); gap:8px; overflow-x:auto; }
+        .timeline-track .tl-step{ flex:1; min-width:90px; text-align:center; position:relative; }
+        .timeline-track .tl-step::after{ content:''; position:absolute; top:14px; left:50%; width:100%; height:3px; background:#e0e0e0; z-index:0; }
+        .timeline-track .tl-step:last-child::after{ display:none; }
+        .timeline-track .tl-dot{ width:28px; height:28px; border-radius:50%; background:#e0e0e0; color:#888; display:flex; align-items:center; justify-content:center; font-size:13px; margin:0 auto 6px; position:relative; z-index:1; font-weight:700; }
+        .timeline-track .tl-step.done .tl-dot{ background:var(--c-motores,#ef6c00); color:#fff; }
+        .timeline-track .tl-step.current .tl-dot{ background:var(--c-motores,#ef6c00); color:#fff; box-shadow:0 0 0 3px rgba(239,108,0,.25); }
+        .timeline-track .tl-step.done::after{ background:var(--c-motores,#ef6c00); }
+        .timeline-track .tl-label{ font-size:11px; color:#666; line-height:1.2; }
+        .timeline-track .tl-date{ font-size:10px; color:#999; margin-top:2px; }
+        .timeline-track .tl-step.current .tl-label{ color:var(--c-motores,#ef6c00); font-weight:600; }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script type="module" src="/js/core/supabase-config.js"></script>
-    <script type="module" src="/js/core/security-middleware.js"></script>
-    <script type="module" src="/js/core/auth-service.js"></script>
-    <script type="module" src="/js/core/data-service.js"></script>
-    <script type="module" src="/js/core/costos-engine.js"></script>
-    <script type="module" src="/js/core/contactos-formulas.js"></script>
-    <script src="/js/core/theme-clock.js"></script>
-    <script src="/js/core/user-menu.js"></script>
-    <script src="/js/core/nav-by-role.js"></script>
-    <script type="module" src="/js/modules/motores.js"></script>
-<script src="/js/core/ssepi-toast.js"></script>
+    <script type="module" src="/panel/js/core/supabase-config.js?v=2"></script>
+    <script type="module" src="/panel/js/core/security-middleware.js?v=2"></script>
+    <script type="module" src="/panel/js/core/auth-service.js?v=2"></script>
+    <script type="module" src="/panel/js/core/data-service.js?v=2"></script>
+    <script type="module" src="/panel/js/core/costos-engine.js?v=2"></script>
+    <script type="module" src="/panel/js/core/contactos-formulas.js?v=2"></script>
+    <script src="/panel/js/core/theme-clock.js?v=2"></script>
+    <script src="/panel/js/core/user-menu.js?v=2"></script>
+    <script src="/panel/js/core/nav-by-role.js?v=2"></script>
+    <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
+    <script type="module" src="/panel/js/modules/motores.js?v=2"></script>
 </head>
 <body class="page-motores nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -36,7 +49,7 @@
                     <div class="brand-sub">Reparación y Reconstrucción</div>
                 </div>
             </div>
-            <a href="/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+            <a href="/panel/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
         </div>
         <div class="header-right">
             <div class="notification-badge">
@@ -54,28 +67,28 @@
 
     <nav class="sidebar-left" id="sidebar">
         <div class="menu-category">OPERACIONES</div>
-        <a href="/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
-        <a href="/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
-        <a href="/pages/ssepi_motores.html" class="nav-item active" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
-        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
-        <a href="/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <a href="/panel/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/panel/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
+        <a href="/panel/pages/ssepi_motores.html" class="nav-item active" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/panel/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/panel/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
         <div class="menu-category">COMERCIAL</div>
-        <a href="/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
-        <a href="/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
-        <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <a href="/panel/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/panel/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
+        <a href="/panel/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
         <div class="menu-category">ADMINISTRACIÓN</div>
-        <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
-        <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
-        <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
-        <a href="/pages/ssepi_import_viewer.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-file-upload"></i></span> Importar datos</a>
-        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
-        <a href="/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
-        <a href="/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
-        <a href="/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <a href="/panel/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/panel/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/panel/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/panel/pages/ssepi_import_viewer.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-file-upload"></i></span> Importar datos</a>
+        <a href="/panel/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/panel/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <a href="/panel/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
+        <a href="/panel/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
         <div class="menu-category">EXTERNOS</div>
         <a href="#" class="nav-item" target="_blank" rel="noopener" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
         <div class="menu-category">PERSONAL</div>
-        <a href="/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+        <a href="/panel/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
     </nav>
 
     <main>
@@ -198,6 +211,8 @@
                 <button class="ws-step-btn" data-step="4">4. Reparación</button>
                 <button class="ws-step-btn" data-step="5">5. Entrega</button>
             </div>
+            <!-- Timeline visual de estados -->
+            <div id="motoresTimeline" class="timeline-track"></div>
         </div>
 
         <div class="ws-body">
@@ -433,7 +448,7 @@
                     await new Promise(r => setTimeout(r, 50));
                 }
                 await window.securityMiddleware.initSecurity();
-                const user = await window.authService.requireAuth('/');
+                const user = await window.authService.requireAuth('/panel/login.html');
                 if (user) {
                     const profile = await window.authService.getCurrentProfile();
                     document.getElementById('userName').innerText = profile?.nombre?.split(' ')[0] || 'Admin';
@@ -443,6 +458,5 @@
             })();
         });
     </script>
-<div id="toastContainer" style="position:fixed;top:20px;right:20px;z-index:10000;display:flex;flex-direction:column;gap:8px;"></div>
 </body>
 </html>

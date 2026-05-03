@@ -869,6 +869,7 @@ const TallerModule = (function() {
         _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
         _initWsChatterUI(orden);
         _renderPrioritySupplierBarTaller();
+        _renderTimelineTaller(orden.id, orden.estado || 'Nuevo');
     }
 
     async function _editarOrden(id) {
@@ -880,6 +881,7 @@ const TallerModule = (function() {
         _cargarDatosEnModal(orden);
         document.getElementById('wsModal').classList.add('active');
         _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
+        _renderTimelineTaller(orden.id, orden.estado || 'Nuevo');
     }
 
     function _eliminarOrden(id) {
@@ -962,6 +964,7 @@ const TallerModule = (function() {
             _irPaso(1);
             document.getElementById('fechaInicioDisplay').innerText = new Date().toLocaleString();
             _renderPrioritySupplierBarTaller();
+            _renderTimelineTaller(null, 'Nuevo');
         } catch (e) {
             console.warn('[Taller] _abrirNuevaOrden preparación:', e);
         }
@@ -1176,6 +1179,53 @@ const TallerModule = (function() {
             const pad = (n) => String(n).padStart(2, '0');
             return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
         } catch (_) { return ''; }
+    }
+
+    async function _renderTimelineTaller(ordenId, estadoActual) {
+        const container = document.getElementById('tallerTimeline');
+        if (!container) return;
+        const steps = [
+            { label: 'Nuevo', key: 'Nuevo', icon: '1' },
+            { label: 'Diagnóstico', key: 'Diagnóstico', icon: '2' },
+            { label: 'En Espera / Reparación', key: 'En Espera', icon: '3' },
+            { label: 'Reparado', key: 'Reparado', icon: '4' },
+            { label: 'Entregado', key: 'Entregado', icon: '5' }
+        ];
+        let historial = [];
+        try {
+            if (window.SSEPIStateMachine && window.SSEPIStateMachine.obtenerHistorialUnificado) {
+                historial = await window.SSEPIStateMachine.obtenerHistorialUnificado(window.supabase, 'taller', ordenId);
+            } else {
+                const { data } = await window.supabase.from('orden_historial').select('*').eq('orden_taller_id', ordenId).order('creado_en', { ascending: true });
+                historial = data || [];
+            }
+        } catch (e) { console.warn('[Taller] Error cargando historial:', e); }
+
+        const fechasPorEstado = {};
+        historial.forEach(h => {
+            const desc = (h.descripcion || '').toLowerCase();
+            const evt = h.evento;
+            if (evt === 'creacion' || desc.includes('creada')) fechasPorEstado['Nuevo'] = h.creado_en;
+            if (desc.includes('diagnóstico') || evt === 'diagnostico') fechasPorEstado['Diagnóstico'] = h.creado_en;
+            if (desc.includes('espera') || desc.includes('reparación') || evt === 'cambio_estado' && desc.includes('espera')) fechasPorEstado['En Espera'] = h.creado_en;
+            if (desc.includes('reparado') || evt === 'reparado') fechasPorEstado['Reparado'] = h.creado_en;
+            if (desc.includes('entregado') || desc.includes('facturado') || evt === 'entrega') fechasPorEstado['Entregado'] = h.creado_en;
+        });
+
+        const pasoActual = _estadoToPaso(estadoActual);
+        container.innerHTML = steps.map((s, idx) => {
+            const num = idx + 1;
+            let clase = '';
+            if (num < pasoActual) clase = 'done';
+            else if (num === pasoActual) clase = 'current';
+            const fecha = fechasPorEstado[s.key];
+            const fechaStr = fecha ? new Date(fecha).toLocaleDateString('es-MX', { day:'2-digit', month:'short' }) : '';
+            return '<div class="tl-step ' + clase + '" data-step="' + num + '" title="' + s.label + (fechaStr ? ' — ' + fechaStr : '') + '" >' +
+                '<div class="tl-dot">' + (clase === 'done' ? '<i class="fas fa-check"></i>' : s.icon) + '</div>' +
+                '<div class="tl-label">' + s.label + '</div>' +
+                (fechaStr ? '<div class="tl-date">' + fechaStr + '</div>' : '') +
+                '</div>';
+        }).join('');
     }
 
     function _cargarDatosEnModal(orden) {

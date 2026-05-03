@@ -355,19 +355,24 @@ const TallerModule = (function() {
     }
 
     async function _loadComprasVinculadas() {
-        const compras = await comprasService.select({}, { orderBy: 'fecha_creacion', ascending: false, page: 0, pageSize: 600 });
-        compras
-            .filter(c => c.vinculacion && c.vinculacion.tipo === 'taller')
-            .forEach(c => {
-                const ordenId = c.vinculacion?.id;
-                if (ordenId) {
-                    comprasVinculadas[ordenId] = {
-                        estado: c.estado,
-                        folio: c.folio,
-                        items: c.items || []
-                    };
-                }
-            });
+        try {
+            const compras = await comprasService.select({}, { orderBy: 'created_at', ascending: false, page: 0, pageSize: 600 });
+            compras
+                .filter(c => c.vinculacion && c.vinculacion.tipo === 'taller')
+                .forEach(c => {
+                    const ordenId = c.vinculacion?.id;
+                    if (ordenId) {
+                        comprasVinculadas[ordenId] = {
+                            estado: c.estado,
+                            folio: c.folio,
+                            items: c.items || []
+                        };
+                    }
+                });
+        } catch (e) {
+            console.warn('[Taller] Error cargando compras vinculadas:', e);
+            comprasVinculadas = {};
+        }
     }
 
     function _populateClientSelect() {
@@ -656,18 +661,23 @@ const TallerModule = (function() {
             badgeHtml = `<span class="badge-success" title="Material recibido">✅ Material listo</span>`;
         }
 
+        const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(orden);
+        const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(orden) ?? true;
+        const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
+
         return `
-            <div class="kanban-card" data-id="${orden.id}">
+            <div class="kanban-card ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${orden.id}">
                 <div class="card-header">
                     <span class="folio">${orden.folio || orden.id.slice(-6)}</span>
                     ${badgeHtml}
+                    ${badgeCuarentena}
                     <div class="card-actions">
                         <button class="btn-icon btn-edit" onclick="event.stopPropagation(); tallerModule._editarOrden('${orden.id}')" title="Editar">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn-icon btn-delete" onclick="event.stopPropagation(); tallerModule._eliminarOrden('${orden.id}')" title="Eliminar">
+                        ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); tallerModule._eliminarOrden('${orden.id}')" title="Eliminar">
                             <i class="fas fa-trash"></i>
-                        </button>
+                        </button>` : ''}
                     </div>
                 </div>
                 <div class="card-body">
@@ -689,11 +699,13 @@ const TallerModule = (function() {
         const vis = _getListaVisibleCols();
         const th = (id, text) => (vis[id] !== false ? `<th>${text}</th>` : '');
         const heads = th('folio', 'Folio') + th('cliente', 'Cliente') + th('equipo', 'Equipo') + th('tecnico', 'Técnico') +
-            th('estado', 'Estado') + th('ingreso', 'Ingreso') + th('reparacion', 'Reparación') + th('recibido', 'Recibido por');
+            th('estado', 'Estado') + th('ingreso', 'Ingreso') + th('reparacion', 'Reparación') + th('recibido', 'Recibido por') + th('acciones', 'Acciones');
         let html = `<table class="lista-table"><thead><tr>${heads}</tr></thead><tbody>`;
         ordenes.forEach(o => {
             const compraInfo = comprasVinculadas[o.id];
             const recibidoPor = o.recibido_por || '—';
+            const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(o);
+            const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(o) ?? true;
             const cells = [];
             if (vis.folio !== false) cells.push(`<td>${o.folio || o.id.slice(-6)} ${compraInfo ? '🛒' : ''}</td>`);
             if (vis.cliente !== false) cells.push(`<td>${o.cliente_nombre || ''}</td>`);
@@ -703,7 +715,13 @@ const TallerModule = (function() {
             if (vis.ingreso !== false) cells.push(`<td>${o.fecha_ingreso ? new Date(o.fecha_ingreso).toLocaleDateString() : ''}</td>`);
             if (vis.reparacion !== false) cells.push(`<td>${o.fecha_reparacion ? new Date(o.fecha_reparacion).toLocaleDateString() : ''}</td>`);
             if (vis.recibido !== false) cells.push(`<td>${recibidoPor}</td>`);
-            html += `<tr onclick="tallerModule._abrirOrden('${o.id}')">${cells.join('')}</tr>`;
+            if (vis.acciones !== false) {
+                cells.push(`<td class="acciones">
+                    <button class="btn-icon btn-edit" onclick="event.stopPropagation(); tallerModule._editarOrden('${o.id}')" title="Editar"><i class="fas fa-edit"></i></button>
+                    ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); tallerModule._eliminarOrden('${o.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
+                </td>`);
+            }
+            html += `<tr data-id="${o.id}" class="${enCuarentena ? 'row-cuarentena' : ''}" onclick="tallerModule._abrirOrden('${o.id}')">${cells.join('')}</tr>`;
         });
         html += '</tbody></table>';
         container.innerHTML = html;
@@ -851,6 +869,7 @@ const TallerModule = (function() {
         _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
         _initWsChatterUI(orden);
         _renderPrioritySupplierBarTaller();
+        _renderTimelineTaller(orden.id, orden.estado || 'Nuevo');
     }
 
     async function _editarOrden(id) {
@@ -862,50 +881,36 @@ const TallerModule = (function() {
         _cargarDatosEnModal(orden);
         document.getElementById('wsModal').classList.add('active');
         _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
+        _renderTimelineTaller(orden.id, orden.estado || 'Nuevo');
     }
 
-    async function _eliminarOrden(id) {
+    function _eliminarOrden(id) {
         const orden = orders.find(o => o.id === id);
         if (!orden) { _showErrorModal('Orden no encontrada', 'No se encontró la orden especificada.'); return; }
+        // REGLA 1 + REGLA 2: validar cuarentena y etapa antes de eliminar
+        if (window.SSEPIStateMachine) {
+            if (window.SSEPIStateMachine.estaEnCuarentena(orden)) {
+                _showErrorModal('Orden en cuarentena', 'No se puede eliminar una orden en cuarentena contable. Desactive la cuarentena primero.');
+                return;
+            }
+            if (!window.SSEPIStateMachine.puedeEliminar(orden)) {
+                _showErrorModal('Punto de no retorno', `La orden ${orden.folio} ya avanzó más allá de Diagnóstico. Solo puede cancelarse, no eliminarse.`);
+                return;
+            }
+        }
         const folio = orden.folio || id.slice(-6);
         const cliente = orden.cliente_nombre || 'N/A';
         const equipo = orden.equipo || '—';
         _showDeleteConfirm(folio, cliente, equipo, async () => {
             try {
-                // Borrado lógico: marcar como Cancelado en lugar de eliminar físicamente
-                const csrfToken = sessionStorage.getItem('csrfToken');
-                await ordenesService.update(id, {
-                    estado: 'Cancelado',
-                    notas_generales: (orden.notas_generales || '') + '\n\n[Cancelada: ' + new Date().toISOString() + ']',
-                    updated_at: new Date().toISOString()
-                }, csrfToken);
-
-                // Notificar a ventas si hay cotización vinculada
-                if (orden.cotizacion_id) {
-                    try {
-                        const cotizacionesService = createDataService('cotizaciones');
-                        await cotizacionesService.update(orden.cotizacion_id, {
-                            estado: 'cancelado',
-                            updated_at: new Date().toISOString()
-                        }, csrfToken);
-                        // Registrar evento en historial
-                        if (window.ventasModule && typeof window.ventasModule._insertarEventoHistorial === 'function') {
-                            await window.ventasModule._insertarEventoHistorial('cotizacion', orden.cotizacion_id, 'cancelacion', 'Orden de taller vinculada fue cancelada', csrfToken);
-                        }
-                    } catch (e) { console.warn('[Taller] Error notificando cancelación a ventas:', e); }
-                }
-
-                // Registrar evento en historial de la orden
-                if (window.tallerModule && typeof window.tallerModule._insertarEventoHistorial === 'function') {
-                    await window.tallerModule._insertarEventoHistorial('taller', id, 'cancelacion', `Orden ${folio} cancelada por ${cliente}`, csrfToken);
-                }
-
-                _addToFeed('🗑️', `Orden ${folio} cancelada`);
+                const { error } = await window.supabase.from('ordenes_taller').delete().eq('id', id);
+                if (error) throw error;
+                _addToFeed('🗑️', 'Orden eliminada: ' + folio);
                 await _loadOrders();
                 _applyFilters();
             } catch (e) {
                 console.error(e);
-                _showErrorModal('Error al cancelar', e.message);
+                _showErrorModal('Error al eliminar', e.message);
             }
         });
     }
@@ -959,6 +964,7 @@ const TallerModule = (function() {
             _irPaso(1);
             document.getElementById('fechaInicioDisplay').innerText = new Date().toLocaleString();
             _renderPrioritySupplierBarTaller();
+            _renderTimelineTaller(null, 'Nuevo');
         } catch (e) {
             console.warn('[Taller] _abrirNuevaOrden preparación:', e);
         }
@@ -1091,10 +1097,10 @@ const TallerModule = (function() {
             clientSel.value = cotizacion.cliente;
         }
 
-        // Equipo/Descripción - usar producto_servicio del cerebro_registro (wizard) o descripcion/nombre_producto como fallback
+        // Equipo/Descripción - usar nombre_producto del cerebro_registro (wizard) o descripcion/producto_servicio como fallback
         const equipEl = document.getElementById('inpEquip');
         if (equipEl) {
-            const nombreProducto = cotizacion.cerebro_registro?.producto_servicio || cotizacion.descripcion || cotizacion.nombre_producto;
+            const nombreProducto = cotizacion.cerebro_registro?.nombre_producto || cotizacion.cerebro_registro?.producto_servicio || cotizacion.descripcion || cotizacion.nombre_producto;
             if (nombreProducto) {
                 equipEl.value = nombreProducto;
             }
@@ -1173,6 +1179,53 @@ const TallerModule = (function() {
             const pad = (n) => String(n).padStart(2, '0');
             return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
         } catch (_) { return ''; }
+    }
+
+    async function _renderTimelineTaller(ordenId, estadoActual) {
+        const container = document.getElementById('tallerTimeline');
+        if (!container) return;
+        const steps = [
+            { label: 'Nuevo', key: 'Nuevo', icon: '1' },
+            { label: 'Diagnóstico', key: 'Diagnóstico', icon: '2' },
+            { label: 'En Espera / Reparación', key: 'En Espera', icon: '3' },
+            { label: 'Reparado', key: 'Reparado', icon: '4' },
+            { label: 'Entregado', key: 'Entregado', icon: '5' }
+        ];
+        let historial = [];
+        try {
+            if (window.SSEPIStateMachine && window.SSEPIStateMachine.obtenerHistorialUnificado) {
+                historial = await window.SSEPIStateMachine.obtenerHistorialUnificado(window.supabase, 'taller', ordenId);
+            } else {
+                const { data } = await window.supabase.from('orden_historial').select('*').eq('orden_taller_id', ordenId).order('creado_en', { ascending: true });
+                historial = data || [];
+            }
+        } catch (e) { console.warn('[Taller] Error cargando historial:', e); }
+
+        const fechasPorEstado = {};
+        historial.forEach(h => {
+            const desc = (h.descripcion || '').toLowerCase();
+            const evt = h.evento;
+            if (evt === 'creacion' || desc.includes('creada')) fechasPorEstado['Nuevo'] = h.creado_en;
+            if (desc.includes('diagnóstico') || evt === 'diagnostico') fechasPorEstado['Diagnóstico'] = h.creado_en;
+            if (desc.includes('espera') || desc.includes('reparación') || evt === 'cambio_estado' && desc.includes('espera')) fechasPorEstado['En Espera'] = h.creado_en;
+            if (desc.includes('reparado') || evt === 'reparado') fechasPorEstado['Reparado'] = h.creado_en;
+            if (desc.includes('entregado') || desc.includes('facturado') || evt === 'entrega') fechasPorEstado['Entregado'] = h.creado_en;
+        });
+
+        const pasoActual = _estadoToPaso(estadoActual);
+        container.innerHTML = steps.map((s, idx) => {
+            const num = idx + 1;
+            let clase = '';
+            if (num < pasoActual) clase = 'done';
+            else if (num === pasoActual) clase = 'current';
+            const fecha = fechasPorEstado[s.key];
+            const fechaStr = fecha ? new Date(fecha).toLocaleDateString('es-MX', { day:'2-digit', month:'short' }) : '';
+            return '<div class="tl-step ' + clase + '" data-step="' + num + '" title="' + s.label + (fechaStr ? ' — ' + fechaStr : '') + '" >' +
+                '<div class="tl-dot">' + (clase === 'done' ? '<i class="fas fa-check"></i>' : s.icon) + '</div>' +
+                '<div class="tl-label">' + s.label + '</div>' +
+                (fechaStr ? '<div class="tl-date">' + fechaStr + '</div>' : '') +
+                '</div>';
+        }).join('');
     }
 
     function _cargarDatosEnModal(orden) {
@@ -1426,14 +1479,14 @@ const TallerModule = (function() {
         const saveBtn = document.getElementById('saveOrderBtn');
         const completeBtn = document.getElementById('completeOrderBtn');
         const sinReparacionBtn = document.getElementById('sinReparacionBtn');
-        // Botones PDF - solo visibles en paso 5 (Entregado / Facturado)
-        const ejemploPDFBtn = document.getElementById('btnEjemploPDFTaller');
+        // Botones PDF - solo visibles en paso 5 Y estado Entregado/Facturado
         const vistaPreviaBtn = document.getElementById('btnVistaPreviaOrdenTaller');
         const imprimirBtn = document.getElementById('btnImprimirOrdenTaller');
         const isPaso5 = currentStep === 5;
-        if (ejemploPDFBtn) ejemploPDFBtn.classList.toggle('hidden', !isPaso5);
-        if (vistaPreviaBtn) vistaPreviaBtn.classList.toggle('hidden', !isPaso5);
-        if (imprimirBtn) imprimirBtn.classList.toggle('hidden', !isPaso5);
+        const isEntregadoFacturado = currentOrder && (currentOrder.estado === 'Entregado' || currentOrder.estado === 'Facturado');
+        const mostrarPdf = isPaso5 && isEntregadoFacturado;
+        if (vistaPreviaBtn) vistaPreviaBtn.classList.toggle('hidden', !mostrarPdf);
+        if (imprimirBtn) imprimirBtn.classList.toggle('hidden', !mostrarPdf);
 
         if (currentStep === 1) {
             prevBtn.style.display = 'none';
@@ -1740,7 +1793,6 @@ const TallerModule = (function() {
                     folio: folioTaller,
                     estado: 'En Espera',
                     fecha_ingreso: new Date().toISOString(),
-                    historial: [{ fecha: new Date().toISOString(), usuario: 'Taller', accion: 'Orden creada y enviada a compras' }],
                     fecha_inicio: fechaInicioOrden,
                     fechas_etapas: fechasEtapas
                 };
@@ -1752,23 +1804,47 @@ const TallerModule = (function() {
                 ordenTallerId = inserted.id;
                 orderId = ordenTallerId;
                 isNewOrder = false;
+                if (window.SSEPIStateMachine) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', ordenTallerId, 'creacion', `Orden ${folioTaller} creada y enviada a compras`, csrfToken);
+                }
             } else {
                 data.estado = 'En Espera';
                 data.fecha_envio_compra = new Date().toISOString();
                 await ordenesService.update(orderId, data, csrfToken);
+                if (window.SSEPIStateMachine) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', orderId, 'cambio_estado', `Estado cambiado a En Espera (solicitud de compra generada)`, csrfToken);
+                }
             }
 
             const itemsCompra = [
                 ...diagnosticoEnlaces.map(e => ({ sku: e.sku || '', descripcion: e.descripcion || '', cantidad: Number(e.cantidad) || 1, link: e.link || '' })),
                 ...diagnosticoInventario.map(i => ({ sku: i.sku || '', descripcion: i.descripcion || '', cantidad: Number(i.cantidad) || 1 }))
             ];
+
+            // 1. Intentar reservar material disponible
+            try {
+                const { error } = await window.supabase.rpc('reservar_material', {
+                    p_orden_id: ordenTallerId,
+                    p_orden_tipo: 'taller',
+                    p_items: JSON.stringify(itemsCompra)
+                });
+                if (error) throw error;
+                console.log('[Taller] Material reservado exitosamente');
+            } catch (error) {
+                console.warn('[Taller] No se pudo reservar material:', error.message);
+                // Continuar sin reserva - se generará compra
+            }
+
+            // 2. Crear compra con items vacíos (se llenarán en compras.js)
             const nuevaCompra = {
                 folio: `PO-${folioTaller}`,
                 proveedor: 'Por asignar',
                 departamento: 'Taller Electrónica',
+                fecha: new Date().toISOString(),
                 vinculacion: { tipo: 'taller', id: ordenTallerId, nombre: data.cliente_nombre, folio_taller: folioTaller },
-                items: itemsCompra,
+                items: itemsCompra,  // Se migrarán a compras_items
                 estado: 1,
+                created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
 
@@ -1916,7 +1992,7 @@ const TallerModule = (function() {
             const pasoEstado = _pasoToEstado(currentStep);
             if (pasoEstado && data.estado !== pasoEstado) {
                 // Solo avanzar, nunca retroceder
-                const ordenActual = ordenes.find(o => String(o.id) === String(orderId));
+                const ordenActual = orders.find(o => String(o.id) === String(orderId));
                 const estadoActual = ordenActual?.estado || 'Nuevo';
                 const ordenPrioridad = _estadoPrioridad(estadoActual);
                 const nuevoPrioridad = _estadoPrioridad(pasoEstado);
@@ -1932,14 +2008,28 @@ const TallerModule = (function() {
                 data.folio = document.getElementById('inpFolio').value;
                 data.estado = 'Nuevo';
                 data.fecha_ingreso = new Date().toISOString();
-                data.historial = [{ fecha: new Date().toISOString(), usuario: 'Taller', accion: 'Orden creada' }];
                 const inserted = await ordenesService.insert(data, csrfToken);
                 orderId = inserted.id;
                 isNewOrder = false;
                 if (!silencioso) _showToast('Orden guardada correctamente');
+                // Registrar en historial unificado
+                if (window.SSEPIStateMachine) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', orderId, 'creacion', `Orden ${data.folio} creada en Taller`, csrfToken);
+                }
+                // Auto-avance: si guardó paso 1, pasar a Diagnóstico
+                if (currentStep === 1 && data.estado === 'Nuevo') {
+                    await ordenesService.update(orderId, { estado: 'Diagnóstico' }, csrfToken);
+                    data.estado = 'Diagnóstico';
+                    if (window.SSEPIStateMachine) {
+                        await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', orderId, 'cambio_estado', `Estado cambiado a Diagnóstico (auto-avance paso 1)`, csrfToken);
+                    }
+                }
             } else {
                 await ordenesService.update(orderId, data, csrfToken);
                 if (!silencioso) _showToast('Orden actualizada correctamente');
+                if (window.SSEPIStateMachine && data.estado) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', orderId, 'actualizacion', `Orden ${data.folio} actualizada`, csrfToken);
+                }
             }
             _afterTallerPersistOk();
             _addToFeed('💾', `Orden ${data.folio} guardada`);
@@ -1967,15 +2057,15 @@ const TallerModule = (function() {
                         if (nuevoEstadoVentas && cot.estado !== nuevoEstadoVentas) {
                             await cotizacionesService.update(cot.id, { estado: nuevoEstadoVentas, updated_at: new Date().toISOString() }, csrfToken);
                             _addToFeed('📊', `Cotización ${cot.folio} actualizada a ${nuevoEstadoVentas}`);
-                            // Registrar evento en historial de la cotización
-                            if (window.ventasModule && typeof window.ventasModule._insertarEventoHistorial === 'function') {
-                                await window.ventasModule._insertarEventoHistorial('cotizacion', cot.id, 'cambio_estado', `Estado actualizado automáticamente desde Taller: ${data.estado}`, csrfToken);
-                            }
                         }
                     }
                 } catch (e) {
                     console.warn('[Taller] Error notificando a ventas:', e);
                 }
+            }
+            if (!silencioso) {
+                await _loadOrders();
+                _applyFilters();
             }
         } catch (error) {
             console.error(error);
