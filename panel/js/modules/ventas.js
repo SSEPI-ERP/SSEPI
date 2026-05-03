@@ -4055,11 +4055,12 @@ const VentasModule = (function() {
         const items = calculadoraComponentes.map(c => ({ descripcion: c.nombre, cantidad: c.cantidad, precioUnitario: c.costo_unitario, importe: c.subtotal }));
         const subtotal = total / 1.16;
         const iva = total - subtotal;
+        const departamento = ventasWizardCerebro?.departamento || 'Ventas';
         if (!cliente) { _showToast('Cliente requerido para el PDF.', 'info'); return; }
         (async () => {
             try {
                 const { data: { user } } = await window.supabase.auth.getUser();
-                await pdfGenerator.generateCotizacion({ folio, cliente, rfc, items, subtotal, iva, total }, user);
+                await pdfGenerator.generateCotizacion({ folio, cliente, rfc, items, subtotal, iva, total, departamento }, user);
                 _addToFeed('🧾', `PDF generado: ${folio}`);
             } catch (error) {
                 console.error(error);
