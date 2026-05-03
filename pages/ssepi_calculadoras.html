@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="/assets/logo-ssepi.png">
-    <link rel="shortcut icon" type="image/png" href="/assets/logo-ssepi.png">
+    <link rel="icon" type="image/png" href="/panel/assets/logo-ssepi.png">
+    <link rel="shortcut icon" type="image/png" href="/panel/assets/logo-ssepi.png">
     <title>SSEPI · Calculadoras</title>
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/modules/calculadoras.css">
+    <link rel="stylesheet" href="/panel/css/main.css">
+    <link rel="stylesheet" href="/panel/css/modules/calculadoras.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script type="module" src="/js/core/supabase-config.js"></script>
-    <script type="module" src="/js/core/security-middleware.js"></script>
-    <script type="module" src="/js/core/auth-service.js"></script>
-    <script src="/js/core/theme-clock.js"></script>
-    <script src="/js/core/user-menu.js"></script>
-    <script src="/js/core/nav-by-role.js"></script>
-    <script type="module" src="/js/core/costos-engine.js"></script>
-    <script type="module" src="/js/modules/calculadoras.js"></script>
-<script src="/js/core/ssepi-toast.js"></script>
+    <script type="module" src="/panel/js/core/supabase-config.js?v=2"></script>
+    <script type="module" src="/panel/js/core/security-middleware.js?v=2"></script>
+    <script type="module" src="/panel/js/core/auth-service.js?v=2"></script>
+    <script src="/panel/js/core/theme-clock.js?v=2"></script>
+    <script src="/panel/js/core/user-menu.js?v=2"></script>
+    <script src="/panel/js/core/nav-by-role.js?v=2"></script>
+    <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
+    <script type="module" src="/panel/js/core/costos-engine.js?v=2"></script>
+    <script type="module" src="/panel/js/modules/calculadoras.js?v=2"></script>
 </head>
 <body class="page-calculadoras nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -34,7 +34,7 @@
                     <div class="brand-sub">Funciones, costos e información de clientes (admin)</div>
                 </div>
             </div>
-            <a href="/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+            <a href="/panel/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
         </div>
         <div class="header-right">
             <div class="live-clock" id="clock">00:00:00</div>
@@ -48,34 +48,57 @@
 
     <nav class="sidebar-left" id="sidebar">
         <div class="menu-category">OPERACIONES</div>
-        <a href="/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
-        <a href="/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
-        <a href="/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
-        <a href="/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
-        <a href="/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <a href="/panel/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/panel/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
+        <a href="/panel/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/panel/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/panel/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
         <div class="menu-category">COMERCIAL</div>
-        <a href="/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
-        <a href="/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
-        <a href="/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <a href="/panel/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/panel/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
+        <a href="/panel/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
         <div class="menu-category">ADMINISTRACIÓN</div>
-        <a href="/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
-        <a href="/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
-        <a href="/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
-        <a href="/pages/ssepi_import_viewer.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-file-upload"></i></span> Importar datos</a>
-        <a href="/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
-        <a href="/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
-        <a href="/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
-        <a href="/pages/ssepi_calculadoras.html" class="nav-item active" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <a href="/panel/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/panel/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/panel/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/panel/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/panel/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <a href="/panel/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
+        <a href="/panel/pages/ssepi_calculadoras.html" class="nav-item active" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
         <div class="menu-category">EXTERNOS</div>
-        <a href="/pages/ssepi_paginas.html" class="nav-item" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <a href="/panel/pages/ssepi_paginas.html" class="nav-item" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
         <div class="menu-category">PERSONAL</div>
-        <a href="/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+        <a href="/panel/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
     </nav>
 
     <main>
+        <!-- Selector de Departamento + Cliente -->
         <div class="form-section calc-sim-wrap">
-            <h3 class="section-title-form"><i class="fas fa-flask"></i> Simulador · Laboratorio (electrónica)</h3>
-            <p class="form-hint">Constantes de la calculadora <strong>Laboratorio (electrónica)</strong> en la tabla de costos. Misma lógica que ventas/taller (CostosEngine).</p>
+            <h3 class="section-title-form"><i class="fas fa-bullseye"></i> Nueva Cotización</h3>
+            <p class="form-hint">Selecciona el <strong>departamento</strong> y el <strong>cliente</strong> para auto-cargar KM y ver las tarifas específicas.</p>
+            <div class="calc-sim-grid calc-sim-grid--2">
+                <div class="calc-sim-field">
+                    <label for="selDeptoCotizacion">Departamento</label>
+                    <select id="selDeptoCotizacion" class="form-control">
+                        <option value="laboratorio">Laboratorio (Electrónica)</option>
+                        <option value="motores">Motores</option>
+                        <option value="automatizacion">Automatización</option>
+                        <option value="suministros">Suministros / Ventas</option>
+                        <option value="soporte">Soporte a Planta / Viajes</option>
+                    </select>
+                </div>
+                <div class="calc-sim-field">
+                    <label for="selClienteCotizacion">Cliente (del tabulador)</label>
+                    <select id="selClienteCotizacion" class="form-control">
+                        <option value="">-- Selecciona cliente --</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="simLaboratorio" class="form-section calc-sim-wrap" style="display:block;">
+            <h3 class="section-title-form"><i class="fas fa-flask"></i> Simulador · <span class="sim-depto-label">Laboratorio</span></h3>
+            <p class="form-hint">Constantes de la calculadora <strong class="sim-depto-label">Laboratorio</strong> en la tabla de costos. Misma lógica que ventas/taller (CostosEngine).</p>
             <div class="calc-sim-grid">
                 <div class="calc-sim-field"><label for="labKm">Km (traslado)</label><input type="number" id="labKm" class="form-control" step="0.1" value="226" min="0"></div>
                 <div class="calc-sim-field"><label for="labHorasViaje">Horas viaje (opcional)</label><input type="number" id="labHorasViaje" class="form-control" step="0.25" value="" min="0" placeholder="Si vacío: km/50"></div>
@@ -86,8 +109,8 @@
             <div id="labSimResult" class="calc-sim-result" aria-live="polite"></div>
         </div>
 
-        <div class="form-section calc-sim-wrap">
-            <h3 class="section-title-form"><i class="fas fa-robot"></i> Simulador · Automatización</h3>
+        <div id="simAutomatizacion" class="form-section calc-sim-wrap" style="display:none;">
+            <h3 class="section-title-form"><i class="fas fa-robot"></i> Simulador · <span class="sim-depto-label">Automatización</span></h3>
             <p class="form-hint">Filas <strong>Tarifa:</strong> y parámetros <strong>auto:</strong> desde la calculadora Automatización (hoja AUTOMATIZACIÓN del Excel).</p>
             <div class="resumen-table-wrap">
                 <table class="lista-table" id="tablaSimAuto">
@@ -157,7 +180,7 @@
 
         <div class="form-section">
             <h3 class="section-title-form"><i class="fas fa-map-marker-alt"></i> Tabulador de Viáticos (Clientes por KM)</h3>
-            <p class="form-hint">Agrega clientes con KM de distancia y horas de viaje. Los costos se calculan automáticamente usando: Gasolina $24.50/L, Rendimiento 9.5 km/L, Costo técnico $104.16/hr.</p>
+            <p class="form-hint">Agrega clientes con KM de distancia y horas de viaje. Los costos se calculan automáticamente usando: <strong>Gasolina $30.00/L</strong> (actualizado 2025), Rendimiento 9.5 km/L, Costo técnico $104.16/hr.</p>
             <div class="filtros-bar" style="margin-bottom:10px">
                 <button type="button" class="btn-ssepi btn-ventas" id="btnNuevoTabuladorCliente"><i class="fas fa-plus"></i> Agregar cliente al tabulador</button>
             </div>
@@ -336,7 +359,7 @@
                     <i class="fas fa-map-marker-alt"></i> Tablas de Viáticos por Departamento
                 </h3>
                 <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
-                    <strong>Fórmulas automáticas (CostosEngine):</strong> Litros = KM ÷ 9.5 | $ Gasolina = Litros × $24.50 | $ Técnico = Hrs × $104.16 | Total = Gasolina + Técnico
+                    <strong>Fórmulas automáticas (CostosEngine):</strong> Litros = KM ÷ 9.5 | $ Gasolina = Litros × <strong>$30.00</strong> | $ Técnico = Hrs × $104.16 | Total = Gasolina + Técnico
                     <br>Agrega clientes en la sección «Tabulador de Viáticos» para que aparezcan en estas tablas.
                 </p>
 
@@ -641,7 +664,7 @@
                     await new Promise(function(r) { setTimeout(r, 50); });
                 }
                 await window.securityMiddleware.initSecurity();
-                await window.authService.requireAuth('/panel.html');
+                await window.authService.requireAuth('/panel/login.html');
                 var profile = await window.authService.getCurrentProfile();
                 if (profile) {
                     var rol = profile.rol || '';
@@ -651,7 +674,7 @@
                         allowedPerm = await window.authService.hasPermission('calculadoras', 'read');
                     } catch (e) {}
                     if (!allowedRol && !allowedPerm) {
-                        window.location.href = '/panel.html';
+                        window.location.href = '/panel/panel.html';
                         return;
                     }
                     document.getElementById('userName').innerText = profile.nombre ? profile.nombre.split(' ')[0] : 'Usuario';
@@ -663,6 +686,5 @@
             })();
         });
     </script>
-<div id="toastContainer" style="position:fixed;top:20px;right:20px;z-index:10000;display:flex;flex-direction:column;gap:8px;"></div>
 </body>
 </html>

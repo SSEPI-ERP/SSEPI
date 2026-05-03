@@ -40,8 +40,13 @@
     function loadClientes() {
         if (!supabase()) return Promise.resolve([]);
         return supabase().from('calculadora_clientes').select('*, calculadoras(nombre)').order('cliente_nombre').then(function(r) {
-            if (r.error) throw r.error;
+            if (r.error) {
+                console.warn('[Calculadoras] No se pudo cargar calculadora_clientes:', r.error.message);
+                clientesList = [];
+                return [];
+            }
             clientesList = r.data || [];
+            console.log('[Calculadoras] Clientes cargados:', clientesList.length);
             return clientesList;
         });
     }
@@ -242,14 +247,17 @@
             return;
         }
 
+        var ce = window.CostosEngine;
+        var gasolinaPrecio = ce ? ce.CONFIG.gasolina : 30;
+        var tarifaTecnico  = ce ? (ce.CONFIG.costoTecnico || 104.16) : 104.16;
+
         tbody.innerHTML = clientes.map(function(c) {
             var km = Number(c.km) || 0;
             var horas = Number(c.horas_viaje) || 0;
 
-            // Usar CostosEngine para cálculos consistentes
-            var litros = window.CostosEngine ? window.CostosEngine.calcularLitros(km) : (km > 0 ? km / 9.5 : 0);
-            var costoGasolina = window.CostosEngine ? window.CostosEngine.calcularCostoGasolina(km) : (litros * 24.50);
-            var costoTecnico = window.CostosEngine ? window.CostosEngine.calcularCostoTrasladoTecnico(horas) : (horas * 104.16);
+            var litros = ce ? ce.calcularLitros(km) : (km > 0 ? (km * 2) / 9.5 : 0);
+            var costoGasolina = ce ? ce.calcularCostoGasolina(km) : (litros * gasolinaPrecio);
+            var costoTecnico = ce ? ce.calcularCostoTrasladoTecnico(horas) : (horas * tarifaTecnico);
             var total = costoGasolina + costoTecnico;
 
             return '<tr>' +
@@ -257,7 +265,7 @@
                 '<td style="text-align: right;">' + km.toFixed(1) + '</td>' +
                 '<td style="text-align: right;">' + (km * 2).toFixed(2) + '</td>' +
                 '<td style="text-align: right;">' + litros.toFixed(2) + '</td>' +
-                '<td style="text-align: right;">$' + (window.CostosEngine ? window.CostosEngine.CONFIG.gasolina.toFixed(2) : '24.50') + '</td>' +
+                '<td style="text-align: right;">$' + gasolinaPrecio.toFixed(2) + '</td>' +
                 '<td style="text-align: right;">$' + costoGasolina.toFixed(2) + '</td>' +
                 '<td style="text-align: right;">' + horas.toFixed(0) + '</td>' +
                 '<td style="text-align: right;">$' + costoTecnico.toFixed(2) + '</td>' +
@@ -446,7 +454,7 @@
         prom.then(function(r) {
             if (r.error) throw r.error;
             return loadHojaFilas();
-        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
 
     function deleteHojaRowFromTr(tr) {
@@ -462,7 +470,7 @@
         supabase().from('calculadora_hoja_filas').delete().eq('id', id).then(function(r) {
             if (r.error) throw r.error;
             return loadHojaFilas();
-        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
 
     function appendEmptyHojaRow() {
@@ -470,7 +478,7 @@
         if (!tbody) return;
         var first = tbody.querySelector('tr[data-hoja-id]');
         if (first && first.getAttribute('data-hoja-id') === 'new') {
-            _showToast('Ya hay una fila nueva sin guardar.', 'info');
+            alert('Ya hay una fila nueva sin guardar.');
             return;
         }
         if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
@@ -618,7 +626,7 @@
         var activo = document.getElementById('modalCalcActivo');
         var id = (idInp && idInp.value) ? idInp.value.trim() : '';
         var nom = (nombre && nombre.value) ? nombre.value.trim() : '';
-        if (!nom) { _showToast('El nombre es obligatorio.', 'info'); return; }
+        if (!nom) { alert('El nombre es obligatorio.'); return; }
         var payload = { nombre: nom, tipo: tipo ? tipo.value.trim() || null : null, funciones: funciones ? funciones.value.trim() || null : null, activo: activo ? activo.checked : true, updated_at: new Date().toISOString() };
         var prom;
         if (id) {
@@ -632,7 +640,7 @@
             if (r.error) throw r.error;
             closeModalCalculadora();
             loadCalculadoras().then(function() { renderFunciones(); fillSelectCalculadoras('modalCostoCalculadora'); fillSelectCalculadoras('modalClienteCalculadora'); updateAnalisis(); });
-        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
     function deleteModalCalculadora() {
         var idInp = document.getElementById('modalCalcId');
@@ -650,7 +658,7 @@
             fillSelectCalculadoras('modalCostoCalculadora');
             fillSelectCalculadoras('modalClienteCalculadora');
             updateAnalisis();
-        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
     function closeModalCalculadora() {
         var modal = document.getElementById('modalCalc');
@@ -700,7 +708,7 @@
         var calcId = calcSel && calcSel.value ? calcSel.value : (calculadorasList[0] && calculadorasList[0].id);
         var conc = (concepto && concepto.value) ? concepto.value.trim() : '';
         var costVal = (costo && costo.value) ? parseFloat(costo.value) : 0;
-        if (!conc) { _showToast('El concepto es obligatorio.', 'info'); return; }
+        if (!conc) { alert('El concepto es obligatorio.'); return; }
         if (isNaN(costVal)) costVal = 0;
         var payload = { calculadora_id: calcId, concepto: conc, costo: costVal, moneda: (moneda && moneda.value) ? moneda.value.trim() : 'MXN', updated_at: new Date().toISOString() };
         var prom;
@@ -714,7 +722,7 @@
             if (r.error) throw r.error;
             closeModalCosto();
             loadCostos().then(function() { renderCostos(); updateAnalisis(); renderSimAutoTable(); syncAutoGasDefault(); });
-        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
     function deleteModalCosto() {
         var idInp = document.getElementById('modalCostoId');
@@ -724,7 +732,7 @@
             if (r.error) throw r.error;
             closeModalCosto();
             loadCostos().then(function() { renderCostos(); updateAnalisis(); renderSimAutoTable(); syncAutoGasDefault(); });
-        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
     function closeModalCosto() {
         var modal = document.getElementById('modalCosto');
@@ -848,7 +856,7 @@
         var km = Number(kmInput && kmInput.value ? kmInput.value : 0);
         var horas = Number(horasInput && horasInput.value ? horasInput.value : 0);
 
-        if (!nom) { _showToast('El nombre del cliente es obligatorio.', 'info'); return; }
+        if (!nom) { alert('El nombre del cliente es obligatorio.'); return; }
 
         var payload = {
             nombre_cliente: nom,
@@ -872,7 +880,7 @@
                 renderTabuladorViaticos();
                 renderClientesTabuladorTabla();
             });
-        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
 
     function deleteModalTabuladorCliente() {
@@ -887,7 +895,7 @@
                 renderTabuladorViaticos();
                 renderClientesTabuladorTabla();
             });
-        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
 
     function closeModalTabuladorCliente() {
@@ -902,7 +910,7 @@
         var id = (idInp && idInp.value) ? idInp.value.trim() : '';
         var calcId = calcSel && calcSel.value ? calcSel.value : (calculadorasList[0] && calculadorasList[0].id);
         var nom = (nombre && nombre.value) ? nombre.value.trim() : '';
-        if (!nom) { _showToast('El nombre del cliente es obligatorio.', 'info'); return; }
+        if (!nom) { alert('El nombre del cliente es obligatorio.'); return; }
         var payload = { calculadora_id: calcId, cliente_nombre: nom, cliente_email: (email && email.value) ? email.value.trim() : null, updated_at: new Date().toISOString() };
         var prom;
         if (id) {
@@ -916,7 +924,7 @@
             if (r.error) throw r.error;
             closeModalCliente();
             loadClientes().then(function() { renderClientes(); updateAnalisis(); });
-        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
     function deleteModalCliente() {
         var idInp = document.getElementById('modalClienteId');
@@ -926,7 +934,7 @@
             if (r.error) throw r.error;
             closeModalCliente();
             loadClientes().then(function() { renderClientes(); updateAnalisis(); });
-        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
     function closeModalCliente() {
         var modal = document.getElementById('modalCliente');
@@ -1010,7 +1018,7 @@
             updated_at: new Date().toISOString()
         };
 
-        if (!payload.descripcion) { _showToast('La descripción es obligatoria.', 'info'); return; }
+        if (!payload.descripcion) { alert('La descripción es obligatoria.'); return; }
 
         var prom;
         if (id) {
@@ -1024,7 +1032,7 @@
             if (r.error) throw r.error;
             closeModalBOM();
             loadBOM().then(function() { renderBOM(); fillBOMFiltros(); });
-        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
 
     function deleteModalBOM() {
@@ -1036,7 +1044,7 @@
             if (r.error) throw r.error;
             closeModalBOM();
             loadBOM().then(function() { renderBOM(); fillBOMFiltros(); });
-        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
 
     function closeModalBOM() {
@@ -1116,7 +1124,7 @@
             updated_at: new Date().toISOString()
         };
 
-        if (!payload.nombre) { _showToast('El nombre del servicio es obligatorio.', 'info'); return; }
+        if (!payload.nombre) { alert('El nombre del servicio es obligatorio.'); return; }
 
         var prom;
         if (id) {
@@ -1130,7 +1138,7 @@
             if (r.error) throw r.error;
             closeModalServicio();
             loadServicios().then(renderServicios);
-        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
 
     function deleteModalServicio() {
@@ -1142,7 +1150,7 @@
             if (r.error) throw r.error;
             closeModalServicio();
             loadServicios().then(renderServicios);
-        }).catch(function(e) { _showToast('Error: ' + (e.message || e, 'error')); });
+        }).catch(function(e) { alert('Error: ' + (e.message || e)); });
     }
 
     function closeModalServicio() {
@@ -1211,11 +1219,11 @@
 
     function procesarImportacion() {
         if (!excelDataPreview || !excelDataPreview.length) {
-            _showToast('Selecciona primero un archivo Excel.', 'info');
+            alert('Selecciona primero un archivo Excel.');
             return;
         }
         if (!supabase()) {
-            _showToast('Supabase no disponible.', 'info');
+            alert('Supabase no disponible.');
             return;
         }
         var headers = excelDataPreview[0] || [];
@@ -1263,7 +1271,7 @@
                 hojaMsg = ' Filas en hoja Excel: ' + hojaN + '.';
                 if (hojaS) hojaMsg += ' Hojas con columnas detectadas: ' + hojaS + '.';
             }
-            _showToast('Importación completada. Calculadoras — agregados: ' + added + ', actualizados: ' + updated + '.' + hojaMsg, 'error');
+            alert('Importación completada. Calculadoras — agregados: ' + added + ', actualizados: ' + updated + '.' + hojaMsg);
             excelDataPreview = null;
             excelSheetsPreview = null;
             var impSel = document.getElementById('importSheetSelect');
@@ -1284,7 +1292,7 @@
             return loadHojaFilas();
         }).catch(function(err) {
             console.error(err);
-            _showToast('Error al importar: ' + (err.message || err, 'error'));
+            alert('Error al importar: ' + (err.message || err));
         });
     }
 
@@ -1341,9 +1349,9 @@
 
     function runLaboratorioSim() {
         var CE = window.CostosEngine;
-        if (!CE) { _showToast('Motor CostosEngine no cargado.', 'info'); return; }
+        if (!CE) { alert('Motor CostosEngine no cargado.'); return; }
         var calc = findCalculadoraNombre('laboratorio');
-        if (!calc) { _showToast('No hay calculadora "Laboratorio (electrónica)". Importa formulas o créala.', 'info'); return; }
+        if (!calc) { alert('No hay calculadora "Laboratorio (electrónica)". Importa formulas o créala.'); return; }
         var m = costosMapByCalculadoraId(calc.id);
         CE.applyConfig({
             gasolina: m.gasolina != null ? m.gasolina : CE.CONFIG.gasolina,
@@ -1366,9 +1374,52 @@
         el.innerHTML = '<div class="calc-sim-breakdown"><p>Gasolina: <strong>' + r.gasolina.toFixed(2) + '</strong> · Traslado técn.: <strong>' + r.trasladoTecnico.toFixed(2) + '</strong> · MO: <strong>' + r.manoObra.toFixed(2) + '</strong> · G.fijos: <strong>' + r.gastosFijos.toFixed(2) + '</strong> · Camioneta: <strong>' + r.camioneta.toFixed(2) + '</strong> · Refacc.: <strong>' + r.refacciones.toFixed(2) + '</strong></p><p>Gastos generales: <strong>' + r.gastosGenerales.toFixed(2) + '</strong> · + Utilidad: <strong>' + r.precioConUtilidad.toFixed(2) + '</strong> · + Crédito (antes IVA): <strong>' + r.precioAntesIVA.toFixed(2) + '</strong> · IVA: <strong>' + r.iva.toFixed(2) + '</strong></p><p class="calc-sim-total">Total con IVA: <strong>' + r.total.toFixed(2) + '</strong></p></div>';
     }
 
+    // --- Selector departamento + cliente en simuladores ---
+    function fillClienteSelector() {
+        var sel = document.getElementById('selClienteCotizacion');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">-- Selecciona cliente --</option>' +
+            clientesTabulador.map(function(c) {
+                return '<option value="' + esc(c.id) + '" data-km="' + (c.km || 0) + '" data-horas="' + (c.horas_viaje || 0) + '" data-nombre="' + esc(c.nombre_cliente) + '"'>' + esc(c.nombre_cliente) + ' (' + (c.km || 0) + ' km)</option>';
+            }).join('');
+    }
+
+    function onCambioDepto() {
+        var sel = document.getElementById('selDeptoCotizacion');
+        if (!sel) return;
+        var depto = sel.value;
+
+        // Cambiar departamento en CostosEngine
+        if (window.CostosEngine) window.CostosEngine.setDepartamento(depto);
+
+        // Mostrar/ocultar simuladores
+        var simLab = document.getElementById('simLaboratorio');
+        var simAuto = document.getElementById('simAutomatizacion');
+        if (simLab) simLab.style.display = (depto === 'laboratorio' || depto === 'motores' || depto === 'soporte') ? 'block' : 'none';
+        if (simAuto) simAuto.style.display = (depto === 'automatizacion' || depto === 'suministros') ? 'block' : 'none';
+
+        // Actualizar labels
+        var labels = document.querySelectorAll('.sim-depto-label');
+        var deptoName = sel.options[sel.selectedIndex].text;
+        labels.forEach(function(l) { l.textContent = deptoName; });
+    }
+
+    function onCambioCliente() {
+        var sel = document.getElementById('selClienteCotizacion');
+        if (!sel) return;
+        var opt = sel.options[sel.selectedIndex];
+        if (!opt || !opt.value) return;
+        var km = parseFloat(opt.getAttribute('data-km')) || 0;
+        var horas = parseFloat(opt.getAttribute('data-horas')) || 0;
+        var kmInp = document.getElementById('labKm');
+        var hvInp = document.getElementById('labHorasViaje');
+        if (kmInp) kmInp.value = km;
+        if (hvInp && horas > 0) hvInp.value = horas;
+    }
+
     function runAutomatizacionSim() {
         var calc = findCalculadoraNombre('automatiz');
-        if (!calc) { _showToast('No hay calculadora Automatización.', 'info'); return; }
+        if (!calc) { alert('No hay calculadora Automatización.'); return; }
         var m = costosMapByCalculadoraId(calc.id);
         var lines = 0;
         document.querySelectorAll('#simAutoBody tr[data-tarifa-i]').forEach(function(tr) {
@@ -1444,6 +1495,12 @@
         var bAuto = document.getElementById('btnCalcAutomatizacion');
         if (bAuto) bAuto.addEventListener('click', runAutomatizacionSim);
 
+        // Selector departamento + cliente en simuladores
+        var selDepto = document.getElementById('selDeptoCotizacion');
+        var selCliente = document.getElementById('selClienteCotizacion');
+        if (selDepto) selDepto.addEventListener('change', onCambioDepto);
+        if (selCliente) selCliente.addEventListener('change', onCambioCliente);
+
         if (document.getElementById('btnNuevaCalculadora')) document.getElementById('btnNuevaCalculadora').addEventListener('click', function() { openModalCalculadora(null); });
         if (document.getElementById('btnNuevoCosto')) document.getElementById('btnNuevoCosto').addEventListener('click', function() { openModalCosto(null); });
         if (document.getElementById('btnNuevoCliente')) document.getElementById('btnNuevoCliente').addEventListener('click', function() { openModalCliente(null); });
@@ -1515,6 +1572,8 @@
             renderClientes();
             renderTabuladorViaticos();
             renderClientesTabuladorTabla();
+            fillClienteSelector();
+            onCambioDepto();
             fillHojaCalcSelect();
             await loadHojaFilas();
             updateAnalisis();
