@@ -622,6 +622,7 @@ const MotoresModule = (function() {
         document.getElementById('wsModal').classList.add('active');
         _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
         _renderPrioritySupplierBarMotores();
+        _renderTimelineMotores(orden.id, orden.estado || 'Nuevo');
     }
 
     async function _abrirNuevaOrden() {
@@ -655,6 +656,7 @@ const MotoresModule = (function() {
         document.getElementById('wsModal').classList.add('active');
         document.getElementById('fechaInicioDisplay').innerText = new Date().toLocaleString();
         _renderPrioritySupplierBarMotores();
+        _renderTimelineMotores(null, 'Nuevo');
     }
 
     async function _eliminarOrden(id) {
@@ -831,6 +833,53 @@ const MotoresModule = (function() {
     function _pasoToEstado(paso) {
         const mapa = { 1: 'Nuevo', 2: 'Diagnóstico', 3: 'En Espera', 4: 'Reparado', 5: 'Entregado' };
         return mapa[paso] || 'Nuevo';
+    }
+
+    async function _renderTimelineMotores(ordenId, estadoActual) {
+        const container = document.getElementById('motoresTimeline');
+        if (!container) return;
+        const steps = [
+            { label: 'Recepción', key: 'Nuevo', icon: '1' },
+            { label: 'Diagnóstico', key: 'Diagnóstico', icon: '2' },
+            { label: 'En Espera', key: 'En Espera', icon: '3' },
+            { label: 'Reparación', key: 'Reparado', icon: '4' },
+            { label: 'Entrega', key: 'Entregado', icon: '5' }
+        ];
+        let historial = [];
+        try {
+            if (window.SSEPIStateMachine && window.SSEPIStateMachine.obtenerHistorialUnificado) {
+                historial = await window.SSEPIStateMachine.obtenerHistorialUnificado(window.supabase, 'motor', ordenId);
+            } else {
+                const { data } = await window.supabase.from('orden_historial').select('*').eq('orden_motor_id', ordenId).order('creado_en', { ascending: true });
+                historial = data || [];
+            }
+        } catch (e) { console.warn('[Motores] Error cargando historial:', e); }
+
+        const fechasPorEstado = {};
+        historial.forEach(h => {
+            const desc = (h.descripcion || '').toLowerCase();
+            const evt = h.evento;
+            if (evt === 'creacion' || desc.includes('creada')) fechasPorEstado['Nuevo'] = h.creado_en;
+            if (desc.includes('diagnóstico') || evt === 'diagnostico') fechasPorEstado['Diagnóstico'] = h.creado_en;
+            if (desc.includes('espera') || evt === 'espera') fechasPorEstado['En Espera'] = h.creado_en;
+            if (desc.includes('reparado') || desc.includes('reparación') || evt === 'reparado') fechasPorEstado['Reparado'] = h.creado_en;
+            if (desc.includes('entregado') || evt === 'entrega') fechasPorEstado['Entregado'] = h.creado_en;
+        });
+
+        const pasoActual = _estadoToPaso(estadoActual);
+        container.innerHTML = steps.map((s, idx) => {
+            const num = idx + 1;
+            let clase = '';
+            if (num < pasoActual) clase = 'done';
+            else if (num === pasoActual) clase = 'current';
+            const fecha = fechasPorEstado[s.key];
+            const fechaStr = fecha ? new Date(fecha).toLocaleDateString('es-MX', { day:'2-digit', month:'short' }) : '';
+            return '<div class="tl-step ' + clase + '" data-step="' + num + '" title="' + s.label + (fechaStr ? ' — ' + fechaStr : '') + '" >' +
+                '<div class="tl-dot">' + (clase === 'done' ? '<i class="fas fa-check"></i>' : s.icon) + '</div>' +
+                '<div class="tl-label">' + s.label + '</div>' +
+                (fechaStr ? '<div class="tl-date">' + fechaStr + '</div>' : '') +
+                '</div>';
+        }).join('');
     }
 
     function _cargarDatosEnModal(orden) {

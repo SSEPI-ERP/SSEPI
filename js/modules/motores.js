@@ -509,11 +509,24 @@ const MotoresModule = (function() {
             badgeHtml = `<span class="badge-success" title="Material recibido">✅ Material listo</span>`;
         }
 
+        const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(orden);
+        const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(orden) ?? true;
+        const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
+
         return `
-            <div class="kanban-card" data-id="${orden.id}">
+            <div class="kanban-card ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${orden.id}">
                 <div class="card-header">
                     <span class="folio">${orden.folio || orden.id.slice(-6)}</span>
                     ${badgeHtml}
+                    ${badgeCuarentena}
+                    <div class="card-actions">
+                        <button class="btn-icon btn-edit" onclick="event.stopPropagation(); motoresModule._abrirOrden('${orden.id}')" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); motoresModule._eliminarOrden('${orden.id}')" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </button>` : ''}
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="cliente">${orden.cliente_nombre || 'Cliente'}</div>
@@ -531,11 +544,13 @@ const MotoresModule = (function() {
     function _renderLista(ordenes) {
         const container = document.getElementById('listaContainer');
         if (!container) return;
-        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Cliente</th><th>Motor</th><th>HP</th><th>Técnico</th><th>Estado</th><th>Ingreso</th><th>Reparación</th><th>Recibido por</th></tr></thead><tbody>';
+        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Cliente</th><th>Motor</th><th>HP</th><th>Técnico</th><th>Estado</th><th>Ingreso</th><th>Reparación</th><th>Recibido por</th><th>Acciones</th></tr></thead><tbody>';
         ordenes.forEach(o => {
             const compraInfo = comprasVinculadas[o.id];
             const recibidoPor = o.recibido_por || '—';
-            html += `<tr onclick="motoresModule._abrirOrden('${o.id}')">
+            const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(o);
+            const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(o) ?? true;
+            html += `<tr data-id="${o.id}" class="${enCuarentena ? 'row-cuarentena' : ''}" onclick="motoresModule._abrirOrden('${o.id}')">
                 <td>${o.folio || o.id.slice(-6)} ${compraInfo ? '🛒' : ''}</td>
                 <td>${o.cliente_nombre || ''}</td>
                 <td>${o.motor || ''}</td>
@@ -545,6 +560,10 @@ const MotoresModule = (function() {
                 <td>${o.fecha_ingreso ? new Date(o.fecha_ingreso).toLocaleDateString() : ''}</td>
                 <td>${o.fecha_reparacion ? new Date(o.fecha_reparacion).toLocaleDateString() : ''}</td>
                 <td>${recibidoPor}</td>
+                <td class="acciones">
+                    <button class="btn-icon btn-edit" onclick="event.stopPropagation(); motoresModule._abrirOrden('${o.id}')" title="Editar"><i class="fas fa-edit"></i></button>
+                    ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); motoresModule._eliminarOrden('${o.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
+                </td>
             </tr>`;
         });
         html += '</tbody></table>';
@@ -603,6 +622,7 @@ const MotoresModule = (function() {
         document.getElementById('wsModal').classList.add('active');
         _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
         _renderPrioritySupplierBarMotores();
+        _renderTimelineMotores(orden.id, orden.estado || 'Nuevo');
     }
 
     async function _abrirNuevaOrden() {
@@ -632,19 +652,40 @@ const MotoresModule = (function() {
         _resetForm();
         _generarFolio();
         _populateClientSelect();
-
-        // Autofill: encargado_recepcion con nombre del usuario actual
-        try {
-            const profile = await authService.getCurrentProfile();
-            if (profile && profile.nombre) {
-                const encEl = document.getElementById('inpReceptionBy');
-                if (encEl && !encEl.value) encEl.value = profile.nombre;
-            }
-        } catch (e) { /* ignore */ }
         _irPaso(1);
         document.getElementById('wsModal').classList.add('active');
         document.getElementById('fechaInicioDisplay').innerText = new Date().toLocaleString();
         _renderPrioritySupplierBarMotores();
+        _renderTimelineMotores(null, 'Nuevo');
+    }
+
+    async function _eliminarOrden(id) {
+        const orden = orders.find(o => o.id === id);
+        if (!orden) { _showErrorModal('Orden no encontrada', 'No se encontró la orden especificada.'); return; }
+        // REGLA 1 + REGLA 2: validar cuarentena y etapa antes de eliminar
+        if (window.SSEPIStateMachine) {
+            if (window.SSEPIStateMachine.estaEnCuarentena(orden)) {
+                _showErrorModal('Orden en cuarentena', 'No se puede eliminar una orden en cuarentena contable. Desactive la cuarentena primero.');
+                return;
+            }
+            if (!window.SSEPIStateMachine.puedeEliminar(orden)) {
+                _showErrorModal('Punto de no retorno', `La orden ${orden.folio} ya avanzó más allá de Diagnóstico. Solo puede cancelarse, no eliminarse.`);
+                return;
+            }
+        }
+        const folio = orden.folio || id.slice(-6);
+        const cliente = orden.cliente_nombre || 'N/A';
+        if (!confirm(`¿Eliminar orden ${folio} de ${cliente}?`)) return;
+        try {
+            const { error } = await window.supabase.from('ordenes_motores').delete().eq('id', id);
+            if (error) throw error;
+            _addToFeed('🗑️', 'Orden eliminada: ' + folio);
+            await _loadOrders();
+            _applyFilters();
+        } catch (e) {
+            console.error(e);
+            _showErrorModal('Error al eliminar', e.message);
+        }
     }
 
     async function _buscarCotizacionesPendientes() {
@@ -794,19 +835,57 @@ const MotoresModule = (function() {
         return mapa[paso] || 'Nuevo';
     }
 
-    function _estadoPrioridad(estado) {
-        const mapa = {
-            'Nuevo': 1, 'Confirmado': 2, 'Diagnóstico': 2,
-            'En Espera': 3, 'En reparación': 3, 'Reparado': 4,
-            'Entregado': 5, 'Facturado': 5, 'Cancelado': 0
-        };
-        return mapa[estado] || 1;
+    async function _renderTimelineMotores(ordenId, estadoActual) {
+        const container = document.getElementById('motoresTimeline');
+        if (!container) return;
+        const steps = [
+            { label: 'Recepción', key: 'Nuevo', icon: '1' },
+            { label: 'Diagnóstico', key: 'Diagnóstico', icon: '2' },
+            { label: 'En Espera', key: 'En Espera', icon: '3' },
+            { label: 'Reparación', key: 'Reparado', icon: '4' },
+            { label: 'Entrega', key: 'Entregado', icon: '5' }
+        ];
+        let historial = [];
+        try {
+            if (window.SSEPIStateMachine && window.SSEPIStateMachine.obtenerHistorialUnificado) {
+                historial = await window.SSEPIStateMachine.obtenerHistorialUnificado(window.supabase, 'motor', ordenId);
+            } else {
+                const { data } = await window.supabase.from('orden_historial').select('*').eq('orden_motor_id', ordenId).order('creado_en', { ascending: true });
+                historial = data || [];
+            }
+        } catch (e) { console.warn('[Motores] Error cargando historial:', e); }
+
+        const fechasPorEstado = {};
+        historial.forEach(h => {
+            const desc = (h.descripcion || '').toLowerCase();
+            const evt = h.evento;
+            if (evt === 'creacion' || desc.includes('creada')) fechasPorEstado['Nuevo'] = h.creado_en;
+            if (desc.includes('diagnóstico') || evt === 'diagnostico') fechasPorEstado['Diagnóstico'] = h.creado_en;
+            if (desc.includes('espera') || evt === 'espera') fechasPorEstado['En Espera'] = h.creado_en;
+            if (desc.includes('reparado') || desc.includes('reparación') || evt === 'reparado') fechasPorEstado['Reparado'] = h.creado_en;
+            if (desc.includes('entregado') || evt === 'entrega') fechasPorEstado['Entregado'] = h.creado_en;
+        });
+
+        const pasoActual = _estadoToPaso(estadoActual);
+        container.innerHTML = steps.map((s, idx) => {
+            const num = idx + 1;
+            let clase = '';
+            if (num < pasoActual) clase = 'done';
+            else if (num === pasoActual) clase = 'current';
+            const fecha = fechasPorEstado[s.key];
+            const fechaStr = fecha ? new Date(fecha).toLocaleDateString('es-MX', { day:'2-digit', month:'short' }) : '';
+            return '<div class="tl-step ' + clase + '" data-step="' + num + '" title="' + s.label + (fechaStr ? ' — ' + fechaStr : '') + '" >' +
+                '<div class="tl-dot">' + (clase === 'done' ? '<i class="fas fa-check"></i>' : s.icon) + '</div>' +
+                '<div class="tl-label">' + s.label + '</div>' +
+                (fechaStr ? '<div class="tl-date">' + fechaStr + '</div>' : '') +
+                '</div>';
+        }).join('');
     }
 
     function _cargarDatosEnModal(orden) {
         document.getElementById('inpFolio').value = orden.folio || '';
         document.getElementById('selClient').value = orden.cliente_nombre || '';
-        document.getElementById('inpDateTime').value = orden.fecha_ingreso ? orden.fecha_ingreso.includes('T') ? orden.fecha_ingreso : orden.fecha_ingreso + 'T00:00' : '';
+        document.getElementById('inpDateTime').value = (orden.fecha_ingreso ? orden.fecha_ingreso.slice(0, 16) : '');
         document.getElementById('inpClientRef').value = orden.referencia || '';
         document.getElementById('inpMotor').value = orden.motor || '';
         document.getElementById('inpBrand').value = orden.marca || '';
@@ -921,16 +1000,16 @@ const MotoresModule = (function() {
     function _validarPasoActual() {
         switch(currentStep) {
             case 1:
-                if (!document.getElementById('selClient').value) { _showToast('Seleccione un cliente', 'warning'); return false; }
-                if (!document.getElementById('inpMotor').value) { _showToast('Ingrese el motor', 'warning'); return false; }
+                if (!document.getElementById('selClient').value) { alert('Seleccione un cliente'); return false; }
+                if (!document.getElementById('inpMotor').value) { alert('Ingrese el motor'); return false; }
                 break;
             case 2:
-                if (!document.getElementById('techSelect').value) { _showToast('Seleccione técnico responsable', 'warning'); return false; }
-                if (parseFloat(document.getElementById('horasEstimadas').value) <= 0) { _showToast('Ingrese horas estimadas válidas', 'warning'); return false; }
+                if (!document.getElementById('techSelect').value) { alert('Seleccione técnico responsable'); return false; }
+                if (parseFloat(document.getElementById('horasEstimadas').value) <= 0) { alert('Ingrese horas estimadas válidas'); return false; }
                 break;
             case 5:
-                if (!document.getElementById('recibeNombre').value) { _showToast('Ingrese el nombre de quien recibe', 'warning'); return false; }
-                if (!document.getElementById('fechaEntrega').value) { _showToast('Ingrese la fecha de entrega', 'warning'); return false; }
+                if (!document.getElementById('recibeNombre').value) { alert('Ingrese el nombre de quien recibe'); return false; }
+                if (!document.getElementById('fechaEntrega').value) { alert('Ingrese la fecha de entrega'); return false; }
                 break;
         }
         return true;
@@ -1166,24 +1245,24 @@ const MotoresModule = (function() {
             _addToFeed('⚠️', `Orden marcada sin reparación`);
         } catch (error) {
             console.error(error);
-            _showToast('Error: ' + error.message, 'error');
+            alert('Error: ' + error.message);
         }
     }
 
     async function _generarSolicitudCompra() {
         console.log('[Motores] Click en Generar Solicitud de Compra');
         if (!orderId && !isNewOrder) {
-            _showToast('Primero guarde la orden de taller', 'info');
+            alert('Primero guarde la orden de taller');
             return;
         }
 
         await _guardarOrden(true);
 
         const data = _recolectarDatos();
-        if (!data.cliente_nombre) { _showToast('Seleccione cliente', 'warning'); _irPaso(1); return; }
-        if (!data.motor) { _showToast('Ingrese el motor', 'warning'); _irPaso(1); return; }
+        if (!data.cliente_nombre) { alert('Seleccione cliente'); _irPaso(1); return; }
+        if (!data.motor) { alert('Ingrese el motor'); _irPaso(1); return; }
         if (diagnosticoEnlaces.length === 0 && diagnosticoInventario.length === 0) {
-            _showToast('Debe agregar al menos una refacción a comprar', 'warning');
+            alert('Debe agregar al menos una refacción a comprar');
             return;
         }
 
@@ -1199,7 +1278,6 @@ const MotoresModule = (function() {
                     folio: folioTaller,
                     estado: 'En Espera',
                     fecha_ingreso: new Date().toISOString(),
-                    historial: [{ fecha: new Date().toISOString(), usuario: 'Motores', accion: 'Orden creada y enviada a compras' }],
                     fecha_inicio: fechaInicioOrden,
                     fechas_etapas: fechasEtapas
                 };
@@ -1211,10 +1289,16 @@ const MotoresModule = (function() {
                 ordenTallerId = inserted.id;
                 orderId = ordenTallerId;
                 isNewOrder = false;
+                if (window.SSEPIStateMachine) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', ordenTallerId, 'creacion', `Orden ${folioTaller} creada y enviada a compras`, csrfToken);
+                }
             } else {
                 data.estado = 'En Espera';
                 data.fecha_envio_compra = new Date().toISOString();
                 await ordenesService.update(orderId, data, csrfToken);
+                if (window.SSEPIStateMachine) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', orderId, 'cambio_estado', `Estado cambiado a En Espera (solicitud de compra generada)`, csrfToken);
+                }
             }
 
             const itemsCompra = [
@@ -1259,7 +1343,7 @@ const MotoresModule = (function() {
 
         } catch (error) {
             console.error(error);
-            _showToast('Error: ' + error.message, 'error');
+            alert('Error: ' + error.message);
         }
     }
 
@@ -1317,11 +1401,11 @@ const MotoresModule = (function() {
 
             _irPaso(4);
             _afterMotoresPersistOk();
-            _showToast('Reparación finalizada', 'success');
+            alert('✅ Reparación finalizada');
             _addToFeed('✅', `Reparación completada para ${data.folio}`);
         } catch (error) {
             console.error(error);
-            _showToast('Error: ' + error.message, 'error');
+            alert('Error: ' + error.message);
         }
     }
 
@@ -1332,14 +1416,16 @@ const MotoresModule = (function() {
             const csrfToken = sessionStorage.getItem('csrfToken');
             await ordenesService.update(orderId, { fechas_etapas: fechasEtapas }, csrfToken);
         }
-        _showToast(`✅ Etapa ${etapa} finalizada`, 'info');
+        alert(`✅ Etapa ${etapa} finalizada`);
         if (etapa < 5) _irPaso(etapa + 1);
     }
 
     async function _guardarOrden(silencioso = false) {
         const data = _recolectarDatos();
-        if (!data.cliente_nombre) { if (!silencioso) _showToast('Seleccione cliente', 'warning'); _irPaso(1); return; }
-        if (!data.motor) { if (!silencioso) _showToast('Ingrese el motor', 'warning'); _irPaso(1); return; }
+        // Auto-guardado: siempre guardar, solo advertir en modo manual si faltan campos
+        if (!silencioso && (!data.cliente_nombre || !data.motor)) {
+            if (!confirm('Faltan campos obligatorios. ¿Guardar como borrador?')) { _irPaso(1); return; }
+        }
 
         const fotoInput = document.getElementById('productImage');
         if (fotoInput && fotoInput.files[0]) {
@@ -1355,47 +1441,47 @@ const MotoresModule = (function() {
         data.fechas_etapas = fechasEtapas;
         data.recibido_por = document.getElementById('recibidoPor')?.value || '';
 
-        // Auto-avanzar estado según paso actual
-        if (!isNewOrder) {
-            const pasoEstado = _pasoToEstado(currentStep);
-            if (pasoEstado) {
-                const ordenActual = ordenesMotores.find(o => String(o.id) === String(orderId));
-                const estadoActual = ordenActual?.estado || 'Nuevo';
-                if (_estadoPrioridad(pasoEstado) > _estadoPrioridad(estadoActual)) {
-                    data.estado = pasoEstado;
-                }
-            }
-        }
-
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
             if (isNewOrder) {
                 data.folio = document.getElementById('inpFolio').value;
                 data.estado = 'Nuevo';
                 data.fecha_ingreso = new Date().toISOString();
-                data.historial = [{ fecha: new Date().toISOString(), usuario: 'Motores', accion: 'Orden creada' }];
                 const inserted = await ordenesService.insert(data, csrfToken);
                 orderId = inserted.id;
                 isNewOrder = false;
-                if (!silencioso) _showToast('Orden guardada correctamente', 'success');
+                if (!silencioso) alert('✅ Orden guardada correctamente');
+                if (window.SSEPIStateMachine) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', orderId, 'creacion', `Orden ${data.folio} creada en Motores`, csrfToken);
+                }
+                // Auto-avance: si guardó paso 1, pasar a Diagnóstico
+                if (currentStep === 1 && data.estado === 'Nuevo') {
+                    await ordenesService.update(orderId, { estado: 'Diagnóstico' }, csrfToken);
+                    data.estado = 'Diagnóstico';
+                    if (window.SSEPIStateMachine) {
+                        await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', orderId, 'cambio_estado', `Estado cambiado a Diagnóstico (auto-avance paso 1)`, csrfToken);
+                    }
+                }
             } else {
                 await ordenesService.update(orderId, data, csrfToken);
-                if (!silencioso) _showToast('Orden actualizada correctamente', 'success');
+                if (!silencioso) alert('✅ Orden actualizada correctamente');
+                if (window.SSEPIStateMachine && data.estado) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', orderId, 'actualizacion', `Orden ${data.folio} actualizada`, csrfToken);
+                }
             }
             _afterMotoresPersistOk();
             _addToFeed('💾', `Orden ${data.folio} guardada`);
         } catch (error) {
             console.error(error);
-            if (!silencioso) _showToast('Error al guardar: ' + error.message, 'error');
+            if (!silencioso) alert('Error al guardar: ' + error.message);
         }
     }
 
     function _recolectarDatos() {
-        const nullIfEmpty = (v) => (v && v.trim()) ? v.trim() : null;
         return {
             cliente_nombre: document.getElementById('selClient').value,
             referencia: document.getElementById('inpClientRef').value,
-            fecha_ingreso: nullIfEmpty(document.getElementById('inpDateTime').value),
+            fecha_ingreso: document.getElementById('inpDateTime').value,
             motor: document.getElementById('inpMotor').value,
             marca: document.getElementById('inpBrand').value,
             modelo: document.getElementById('inpModel').value,
@@ -1416,7 +1502,7 @@ const MotoresModule = (function() {
             notas_internas: document.getElementById('internalNotes').value,
             notas_generales: document.getElementById('generalNotes').value,
             horas_estimadas: parseFloat(document.getElementById('horasEstimadas').value) || 0,
-            fecha_entrega: nullIfEmpty(document.getElementById('fechaEntrega').value),
+            fecha_entrega: document.getElementById('fechaEntrega').value,
             recibe_nombre: document.getElementById('recibeNombre').value,
             recibe_identificacion: document.getElementById('recibeIdentificacion').value,
             factura_numero: document.getElementById('facturaNumero').value,
@@ -1461,10 +1547,10 @@ const MotoresModule = (function() {
 
             _afterMotoresPersistOk();
             _cerrarModal();
-            _showToast('Orden entregada a ventas', 'success');
+            alert('✅ Orden entregada a ventas');
         } catch (error) {
             console.error(error);
-            _showToast('Error: ' + error.message, 'error');
+            alert('Error: ' + error.message);
         }
     }
 
@@ -1706,6 +1792,37 @@ const MotoresModule = (function() {
         }
     }
 
+    // ==================== MODALES ====================
+    function _showErrorModal(title, message) {
+        const existing = document.getElementById('ssepiErrorModal');
+        if (existing) existing.remove();
+        const modal = document.createElement('div');
+        modal.id = 'ssepiErrorModal';
+        modal.className = 'ssepi-modal-overlay';
+        modal.innerHTML = `
+            <div class="ssepi-error-modal">
+                <div class="ssepi-modal-header">
+                    <div class="ssepi-modal-icon error">
+                        <i class="fas fa-circle-xmark"></i>
+                    </div>
+                    <h3 class="ssepi-modal-title">${title}</h3>
+                </div>
+                <div class="ssepi-modal-body">
+                    <p class="ssepi-error-message">${message}</p>
+                </div>
+                <div class="ssepi-modal-footer">
+                    <button class="ssepi-btn ssepi-btn-primary">Aceptar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        setTimeout(() => modal.classList.add('active'), 10);
+        modal.querySelector('.ssepi-btn-primary').addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        });
+    }
+
     // ==================== LIMPIEZA ====================
     function _cleanup() {
         subscriptions.forEach(sub => sub.unsubscribe());
@@ -1717,6 +1834,8 @@ const MotoresModule = (function() {
     return {
         init,
         _abrirOrden,
+        _abrirNuevaOrden,
+        _eliminarOrden,
         _actualizarEnlace,
         _eliminarEnlace,
         _actualizarInventarioSeleccion,
