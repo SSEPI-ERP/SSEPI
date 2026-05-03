@@ -551,18 +551,45 @@
             document.getElementById('loginError').style.display = 'none';
         }
 
-        // Auto-login si ya hay sesión
+        // Auto-login si ya hay sesión (compartida con el panel ERP)
         async function verificarSesion() {
-            const { data } = await supabase.auth.getSession();
-            if (data?.session) {
-                usuarioActual = data.session.user;
-                document.getElementById('loginScreen').style.display = 'none';
-                document.body.classList.remove('login-active');
-                await cargarPoliticas();
-                renderModules();
-            } else {
-                document.getElementById('loginScreen').style.display = 'flex';
+            try {
+                const { data } = await supabase.auth.getSession();
+                if (data?.session) {
+                    usuarioActual = data.session.user;
+                    _entrarModulo();
+                    return;
+                }
+            } catch (e) {
+                console.warn('[PDFs] getSession falló:', e.message);
             }
+
+            // Fallback: verificar token en localStorage (el panel usa Supabase Auth)
+            const hasToken = !!localStorage.getItem('sb-knzmdwjmrhcoytmebdwa-auth-token') ||
+                             !!localStorage.getItem('sb-foytizbicwnndegeorny-auth-token');
+            if (hasToken && supabase) {
+                try {
+                    const { data: { user }, error } = await supabase.auth.getUser();
+                    if (user && !error) {
+                        usuarioActual = user;
+                        _entrarModulo();
+                        return;
+                    }
+                } catch (e) {
+                    console.warn('[PDFs] getUser fallback falló:', e.message);
+                }
+            }
+
+            // Sin sesión: redirigir al panel (que maneja login centralizado)
+            window.location.replace('/panel/panel.html');
+        }
+
+        function _entrarModulo() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.body.classList.remove('login-active');
+            cargarPoliticas().then(ok => {
+                if (ok) renderModules();
+            });
             document.getElementById('loading').style.display = 'none';
         }
 
