@@ -72,9 +72,33 @@
     </nav>
 
     <main>
+        <!-- Selector de Departamento + Cliente -->
         <div class="form-section calc-sim-wrap">
-            <h3 class="section-title-form"><i class="fas fa-flask"></i> Simulador · Laboratorio (electrónica)</h3>
-            <p class="form-hint">Constantes de la calculadora <strong>Laboratorio (electrónica)</strong> en la tabla de costos. Misma lógica que ventas/taller (CostosEngine).</p>
+            <h3 class="section-title-form"><i class="fas fa-bullseye"></i> Nueva Cotización</h3>
+            <p class="form-hint">Selecciona el <strong>departamento</strong> y el <strong>cliente</strong> para auto-cargar KM y ver las tarifas específicas.</p>
+            <div class="calc-sim-grid calc-sim-grid--2">
+                <div class="calc-sim-field">
+                    <label for="selDeptoCotizacion">Departamento</label>
+                    <select id="selDeptoCotizacion" class="form-control">
+                        <option value="laboratorio">Laboratorio (Electrónica)</option>
+                        <option value="motores">Motores</option>
+                        <option value="automatizacion">Automatización</option>
+                        <option value="suministros">Suministros / Ventas</option>
+                        <option value="soporte">Soporte a Planta / Viajes</option>
+                    </select>
+                </div>
+                <div class="calc-sim-field">
+                    <label for="selClienteCotizacion">Cliente (del tabulador)</label>
+                    <select id="selClienteCotizacion" class="form-control">
+                        <option value="">-- Selecciona cliente --</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="simLaboratorio" class="form-section calc-sim-wrap" style="display:block;">
+            <h3 class="section-title-form"><i class="fas fa-flask"></i> Simulador · <span class="sim-depto-label">Laboratorio</span></h3>
+            <p class="form-hint">Constantes de la calculadora <strong class="sim-depto-label">Laboratorio</strong> en la tabla de costos. Misma lógica que ventas/taller (CostosEngine).</p>
             <div class="calc-sim-grid">
                 <div class="calc-sim-field"><label for="labKm">Km (traslado)</label><input type="number" id="labKm" class="form-control" step="0.1" value="226" min="0"></div>
                 <div class="calc-sim-field"><label for="labHorasViaje">Horas viaje (opcional)</label><input type="number" id="labHorasViaje" class="form-control" step="0.25" value="" min="0" placeholder="Si vacío: km/50"></div>
@@ -85,8 +109,8 @@
             <div id="labSimResult" class="calc-sim-result" aria-live="polite"></div>
         </div>
 
-        <div class="form-section calc-sim-wrap">
-            <h3 class="section-title-form"><i class="fas fa-robot"></i> Simulador · Automatización</h3>
+        <div id="simAutomatizacion" class="form-section calc-sim-wrap" style="display:none;">
+            <h3 class="section-title-form"><i class="fas fa-robot"></i> Simulador · <span class="sim-depto-label">Automatización</span></h3>
             <p class="form-hint">Filas <strong>Tarifa:</strong> y parámetros <strong>auto:</strong> desde la calculadora Automatización (hoja AUTOMATIZACIÓN del Excel).</p>
             <div class="resumen-table-wrap">
                 <table class="lista-table" id="tablaSimAuto">
