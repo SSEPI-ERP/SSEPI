@@ -157,6 +157,7 @@ const VentasModule = (function() {
             fallaReportada: (document.getElementById('wizardFallaReportada') || {}).value || '',
             prioridad: (document.getElementById('wizardPrioridadSelect') || {}).value || 'Normal',
             departamento: (document.getElementById('wizardDepartamentoSelect') || {}).value || '',
+            servicio_automatizacion: (document.getElementById('wizardServicioAutoSelect') || {}).value || '',
         };
     }
 
@@ -290,7 +291,7 @@ const VentasModule = (function() {
             });
         }
 
-        // Autofill: al seleccionar cliente, llenar email/tel/rfc y actualizar calculadoraClienteActual
+        // Autofill: al seleccionar cliente, llenar email/tel/rfc y buscar KM/horas desde clientes_tabulador
         const clienteEl = document.getElementById('wizardClienteSelect');
         if (clienteEl && !clienteEl._ssepiBound) {
             clienteEl._ssepiBound = true;
@@ -303,16 +304,22 @@ const VentasModule = (function() {
                 if (telEl) telEl.value = opt ? (opt.dataset.telefono || '') : '';
                 if (rfcEl) rfcEl.value = opt ? (opt.dataset.rfc || '') : '';
 
-                // Actualizar calculadoraClienteActual para que el autosave y validación funcionen
+                // Actualizar calculadoraClienteActual: buscar KM/horas en clientes_tabulador
                 if (opt && opt.value) {
                     const contactoId = opt.value;
                     const contacto = contactos.find(c => String(c.id) === String(contactoId));
                     const nombreCliente = (contacto?.nombre || contacto?.empresa || contacto?.email || 'Cliente').trim() || 'Cliente';
+
+                    // Buscar en clientes_tabulador (tabuladorTaller.clientes ya cargó desde BD)
+                    const tabCliente = tabuladorTaller.clientes.find(
+                        tc => tc.nombre && nombreCliente && tc.nombre.toLowerCase().trim() === nombreCliente.toLowerCase().trim()
+                    );
+
                     calculadoraClienteActual = {
                         contactoId,
                         nombre: nombreCliente,
-                        km: contacto?.km || 0,
-                        horas: contacto?.horas_viaje || 0,
+                        km: tabCliente?.km || Number(opt.dataset.km) || 0,
+                        horas: tabCliente?.horas || Number(opt.dataset.horas) || 0,
                         email: contacto?.email || '',
                         telefono: contacto?.telefono || '',
                         rfc: contacto?.rfc || '',
@@ -775,7 +782,7 @@ const VentasModule = (function() {
     // NOTA: Los valores reales se cargan desde BD (gastos_fijos, parametros_costos, clientes_tabulador)
     const tabuladorTaller = {
         variables: {
-            gasolina: 24.50,
+            gasolina: 30.00,
             rendimiento: 9.5,
             costoTecnico: 104.16,
             gastosFijosHora: 124.18,
@@ -789,7 +796,7 @@ const VentasModule = (function() {
 
     const tabuladorAutomatizacion = {
         variables: {
-            gasolina: 24.50,
+            gasolina: 30.00,
             rendimiento: 9.5,
             jornada: 9,
             diasLaborales: 20,
@@ -3684,15 +3691,36 @@ const VentasModule = (function() {
         const preFalla = cerebro.falla_reportada || '';
         const prePrioridad = cerebro.prioridad || 'Normal';
         const preDepto = cerebro.departamento || '';
+        const preServicio = cerebro.servicio_automatizacion || '';
+
+        // Opciones de servicios para Automatización/Proyectos
+        const serviciosAutoOpts = tabuladorAutomatizacion.servicios.map((s, idx) => {
+            const val = s.area + ' | ' + s.servicio;
+            const sel = preServicio === val ? ' selected' : '';
+            return '<option value="' + val + '"' + sel + ' data-area="' + s.area + '" data-servicio="' + s.servicio + '" data-tipo="' + s.tipo + '" data-valor="' + s.valorAgregado + '" data-unidad="' + s.unidad + '">' + s.area + ' — ' + s.servicio + ' ($' + s.valorAgregado + '/' + s.unidad.replace('por ', '') + ')</option>';
+        }).join('');
 
         return `
             <div class="calculadora-section">
-                <div class="calculadora-titulo"><i class="fas fa-clipboard-list"></i> Paso 1: Datos del Cliente</div>
+                <div class="calculadora-titulo"><i class="fas fa-clipboard-list"></i> Paso 1: Registro de Orden</div>
                 <p id="wizardPaso1Error" style="display:none; font-size:13px; color:#c62828; margin:0 0 12px 0;" role="alert"></p>
                 <div class="editor-item" style="margin-bottom:14px;">
                     <p id="wizardFolioAyuda" style="font-size:13px; color:var(--text-secondary); margin:0;">Elige departamento para generar orden.</p>
                 </div>
+
+                <!-- DEPARTAMENTO PRIMERO -->
                 <div class="editor-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="editor-item">
+                        <label>Departamento que recibe el caso <span style="color:#c62828;">*</span></label>
+                        <select id="wizardDepartamentoSelect" style="width:100%; padding:10px;" onchange="window.__onDeptChangeVentas && window.__onDeptChangeVentas()">
+                            <option value=""${preDepto===''?' selected':''}>-- Seleccionar departamento --</option>
+                            <option value="Taller Electrónica"${preDepto==='Taller Electrónica'?' selected':''}>Taller Electrónica</option>
+                            <option value="Taller Motores"${preDepto==='Taller Motores'?' selected':''}>Taller Motores</option>
+                            <option value="Automatización"${preDepto==='Automatización'?' selected':''}>Automatización</option>
+                            <option value="Proyectos"${preDepto==='Proyectos'?' selected':''}>Proyectos</option>
+                            <option value="Administración"${preDepto==='Administración'?' selected':''}>Administración (Sin orden)</option>
+                        </select>
+                    </div>
                     <div class="editor-item">
                         <label>Cliente <span style="color:#c62828;">*</span></label>
                         <select id="wizardClienteSelect" style="width:100%; padding:10px;">
@@ -3700,21 +3728,23 @@ const VentasModule = (function() {
                             ${clientesOptions}
                         </select>
                     </div>
+                </div>
+
+                <!-- SERVICIO AUTOMATIZACIÓN (solo visible para Automatización/Proyectos) -->
+                <div class="editor-item" id="wizardServicioAutoWrap" style="margin-top:14px; display:${(preDepto==='Automatización'||preDepto==='Proyectos')?'block':'none'};">
+                    <label>Servicio / Actividad <span style="color:#c62828;">*</span></label>
+                    <select id="wizardServicioAutoSelect" style="width:100%; padding:10px;">
+                        <option value="">-- Seleccionar servicio --</option>
+                        ${serviciosAutoOpts}
+                    </select>
+                    <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Selecciona el tipo de trabajo según el catálogo de automatización.</p>
+                </div>
+
+                <div class="editor-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px;">
                     <div class="editor-item">
                         <label>Fecha de ingreso <span style="color:#c62828;">*</span></label>
                         <input type="date" id="wizardFechaIngreso" value="${preFecha}" style="width:100%; padding:10px;">
                     </div>
-                </div>
-                <div class="editor-item" style="margin-top:14px;">
-                    <label>Nombre del producto <span style="color:#c62828;">*</span></label>
-                    <input type="text" id="wizardNombreProducto" value="${preProducto}" placeholder="Ej. Sistema de control, Motor trifásico, Tablero eléctrico..." style="width:100%; padding:10px;">
-                    <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Requerido para generar la orden.</p>
-                </div>
-                <div class="editor-item" style="margin-top:14px;">
-                    <label>Falla reportada / Requerimiento <span style="color:#c62828;">*</span></label>
-                    <textarea id="wizardFallaReportada" rows="3" placeholder="Describe la falla o el requerimiento del cliente..." style="width:100%; padding:10px; resize:vertical;">${preFalla}</textarea>
-                </div>
-                <div class="editor-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px;">
                     <div class="editor-item">
                         <label>Prioridad (urgencia)</label>
                         <select id="wizardPrioridadSelect" style="width:100%; padding:10px;">
@@ -3724,18 +3754,19 @@ const VentasModule = (function() {
                             <option value="Urgente"${prePrioridad==='Urgente'?' selected':''}>Urgente</option>
                         </select>
                     </div>
-                    <div class="editor-item">
-                        <label>Departamento que recibe el caso <span style="color:#c62828;">*</span></label>
-                        <select id="wizardDepartamentoSelect" style="width:100%; padding:10px;">
-                            <option value=""${preDepto===''?' selected':''}>-- Seleccionar departamento --</option>
-                            <option value="Taller Electrónica"${preDepto==='Taller Electrónica'?' selected':''}>Taller Electrónica</option>
-                            <option value="Taller Motores"${preDepto==='Taller Motores'?' selected':''}>Taller Motores</option>
-                            <option value="Automatización"${preDepto==='Automatización'?' selected':''}>Automatización</option>
-                            <option value="Proyectos"${preDepto==='Proyectos'?' selected':''}>Proyectos</option>
-                            <option value="Administración"${preDepto==='Administración'?' selected':''}>Administración (Sin orden)</option>
-                        </select>
-                    </div>
                 </div>
+
+                <div class="editor-item" style="margin-top:14px;">
+                    <label>Nombre del producto / Equipo <span style="color:#c62828;">*</span></label>
+                    <input type="text" id="wizardNombreProducto" value="${preProducto}" placeholder="Ej. Sistema de control, Motor trifásico, Tablero eléctrico..." style="width:100%; padding:10px;">
+                    <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Requerido para generar la orden.</p>
+                </div>
+
+                <div class="editor-item" style="margin-top:14px;">
+                    <label id="wizardFallaLabel">Falla reportada / Requerimiento <span style="color:#c62828;">*</span></label>
+                    <textarea id="wizardFallaReportada" rows="3" placeholder="Describe la falla o el requerimiento del cliente..." style="width:100%; padding:10px; resize:vertical;">${preFalla}</textarea>
+                </div>
+
                 <div class="editor-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:14px;">
                     <div class="editor-item">
                         <label>Email</label>
@@ -3936,6 +3967,7 @@ const VentasModule = (function() {
                 }
             }
 
+            const servicioAuto = document.getElementById('wizardServicioAutoSelect')?.value || '';
             ventasWizardCerebro = {
                 fecha_ingreso: fechaIn.value,
                 falla_reportada: falla,
@@ -3946,7 +3978,8 @@ const VentasModule = (function() {
                 folio_operativo: creado.folio || null,
                 tipo_vinculo: creado.tipo || null,
                 origen_cotizacion: origenCot,
-                nombre_producto: nombreProducto
+                nombre_producto: nombreProducto,
+                servicio_automatizacion: servicioAuto
             };
 
             // Registrar evento en historial inmediatamente al crear orden (paso 1 → 2)
@@ -4029,6 +4062,34 @@ const VentasModule = (function() {
         if (descargarWizard) descargarWizard.onclick = _descargarPDFDesdeWizard;
         var enviarWizard = document.getElementById('enviarCotizacionBtn');
         if (enviarWizard) enviarWizard.onclick = _enviarCotizacionDesdeWizard;
+
+        // Handler global para cambio de departamento (llamado desde onchange del select)
+        window.__onDeptChangeVentas = function () {
+            const dept = document.getElementById('wizardDepartamentoSelect')?.value || '';
+            const wrap = document.getElementById('wizardServicioAutoWrap');
+            const fallaLabel = document.getElementById('wizardFallaLabel');
+            const fallaInput = document.getElementById('wizardFallaReportada');
+
+            if (wrap) {
+                wrap.style.display = (dept === 'Automatización' || dept === 'Proyectos') ? 'block' : 'none';
+            }
+
+            // Cambiar label de falla según departamento
+            if (fallaLabel) {
+                if (dept === 'Taller Electrónica' || dept === 'Taller Motores') {
+                    fallaLabel.innerHTML = 'Falla reportada / Descripción del equipo <span style="color:#c62828;">*</span>';
+                    if (fallaInput) fallaInput.placeholder = 'Describe la falla, modelo del equipo, número de serie, voltaje, etc.';
+                } else if (dept === 'Automatización' || dept === 'Proyectos') {
+                    fallaLabel.innerHTML = 'Alcance y requerimientos <span style="color:#c62828;">*</span>';
+                    if (fallaInput) fallaInput.placeholder = 'Describe el alcance del proyecto, objetivos, entregables y condiciones especiales...';
+                } else {
+                    fallaLabel.innerHTML = 'Falla reportada / Requerimiento <span style="color:#c62828;">*</span>';
+                    if (fallaInput) fallaInput.placeholder = 'Describe la falla o el requerimiento del cliente...';
+                }
+            }
+
+            _wizardActualizarAyudaFolio();
+        };
     }
 
     function _nombreClienteWizardResuelto() {
