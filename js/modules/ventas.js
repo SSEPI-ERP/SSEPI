@@ -323,6 +323,12 @@ const VentasModule = (function() {
         }
 
         _wizardActualizarAyudaFolio();
+
+        // Si hay cliente pre-seleccionado (modo edición), disparar autofill
+        const clienteSel = document.getElementById('wizardClienteSelect');
+        if (clienteSel && clienteSel.value) {
+            clienteSel.dispatchEvent(new Event('change'));
+        }
     }
 
     /**
@@ -395,7 +401,12 @@ const VentasModule = (function() {
         try {
             if (dept === 'Taller Electrónica') {
                 const folioFn = window.folioFormats && window.folioFormats.getNextFolioLaboratorio;
-                const folio = folioFn ? await folioFn() : 'SP-E' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '001';
+                let folio;
+                try {
+                    folio = folioFn ? await folioFn() : 'SP-E' + Date.now().toString(36).toUpperCase();
+                } catch (e) {
+                    folio = 'SP-E' + Date.now().toString(36).toUpperCase();
+                }
                 const nombreProducto = (document.getElementById('wizardNombreProducto') || {}).value || '';
                 const marca = (document.getElementById('wizardMarca') || {}).value || '';
                 const modelo = (document.getElementById('wizardModelo') || {}).value || '';
@@ -414,23 +425,78 @@ const VentasModule = (function() {
                     notas_generales: notasAlta
                 };
 
-                // Verificar si ya existe una orden similar
-                const { data: existing } = await window.supabase
-                    .from('ordenes_taller')
-                    .select('*')
-                    .eq('cliente_nombre', clienteNombre)
-                    .eq('falla_reportada', falla)
-                    .eq('fecha_ingreso', fechaIso)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
+                // Verificar si ya existe una orden similar (comparar solo fecha YYYY-MM-DD)
+                const fechaSolo = fechaIso.split('T')[0];
+                let existing = null;
+                try {
+                    const { data } = await window.supabase
+                        .from('ordenes_taller')
+                        .select('*')
+                        .eq('cliente_nombre', clienteNombre)
+                        .eq('falla_reportada', falla)
+                        .eq('fecha_ingreso', fechaSolo)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    existing = data;
+                } catch (e) {
+                    // Si falla (columnas no existen), continuar sin verificación
+                    console.warn('[Ventas] No se pudo verificar duplicados:', e);
+                }
 
                 let inserted;
                 if (existing) {
                     inserted = existing;
                     _showToast('📋 Orden existente recuperada: ' + (existing.folio || ''), 'info');
                 } else {
-                    inserted = await tallerService.insert(row, csrfToken);
+                    try {
+                        inserted = await tallerService.insert(row, csrfToken);
+                    } catch (err) {
+                        console.warn('[Ventas] Error insertando orden:', err);
+                        // Buscar por folio primero (más preciso)
+                        try {
+                            const { data: byFolio } = await window.supabase
+                                .from('ordenes_taller')
+                                .select('*')
+                                .eq('folio', folio)
+                                .maybeSingle();
+                            if (byFolio) {
+                                inserted = byFolio;
+                                _showToast('📋 Orden recuperada por folio: ' + (byFolio.folio || ''), 'info');
+                            }
+                        } catch (e2) { /* ignorar */ }
+
+                        // Si no, buscar por cliente + fecha
+                        if (!inserted) {
+                            try {
+                                const { data: fallback } = await window.supabase
+                                    .from('ordenes_taller')
+                                    .select('*')
+                                    .eq('cliente_nombre', clienteNombre)
+                                    .eq('fecha_ingreso', fechaSolo)
+                                    .order('created_at', { ascending: false })
+                                    .limit(1)
+                                    .maybeSingle();
+                                if (fallback) {
+                                    inserted = fallback;
+                                    _showToast('📋 Orden recuperada por cliente/fecha: ' + (fallback.folio || ''), 'info');
+                                }
+                            } catch (e3) {
+                                console.warn('[Ventas] Error buscando fallback:', e3);
+                            }
+                        }
+
+                        // Último recurso: reintentar con folio único
+                        if (!inserted) {
+                            row.folio = folio + '-' + Date.now().toString(36).toUpperCase();
+                            try {
+                                inserted = await tallerService.insert(row, csrfToken);
+                            } catch (err2) {
+                                console.error('[Ventas] Falló reintento de insert:', err2);
+                                throw new Error('No se pudo crear la orden de Taller: ' + (err2.message || err2));
+                            }
+                        }
+                    }
                     if (!inserted) throw new Error('No se recibió confirmación del servidor al crear la orden de Taller.');
                 }
 
@@ -445,7 +511,12 @@ const VentasModule = (function() {
 
             if (dept === 'Taller Motores') {
                 const folioFn = window.folioFormats && window.folioFormats.getNextFolioMotores;
-                const folio = folioFn ? await folioFn() : 'SP-M' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '001';
+                let folio;
+                try {
+                    folio = folioFn ? await folioFn() : 'SP-M' + Date.now().toString(36).toUpperCase();
+                } catch (e) {
+                    folio = 'SP-M' + Date.now().toString(36).toUpperCase();
+                }
                 const row = {
                     folio,
                     cliente_nombre: clienteNombre,
@@ -456,23 +527,60 @@ const VentasModule = (function() {
                     notas_generales: notasAlta
                 };
 
-                // Verificar si ya existe una orden similar
-                const { data: existing } = await window.supabase
-                    .from('ordenes_motores')
-                    .select('*')
-                    .eq('cliente_nombre', clienteNombre)
-                    .eq('falla_reportada', falla)
-                    .eq('fecha_ingreso', fechaIso)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
+                // Verificar si ya existe una orden similar (comparar solo fecha YYYY-MM-DD)
+                const fechaSolo = fechaIso.split('T')[0];
+                let existing = null;
+                try {
+                    const { data } = await window.supabase
+                        .from('ordenes_motores')
+                        .select('*')
+                        .eq('cliente_nombre', clienteNombre)
+                        .eq('falla_reportada', falla)
+                        .eq('fecha_ingreso', fechaSolo)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    existing = data;
+                } catch (e) {
+                    console.warn('[Ventas] No se pudo verificar duplicados motores:', e);
+                }
 
                 let inserted;
                 if (existing) {
                     inserted = existing;
                     _showToast('📋 Orden existente recuperada: ' + (existing.folio || ''), 'info');
                 } else {
-                    inserted = await motoresService.insert(row, csrfToken);
+                    try {
+                        inserted = await motoresService.insert(row, csrfToken);
+                    } catch (err) {
+                        console.warn('[Ventas] Error insertando orden motores:', err);
+                        try {
+                            const { data: byFolio } = await window.supabase
+                                .from('ordenes_motores')
+                                .select('*')
+                                .eq('folio', folio)
+                                .maybeSingle();
+                            if (byFolio) { inserted = byFolio; }
+                        } catch (e2) { /* ignorar */ }
+                        if (!inserted) {
+                            try {
+                                const { data: fallback } = await window.supabase
+                                    .from('ordenes_motores')
+                                    .select('*')
+                                    .eq('cliente_nombre', clienteNombre)
+                                    .eq('fecha_ingreso', fechaSolo)
+                                    .order('created_at', { ascending: false })
+                                    .limit(1)
+                                    .maybeSingle();
+                                if (fallback) { inserted = fallback; }
+                            } catch (e3) { console.warn('[Ventas] Error fallback motores:', e3); }
+                        }
+                        if (!inserted) {
+                            row.folio = folio + '-' + Date.now().toString(36).toUpperCase();
+                            try { inserted = await motoresService.insert(row, csrfToken); }
+                            catch (err2) { throw new Error('No se pudo crear orden de Motores: ' + (err2.message || err2)); }
+                        }
+                    }
                     if (!inserted) throw new Error('No se recibió confirmación del servidor al crear la orden de Motores.');
                 }
 
@@ -489,9 +597,14 @@ const VentasModule = (function() {
                 const profile = await authService.getCurrentProfile();
                 const userName = profile?.nombre || 'Ventas';
                 const folioFn = window.folioFormats && window.folioFormats.getNextFolioAutomatizacion;
-                const folio = folioFn
-                    ? await folioFn()
-                    : 'SP-A' + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, '0') + '/1';
+                let folio;
+                try {
+                    folio = folioFn
+                        ? await folioFn()
+                        : 'SP-A' + Date.now().toString(36).toUpperCase();
+                } catch (e) {
+                    folio = 'SP-A' + Date.now().toString(36).toUpperCase();
+                }
                 const nombre = dept === 'Proyectos' ? 'Proyecto (Ventas)' : 'Automatización (Ventas)';
                 const row = {
                     folio,
@@ -504,21 +617,60 @@ const VentasModule = (function() {
                 };
 
                 // Verificar si ya existe un proyecto similar
-                const { data: existing } = await window.supabase
-                    .from('proyectos_automatizacion')
-                    .select('*')
-                    .eq('cliente', clienteNombre)
-                    .eq('fecha', fechaStr || new Date().toISOString().split('T')[0])
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
+                const fechaSolo = fechaStr || new Date().toISOString().split('T')[0];
+                let existing = null;
+                try {
+                    const { data } = await window.supabase
+                        .from('proyectos_automatizacion')
+                        .select('*')
+                        .eq('cliente', clienteNombre)
+                        .gte('created_at', fechaSolo + 'T00:00:00')
+                        .lte('created_at', fechaSolo + 'T23:59:59')
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    existing = data;
+                } catch (e) {
+                    console.warn('[Ventas] No se pudo verificar duplicados proyectos:', e);
+                }
 
                 let inserted;
                 if (existing) {
                     inserted = existing;
                     _showToast('📋 Proyecto existente recuperado: ' + (existing.folio || ''), 'info');
                 } else {
-                    inserted = await proyectosService.insert(row, csrfToken);
+                    try {
+                        inserted = await proyectosService.insert(row, csrfToken);
+                    } catch (err) {
+                        console.warn('[Ventas] Error insertando proyecto:', err);
+                        try {
+                            const { data: byFolio } = await window.supabase
+                                .from('proyectos_automatizacion')
+                                .select('*')
+                                .eq('folio', folio)
+                                .maybeSingle();
+                            if (byFolio) { inserted = byFolio; }
+                        } catch (e2) { /* ignorar */ }
+                        if (!inserted) {
+                            try {
+                                const { data: fallback } = await window.supabase
+                                    .from('proyectos_automatizacion')
+                                    .select('*')
+                                    .eq('cliente', clienteNombre)
+                                    .gte('created_at', fechaSolo + 'T00:00:00')
+                                    .lte('created_at', fechaSolo + 'T23:59:59')
+                                    .order('created_at', { ascending: false })
+                                    .limit(1)
+                                    .maybeSingle();
+                                if (fallback) { inserted = fallback; }
+                            } catch (e3) { console.warn('[Ventas] Error fallback proyectos:', e3); }
+                        }
+                        if (!inserted) {
+                            row.folio = folio + '-' + Date.now().toString(36).toUpperCase();
+                            try { inserted = await proyectosService.insert(row, csrfToken); }
+                            catch (err2) { throw new Error('No se pudo crear proyecto: ' + (err2.message || err2)); }
+                        }
+                    }
                     if (!inserted) throw new Error('No se recibió confirmación del servidor al crear el registro de Automatización/Proyectos.');
                 }
 
@@ -563,6 +715,43 @@ const VentasModule = (function() {
             if (!r.ok && r.error) console.warn('[Ventas] folio operativo:', r.error?.message || r.error);
         } catch (e) {
             console.warn('[Ventas] folio operativo:', e?.message || e);
+        }
+    }
+
+    async function _crearCompraVinculada(ordenFolio, ordenId, ordenTipo, clienteNombre, csrfToken) {
+        try {
+            const compraFolio = 'CMP-' + (ordenFolio || ordenId?.slice(-6) || Date.now().toString(36).toUpperCase());
+            const compraRow = {
+                folio: compraFolio,
+                proveedor_id: null,
+                subtotal: 0,
+                iva: 0,
+                total: 0,
+                estatus_pago: 'Solicitud',
+                notas: 'Solicitud generada automáticamente desde Ventas para orden ' + (ordenFolio || '') + ' (' + ordenTipo + ')'
+            };
+            await comprasService.insert(compraRow, csrfToken);
+            _addToFeed('🛒', 'Solicitud de compra creada: ' + compraFolio);
+        } catch (e) {
+            console.warn('[Ventas] Error creando compra vinculada (no crítico):', e);
+        }
+    }
+
+    async function _crearFacturaVinculada(cotizacionId, folio, clienteNombre, total, csrfToken) {
+        try {
+            const factFolio = 'FAC-' + (folio || cotizacionId?.slice(-6) || Date.now().toString(36).toUpperCase());
+            const payload = {
+                folio_factura: factFolio,
+                cliente: clienteNombre || 'Cliente',
+                total: total || 0,
+                estatus: 'pendiente',
+                fecha_emision: new Date().toISOString()
+            };
+            if (cotizacionId) payload.venta_id = cotizacionId;
+            await window.supabase.from('facturas').insert(payload);
+            _addToFeed('🧾', 'Factura pre-registrada: ' + factFolio);
+        } catch (e) {
+            console.warn('[Ventas] Error creando factura vinculada (no crítico):', e);
         }
     }
 
@@ -651,16 +840,42 @@ const VentasModule = (function() {
         ]
     };
 
+    async function generarFolioCotizacion() {
+        const { data, error } = await window.supabase
+            .from('foliador_control')
+            .select('ultimo_folio')
+            .eq('tipo', 'COT')
+            .single();
+        if (error && error.code !== 'PGRST116') {
+            console.warn('[Folios] Error leyendo foliador COT:', error);
+        }
+        const ultimo = data?.ultimo_folio || 0;
+        const nuevo = ultimo + 1;
+        await window.supabase
+            .from('foliador_control')
+            .upsert({ tipo: 'COT', ultimo_folio: nuevo, ultimo_folio_entero: nuevo }, { onConflict: 'tipo' });
+        return 'COT-' + String(nuevo).padStart(4, '0');
+    }
+
     /**
      * Genera el siguiente folio según el tipo de departamento
      * @param {string} departamento - 'Automatización' | 'Taller Electrónica' | 'Taller Motores' | 'Proyectos' | 'Suministro'
      * @returns {Promise<string>} Folio generado
      */
     async function generarFolioPorTipo(departamento) {
+        const tipoMap = {
+            'Taller Electrónica': 'SP-E',
+            'Taller Motores': 'SP-M',
+            'Automatización': 'SP-A',
+            'Proyectos': 'SP-P',
+            'Suministro': 'SP-S'
+        };
+        const tipoFolio = tipoMap[departamento] || 'SP-' + departamento.charAt(0).toUpperCase();
+
         const { data, error } = await window.supabase
             .from('foliador_control')
             .select('ultimo_folio')
-            .eq('tipo', 'SP-' + departamento.charAt(0).toUpperCase())
+            .eq('tipo', tipoFolio)
             .single();
 
         if (error && error.code !== 'PGRST116') {
@@ -674,7 +889,7 @@ const VentasModule = (function() {
         await window.supabase
             .from('foliador_control')
             .upsert({
-                tipo: 'SP-' + departamento.charAt(0).toUpperCase(),
+                tipo: tipoFolio,
                 ultimo_folio: nuevoFolio,
                 ultimo_folio_entero: nuevoFolio
             }, { onConflict: 'tipo' });
@@ -862,8 +1077,7 @@ const VentasModule = (function() {
         ]);
         _populateVendedoresFilter();
         _applyFilters();
-        _renderSolicitudesTaller();
-        _renderPendientesAutorizacion();
+        _renderPipelineCards();
 
         // Fase 2: vínculos a taller/motores/proyectos/compras — no bloquea el primer pintado
         Promise.all([
@@ -873,8 +1087,7 @@ const VentasModule = (function() {
             _loadCompras()
         ])
             .then(() => {
-                _renderSolicitudesTaller();
-                _renderPendientesAutorizacion();
+                _renderPipelineCards();
             })
             .catch((e) => console.warn('[Ventas] carga secundaria:', e));
     }
@@ -915,6 +1128,17 @@ const VentasModule = (function() {
                 }
             }
         }
+        // Parsear notas JSON para compatibilidad con datos almacenados como JSON
+        cotizaciones.forEach(c => {
+            if (c.notas && typeof c.notas === 'string') {
+                try {
+                    const parsed = JSON.parse(c.notas);
+                    Object.assign(c, parsed);
+                } catch (e) { /* ignorar JSON inválido */ }
+            } else if (c.notas && typeof c.notas === 'object') {
+                Object.assign(c, c.notas);
+            }
+        });
     }
 
     async function _loadInventario() {
@@ -1032,11 +1256,11 @@ const VentasModule = (function() {
         const subtotal = gasolina + manoObra + gastosFijos + costoCamioneta + refacciones;
 
         // Utilidad (40% por defecto)
-        const utilidad = subtotal * (CostosEngine.CONFIG.utilidad / 100);
+        const utilidad = subtotal * ((CostosEngine.CONFIG?.utilidad || 40) / 100);
         const conUtilidad = subtotal + utilidad;
 
         // Crédito (3% por defecto)
-        const credito = conUtilidad * (CostosEngine.CONFIG.credito / 100);
+        const credito = conUtilidad * ((CostosEngine.CONFIG?.credito || 3) / 100);
         const antesIva = conUtilidad + credito;
 
         // IVA (16%)
@@ -1266,6 +1490,7 @@ const VentasModule = (function() {
 
     /**
      * Inserta un evento en orden_historial para auditar cambios en cotizaciones/ventas/órdenes.
+     * Delegado a state-machine.js para deduplicación y unificación.
      * @param {string} tipo - 'cotizacion' | 'venta' | 'taller' | 'motor' | 'proyecto'
      * @param {string} id - ID del registro
      * @param {string} evento - Tipo de evento: 'creacion', 'cambio_estado', 'folio_generado', 'compra_vinculada', etc.
@@ -1273,47 +1498,12 @@ const VentasModule = (function() {
      * @param {string} csrfToken - Token de autenticación
      */
     async function _insertarEventoHistorial(tipo, id, evento, descripcion, csrfToken) {
-        if (!window.supabase) return;
-
-        const columnMap = {
-            'cotizacion': 'cotizacion_id',
-            'venta': 'cotizacion_id',
-            'taller': 'orden_taller_id',
-            'motor': 'orden_motor_id',
-            'proyecto': 'proyecto_id',
-            'automatizacion': 'proyecto_id'
-        };
-        const columnName = columnMap[tipo] || 'cotizacion_id';
-
-        const row = {
-            [columnName]: id,
-            evento,
-            descripcion,
-            creado_por: (await authService.getCurrentProfile())?.id || null
-        };
-
+        if (!window.supabase) return null;
         try {
-            const { data, error } = await window.supabase
-                .from('orden_historial')
-                .insert(row)
-                .select()
-                .single();
-
-            if (error) {
-                // Si falla por columna faltante, intentar sin la FK de cotizacion
-                if (columnName === 'cotizacion_id' && (error.message?.includes('does not exist') || error.code === '42703')) {
-                    delete row.cotizacion_id;
-                    row.descripcion = `[cotización ${id}] ${descripcion}`;
-                    const { data: data2, error: error2 } = await window.supabase
-                        .from('orden_historial')
-                        .insert(row)
-                        .select()
-                        .single();
-                    if (error2) { console.warn('[Ventas] Error insertando evento (fallback):', error2); return null; }
-                    return data2;
-                }
-                console.warn('[Ventas] Error insertando evento en historial:', error);
-            } else {
+            const data = await window.SSEPIStateMachine.actualizarEstadoOrden(
+                window.supabase, tipo, id, evento, descripcion, csrfToken
+            );
+            if (data) {
                 console.log(`[Ventas] Evento registrado en historial: ${evento} para ${tipo} ${id}`);
                 const modalAbierto = document.getElementById('historialModal');
                 if (modalAbierto && modalAbierto.classList.contains('active')) {
@@ -1351,7 +1541,7 @@ const VentasModule = (function() {
             .channel('cotizaciones_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'cotizaciones' }, payload => {
                 _loadCotizaciones().then(() => {
-                    _renderPendientesAutorizacion();
+                    _renderPipelineCards();
                     _applyFilters();
                 });
             })
@@ -1363,7 +1553,7 @@ const VentasModule = (function() {
             .channel('compras_ventas')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'compras' }, payload => {
                 _loadCompras();
-                _renderSolicitudesTaller();
+                _renderPipelineCards();
             })
             .subscribe();
         subscriptions.push(subCompras);
@@ -1373,7 +1563,7 @@ const VentasModule = (function() {
             .channel('taller_realtime_ventas')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes_taller' }, payload => {
                 _loadTaller().then(() => {
-                    _renderSolicitudesTaller();
+                    _renderPipelineCards();
                     _applyFilters(); // Refrescar kanban por si hay cambios de estado
                 });
             })
@@ -1385,7 +1575,7 @@ const VentasModule = (function() {
             .channel('motores_realtime_ventas')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes_motores' }, payload => {
                 _loadMotores().then(() => {
-                    _renderSolicitudesTaller();
+                    _renderPipelineCards();
                     _applyFilters();
                 });
             })
@@ -1397,7 +1587,7 @@ const VentasModule = (function() {
             .channel('proyectos_realtime_ventas')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'proyectos_automatizacion' }, payload => {
                 _loadProyectos().then(() => {
-                    _renderSolicitudesTaller();
+                    _renderPipelineCards();
                     _applyFilters();
                 });
             })
@@ -1529,7 +1719,7 @@ const VentasModule = (function() {
 
         // Nuevos estatus para kanban
         const es = (i) => String(i.estado || '').trim().toLowerCase();
-        const registro = items.filter((i) => es(i) === 'registro' || es(i) === 'nuevo');
+        const registro = items.filter((i) => es(i) === 'registro' || es(i) === 'nuevo' || es(i) === 'borrador');
         const diagnostico = items.filter((i) => es(i) === 'diagnostico' || es(i) === 'en_diagnostico');
         const cotizacion = items.filter((i) => es(i) === 'cotizacion' || es(i) === 'pendiente_autorizacion_ventas');
         const autorizado = items.filter((i) => es(i) === 'autorizado' || es(i) === 'autorizada_por_ventas');
@@ -1628,7 +1818,7 @@ const VentasModule = (function() {
                     .from('ordenes_taller')
                     .select('folio')
                     .eq('id', cotizacion.orden_origen_id)
-                    .single();
+                    .maybeSingle();
                 if (data?.folio) return { tipo: 'taller', folio: data.folio };
             }
 
@@ -1638,7 +1828,7 @@ const VentasModule = (function() {
                     .from('ordenes_motores')
                     .select('folio')
                     .eq('id', cotizacion.orden_origen_id)
-                    .single();
+                    .maybeSingle();
                 if (data?.folio) return { tipo: 'motor', folio: data.folio };
             }
 
@@ -1648,7 +1838,7 @@ const VentasModule = (function() {
                     .from('proyectos_automatizacion')
                     .select('folio')
                     .eq('id', cotizacion.orden_origen_id)
-                    .single();
+                    .maybeSingle();
                 if (data?.folio) return { tipo: 'proyecto', folio: data.folio };
             }
 
@@ -1658,7 +1848,7 @@ const VentasModule = (function() {
                     .from(tabla)
                     .select('folio')
                     .eq('id', cotizacion.orden_origen_id)
-                    .single();
+                    .maybeSingle();
                 if (data?.folio) {
                     const tipoMap = { ordenes_taller: 'taller', ordenes_motores: 'motor', proyectos_automatizacion: 'proyecto' };
                     return { tipo: tipoMap[tabla], folio: data.folio };
@@ -1707,27 +1897,31 @@ const VentasModule = (function() {
                    </div>`
                 : '';
             const esCancelado = (item.estado || item.estatus_pago || '').toLowerCase().includes('cancelad');
+            const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(item);
+            const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(item) ?? true;
+            const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
 
             return `
-                <div class="kanban-card ${esCancelado ? 'kanban-card-cancelada' : ''}" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}">
+                <div class="kanban-card ${esCancelado ? 'kanban-card-cancelada' : ''} ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}">
                     <div class="card-header">
                         <span class="folio">${item.folio || item.id.slice(-6)}</span>
+                        ${badgeCuarentena}
                         <div class="card-actions">
                             <button class="btn-icon btn-edit" onclick="event.stopPropagation(); ventasModule._editarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn-icon btn-delete" onclick="event.stopPropagation(); ventasModule._eliminarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Eliminar">
+                            ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); ventasModule._eliminarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Eliminar">
                                 <i class="fas fa-trash"></i>
-                            </button>
+                            </button>` : ''}
                         </div>
                     </div>
                     ${etiquetaHtml ? `<div class="card-vinculacion">${etiquetaHtml}</div>` : ''}
                     <div class="card-body" onclick="ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')" style="cursor:pointer;">
-                        <div class="cliente">${item.cliente || 'Cliente'}</div>
+                        <div class="cliente">${item.cliente_nombre || item.cliente || 'Cliente'}</div>
                         <div class="total">$${(item.total || 0).toFixed(2)}</div>
                     </div>
                     <div class="card-footer">
-                        <small>${item.fecha ? new Date(item.fecha).toLocaleDateString() : ''}</small>
+                        <small>${item.fecha_cotizacion || item.fecha || item.fecha_creacion ? new Date(item.fecha_cotizacion || item.fecha || item.fecha_creacion).toLocaleDateString() : ''}</small>
                         <small>${item.vendedor || ''}</small>
                     </div>
                 </div>
@@ -1741,25 +1935,29 @@ const VentasModule = (function() {
         if (items.length === 0) return '<div style="text-align:center; padding:20px; color:var(--text-muted);">Sin elementos</div>';
         return items.map(item => {
             const esCancelado = (item.estado || item.estatus_pago || '').toLowerCase().includes('cancelad');
+            const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(item);
+            const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(item) ?? true;
+            const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
             return `
-                <div class="kanban-card ${esCancelado ? 'kanban-card-cancelada' : ''}" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}">
+                <div class="kanban-card ${esCancelado ? 'kanban-card-cancelada' : ''} ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${item.id}" data-tipo="${item.tipo || 'venta'}">
                     <div class="card-header">
                         <span class="folio">${item.folio || item.id.slice(-6)}</span>
+                        ${badgeCuarentena}
                         <div class="card-actions">
                             <button class="btn-icon btn-edit" onclick="event.stopPropagation(); ventasModule._editarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn-icon btn-delete" onclick="event.stopPropagation(); ventasModule._eliminarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Eliminar">
+                            ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); ventasModule._eliminarVenta('${item.id}', '${item.tipo || 'venta'}')" title="Eliminar">
                                 <i class="fas fa-trash"></i>
-                            </button>
+                            </button>` : ''}
                         </div>
                     </div>
                     <div class="card-body" onclick="ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')" style="cursor:pointer;">
-                        <div class="cliente">${item.cliente || 'Cliente'}</div>
+                        <div class="cliente">${item.cliente_nombre || item.cliente || 'Cliente'}</div>
                         <div class="total">$${(item.total || 0).toFixed(2)}</div>
                     </div>
                     <div class="card-footer">
-                        <small>${item.fecha ? new Date(item.fecha).toLocaleDateString() : ''}</small>
+                        <small>${item.fecha_cotizacion || item.fecha || item.fecha_creacion ? new Date(item.fecha_cotizacion || item.fecha || item.fecha_creacion).toLocaleDateString() : ''}</small>
                         <small>${item.vendedor || ''}</small>
                     </div>
                 </div>
@@ -1775,9 +1973,9 @@ const VentasModule = (function() {
             return;
         }
         tbody.innerHTML = items.map(item => {
-            const fecha = item.fecha ? new Date(item.fecha).toLocaleDateString('es-MX') : '--/--/----';
+            const fecha = item.fecha_cotizacion || item.fecha || item.fecha_creacion ? new Date(item.fecha_cotizacion || item.fecha || item.fecha_creacion).toLocaleDateString('es-MX') : '--/--/----';
             const folio = item.folio || item.id.slice(-6);
-            const cliente = item.cliente || 'N/A';
+            const cliente = item.cliente_nombre || item.cliente || 'N/A';
             const tipo = item.tipo === 'cotizacion' ? 'Cotización' : 'Venta';
             const estatus = item.tipo === 'cotizacion' ? (item.estado || 'Pendiente') : (item.estatus_pago || 'Pendiente');
             const total = item.total || 0;
@@ -1896,117 +2094,34 @@ const VentasModule = (function() {
         if (elTicket) elTicket.innerHTML = countVentasCerradas ? '$' + ticketPromedio.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '$0';
     }
 
-    // ==================== SOLICITUDES DE TALLER ====================
-    function _renderSolicitudesTaller() {
-        const container = document.getElementById('solicitudesTaller');
+    // ==================== PIPELINE CARDS (reemplaza solicitudes pendientes) ====================
+    function _renderPipelineCards() {
+        const container = document.getElementById('pipelineCardsContainer');
         if (!container) return;
-        if (solicitudesTaller.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">No hay solicitudes pendientes</div>';
+        // Render de órdenes con estatus_actual desde todas las tablas
+        const ordenes = [...ventas, ...cotizaciones, ...taller, ...motores, ...proyectos]
+            .filter(o => o.estatus_actual && o.estatus_actual !== 'entrega')
+            .sort((a, b) => new Date(b.created_at || b.creado_en || 0) - new Date(a.created_at || a.creado_en || 0))
+            .slice(0, 20);
+        if (ordenes.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">No hay órdenes activas en pipeline</div>';
             return;
         }
-        container.innerHTML = solicitudesTaller.map(s => `
-            <div class="solicitud-card">
-                <div class="solicitud-header">
-                    <span class="solicitud-folio">${s.folio || s.id.slice(-6)}</span>
-                    <span class="solicitud-cliente">${s.vinculacion?.nombre || 'Cliente'}</span>
+        container.innerHTML = ordenes.map(o => {
+            const info = SSEPIStateMachine.obtenerInfoPaso(o.estatus_actual);
+            return `
+            <div class="pipeline-card" data-active-step="${o.estatus_actual}" onclick="ventasModule._abrirDetalle('${o.id}', '${o.tipo || 'venta'}')">
+                <div class="pipeline-card-header">
+                    <span class="pipeline-card-folio">${o.folio || o.id?.slice(-6)}</span>
+                    <span class="pipeline-card-step active" style="background:${info.color};color:#fff;">${info.icono} ${info.label}</span>
                 </div>
-                <div class="solicitud-total">$${(s.total || 0).toFixed(2)}</div>
-                <div class="solicitud-items">${s.items?.length || 0} producto(s)</div>
-                <div class="solicitud-acciones">
-                    <button class="btn btn-sm btn-primary" onclick="ventasModule._abrirCalculadora('${s.id}')">
-                        <i class="fas fa-calculator"></i> Calcular
-                    </button>
-                    <button class="btn btn-sm btn-secondary" onclick="ventasModule._verOrdenTaller('${s.id}')" title="Ver orden">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn btn-sm btn-warning" onclick="ventasModule._editarOrdenTaller('${s.id}')" title="Editar">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="ventasModule._eliminarOrdenTaller('${s.id}')" title="Eliminar">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <div class="pipeline-card-cliente">${o.cliente || o.cliente_nombre || 'Cliente'}</div>
+                <div class="pipeline-card-meta">
+                    <span>${o.departamento || info.modulo}</span>
+                    <span>$${(o.total || 0).toFixed(2)}</span>
                 </div>
-            </div>
-        `).join('');
-    }
-
-    function _renderPendientesAutorizacion() {
-        const container = document.getElementById('pendientesAutorizacion');
-        if (!container) return;
-        const pendientes = cotizaciones.filter(c => c.estado === 'pendiente_autorizacion_ventas');
-        if (pendientes.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">No hay cotizaciones pendientes</div>';
-            return;
-        }
-        container.innerHTML = pendientes.map(c => `
-            <div class="solicitud-card">
-                <div class="solicitud-header">
-                    <span class="solicitud-folio">${c.folio || c.id.slice(-6)}</span>
-                    <span class="solicitud-cliente">${c.cliente}</span>
-                </div>
-                <div class="solicitud-total">$${(c.total || 0).toFixed(2)}</div>
-                <div class="solicitud-items">Origen: ${c.origen || 'Taller'}</div>
-                <div class="solicitud-acciones">
-                    <button class="btn btn-sm btn-success" onclick="ventasModule._autorizarCotizacion('${c.id}')">
-                        <i class="fas fa-check"></i> Autorizar
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="ventasModule._rechazarCotizacion('${c.id}')">
-                        <i class="fas fa-times"></i> Rechazar
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    // ==================== VER / EDITAR / ELIMINAR ÓRDENES DE TALLER ====================
-    async function _verOrdenTaller(compraId) {
-        const compra = solicitudesTaller.find(s => s.id === compraId);
-        if (!compra) return;
-        const ordenTallerId = compra.vinculacion?.id;
-        if (!ordenTallerId) { _showToast('No hay orden de taller vinculada', 'info'); return; }
-        const orden = taller.find(o => o.id === ordenTallerId);
-        if (!orden) { _showToast('Orden no encontrada en Taller', 'info'); return; }
-        _showToast(`Orden ${orden.folio}\nCliente: ${orden.cliente_nombre || 'N/A'}\nEstado: ${orden.estado || 'Pendiente'}\nEquipo: ${orden.equipo || 'N/A'}`, 'info');
-    }
-
-    async function _editarOrdenTaller(compraId) {
-        const compra = solicitudesTaller.find(s => s.id === compraId);
-        if (!compra) return;
-        const ordenTallerId = compra.vinculacion?.id;
-        if (!ordenTallerId) { _showToast('No hay orden de taller vinculada', 'info'); return; }
-        const orden = taller.find(o => o.id === ordenTallerId);
-        if (!orden) { _showToast('Orden no encontrada en Taller', 'info'); return; }
-        // Abrir el modal de Taller para editar la orden
-        if (window.tallerModule && typeof window.tallerModule._editarOrden === 'function') {
-            window.tallerModule._editarOrden(ordenTallerId);
-        } else {
-            _showToast('Módulo de Taller no disponible', 'error');
-        }
-    }
-
-    function _eliminarOrdenTaller(compraId) {
-        const compra = solicitudesTaller.find(s => s.id === compraId);
-        if (!compra) return;
-        const folio = compra.folio || compra.id.slice(-6);
-        const cliente = compra.vinculacion?.nombre || 'N/A';
-        const equipo = compra.vinculacion?.equipo || '—';
-        _showDeleteConfirm(folio, cliente, equipo, async () => {
-            try {
-                const ordenTallerId = compra.vinculacion?.id;
-                if (ordenTallerId) {
-                    const { error: err1 } = await window.supabase.from('ordenes_taller').delete().eq('id', ordenTallerId);
-                    if (err1) throw err1;
-                }
-                const { error: err2 } = await window.supabase.from('compras').delete().eq('id', compraId);
-                if (err2) throw err2;
-                _addToFeed('🗑️', 'Orden eliminada: ' + folio);
-                await _loadCompras();
-                _renderSolicitudesTaller();
-            } catch (e) {
-                console.error(e);
-                _showErrorModal('Error al eliminar', e.message);
-            }
-        });
+            </div>`;
+        }).join('');
     }
 
     function _showDeleteConfirm(folio, cliente, equipo, onConfirm) {
@@ -2519,13 +2634,14 @@ const VentasModule = (function() {
         try {
             const { data, error } = await window.supabase
                 .from('clientes_tabulador')
-                .select('nombre_cliente, km, horas_viaje')
-                .order('nombre_cliente');
+                .select('cliente_nombre, km_ida, horas_invertidas')
+                .eq('activo', true)
+                .order('cliente_nombre');
             if (error || !data) return [];
             return data.map(c => ({
-                nombre: c.nombre_cliente,
-                km: Number(c.km) || 0,
-                horas: Number(c.horas_viaje) || 0
+                nombre: c.cliente_nombre,
+                km: Number(c.km_ida) || 0,
+                horas: Number(c.horas_invertidas) || 0
             }));
         } catch (e) {
             console.warn('[Ventas] Error cargando clientes:', e);
@@ -2739,8 +2855,8 @@ const VentasModule = (function() {
         const inpTechHours = document.getElementById('inpTechHours');
         const inpUtilidadPct = document.getElementById('inpUtilidadPct');
         const inpCreditoPct = document.getElementById('inpCreditoPct');
-        const utilidadPct = parseFloat(inpUtilidadPct?.value) || CostosEngine.CONFIG.utilidad;
-        const creditoPct = parseFloat(inpCreditoPct?.value) || CostosEngine.CONFIG.credito;
+        const utilidadPct = parseFloat(inpUtilidadPct?.value) || CostosEngine.CONFIG?.utilidad || 40;
+        const creditoPct = parseFloat(inpCreditoPct?.value) || CostosEngine.CONFIG?.credito || 3;
 
         let gastosGenerales = lastGastosGenerales;
         if (inpTechHours) {
@@ -2881,24 +2997,26 @@ const VentasModule = (function() {
             }
         });
 
-        const folio = `COT-${Date.now().toString().slice(-6)}`;
+        const folio = await generarFolioCotizacion();
+        const subtotal = items.reduce((s, i) => s + i.importe, 0);
+        const iva = total * 0.16 / 1.16;
         const cotizacionData = {
             folio,
-            tipo: 'cotizacion',
-            cliente,
-            email,
-            telefono,
-            rfc,
-            fecha: new Date().toISOString().split('T')[0],
-            items,
-            subtotal: items.reduce((s, i) => s + i.importe, 0),
-            iva: finalTotal * 0.16 / 1.16,
-            total: finalTotal,
-            estado: 'registro',
-            origen: compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo',
-            orden_origen_id: compraActual?.id,
-            vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas',
-            fecha_creacion: new Date().toISOString()
+            fecha_cotizacion: new Date().toISOString(),
+            subtotal,
+            iva,
+            total,
+            estado: 'Pendiente',
+            notas: JSON.stringify({
+                cliente,
+                email,
+                telefono,
+                rfc,
+                items,
+                origen: compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo',
+                orden_origen_id: compraActual?.id,
+                vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas'
+            })
         };
 
         const csrfToken = sessionStorage.getItem('csrfToken');
@@ -2917,6 +3035,8 @@ const VentasModule = (function() {
             _addToFeed('📧', `Cotización ${folio} enviada a ${cliente}`);
             document.getElementById('cotizacionModal').classList.remove('active');
             document.getElementById('calculadoraModal').classList.remove('active');
+            await _loadCotizaciones();
+            _applyFilters();
         } catch (error) {
             console.error(error);
             _showToast('Error al guardar cotización: ' + error.message, 'error');
@@ -2934,14 +3054,16 @@ const VentasModule = (function() {
             // Avanzar estado de la orden operativa vinculada y generar solicitud de compra
             const origen = cotizacion?.origen || cotizacion?.cerebro_registro?.origen_cotizacion;
             const ordenId = cotizacion?.orden_origen_id || cotizacion?.cerebro_registro?.orden_id;
+            const departamentoReal = cotizacion?.departamento || ventasWizardCerebro?.departamento ||
+                (origen === 'taller' ? 'Taller Electrónica' : origen === 'motores' ? 'Taller Motores' : origen === 'automatizacion' ? 'Automatización' : 'Proyectos');
             if (ordenId) {
                 try {
                     if (origen === 'taller') {
                         await tallerService.update(ordenId, { estado: 'Diagnóstico' }, csrfToken);
                         const nuevaCompra = {
-                            folio: `PO-${cotizacion.folio || Date.now().toString().slice(-6)}`,
+                            folio: `PO-${cotizacion.folio || 'SIN-FOLIO'}`,
                             proveedor: 'Por asignar',
-                            departamento: 'Taller Electrónica',
+                            departamento: departamentoReal,
                             vinculacion: { tipo: 'taller', id: ordenId, nombre: cotizacion.cliente || 'Cliente', folio_taller: cotizacion.cerebro_registro?.folio_operativo || cotizacion.folio },
                             items: (cotizacion.items || []).map(i => ({ sku: i.sku || '', descripcion: i.descripcion || '', cantidad: i.cantidad || 1, precio_unitario: i.precio_unitario || 0 })),
                             estado: 1,
@@ -2952,9 +3074,9 @@ const VentasModule = (function() {
                     } else if (origen === 'motores') {
                         await motoresService.update(ordenId, { estado: 'Diagnóstico' }, csrfToken);
                         const nuevaCompra = {
-                            folio: `PO-${cotizacion.folio || Date.now().toString().slice(-6)}`,
+                            folio: `PO-${cotizacion.folio || 'SIN-FOLIO'}`,
                             proveedor: 'Por asignar',
-                            departamento: 'Taller Motores',
+                            departamento: departamentoReal,
                             vinculacion: { tipo: 'motor', id: ordenId, nombre: cotizacion.cliente || 'Cliente', folio_motores: cotizacion.cerebro_registro?.folio_operativo || cotizacion.folio },
                             items: (cotizacion.items || []).map(i => ({ sku: i.sku || '', descripcion: i.descripcion || '', cantidad: i.cantidad || 1, precio_unitario: i.precio_unitario || 0 })),
                             estado: 1,
@@ -2981,7 +3103,7 @@ const VentasModule = (function() {
                 fecha: new Date().toISOString()
             }, csrfToken);
             _addToFeed('✅', 'Cotización autorizada - Orden actualizada y notificación enviada a Compras');
-            _renderPendientesAutorizacion();
+            _renderPipelineCards();
         } catch (error) {
             console.error(error);
             _showToast('Error: ' + error.message, 'error');
@@ -2994,7 +3116,7 @@ const VentasModule = (function() {
         try {
             await cotizacionesService.update(id, { estado: 'rechazada_por_ventas' }, csrfToken);
             _addToFeed('❌', 'Cotización rechazada');
-            _renderPendientesAutorizacion();
+            _renderPipelineCards();
         } catch (error) {
             console.error(error);
             _showToast('Error: ' + error.message, 'error');
@@ -3043,7 +3165,7 @@ const VentasModule = (function() {
                         .from('orden_historial')
                         .select('*')
                         .ilike('descripcion', `%${id}%`)
-                        .order('created_at', { ascending: false });
+                        .order('creado_en', { ascending: false });
                     data = fallback.data || [];
                     error = fallback.error;
                 }
@@ -3058,7 +3180,7 @@ const VentasModule = (function() {
                         .from('orden_historial')
                         .select('*')
                         .eq(columnName, id)
-                        .order('created_at', { ascending: false });
+                        .order('creado_en', { ascending: false });
                     data = fallback.data || [];
                     error = fallback.error;
                 }
@@ -3140,6 +3262,10 @@ const VentasModule = (function() {
                 `}
             </div>
             <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                ${(estadoActual === 'entregado' || estadoActual === 'pagado') ? `
+                <button class="btn btn-primary" onclick="ventasModule._generarPDFDesdeHistorial('${id}', '${tipo}')">
+                    <i class="fas fa-file-pdf"></i> Generar PDF
+                </button>` : ''}
                 <button class="btn btn-warning" onclick="ventasModule._editarVenta('${id}', '${tipo}')">
                     <i class="fas fa-edit"></i> Editar
                 </button>
@@ -3152,25 +3278,31 @@ const VentasModule = (function() {
     }
 
     function _renderTimeline(estadoActual) {
+        if (window.SSEPIStateMachine) {
+            return SSEPIStateMachine.renderTimelineHTML(estadoActual);
+        }
+        // Fallback si el core no cargó
         const pasos = [
-            { id: 'registro', icono: '📝', label: 'Registro' },
-            { id: 'diagnostico', icono: '🔍', label: 'Diagnóstico' },
+            { id: 'recepcion', icono: '📥', label: 'Recepción' },
+            { id: 'diagnostico', icono: '🔬', label: 'Diagnóstico' },
             { id: 'cotizacion', icono: '💰', label: 'Cotización' },
-            { id: 'autorizado', icono: '✅', label: 'Autorizado' },
-            { id: 'compra', icono: '🛒', label: 'Compra' },
-            { id: 'ejecucion', icono: '⚙️', label: 'Ejecución' },
-            { id: 'entregado', icono: '📦', label: 'Entregado' },
-            { id: 'pagado', icono: '💵', label: 'Pagado' }
+            { id: 'autorizacion', icono: '✅', label: 'Autorización' },
+            { id: 'adquisicion', icono: '🛒', label: 'Adquisición' },
+            { id: 'ejecucion', icono: '🔧', label: 'Ejecución' },
+            { id: 'facturacion', icono: '🧾', label: 'Facturación' },
+            { id: 'entrega', icono: '🚚', label: 'Entrega' }
         ];
         const ordenMap = {
-            'registro': 0, 'Nuevo': 0, 'diagnostico': 1, 'en_diagnostico': 1,
-            'cotizacion': 2, 'pendiente_autorizacion_ventas': 2,
-            'autorizado': 3, 'autorizada_por_ventas': 3,
-            'compra': 4, 'en_compra': 4, 'ejecucion': 5, 'en_ejecucion': 5,
-            'entregado': 6, 'pagado': 7
+            'recepcion': 0, 'Nuevo': 0,
+            'diagnostico': 1, 'Diagnóstico': 1,
+            'cotizacion': 2, 'En Espera': 2,
+            'autorizacion': 3, 'aprobada': 3,
+            'adquisicion': 4, 'en_compra': 4,
+            'ejecucion': 5, 'En reparación': 5,
+            'facturacion': 6, 'Reparado': 6,
+            'entrega': 7, 'Entregado': 7
         };
         const indiceActual = ordenMap[estadoActual] ?? 0;
-
         return `<div class="timeline-container"><div class="timeline">
             <div class="timeline-progress" style="width: ${(indiceActual / (pasos.length - 1)) * 100}%;"></div>
             ${pasos.map((paso, idx) => {
@@ -3226,10 +3358,14 @@ const VentasModule = (function() {
             const fechaIn = document.getElementById('wizardFechaIngreso');
             const nombreProd = document.getElementById('wizardNombreProducto');
             const falla = document.getElementById('wizardFallaReportada');
+            const prioridadSel = document.getElementById('wizardPrioridadSelect');
+            const deptSel = document.getElementById('wizardDepartamentoSelect');
             if (clienteSel && calculadoraClienteActual?.id) clienteSel.value = calculadoraClienteActual.id;
             if (fechaIn) fechaIn.value = item.fecha || '';
-            if (nombreProd) nombreProd.value = item.cerebro_registro?.producto_servicio || '';
+            if (nombreProd) nombreProd.value = item.cerebro_registro?.nombre_producto || item.cerebro_registro?.producto_servicio || '';
             if (falla) falla.value = item.cerebro_registro?.falla_reportada || '';
+            if (prioridadSel) prioridadSel.value = item.cerebro_registro?.prioridad || 'Normal';
+            if (deptSel) deptSel.value = item.cerebro_registro?.departamento || '';
         }, 100);
 
         _showToast('Editando ' + (tipo || 'registro') + ': ' + (item.folio || ''), 'info');
@@ -3239,6 +3375,19 @@ const VentasModule = (function() {
         const item = [...ventas, ...cotizaciones].find(i => i.id === id);
         if (!item) { _showToast('Registro no encontrado', 'error'); return; }
         const folio = item.folio || id.slice(-6);
+
+        // REGLA 2: validar cuarentena antes de cualquier acción de cancelación
+        if (window.SSEPIStateMachine && window.SSEPIStateMachine.estaEnCuarentena(item)) {
+            _showToast('Registro en cuarentena contable. No se puede cancelar.', 'error');
+            return;
+        }
+
+        // REGLA 1: validar punto de no retorno (no cancelar si ya avanzó más allá de borrador/pendiente)
+        if (window.SSEPIStateMachine && !window.SSEPIStateMachine.puedeEliminar(item)) {
+            _showToast(`El registro ${folio} ya avanzó en el pipeline. Solo puede cancelarse desde etapas iniciales.`, 'error');
+            return;
+        }
+
         if (!confirm(`¿Cancelar ${tipo || 'registro'} ${folio}?`)) return;
         try {
             const csrfToken = sessionStorage.getItem('csrfToken');
@@ -3323,7 +3472,7 @@ const VentasModule = (function() {
             return;
         }
 
-        const folio = `COT-${Date.now().toString().slice(-6)}`;
+        const folio = await generarFolioCotizacion();
         const profile = await authService.getCurrentProfile();
 
         const cotizacionData = {
@@ -3333,7 +3482,7 @@ const VentasModule = (function() {
             email: email || '',
             telefono: telefono || '',
             rfc: '',
-            fecha: new Date().toISOString().split('T')[0],
+            fecha_cotizacion: new Date().toISOString(),
             items: [{
                 descripcion: falla,
                 cantidad: 1,
@@ -3417,6 +3566,7 @@ const VentasModule = (function() {
         }
 
         // Iniciar nueva cotización desde cero
+        editingCotizacionId = null;
         calculadoraComponentes = [];
         calculadoraClienteActual = null;
         compraActual = null;
@@ -3523,9 +3673,17 @@ const VentasModule = (function() {
     function _renderWizardPaso1() {
         var contactosList = contactos || [];
         var clientesOptions = contactosList.map(function (c) {
-            return '<option value="' + c.id + '" data-nombre="' + (c.nombre || c.empresa || '') + '" data-km="' + (c.km || 0) + '" data-email="' + (c.email || '') + '" data-telefono="' + (c.telefono || '') + '" data-rfc="' + (c.rfc || '') + '">' + (c.nombre || c.empresa || c.email || 'Sin nombre') + '</option>';
+            var sel = (ventasWizardCerebro && String(ventasWizardCerebro.cliente_id || calculadoraClienteActual?.id) === String(c.id)) ? ' selected' : '';
+            return '<option value="' + c.id + '"' + sel + ' data-nombre="' + (c.nombre || c.empresa || '') + '" data-km="' + (c.km || 0) + '" data-email="' + (c.email || '') + '" data-telefono="' + (c.telefono || '') + '" data-rfc="' + (c.rfc || '') + '">' + (c.nombre || c.empresa || c.email || 'Sin nombre') + '</option>';
         }).join('');
         const hoy = new Date().toISOString().split('T')[0];
+        const cerebro = ventasWizardCerebro || {};
+        const preCliente = cerebro.cliente_id || calculadoraClienteActual?.id || '';
+        const preFecha = cerebro.fecha_ingreso || hoy;
+        const preProducto = cerebro.nombre_producto || cerebro.producto_servicio || '';
+        const preFalla = cerebro.falla_reportada || '';
+        const prePrioridad = cerebro.prioridad || 'Normal';
+        const preDepto = cerebro.departamento || '';
 
         return `
             <div class="calculadora-section">
@@ -3544,37 +3702,37 @@ const VentasModule = (function() {
                     </div>
                     <div class="editor-item">
                         <label>Fecha de ingreso <span style="color:#c62828;">*</span></label>
-                        <input type="date" id="wizardFechaIngreso" value="${hoy}" style="width:100%; padding:10px;">
+                        <input type="date" id="wizardFechaIngreso" value="${preFecha}" style="width:100%; padding:10px;">
                     </div>
                 </div>
                 <div class="editor-item" style="margin-top:14px;">
                     <label>Nombre del producto <span style="color:#c62828;">*</span></label>
-                    <input type="text" id="wizardNombreProducto" placeholder="Ej. Sistema de control, Motor trifásico, Tablero eléctrico..." style="width:100%; padding:10px;">
+                    <input type="text" id="wizardNombreProducto" value="${preProducto}" placeholder="Ej. Sistema de control, Motor trifásico, Tablero eléctrico..." style="width:100%; padding:10px;">
                     <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Requerido para generar la orden.</p>
                 </div>
                 <div class="editor-item" style="margin-top:14px;">
                     <label>Falla reportada / Requerimiento <span style="color:#c62828;">*</span></label>
-                    <textarea id="wizardFallaReportada" rows="3" placeholder="Describe la falla o el requerimiento del cliente..." style="width:100%; padding:10px; resize:vertical;"></textarea>
+                    <textarea id="wizardFallaReportada" rows="3" placeholder="Describe la falla o el requerimiento del cliente..." style="width:100%; padding:10px; resize:vertical;">${preFalla}</textarea>
                 </div>
                 <div class="editor-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px;">
                     <div class="editor-item">
                         <label>Prioridad (urgencia)</label>
                         <select id="wizardPrioridadSelect" style="width:100%; padding:10px;">
-                            <option value="Baja">Baja</option>
-                            <option value="Normal" selected>Normal</option>
-                            <option value="Alta">Alta</option>
-                            <option value="Urgente">Urgente</option>
+                            <option value="Baja"${prePrioridad==='Baja'?' selected':''}>Baja</option>
+                            <option value="Normal"${prePrioridad==='Normal'?' selected':''}>Normal</option>
+                            <option value="Alta"${prePrioridad==='Alta'?' selected':''}>Alta</option>
+                            <option value="Urgente"${prePrioridad==='Urgente'?' selected':''}>Urgente</option>
                         </select>
                     </div>
                     <div class="editor-item">
                         <label>Departamento que recibe el caso <span style="color:#c62828;">*</span></label>
                         <select id="wizardDepartamentoSelect" style="width:100%; padding:10px;">
-                            <option value="">-- Seleccionar departamento --</option>
-                            <option value="Taller Electrónica">Taller Electrónica</option>
-                            <option value="Taller Motores">Taller Motores</option>
-                            <option value="Automatización">Automatización</option>
-                            <option value="Proyectos">Proyectos</option>
-                            <option value="Administración">Administración (Sin orden)</option>
+                            <option value=""${preDepto===''?' selected':''}>-- Seleccionar departamento --</option>
+                            <option value="Taller Electrónica"${preDepto==='Taller Electrónica'?' selected':''}>Taller Electrónica</option>
+                            <option value="Taller Motores"${preDepto==='Taller Motores'?' selected':''}>Taller Motores</option>
+                            <option value="Automatización"${preDepto==='Automatización'?' selected':''}>Automatización</option>
+                            <option value="Proyectos"${preDepto==='Proyectos'?' selected':''}>Proyectos</option>
+                            <option value="Administración"${preDepto==='Administración'?' selected':''}>Administración (Sin orden)</option>
                         </select>
                     </div>
                 </div>
@@ -3606,8 +3764,8 @@ const VentasModule = (function() {
         const creditoVal = document.getElementById('resCredit')?.innerText || '$0.00';
         const ivaVal = document.getElementById('resIVA')?.innerText || '$0.00';
         const totalVal = document.getElementById('resTotal')?.innerText || '$0.00';
-        const utilidadPct = CostosEngine.CONFIG.utilidad;
-        const creditoPct = CostosEngine.CONFIG.credito;
+        const utilidadPct = CostosEngine.CONFIG?.utilidad || 40;
+        const creditoPct = CostosEngine.CONFIG?.credito || 3;
 
         return `
             <div class="calculadora-section">
@@ -3627,7 +3785,7 @@ const VentasModule = (function() {
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>GASTOS GENERALES</strong></span><span id="resGeneralExpenses">${gastos}</span></div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px; color:var(--c-ventas);"><span><strong>UTILIDAD <span id="lblUtilidadPct">${utilidadPct}</span>%</strong></span><span id="resUtility">${utilidadVal}</span></div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>CRÉDITO <span id="lblCreditoPct">${creditoPct}</span>%</strong></span><span id="resCredit">${creditoVal}</span></div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>IVA ${CostosEngine.CONFIG.iva}%</strong></span><span id="resIVA">${ivaVal}</span></div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>IVA ${CostosEngine.CONFIG?.iva || 16}%</strong></span><span id="resIVA">${ivaVal}</span></div>
                 </div>
                 <div class="total-box" style="margin-top:20px;">
                     <div class="label">TOTAL CON IVA</div>
@@ -3640,7 +3798,7 @@ const VentasModule = (function() {
     function _renderWizardPaso4() {
         const cliente = calculadoraClienteActual?.nombre || 'Cliente';
         const total = document.getElementById('resTotal')?.innerText || '$0.00';
-        const folio = `COT-${Date.now().toString().slice(-6)}`;
+        const folio = editingCotizacionId ? (cotizaciones.find(c => c.id === editingCotizacionId)?.folio || 'COT-####') : 'COT-####';
         const fecha = new Date().toLocaleDateString('es-MX');
 
         return `
@@ -3783,6 +3941,7 @@ const VentasModule = (function() {
                 falla_reportada: falla,
                 prioridad,
                 departamento: dept,
+                cliente_id: clienteId,
                 orden_id: creado.ordenId || null,
                 folio_operativo: creado.folio || null,
                 tipo_vinculo: creado.tipo || null,
@@ -3892,15 +4051,16 @@ const VentasModule = (function() {
         const totalStr = document.getElementById('resTotal')?.innerText || '$0';
         const total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
         const rfc = calculadoraClienteActual?.rfc || 'XAXX010101000';
-        const folio = `COT-${Date.now().toString().slice(-6)}`;
+        const folio = editingCotizacionId ? (cotizaciones.find(c => c.id === editingCotizacionId)?.folio || 'COT-####') : 'COT-####';
         const items = calculadoraComponentes.map(c => ({ descripcion: c.nombre, cantidad: c.cantidad, precioUnitario: c.costo_unitario, importe: c.subtotal }));
         const subtotal = total / 1.16;
         const iva = total - subtotal;
+        const departamento = ventasWizardCerebro?.departamento || 'Ventas';
         if (!cliente) { _showToast('Cliente requerido para el PDF.', 'info'); return; }
         (async () => {
             try {
                 const { data: { user } } = await window.supabase.auth.getUser();
-                await pdfGenerator.generateCotizacion({ folio, cliente, rfc, items, subtotal, iva, total }, user);
+                await pdfGenerator.generateCotizacion({ folio, cliente, rfc, items, subtotal, iva, total, departamento }, user);
                 _addToFeed('🧾', `PDF generado: ${folio}`);
             } catch (error) {
                 console.error(error);
@@ -3957,6 +4117,10 @@ const VentasModule = (function() {
                     _showToast('Error al crear orden: ' + e.message, 'error');
                     return;
                 }
+                if (creado?.ordenId) {
+                    await _crearCompraVinculada(creado.folio, creado.ordenId, creado.tipo, clienteNombre, csrfToken);
+                    await _crearFacturaVinculada(null, creado.folio, clienteNombre, 0, csrfToken);
+                }
             }
 
             // Guardar registro cerebro
@@ -3965,6 +4129,7 @@ const VentasModule = (function() {
                 falla_reportada: falla,
                 prioridad,
                 departamento: dept,
+                cliente_id: clienteId,
                 orden_id: creado.ordenId || null,
                 folio_operativo: creado.folio || null,
                 tipo_vinculo: creado.tipo || null,
@@ -3972,7 +4137,43 @@ const VentasModule = (function() {
                 nombre_producto: nombreProducto
             };
 
-            // Guardar cliente actual
+            // Crear cotización provisional (visible en lista de Ventas)
+            if (dept !== 'Administración') {
+                try {
+                    const folioCot = await generarFolioCotizacion();
+                    const cotProv = {
+                        folio: folioCot,
+                        tipo_folio: 'COT',
+                        cliente_nombre: clienteNombre,
+                        cliente: clienteNombre,
+                        vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas',
+                        subtotal: 0,
+                        iva: 0,
+                        total: 0,
+                        km_distancia: contacto?.km || 0,
+                        horas_viaje: contacto?.horas_viaje || 0,
+                        costo_gasolina: 0,
+                        estado: 'borrador',
+                        origen: origenCot,
+                        departamento: dept,
+                        orden_origen_id: creado.ordenId || null,
+                        cerebro_registro: ventasWizardCerebro || {},
+                        items: [],
+                        email: contacto?.email || '',
+                        telefono: contacto?.telefono || '',
+                        rfc: contacto?.rfc || ''
+                    };
+                    const insertedCot = await cotizacionesService.insert(cotProv, csrfToken);
+                    if (insertedCot?.id) {
+                        editingCotizacionId = insertedCot.id;
+                        _showToast('Cotización provisional creada: ' + folioCot, 'success');
+                    }
+                } catch (e) {
+                    console.warn('[Ventas] Error creando cotización provisional (no crítico):', e);
+                }
+            }
+
+            // Guardar cliente actual (usar datos de contactos, NO de clientes_tabulador)
             if (contacto) {
                 calculadoraClienteActual = {
                     contactoId: clienteId,
@@ -4017,6 +4218,19 @@ const VentasModule = (function() {
             _showToast('✅ Orden guardada. Puedes cerrar y esperar a que Laboratorio/Compras completen su información.', 'success');
             _addToFeed('📋', `Orden guardada - ${dept}`);
 
+            // Recargar vistas para mostrar la orden creada
+            try {
+                await Promise.all([
+                    dept === 'Taller Electrónica' ? _loadTaller() : Promise.resolve(),
+                    dept === 'Taller Motores' ? _loadMotores() : Promise.resolve(),
+                    (dept === 'Automatización' || dept === 'Proyectos') ? _loadProyectos() : Promise.resolve()
+                ]);
+                await _loadCotizaciones();
+                _applyFilters();
+            } catch (e) {
+                console.warn('[Ventas] Error recargando vistas:', e);
+            }
+
             // Cerrar wizard para permitir que el usuario espere
             document.getElementById('calculadoraModal').classList.remove('active');
             return;
@@ -4047,16 +4261,13 @@ const VentasModule = (function() {
         }
 
         // Paso 4: Guardar cotización final
-        const resTotalEl = document.getElementById('resTotal');
-        const previewTotalEl = document.getElementById('previewTotal');
-        const totalStr = resTotalEl?.innerText || previewTotalEl?.innerText || '0';
-        const total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
+        let total = lastTotal || parseFloat((document.getElementById('resTotal')?.innerText || document.getElementById('previewTotal')?.innerText || '0').replace(/[$,]/g, '')) || 0;
         if (total <= 0) {
             _recalcular();
-            const totalAfter = parseFloat((document.getElementById('resTotal')?.innerText || document.getElementById('previewTotal')?.innerText || '0').replace(/[$,]/g, '')) || 0;
-            if (totalAfter <= 0) { _showToast('El total debe ser mayor a 0. Agrega materiales o servicios en el Paso 2.', 'info'); return; }
+            total = lastTotal || parseFloat((document.getElementById('resTotal')?.innerText || document.getElementById('previewTotal')?.innerText || '0').replace(/[$,]/g, '')) || 0;
+            if (total <= 0) { _showToast('El total debe ser mayor a 0. Agrega materiales o servicios en el Paso 2.', 'info'); return; }
         }
-        const finalTotal = total > 0 ? total : parseFloat((document.getElementById('resTotal')?.innerText || document.getElementById('previewTotal')?.innerText || '0').replace(/[$,]/g, '')) || 0;
+        const finalTotal = total;
 
         const items = calculadoraComponentes.map(c => ({
             descripcion: c.nombre,
@@ -4065,27 +4276,30 @@ const VentasModule = (function() {
             importe: c.subtotal
         }));
 
-        const folio = `COT-${Date.now().toString().slice(-6)}`;
+        const folio = await generarFolioCotizacion();
+        const vendedorNombre = (await authService.getCurrentProfile())?.nombre || 'Ventas';
         const cotizacionData = {
             folio,
-            tipo: 'cotizacion',
-            cliente,
-            email: calculadoraClienteActual?.email || '',
-            telefono: calculadoraClienteActual?.telefono || '',
-            rfc: calculadoraClienteActual?.rfc || '',
-            fecha: new Date().toISOString().split('T')[0],
-            items,
+            tipo_folio: 'COT',
+            cliente_nombre: cliente || 'Cliente',
+            cliente: cliente || 'Cliente',
+            cliente_id: calculadoraClienteActual?.contactoId || null,
+            vendedor: vendedorNombre,
             subtotal: items.reduce((s, i) => s + i.importe, 0),
             iva: finalTotal * 0.16 / 1.16,
             total: finalTotal,
-            estado: 'registro',
+            km_distancia: calculadoraClienteActual?.km || 0,
+            horas_viaje: calculadoraClienteActual?.horas || 0,
+            costo_gasolina: 0,
+            estado: 'Pendiente',
             origen: (ventasWizardCerebro && ventasWizardCerebro.origen_cotizacion) || (compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo'),
+            departamento: ventasWizardCerebro?.departamento || null,
             orden_origen_id: compraActual?.vinculacion?.id || compraActual?.id || null,
-            cerebro_registro: _cerebroRegistroPayload(),
-            vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas',
-            fecha_creacion: new Date().toISOString(),
-            actividades: actividadesDiarias.length > 0 ? [...actividadesDiarias] : null,
-            departamento: ventasWizardCerebro?.departamento || null
+            cerebro_registro: _cerebroRegistroPayload() || {},
+            items: items || [],
+            email: calculadoraClienteActual?.email || '',
+            telefono: calculadoraClienteActual?.telefono || '',
+            rfc: calculadoraClienteActual?.rfc || ''
         };
 
         const csrfToken = sessionStorage.getItem('csrfToken');
@@ -4094,19 +4308,19 @@ const VentasModule = (function() {
             if (editingCotizacionId) {
                 const existing = cotizaciones.find(c => c.id === editingCotizacionId);
                 const updated = await cotizacionesService.update(editingCotizacionId, {
-                    cliente,
-                    email: calculadoraClienteActual?.email || '',
-                    telefono: calculadoraClienteActual?.telefono || '',
-                    rfc: calculadoraClienteActual?.rfc || '',
-                    items,
+                    cliente_nombre: cliente || 'Cliente',
+                    cliente: cliente || 'Cliente',
                     subtotal: items.reduce((s, i) => s + i.importe, 0),
                     iva: finalTotal * 0.16 / 1.16,
                     total: finalTotal,
-                    fecha: existing?.fecha || new Date().toISOString().split('T')[0],
-                    cerebro_registro: _cerebroRegistroPayload(),
-                    actividades: actividadesDiarias.length > 0 ? [...actividadesDiarias] : null,
+                    estado: 'Pendiente',
+                    items: items || [],
+                    email: calculadoraClienteActual?.email || '',
+                    telefono: calculadoraClienteActual?.telefono || '',
+                    rfc: calculadoraClienteActual?.rfc || '',
+                    cerebro_registro: _cerebroRegistroPayload() || {},
                     departamento: ventasWizardCerebro?.departamento || null,
-                    updated_at: new Date().toISOString()
+                    vendedor: vendedorNombre
                 }, csrfToken);
                 editingCotizacionId = null;
                 _showToast('✅ Cotización actualizada. Folio: ' + (updated?.folio || existing?.folio || folio), 'success');
@@ -4159,26 +4373,33 @@ const VentasModule = (function() {
             precio_unitario: c.costo_unitario,
             importe: c.subtotal
         }));
-        const total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
-        const folio = `COT-${Date.now().toString().slice(-6)}`;
+        const total = lastTotal || parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
+        const folio = await generarFolioCotizacion();
+        const subtotal = items.reduce((s, i) => s + i.importe, 0);
+        const iva = total * 0.16 / 1.16;
+        const vendedorNombre = (await authService.getCurrentProfile())?.nombre || 'Ventas';
         const cotizacionData = {
             folio,
-            tipo: 'cotizacion',
-            cliente,
+            tipo_folio: 'COT',
+            cliente_nombre: cliente || 'Cliente',
+            cliente: cliente || 'Cliente',
+            cliente_id: calculadoraClienteActual?.contactoId || null,
             email: calculadoraClienteActual?.email || '',
             telefono: calculadoraClienteActual?.telefono || '',
             rfc: calculadoraClienteActual?.rfc || '',
-            fecha: new Date().toISOString().split('T')[0],
             items,
-            subtotal: items.reduce((s, i) => s + i.importe, 0),
-            iva: finalTotal * 0.16 / 1.16,
-            total: finalTotal,
-            estado: 'registro',
+            subtotal,
+            iva,
+            total,
+            km_distancia: calculadoraClienteActual?.km || 0,
+            horas_viaje: calculadoraClienteActual?.horas || 0,
+            costo_gasolina: 0,
+            estado: 'Pendiente',
             origen: (ventasWizardCerebro && ventasWizardCerebro.origen_cotizacion) || (compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo'),
+            departamento: ventasWizardCerebro?.departamento || null,
             orden_origen_id: compraActual?.vinculacion?.id || compraActual?.id || null,
-            cerebro_registro: _cerebroRegistroPayload(),
-            vendedor: (await authService.getCurrentProfile())?.nombre || 'Ventas',
-            fecha_creacion: new Date().toISOString()
+            cerebro_registro: _cerebroRegistroPayload() || {},
+            vendedor: vendedorNombre
         };
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
@@ -4266,6 +4487,10 @@ const VentasModule = (function() {
         if (closeCalc) closeCalc.addEventListener('click', function () {
             var m = document.getElementById('calculadoraModal');
             if (m) m.classList.remove('active');
+            editingCotizacionId = null;
+            currentVenta = null;
+            compraActual = null;
+            ventasWizardCerebro = null;
         });
         var closeCotiz = document.getElementById('closeCotizacionModal');
         if (closeCotiz) closeCotiz.addEventListener('click', function () {
@@ -4601,7 +4826,7 @@ const VentasModule = (function() {
             return;
         }
 
-        const folio = (document.getElementById('previewFolio')?.innerText || '').trim() || `COT-${Date.now().toString().slice(-6)}`;
+        const folio = (document.getElementById('previewFolio')?.innerText || '').trim() || (editingCotizacionId ? (cotizaciones.find(c => c.id === editingCotizacionId)?.folio || 'COT-####') : 'COT-####');
 
         const items = [];
         document.querySelectorAll('#editProductosBody tr').forEach(tr => {
@@ -4645,6 +4870,34 @@ const VentasModule = (function() {
         })();
     }
 
+    async function _generarPDFDesdeHistorial(id, tipo) {
+        const item = [...ventas, ...cotizaciones].find(i => i.id === id);
+        if (!item) { _showToast('Registro no encontrado', 'error'); return; }
+        const datos = {
+            folio: item.folio || id.slice(-6),
+            cliente: item.cliente || 'Cliente',
+            rfc: item.rfc || 'XAXX010101000',
+            items: (item.items || []).map(i => ({
+                descripcion: i.descripcion || i.desc || '',
+                cantidad: i.cantidad || i.qty || 1,
+                precio_unitario: i.precio_unitario || i.price || 0,
+                importe: i.importe || (i.cantidad || 1) * (i.precio_unitario || 0)
+            })),
+            subtotal: item.subtotal || 0,
+            iva: item.iva || 0,
+            total: item.total || 0,
+            departamento: item.departamento || 'Ventas'
+        };
+        try {
+            const { data: { user } } = await window.supabase.auth.getUser();
+            await pdfGenerator.generateCotizacion(datos, user);
+            _addToFeed('🧾', `PDF generado: ${datos.folio}`);
+        } catch (error) {
+            console.error(error);
+            _showToast('Error al generar PDF: ' + error.message, 'error');
+        }
+    }
+
     // ==================== LIMPIEZA ====================
     function _cleanup() {
         subscriptions.forEach(sub => sub.unsubscribe());
@@ -4676,10 +4929,8 @@ const VentasModule = (function() {
         _reenviarCotizacion,
         _abrirDetalle,
         _mostrarHistorial,
-        _verOrdenTaller,
-        _editarOrdenTaller,
-        _eliminarOrdenTaller,
         _eliminarVenta,
+        _generarPDFDesdeHistorial,
         _insertarEventoHistorial,  // Expuesto para otros módulos que registren eventos
         _getFolioOrdenVinculada,   // Utilidad para obtener folios vinculados
         _renderKanbanCardsAsync    // Render asíncrono con etiquetas de vinculación
