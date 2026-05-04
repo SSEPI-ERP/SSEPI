@@ -3,547 +3,330 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SSEPI - PDFs y Políticas por Módulo</title>
-    <!-- Configuración centralizada de Supabase -->
+    <link rel="icon" type="image/png" href="/panel/assets/logo-ssepi.png">
+    <link rel="shortcut icon" type="image/png" href="/panel/assets/logo-ssepi.png">
+    <title>SSEPI · PDFs y Políticas</title>
+    <link rel="stylesheet" href="/panel/css/main.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/panel/js/core/supabase-config.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        :root {
-            --teal: #17a598;
-            --teal-dark: #0d9488;
-            --teal-light: #e8f6f4;
-            --bg-dark: #0f172a;
-            --bg-card: rgba(255,255,255,0.97);
-            --glass: rgba(255,255,255,0.06);
-            --glass-border: rgba(255,255,255,0.1);
-            --shadow-soft: 0 8px 32px rgba(0,0,0,0.25);
-            --shadow-hover: 0 20px 60px rgba(0,0,0,0.35);
-            --radius-lg: 20px;
-            --radius-md: 14px;
-            --radius-sm: 10px;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: radial-gradient(ellipse at 0% 0%, #16213e 0%, #0f172a 50%, #1a1a2e 100%);
-            min-height: 100vh;
-            padding: 24px;
-            color: #333;
-            -webkit-font-smoothing: antialiased;
-        }
-        .container {
-            max-width: 1440px;
-            margin: 0 auto;
-        }
-
-        /* Header */
-        header {
-            position: relative;
-            padding: 36px 40px;
-            background: var(--glass);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-lg);
-            margin-bottom: 36px;
-            overflow: hidden;
-        }
-        header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -10%;
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, rgba(23,165,152,0.15) 0%, transparent 70%);
-            pointer-events: none;
-        }
-        header h1 {
-            color: #fff;
-            font-size: 2.2rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-            letter-spacing: -0.5px;
-        }
-        header h1 span { color: var(--teal); }
-        header p {
-            color: rgba(255,255,255,0.55);
-            font-size: 1.05rem;
-            font-weight: 400;
-        }
-        .header-actions { display: flex; gap: 12px; align-items: center; }
-
-        /* Grid */
-        .modules-grid {
+        /* Sobrescrituras mínimas para el módulo PDFs */
+        .pdf-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
-            gap: 28px;
-            margin-bottom: 48px;
+            gap: 24px;
         }
         @media (max-width: 640px) {
-            .modules-grid { grid-template-columns: 1fr; }
+            .pdf-grid { grid-template-columns: 1fr; }
         }
-
-        /* Card */
-        .module-card {
+        .pdf-card {
             background: var(--bg-card);
-            border-radius: var(--radius-lg);
-            padding: 0;
-            box-shadow: var(--shadow-soft);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            border: 1px solid rgba(0,0,0,0.04);
-            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: var(--border-radius-lg, 12px);
+            padding: 24px;
+            transition: all 0.25s ease;
             position: relative;
+            overflow: hidden;
         }
-        .module-card::after {
+        .pdf-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--primary);
+            box-shadow: var(--shadow-hover);
+        }
+        .pdf-card::before {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0;
-            height: 5px;
-            background: linear-gradient(90deg, var(--teal), var(--teal-dark));
+            height: 4px;
+            background: var(--module-accent, var(--primary));
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: opacity 0.2s;
         }
-        .module-card:hover {
-            transform: translateY(-6px) scale(1.01);
-            box-shadow: var(--shadow-hover);
-        }
-        .module-card:hover::after { opacity: 1; }
+        .pdf-card:hover::before { opacity: 1; }
 
-        .module-card-inner { padding: 28px; }
-        .module-header {
+        .pdf-card-header {
             display: flex;
             align-items: flex-start;
-            gap: 18px;
-            margin-bottom: 20px;
-        }
-        .module-icon {
-            width: 60px;
-            height: 60px;
-            min-width: 60px;
-            border-radius: var(--radius-md);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            color: white;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-            position: relative;
-            overflow: hidden;
-        }
-        .module-icon::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 60%);
-            border-radius: inherit;
-        }
-        .module-title { flex: 1; }
-        .module-title h2 {
-            font-size: 1.35rem;
-            color: #1a1a2e;
-            margin-bottom: 6px;
-            font-weight: 700;
-            letter-spacing: -0.3px;
-        }
-        .module-title .tiempo-entrega {
-            font-size: 0.88rem;
-            color: var(--teal);
-            font-weight: 600;
-            background: var(--teal-light);
-            padding: 4px 12px;
-            border-radius: 20px;
-            display: inline-block;
-        }
-
-        .garantia-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 7px 14px;
-            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-            color: #7c3a00;
-            border-radius: 20px;
-            font-size: 0.82rem;
-            font-weight: 700;
+            gap: 16px;
             margin-bottom: 16px;
-            box-shadow: 0 2px 8px rgba(252,182,159,0.3);
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border);
+        }
+        .pdf-icon {
+            width: 52px; height: 52px; min-width: 52px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; color: white;
+        }
+        .pdf-title { flex: 1; }
+        .pdf-title h2 {
+            font-size: 1.2rem; color: var(--text-primary);
+            margin-bottom: 4px; font-weight: 700;
+        }
+        .pdf-title .pdf-sub {
+            font-size: 0.82rem; color: var(--text-muted);
+            font-weight: 500;
         }
 
-        .politicas-section { margin-bottom: 18px; }
-        .politicas-section h3 {
-            font-size: 0.95rem;
-            color: var(--teal);
+        .pdf-chips {
+            display: flex; flex-wrap: wrap; gap: 8px;
             margin-bottom: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
-        .nota-item {
-            padding: 12px 14px;
-            background: #f8fafc;
-            border-radius: var(--radius-sm);
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-            color: #374151;
-            border-left: 3px solid var(--teal);
+        .pdf-chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 10px; border-radius: 20px;
+            font-size: 0.78rem; font-weight: 600;
+            background: var(--primary-light); color: var(--primary-dark);
+        }
+        .pdf-chip.amber { background: #fff7ed; color: #c2410c; }
+        .pdf-chip.blue  { background: #eff6ff; color: #1d4ed8; }
+
+        .pdf-section-title {
+            font-size: 0.85rem; font-weight: 700; color: var(--module-accent, var(--primary));
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .pdf-notas {
+            margin-bottom: 16px;
+            max-height: 260px; overflow-y: auto;
+        }
+        .pdf-nota {
+            padding: 10px 12px;
+            background: var(--bg-hover);
+            border-radius: 8px;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            border-left: 3px solid var(--module-accent, var(--primary));
             line-height: 1.5;
-            transition: background 0.2s;
         }
-        .nota-item:hover { background: #f1f5f9; }
-        .nota-item strong { color: var(--teal-dark); font-weight: 700; }
-        .nota-item .nota-num {
-            display: inline-block;
-            min-width: 22px;
-            height: 22px;
-            line-height: 22px;
-            text-align: center;
-            background: var(--teal);
+        .pdf-nota strong { color: var(--primary-dark); font-weight: 700; }
+        .pdf-nota .n-num {
+            display: inline-block; min-width: 20px; height: 20px;
+            line-height: 20px; text-align: center;
+            background: var(--module-accent, var(--primary));
+            color: white; border-radius: 50%;
+            font-size: 0.7rem; font-weight: 700;
+            margin-right: 6px; vertical-align: middle;
+        }
+        .pdf-nota.empty {
+            color: var(--text-muted); font-style: italic;
+            text-align: center; border-left-color: transparent; background: transparent;
+        }
+
+        .pdf-actions-row {
+            display: flex; gap: 10px; padding-top: 14px;
+            border-top: 1px solid var(--border);
+        }
+        .btn-pdf {
+            flex: 1; padding: 10px 14px; border: none; border-radius: 8px;
+            font-size: 0.85rem; font-weight: 700; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            transition: all 0.2s; white-space: nowrap;
+        }
+        .btn-pdf-primary {
+            background: var(--module-accent, var(--primary));
             color: white;
+        }
+        .btn-pdf-primary:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+        .btn-pdf-secondary {
+            background: var(--bg-hover); color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .btn-pdf-secondary:hover { background: var(--border); }
+        .btn-pdf-edit {
+            background: var(--bg-hover); color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+        .btn-pdf-edit:hover { background: var(--primary-light); }
+
+        /* Loading dentro del main */
+        .main-loading {
+            text-align: center; padding: 60px 20px; color: var(--text-muted);
+        }
+        .main-loading .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--module-accent, var(--primary));
             border-radius: 50%;
-            font-size: 0.75rem;
-            font-weight: 700;
-            margin-right: 8px;
-            vertical-align: middle;
-        }
-        .nota-empty {
-            color: #9ca3af;
-            font-style: italic;
-            padding: 12px;
-            text-align: center;
-        }
-
-        .pdf-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 4px;
-            padding-top: 18px;
-            border-top: 1px solid #e5e7eb;
-        }
-
-        /* Buttons */
-        .btn {
-            flex: 1;
-            padding: 12px 16px;
-            border: none;
-            border-radius: var(--radius-sm);
-            font-size: 0.88rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            letter-spacing: 0.3px;
-            white-space: nowrap;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, var(--teal), var(--teal-dark));
-            color: white;
-            box-shadow: 0 4px 14px rgba(23,165,152,0.35);
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(23,165,152,0.45);
-        }
-        .btn-secondary {
-            background: #f1f5f9;
-            color: #475569;
-            border: 1px solid #e2e8f0;
-        }
-        .btn-secondary:hover {
-            background: #e2e8f0;
-            border-color: #cbd5e1;
-        }
-        .btn-edit {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            box-shadow: 0 4px 14px rgba(59,130,246,0.3);
-        }
-        .btn-edit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(59,130,246,0.4);
-        }
-        .btn-save {
-            background: linear-gradient(135deg, var(--teal), var(--teal-dark));
-            color: white;
-        }
-        .btn-cancel {
-            background: #f1f5f9;
-            color: #475569;
-        }
-
-        /* Loading */
-        .loading {
-            text-align: center;
-            padding: 60px 20px;
-            color: rgba(255,255,255,0.6);
-        }
-        .loading-spinner {
-            width: 48px;
-            height: 48px;
-            border: 4px solid rgba(255,255,255,0.1);
-            border-top-color: var(--teal);
-            border-radius: 50%;
-            animation: spin 0.9s linear infinite;
-            margin: 0 auto 20px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        .error-msg {
-            background: linear-gradient(135deg, #fef2f2, #fee2e2);
-            color: #991b1b;
-            padding: 16px 20px;
-            border-radius: var(--radius-md);
-            margin-bottom: 24px;
-            border: 1px solid #fecaca;
-            font-weight: 500;
-        }
-        .success-msg {
-            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-            color: #166534;
-            padding: 16px 20px;
-            border-radius: var(--radius-md);
-            margin-bottom: 24px;
-            border: 1px solid #bbf7d0;
-            font-weight: 500;
-        }
-
-        /* Login Screen (hidden) */
-        .login-screen { display: none !important; }
-
-        /* Modal Editor */
+        /* Modales */
         .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.65);
-            backdrop-filter: blur(8px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+            z-index: 1000; align-items: center; justify-content: center;
             padding: 20px;
         }
         .modal-overlay.active { display: flex; }
-        .modal-content {
-            background: white;
-            border-radius: var(--radius-lg);
-            padding: 32px;
-            max-width: 720px;
-            width: 100%;
-            max-height: 85vh;
-            overflow-y: auto;
-            box-shadow: var(--shadow-hover);
-            animation: modalIn 0.3s ease;
+        .modal-box {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--border-radius-lg, 12px);
+            padding: 28px; max-width: 700px; width: 100%;
+            max-height: 85vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            animation: modalIn 0.25s ease;
         }
         @keyframes modalIn {
-            from { opacity: 0; transform: translateY(20px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 2px solid #f1f5f9;
+        .modal-box h2 {
+            font-size: 1.3rem; font-weight: 700; color: var(--text-primary);
+            margin-bottom: 20px; padding-bottom: 12px;
+            border-bottom: 2px solid var(--border);
         }
-        .modal-header h2 {
-            color: #1a1a2e;
-            font-size: 1.4rem;
-            font-weight: 700;
+        .form-row { margin-bottom: 18px; }
+        .form-row label {
+            display: block; font-weight: 600; font-size: 0.85rem;
+            color: var(--text-secondary); margin-bottom: 6px;
         }
-        .modal-close {
-            background: #f1f5f9;
-            border: none;
-            font-size: 22px;
-            cursor: pointer;
-            color: #64748b;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .form-row input,
+        .form-row textarea {
+            width: 100%; padding: 10px 12px;
+            border: 1.5px solid var(--border); border-radius: 8px;
+            font-size: 14px; background: var(--bg-panel); color: var(--text-primary);
             transition: all 0.2s;
         }
-        .modal-close:hover { background: #e2e8f0; color: #334155; }
-        .form-group { margin-bottom: 22px; }
-        .form-group label {
-            display: block;
-            font-weight: 700;
-            color: #374151;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
+        .form-row input:focus,
+        .form-row textarea:focus {
+            outline: none; border-color: var(--module-accent, var(--primary));
+            box-shadow: 0 0 0 3px rgba(0,0,0,0.04);
         }
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px 14px;
-            border: 1.5px solid #e2e8f0;
-            border-radius: var(--radius-sm);
-            font-size: 14px;
-            font-family: inherit;
-            background: #fafbfc;
-            transition: all 0.2s;
+        .form-row textarea { min-height: 70px; resize: vertical; }
+        .nota-row {
+            background: var(--bg-hover); padding: 12px; border-radius: 8px;
+            margin-bottom: 8px; border: 1px solid var(--border);
         }
-        .form-group input:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--teal);
-            background: white;
-            box-shadow: 0 0 0 3px rgba(23,165,152,0.1);
+        .nota-row textarea {
+            width: 100%; min-height: 50px; padding: 8px;
+            border: 1px solid var(--border); border-radius: 6px;
+            font-size: 13px; background: var(--bg-card);
         }
-        .form-group textarea { min-height: 80px; resize: vertical; }
-        .nota-editor-item {
-            background: #f8fafc;
-            padding: 14px;
-            border-radius: var(--radius-sm);
-            margin-bottom: 10px;
-            border: 1px solid #e2e8f0;
+        .modal-btns {
+            display: flex; gap: 10px; margin-top: 20px;
+            padding-top: 16px; border-top: 1px solid var(--border);
         }
-        .nota-editor-item textarea {
-            width: 100%;
-            min-height: 56px;
-            padding: 10px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 14px;
-            background: white;
-        }
-        .modal-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 24px;
-            padding-top: 20px;
-            border-top: 2px solid #f1f5f9;
-        }
-
-        /* Preview Modal */
         .preview-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(8px);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+            z-index: 2000; align-items: center; justify-content: center;
             padding: 20px;
         }
         .preview-overlay.active { display: flex; }
         .preview-box {
-            background: white;
-            border-radius: var(--radius-lg);
-            width: 90%;
-            max-width: 960px;
-            height: 90vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            box-shadow: var(--shadow-hover);
-            animation: modalIn 0.3s ease;
+            background: var(--bg-card); border-radius: var(--border-radius-lg, 12px);
+            width: 90%; max-width: 900px; height: 90vh;
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-        .preview-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 24px;
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            color: white;
+        .preview-head {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 20px; background: var(--text-primary); color: white;
         }
-        .preview-header h3 { margin: 0; font-size: 1.1rem; font-weight: 600; }
-        .preview-frame { flex: 1; border: none; width: 100%; background: #f8fafc; }
-        .preview-actions {
-            display: flex;
-            gap: 12px;
-            padding: 14px 24px;
-            background: #f8fafc;
-            border-top: 1px solid #e2e8f0;
+        .preview-head h3 { margin: 0; font-size: 1rem; }
+        .preview-frame { flex: 1; border: none; width: 100%; background: var(--bg-body); }
+        .preview-foot {
+            display: flex; gap: 10px; padding: 12px 20px;
+            background: var(--bg-hover); border-top: 1px solid var(--border);
         }
 
-        /* Footer */
-        footer {
-            text-align: center;
-            padding: 36px;
-            color: rgba(255,255,255,0.4);
-            font-size: 0.88rem;
+        /* Alertas */
+        .alert-err {
+            background: #fef2f2; color: #991b1b; border: 1px solid #fecaca;
+            padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; font-weight: 500;
         }
-        footer a { color: var(--teal); text-decoration: none; font-weight: 600; }
-        footer a:hover { text-decoration: underline; }
-
-        /* Info bar inside card */
-        .card-infobar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 16px;
+        .alert-ok {
+            background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0;
+            padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; font-weight: 500;
         }
-        .info-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.82rem;
-            font-weight: 600;
-        }
-        .chip-teal { background: var(--teal-light); color: var(--teal-dark); }
-        .chip-amber { background: #fffbeb; color: #b45309; }
-        .chip-blue { background: #eff6ff; color: #1d4ed8; }
     </style>
+    <script src="/panel/js/core/supabase-config.js"></script>
+    <script src="/panel/js/core/theme-clock.js?v=2"></script>
+    <script src="/panel/js/core/user-menu.js?v=2"></script>
+    <script src="/panel/js/core/nav-by-role.js?v=2"></script>
+    <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
 </head>
-<body>
+<body class="page-panel nav-loading">
+    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
 
-    <div class="container">
-        <header>
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <img src="/panel/assets/logo-ssepi.png" alt="SSEPI" class="brand-logo">
                 <div>
-                    <h1><span>SSEPI</span> — PDFs y Políticas</h1>
-                    <p>Genera documentos profesionales con las políticas actualizadas de cada departamento</p>
+                    <div class="brand-text">PDFs Y POLÍTICAS</div>
+                    <div class="brand-sub">Documentos por departamento</div>
                 </div>
-                <button onclick="window.location.href='/panel/panel.html'" class="btn btn-secondary" style="max-width:200px;">
-                    🏠 Volver al Panel
-                </button>
             </div>
-        </header>
+            <a href="/panel/panel.html" class="home-link"><i class="fas fa-home"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <div class="notification-badge"><i class="fas fa-bell"></i><span class="badge-count" id="notificacionesBadge">0</span></div>
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <div class="user-pill" id="userMenu">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Admin</span>
+            </div>
+        </div>
+    </header>
 
-        <div id="loading" class="loading">
-            <div class="loading-spinner"></div>
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/panel/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/panel/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/panel/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/panel/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/panel/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/panel/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/panel/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/panel/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/panel/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/panel/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/panel/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <a href="/panel/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <a href="/panel/pdfs-politicas.html" class="nav-item active" data-module="pdfs_politicas"><span class="icon-box"><i class="fas fa-file-pdf"></i></span> PDFs y Políticas</a>
+        <a href="/panel/pages/ssepi_configuracion.html" class="nav-item" data-module="configuracion"><span class="icon-box"><i class="fas fa-cog"></i></span> Configuración</a>
+    </nav>
+
+    <main>
+        <div id="loading" class="main-loading">
+            <div class="spinner"></div>
             <p>Cargando políticas desde la base de datos...</p>
         </div>
 
-        <div id="error" class="error-msg" style="display:none;"></div>
-        <div id="success" class="success-msg" style="display:none;"></div>
+        <div id="error" class="alert-err" style="display:none;"></div>
+        <div id="success" class="alert-ok" style="display:none;"></div>
 
-        <div id="modulesGrid" class="modules-grid" style="display:none;"></div>
-
-        <footer>
-            <p>SSEPI — Soluciones de Servicios Enterprise · <a href="https://www.ssepi.org/terms" target="_blank">Términos y condiciones</a></p>
-        </footer>
-    </div>
+        <div id="modulesGrid" class="pdf-grid" style="display:none;"></div>
+    </main>
 
     <!-- Modal Vista Previa PDF -->
     <div id="previewModal" class="preview-overlay">
         <div class="preview-box">
-            <div class="preview-header">
-                <h3 id="previewTitle">👁️ Vista previa del PDF</h3>
+            <div class="preview-head">
+                <h3 id="previewTitle">Vista previa del PDF</h3>
                 <button onclick="cerrarVistaPrevia()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;">&times;</button>
             </div>
             <iframe id="previewFrame" class="preview-frame"></iframe>
-            <div class="preview-actions">
-                <button class="btn btn-primary" onclick="descargarPDFDesdePreview()">
-                    ⬇️ Descargar PDF
+            <div class="preview-foot">
+                <button class="btn-pdf btn-pdf-primary" onclick="descargarPDFDesdePreview()">
+                    <i class="fas fa-download"></i> Descargar PDF
                 </button>
-                <button class="btn btn-cancel" onclick="cerrarVistaPrevia()">
-                    ❌ Cerrar
+                <button class="btn-pdf btn-pdf-secondary" onclick="cerrarVistaPrevia()">
+                    <i class="fas fa-times"></i> Cerrar
                 </button>
             </div>
         </div>
@@ -551,286 +334,190 @@
 
     <!-- Modal Editor de Políticas -->
     <div id="editorModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">✏️ Editar Políticas</h2>
-                <button class="modal-close" onclick="cerrarEditor()">&times;</button>
-            </div>
+        <div class="modal-box">
+            <h2 id="modalTitle">Editar Políticas</h2>
 
-            <div class="form-group">
+            <div class="form-row">
                 <label>Módulo</label>
                 <input type="text" id="editModulo" readonly>
             </div>
-
-            <div class="form-group">
+            <div class="form-row">
                 <label>Título</label>
                 <input type="text" id="editTitulo" placeholder="Ej: Políticas para reparación de...">
             </div>
-
-            <div class="form-group">
+            <div class="form-row">
                 <label>Tiempo de entrega</label>
                 <input type="text" id="editTiempoEntrega" placeholder="Ej: INMEDIATA a partir de la OC">
             </div>
-
-            <div class="form-group">
+            <div class="form-row">
                 <label>Garantía (días)</label>
                 <input type="number" id="editGarantiaDias" min="0" max="365">
             </div>
-
-            <div class="form-group">
+            <div class="form-row">
                 <label>Moneda</label>
                 <input type="text" id="editMoneda" placeholder="Ej: MONEDA NACIONAL">
             </div>
-
-            <div class="form-group">
+            <div class="form-row">
                 <label>URL de términos</label>
                 <input type="url" id="editUrlTerminos" placeholder="https://www.ssepi.org/terms">
             </div>
-
-            <div class="form-group">
+            <div class="form-row">
                 <label>Notas Importantes (usa **texto** para negritas)</label>
                 <div id="notasEditor"></div>
-                <button type="button" class="btn btn-secondary" onclick="agregarNota()" style="margin-top: 10px;">
-                    ➕ Agregar nota
+                <button type="button" class="btn-pdf btn-pdf-secondary" onclick="agregarNota()" style="margin-top:10px;">
+                    <i class="fas fa-plus"></i> Agregar nota
                 </button>
             </div>
-
-            <div class="modal-actions">
-                <button type="button" class="btn btn-save" onclick="guardarPoliticas()">
-                    💾 Guardar cambios
+            <div class="modal-btns">
+                <button type="button" class="btn-pdf btn-pdf-primary" onclick="guardarPoliticas()">
+                    <i class="fas fa-save"></i> Guardar cambios
                 </button>
-                <button type="button" class="btn btn-cancel" onclick="cerrarEditor()">
-                    ❌ Cancelar
+                <button type="button" class="btn-pdf btn-pdf-secondary" onclick="cerrarEditor()">
+                    Cancelar
                 </button>
             </div>
         </div>
     </div>
 
     <script>
-        // ═══════════════════════════════════════════════════════════════════
-        // CONFIGURACIÓN DE SUPABASE
-        // Usa la configuración centralizada de supabase-config.js
-        // ═══════════════════════════════════════════════════════════════════
         const sb = window.supabase;
         const { jsPDF } = window.jspdf;
-
         let politicasData = {};
         let moduloActualEditando = null;
         let usuarioActual = null;
 
-        // ═══════════════════════════════════════════════════════════════════
-        // SESIÓN (heredada del panel — si no hay sesión, redirige al panel)
-        // ═══════════════════════════════════════════════════════════════════
+        // ── Sesión ────────────────────────────────────────────
         async function verificarSesion() {
             try {
                 const { data } = await sb.auth.getSession();
-                if (data?.session) {
-                    usuarioActual = data.session.user;
-                    _entrarModulo();
-                    return;
-                }
-            } catch (e) {
-                console.warn('[PDFs] getSession falló:', e.message);
-            }
-
-            // Fallback: verificar token en localStorage (el panel usa Supabase Auth)
-            const hasToken = !!localStorage.getItem('sb-knzmdwjmrhcoytmebdwa-auth-token') ||
-                             !!localStorage.getItem('sb-foytizbicwnndegeorny-auth-token');
+                if (data?.session) { usuarioActual = data.session.user; _entrar(); return; }
+            } catch (e) { console.warn('[PDFs] getSession falló:', e.message); }
+            const hasToken = !!localStorage.getItem('sb-foytizbicwnndegeorny-auth-token');
             if (hasToken && sb) {
                 try {
                     const { data: { user }, error } = await sb.auth.getUser();
-                    if (user && !error) {
-                        usuarioActual = user;
-                        _entrarModulo();
-                        return;
-                    }
-                } catch (e) {
-                    console.warn('[PDFs] getUser fallback falló:', e.message);
-                }
+                    if (user && !error) { usuarioActual = user; _entrar(); return; }
+                } catch (e) { console.warn('[PDFs] getUser fallback falló:', e.message); }
             }
-
-            // Sin sesión: redirigir al panel (que maneja login centralizado)
             window.location.replace('/panel/panel.html');
         }
-
-        function _entrarModulo() {
-            cargarPoliticas().then(ok => {
-                if (ok) renderModules();
-            });
+        function _entrar() {
+            cargarPoliticas().then(ok => { if (ok) renderModules(); });
             document.getElementById('loading').style.display = 'none';
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // DATOS DE MÓDULOS
-        // ═══════════════════════════════════════════════════════════════════
+        // ── Módulos ──────────────────────────────────────────
         const MODULES = [
-            {
-                id: 'taller_electronica',
-                nombre: 'Taller Electrónica',
-                icon: '🔧',
-                color: '#467d32',
-                colorHex: [70, 125, 50]
-            },
-            {
-                id: 'taller_motores',
-                nombre: 'Taller Motores',
-                icon: '⚙️',
-                color: '#ef6c00',
-                colorHex: [239, 108, 0]
-            },
-            {
-                id: 'ventas_suministros',
-                nombre: 'Ventas y Suministros',
-                icon: '📦',
-                color: '#ff9800',
-                colorHex: [255, 152, 0]
-            },
-            {
-                id: 'automatizacion',
-                nombre: 'Automatización',
-                icon: '🤖',
-                color: '#6a1b9a',
-                colorHex: [106, 27, 154]
-            },
-            {
-                id: 'soporte_planta',
-                nombre: 'Soporte a Planta',
-                icon: '🛠️',
-                color: '#d32f2f',
-                colorHex: [211, 47, 47]
-            }
+            { id:'taller_electronica', nombre:'Taller Electrónica', icon:'fa-microchip', color:'#467d32', colorHex:[70,125,50] },
+            { id:'taller_motores',     nombre:'Taller Motores',     icon:'fa-industry',  color:'#ef6c00', colorHex:[239,108,0] },
+            { id:'ventas_suministros', nombre:'Ventas y Suministros', icon:'fa-file-invoice-dollar', color:'#ff9800', colorHex:[255,152,0] },
+            { id:'automatizacion',     nombre:'Automatización',     icon:'fa-robot',     color:'#6a1b9a', colorHex:[106,27,154] },
+            { id:'soporte_planta',     nombre:'Soporte a Planta',   icon:'fa-tools',     color:'#d32f2f', colorHex:[211,47,47] }
         ];
 
-        // ═══════════════════════════════════════════════════════════════════
-        // POLÍTICAS DEFAULT (fallback si la BD está vacía)
-        // Usa **texto** para negritas en las notas
-        // ═══════════════════════════════════════════════════════════════════
+        // ── Políticas default ────────────────────────────────
         const POLITICAS_DEFAULT = {
             taller_electronica: {
-                titulo: 'Políticas para reparación de equipos electrónicos',
-                tiempo_entrega: 'INMEDIATA a partir de la OC',
-                garantia_dias: 30,
-                moneda: 'MONEDA NACIONAL',
-                url_terminos: 'https://www.ssepi.org/terms',
-                notas_importantes: [
+                titulo:'Políticas para reparación de equipos electrónicos',
+                tiempo_entrega:'INMEDIATA a partir de la OC', garantia_dias:30, moneda:'MONEDA NACIONAL',
+                url_terminos:'https://www.ssepi.org/terms',
+                notas_importantes:[
                     'SSEPI ofrece **garantía de la unidad** por un período de 30 días, contando a partir de la fecha de entrega. La garantía aplica **únicamente** sobre la falla reparada y los componentes reemplazados durante el servicio realizado.',
-                    'La reparación se limita **exclusivamente** a los componentes y/o fallas detectadas durante la inspección técnica inicial o reportadas por el cliente. En caso de no especificarse una falla concreta, el servicio se entenderá como reparación puntual de los daños visibles o componentes defectuosos identificados.',
-                    'La garantía **NO cubre**:\n• Fallas distintas o adicionales a la reportada y reparada.\n• Daños ocasionados por sobretensiones, picos de voltaje, mala calidad de energía eléctrica, conexiones incorrectas, inversión de fases o cableado defectuoso.\n• Manipulación, modificación o reparación por personal ajeno al taller.\n• Uso del equipo fuera de las especificaciones del fabricante.\n• Daños mecánicos, golpes, cortocircuitos externos o fallas en periféricos conectados.',
-                    'La garantía consiste **únicamente** en la revisión y corrección del problema reparado, no incluye reembolsos en efectivo ni daños indirectos, paros de producción o pérdidas operativas.',
+                    'La reparación se limita **exclusivamente** a los componentes y/o fallas detectadas durante la inspección técnica inicial o reportadas por el cliente.',
+                    'La garantía **NO cubre**: fallas distintas o adicionales a la reportada, sobretensiones, conexiones incorrectas, manipulación por personal ajeno, uso fuera de especificaciones, daños mecánicos o cortocircuitos externos.',
+                    'La garantía consiste **únicamente** en la revisión y corrección del problema reparado, no incluye reembolsos ni daños indirectos.',
                     'El servicio **no incluye** instalación ni montaje del equipo en su posición original.',
                     'Se requiere **ORDEN DE COMPRA** para iniciar el servicio.',
                     'Después de confirmado el servicio **NO SE ACEPTAN CANCELACIONES**.'
                 ]
             },
             taller_motores: {
-                titulo: 'Políticas para reparación de Motores',
-                tiempo_entrega: '1 SEMANA a partir de la OC',
-                garantia_dias: 30,
-                moneda: 'MONEDA NACIONAL',
-                url_terminos: 'https://www.ssepi.org/terms',
-                notas_importantes: [
-                    'SSEPI ofrece **garantía de la unidad** por un período de 30 días, contando a partir de la fecha de entrega. La garantía aplica **únicamente** sobre la falla reparada y los componentes reemplazados durante el servicio realizado.',
-                    'La garantía **NO cubre**:\n• Fallas distintas o adicionales a la reportada y reparada.\n• Daños ocasionados por sobretensiones, picos de voltaje, mala calidad de energía eléctrica, conexiones incorrectas, inversión de fases o cableado defectuoso.\n• Manipulación, modificación o reparación por personal ajeno al taller.\n• Uso del equipo fuera de las especificaciones del fabricante.\n• Daños mecánicos, golpes, cortocircuitos externos o fallas en periféricos conectados.',
-                    'La garantía consiste **únicamente** en la revisión y corrección del problema reparado, no incluye reembolsos en efectivo ni daños indirectos, paros de producción o pérdidas operativas.',
+                titulo:'Políticas para reparación de Motores',
+                tiempo_entrega:'1 SEMANA a partir de la OC', garantia_dias:30, moneda:'MONEDA NACIONAL',
+                url_terminos:'https://www.ssepi.org/terms',
+                notas_importantes:[
+                    'SSEPI ofrece **garantía de la unidad** por un período de 30 días, contando a partir de la fecha de entrega. La garantía aplica **únicamente** sobre la falla reparada.',
+                    'La garantía **NO cubre**: fallas distintas o adicionales, sobretensiones, conexiones incorrectas, manipulación por personal ajeno, uso fuera de especificaciones, daños mecánicos.',
+                    'La garantía consiste **únicamente** en la revisión y corrección del problema reparado.',
                     'El servicio **no incluye** instalación ni montaje del equipo en su posición original.',
                     'Se requiere **ORDEN DE COMPRA** para iniciar el servicio.',
                     'Después de confirmado el servicio **NO SE ACEPTAN CANCELACIONES**.'
                 ]
             },
             ventas_suministros: {
-                titulo: 'Políticas para ventas de suministro',
-                tiempo_entrega: 'Según disponibilidad',
-                garantia_dias: 0,
-                moneda: 'USD / MXN',
-                url_terminos: 'https://www.ssepi.org/terms',
-                notas_importantes: [
+                titulo:'Políticas para ventas de suministro',
+                tiempo_entrega:'Según disponibilidad', garantia_dias:0, moneda:'USD / MXN',
+                url_terminos:'https://www.ssepi.org/terms',
+                notas_importantes:[
                     'La cotización incluye **únicamente** los suministros y/o refacciones descritas (número de parte, marca y cantidad).',
-                    'La disponibilidad de los productos está **sujeta a confirmación** al momento de la recepción del pago u orden de compra.',
-                    'La existencia mostrada en la cotización o sistema es **referencial** y puede variar sin previo aviso.',
-                    'Precios sujetos a cambio por: Tipo de cambio, Ajustes del fabricante, Disponibilidad de inventario.',
+                    'La disponibilidad está **sujeta a confirmación** al momento de la recepción del pago u orden de compra.',
+                    'La existencia es **referencial** y puede variar sin previo aviso.',
+                    'Precios sujetos a cambio por tipo de cambio, ajustes del fabricante y disponibilidad de inventario.',
                     'Precios expresados en **MXN**, salvo indicación contraria.',
-                    'El pago podrá ser en **dólares Americanos o pesos Mexicanos** según el tipo de cambio del diario oficial de la fecha del pago.',
+                    'El pago podrá ser en **dólares Americanos o pesos Mexicanos** según el tipo de cambio oficial.',
                     'Los costos de envío **no están incluidos**, salvo que se indique explícitamente.',
-                    'Los tiempos de entrega son **estimados** y comienzan a partir de: Confirmación de pago, Autorización de la orden de compra.',
-                    'Los productos cuentan con **garantía directa del fabricante**, conforme a sus políticas.',
-                    '**No se aceptan devoluciones** en: Refacciones bajo pedido, Productos importados, Material eléctrico/electrónico abierto o usado.',
-                    'Una vez confirmado el pedido o realizado el pago: **No se aceptan cancelaciones** en productos bajo pedido; en stock se aplicarán cargos administrativos.',
-                    'El proveedor no se responsabiliza por errores en selección o aplicación del producto.',
+                    'Los tiempos de entrega son **estimados** y comienzan a partir de la confirmación de pago u orden de compra.',
+                    'Los productos cuentan con **garantía directa del fabricante**.',
+                    '**No se aceptan devoluciones** en refacciones bajo pedido, productos importados ni material eléctrico abierto o usado.',
+                    '**No se aceptan cancelaciones** en productos bajo pedido; en stock se aplicarán cargos administrativos.',
+                    'El proveedor no se responsabiliza por errores en selección o aplicación.',
                     'La factura se emite una vez confirmado el pago.',
                     'No se realizarán refacturaciones por errores imputables al cliente.'
                 ]
             },
             automatizacion: {
-                titulo: 'Políticas para proyectos de Automatización',
-                tiempo_entrega: 'Según alcance del proyecto',
-                garantia_dias: 45,
-                moneda: 'MONEDA NACIONAL',
-                url_terminos: 'https://www.ssepi.org/terms',
-                notas_importantes: [
-                    'Condiciones de pago: **50% de anticipo**, 50% al terminar las actividades y a las pruebas de funcionamiento.',
+                titulo:'Políticas para proyectos de Automatización',
+                tiempo_entrega:'Según alcance del proyecto', garantia_dias:45, moneda:'MONEDA NACIONAL',
+                url_terminos:'https://www.ssepi.org/terms',
+                notas_importantes:[
+                    'Condiciones de pago: **50% de anticipo**, 50% al terminar las actividades y pruebas de funcionamiento.',
                     'Se requiere **Orden de Compra** con el Folio de la cotización.',
-                    'La cotización incluye **únicamente** los conceptos, equipos, servicios y actividades descritos en el documento.',
-                    'Cualquier trabajo, material o modificación no especificada será considerada como trabajo adicional y deberá cotizarse por separado.',
-                    'El alcance está basado en la información técnica proporcionada por el cliente al momento de la cotización.',
-                    'Los precios están sujetos a cambio por variaciones en tipo de cambio, disponibilidad de materiales o ajustes de proveedor.',
-                    'El equipo y/o software entregado seguirá siendo propiedad del proveedor hasta la **liquidación total**.',
-                    'Los tiempos de entrega comienzan a contar a partir de la confirmación del anticipo y aprobación técnica del cliente.',
-                    'Retrasos por causas ajenas al proveedor (falta de información, cambios de alcance, paros del cliente) extienden automáticamente los plazos.',
-                    'Cualquier cambio solicitado después de aprobada la cotización será evaluado y cotizado como **orden de cambio**.',
-                    'Se otorga una **garantía de 45 días naturales** sobre: Programación PLC y HMI, Integración y funcionamiento del sistema, Mano de obra realizada.',
-                    'La garantía no cubre: Fallas por mal uso, sobrecargas eléctricas o mecánicas, manipulación por personal no autorizado, daños por condiciones ambientales fuera de especificación o fallas de equipos suministrados por el cliente.',
-                    'La lógica de control, diagramas y documentación desarrollada son propiedad del proveedor hasta la liquidación total. El cliente podrá usar el sistema **únicamente** para su operación interna.'
+                    'La cotización incluye **únicamente** los conceptos, equipos, servicios y actividades descritos.',
+                    'Cualquier trabajo adicional deberá cotizarse por separado.',
+                    'El alcance está basado en la información técnica proporcionada por el cliente.',
+                    'Los precios están sujetos a cambio por tipo de cambio, disponibilidad de materiales o ajustes de proveedor.',
+                    'El equipo seguirá siendo propiedad del proveedor hasta la **liquidación total**.',
+                    'Los tiempos comienzan a contar a partir de la confirmación del anticipo y aprobación técnica.',
+                    'Retrasos por causas ajenas extienden automáticamente los plazos.',
+                    'Cualquier cambio será evaluado y cotizado como **orden de cambio**.',
+                    'Se otorga una **garantía de 45 días naturales** sobre programación PLC/HMI, integración y mano de obra.',
+                    'La garantía no cubre fallas por mal uso, sobrecargas, manipulación no autorizada ni equipos suministrados por el cliente.',
+                    'La lógica de control y documentación son propiedad del proveedor hasta la liquidación total. El cliente podrá usar el sistema **únicamente** para su operación interna.'
                 ]
             },
             soporte_planta: {
-                titulo: 'Políticas para Soporte a planta',
-                tiempo_entrega: 'INMEDIATA bajo solicitud',
-                garantia_dias: 0,
-                moneda: 'MONEDA NACIONAL',
-                url_terminos: 'https://www.ssepi.org/terms',
-                notas_importantes: [
-                    'El servicio realizado corresponde a una **atención correctiva puntual** solicitada de manera urgente, enfocada en restablecer la operación del equipo en el menor tiempo posible.',
-                    'Las actividades efectuadas se limitaron a la **falla identificada** al momento de la intervención.',
-                    'Las acciones realizadas incluyeron diagnóstico técnico y corrección específica de la condición detectada durante la visita.',
-                    '**No se realizó**: Revisión integral del sistema, Ingeniería de mejora, Actualización de programas, Sustitución preventiva de componentes adicionales, salvo que se indique expresamente en el reporte.',
-                    'El servicio ejecutado **no constituye una garantía integral** del equipo, sino una intervención correctiva específica.',
-                    'En caso de presentarse una falla distinta o relacionada con otros componentes no intervenidos, se considerará como un **nuevo servicio**.',
-                    'Durante la intervención se pudieron detectar condiciones adicionales que podrían afectar el desempeño o confiabilidad del sistema.',
-                    'Estas observaciones y recomendaciones quedan documentadas en el **Reporte de Servicio** entregado al cliente.',
-                    'La no ejecución de dichas recomendaciones puede derivar en fallas posteriores ajenas a la intervención realizada.',
-                    'El proveedor **no es responsable** por: Daños derivados de condiciones externas (variaciones eléctricas, humedad, manipulación posterior), Fallas originadas por desgaste natural de componentes, Intervenciones posteriores realizadas por terceros.',
-                    'La firma del reporte de servicio confirma la conformidad con las actividades realizadas y el restablecimiento operativo al momento de la entrega.'
+                titulo:'Políticas para Soporte a planta',
+                tiempo_entrega:'INMEDIATA bajo solicitud', garantia_dias:0, moneda:'MONEDA NACIONAL',
+                url_terminos:'https://www.ssepi.org/terms',
+                notas_importantes:[
+                    'El servicio corresponde a una **atención correctiva puntual** enfocada en restablecer la operación en el menor tiempo posible.',
+                    'Las actividades se limitaron a la **falla identificada** al momento de la intervención.',
+                    'Las acciones incluyeron diagnóstico técnico y corrección específica.',
+                    '**No se realizó**: revisión integral, ingeniería de mejora, actualización de programas ni sustitución preventiva, salvo que se indique expresamente.',
+                    'El servicio ejecutado **no constituye una garantía integral** del equipo.',
+                    'En caso de falla distinta se considerará como un **nuevo servicio**.',
+                    'Durante la intervención se pudieron detectar condiciones adicionales documentadas en el **Reporte de Servicio**.',
+                    'La no ejecución de recomendaciones puede derivar en fallas posteriores.',
+                    'El proveedor **no es responsable** por daños derivados de condiciones externas, desgaste natural o intervenciones de terceros.',
+                    'La firma del reporte confirma la conformidad con las actividades realizadas.'
                 ]
             }
         };
 
-        // ═══════════════════════════════════════════════════════════════════
-        // CARGAR POLÍTICAS DESDE BD
-        // ═══════════════════════════════════════════════════════════════════
+        // ── Cargar políticas ────────────────────────────────
         async function cargarPoliticas() {
             try {
-                const { data, error } = await supabase
-                    .from('politicas_modulos')
-                    .select('*')
-                    .eq('activo', true);
-
+                const { data, error } = await supabase.from('politicas_modulos').select('*').eq('activo', true);
                 if (error) throw error;
-
                 politicasData = {};
-                // Primero poblar con defaults
                 Object.keys(POLITICAS_DEFAULT).forEach(mod => {
                     politicasData[mod] = { ...POLITICAS_DEFAULT[mod], modulo: mod, activo: true };
                 });
-                // Luego sobrescribir con datos de BD si existen
-                (data || []).forEach(p => {
-                    politicasData[p.modulo] = { ...politicasData[p.modulo], ...p };
-                });
-
+                (data || []).forEach(p => { politicasData[p.modulo] = { ...politicasData[p.modulo], ...p }; });
                 return true;
             } catch (e) {
                 console.error('Error cargando políticas:', e);
                 mostrarError('Error cargando políticas: ' + e.message);
-                // Fallback total: usar solo defaults
                 Object.keys(POLITICAS_DEFAULT).forEach(mod => {
                     politicasData[mod] = { ...POLITICAS_DEFAULT[mod], modulo: mod, activo: true };
                 });
@@ -838,457 +525,248 @@
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // MOSTRAR MENSAJES
-        // ═══════════════════════════════════════════════════════════════════
         function mostrarError(msg) {
             const el = document.getElementById('error');
-            el.textContent = msg;
-            el.style.display = 'block';
+            el.textContent = msg; el.style.display = 'block';
             document.getElementById('loading').style.display = 'none';
         }
-
         function mostrarSuccess(msg) {
             const el = document.getElementById('success');
-            el.textContent = msg;
-            el.style.display = 'block';
+            el.textContent = msg; el.style.display = 'block';
             setTimeout(() => el.style.display = 'none', 3000);
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // RENDERIZAR MÓDULOS
-        // ═══════════════════════════════════════════════════════════════════
+        // ── Renderizar ──────────────────────────────────────
         function renderModules() {
             const grid = document.getElementById('modulesGrid');
             grid.innerHTML = '';
-
             MODULES.forEach(mod => {
                 const políticas = politicasData[mod.id];
                 const notas = políticas?.notas_importantes || [];
-
-                // Renderizar notas con número en círculo y soporte para **bold**
                 const notasHtml = notas.length ? notas.map((nota, i) => {
-                    const html = nota
-                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\n/g, '<br>');
-                    return `<div class="nota-item"><span class="nota-num">${i + 1}</span>${html}</div>`;
-                }).join('') : '<p class="nota-empty">Sin políticas configuradas</p>';
-
-                const chipsHtml = [];
-                if (políticas?.tiempo_entrega) chipsHtml.push(`<span class="info-chip chip-teal">⏱ ${políticas.tiempo_entrega}</span>`);
-                if (políticas?.moneda) chipsHtml.push(`<span class="info-chip chip-blue">💰 ${políticas.moneda}</span>`);
-                if (políticas?.garantia_dias && políticas.garantia_dias > 0) chipsHtml.push(`<span class="info-chip chip-amber">📋 ${políticas.garantia_dias} días garantía</span>`);
+                    const html = nota.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+                    return `<div class="pdf-nota"><span class="n-num">${i + 1}</span>${html}</div>`;
+                }).join('') : '<p class="pdf-nota empty">Sin políticas configuradas</p>';
+                const chips = [];
+                if (políticas?.tiempo_entrega) chips.push(`<span class="pdf-chip"><i class="fas fa-clock"></i> ${políticas.tiempo_entrega}</span>`);
+                if (políticas?.moneda) chips.push(`<span class="pdf-chip blue"><i class="fas fa-coins"></i> ${políticas.moneda}</span>`);
+                if (políticas?.garantia_dias > 0) chips.push(`<span class="pdf-chip amber"><i class="fas fa-shield-alt"></i> ${políticas.garantia_dias} días</span>`);
 
                 const card = document.createElement('div');
-                card.className = 'module-card';
+                card.className = 'pdf-card';
+                card.style.setProperty('--module-accent', mod.color);
                 card.innerHTML = `
-                    <div class="module-card-inner">
-                        <div class="module-header">
-                            <div class="module-icon" style="background: ${mod.color}">${mod.icon}</div>
-                            <div class="module-title">
-                                <h2>${mod.nombre}</h2>
-                                <div class="tiempo-entrega">${políticas?.tiempo_entrega || 'N/A'}</div>
-                            </div>
+                    <div class="pdf-card-header">
+                        <div class="pdf-icon" style="background:${mod.color}"><i class="fas ${mod.icon}"></i></div>
+                        <div class="pdf-title">
+                            <h2>${mod.nombre}</h2>
+                            <div class="pdf-sub">${políticas?.titulo || 'Políticas del departamento'}</div>
                         </div>
-
-                        ${chipsHtml.length ? `<div class="card-infobar">${chipsHtml.join('')}</div>` : ''}
-
-                        <div class="politicas-section">
-                            <h3>📌 Políticas</h3>
-                            ${notasHtml}
-                        </div>
-
-                        <div class="pdf-actions">
-                            <button class="btn btn-primary" onclick="generarPDF('${mod.id}', true)">
-                                👁️ Vista previa
-                            </button>
-                            <button class="btn btn-secondary" onclick="generarPDF('${mod.id}')">
-                                ⬇️ Descargar
-                            </button>
-                            <button class="btn btn-edit" onclick="abrirEditor('${mod.id}')">
-                                ✏️ Editar
-                            </button>
-                        </div>
+                    </div>
+                    ${chips.length ? `<div class="pdf-chips">${chips.join('')}</div>` : ''}
+                    <div class="pdf-section-title"><i class="fas fa-list-check"></i> Políticas</div>
+                    <div class="pdf-notas">${notasHtml}</div>
+                    <div class="pdf-actions-row">
+                        <button class="btn-pdf btn-pdf-primary" onclick="generarPDF('${mod.id}', true)">
+                            <i class="fas fa-eye"></i> Vista previa
+                        </button>
+                        <button class="btn-pdf btn-pdf-secondary" onclick="generarPDF('${mod.id}')">
+                            <i class="fas fa-download"></i> Descargar
+                        </button>
+                        <button class="btn-pdf btn-pdf-edit" onclick="abrirEditor('${mod.id}')">
+                            <i class="fas fa-pen"></i> Editar
+                        </button>
                     </div>
                 `;
                 grid.appendChild(card);
             });
-
             grid.style.display = 'grid';
             document.getElementById('loading').style.display = 'none';
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // ABRIR/CERRAR EDITOR
-        // ═══════════════════════════════════════════════════════════════════
+        // ── Editor ──────────────────────────────────────────
         function abrirEditor(moduloId) {
             const mod = MODULES.find(m => m.id === moduloId);
-            const politicas = politicasData[moduloId];
-
+            const políticas = politicasData[moduloId];
             if (!mod) return;
-
             moduloActualEditando = moduloId;
-
             document.getElementById('editModulo').value = mod.nombre;
-            document.getElementById('editTitulo').value = politicas?.titulo || '';
-            document.getElementById('editTiempoEntrega').value = politicas?.tiempo_entrega || '';
-            document.getElementById('editGarantiaDias').value = politicas?.garantia_dias || 0;
-            document.getElementById('editMoneda').value = politicas?.moneda || 'MONEDA NACIONAL';
-            document.getElementById('editUrlTerminos').value = politicas?.url_terminos || '';
-
-            // Notas
-            const notasContainer = document.getElementById('notasEditor');
-            notasContainer.innerHTML = '';
-
-            const notas = politicas?.notas_importantes || [];
-            notas.forEach((nota, idx) => {
-                agregarNotaEditor(nota);
-            });
-
-            document.getElementById('modalTitle').textContent = `✏️ Editar: ${mod.nombre}`;
+            document.getElementById('editTitulo').value = políticas?.titulo || '';
+            document.getElementById('editTiempoEntrega').value = políticas?.tiempo_entrega || '';
+            document.getElementById('editGarantiaDias').value = políticas?.garantia_dias || 0;
+            document.getElementById('editMoneda').value = políticas?.moneda || 'MONEDA NACIONAL';
+            document.getElementById('editUrlTerminos').value = políticas?.url_terminos || '';
+            const cont = document.getElementById('notasEditor');
+            cont.innerHTML = '';
+            (políticas?.notas_importantes || []).forEach(n => agregarNotaEditor(n));
+            document.getElementById('modalTitle').textContent = `Editar: ${mod.nombre}`;
             document.getElementById('editorModal').classList.add('active');
         }
-
         function cerrarEditor() {
             document.getElementById('editorModal').classList.remove('active');
             moduloActualEditando = null;
         }
-
-        function agregarNota() {
-            agregarNotaEditor('');
-        }
-
+        function agregarNota() { agregarNotaEditor(''); }
         function agregarNotaEditor(texto = '') {
-            const container = document.getElementById('notasEditor');
-            const div = document.createElement('div');
-            div.className = 'nota-editor-item';
-            div.innerHTML = `
-                <textarea placeholder="Escribe la nota aquí...">${texto}</textarea>
-                <button type="button" class="btn btn-cancel" onclick="this.parentElement.remove()" style="margin-top: 5px; padding: 6px 12px; font-size: 12px;">
-                    🗑️ Eliminar
-                </button>
-            `;
-            container.appendChild(div);
+            const c = document.getElementById('notasEditor');
+            const d = document.createElement('div');
+            d.className = 'nota-row';
+            d.innerHTML = `<textarea placeholder="Escribe la nota aquí...">${texto}</textarea>
+                <button type="button" class="btn-pdf btn-pdf-secondary" onclick="this.parentElement.remove()" style="margin-top:6px;padding:6px 12px;font-size:12px;">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>`;
+            c.appendChild(d);
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // GUARDAR POLÍTICAS
-        // ═══════════════════════════════════════════════════════════════════
+        // ── Guardar ─────────────────────────────────────────
         async function guardarPoliticas() {
             if (!moduloActualEditando) return;
-
             const titulo = document.getElementById('editTitulo').value.trim();
             const tiempoEntrega = document.getElementById('editTiempoEntrega').value.trim();
             const garantiaDias = parseInt(document.getElementById('editGarantiaDias').value) || 0;
             const moneda = document.getElementById('editMoneda').value.trim();
             const urlTerminos = document.getElementById('editUrlTerminos').value.trim();
-
-            // Obtener notas
             const notas = [];
             document.querySelectorAll('#notasEditor textarea').forEach(el => {
-                const texto = el.value.trim();
-                if (texto) notas.push(texto);
+                const t = el.value.trim(); if (t) notas.push(t);
             });
-
-            if (!titulo || !tiempoEntrega) {
-                alert('El título y tiempo de entrega son requeridos');
-                return;
-            }
-
+            if (!titulo || !tiempoEntrega) { alert('El título y tiempo de entrega son requeridos'); return; }
             try {
-                const { data, error } = await supabase
-                    .from('politicas_modulos')
-                    .upsert({
-                        modulo: moduloActualEditando,
-                        titulo,
-                        tiempo_entrega: tiempoEntrega,
-                        garantia_dias: garantiaDias,
-                        moneda,
-                        url_terminos: urlTerminos,
-                        notas_importantes: notas,
-                        updated_at: new Date().toISOString()
-                    }, {
-                        onConflict: 'modulo'
-                    })
-                    .select()
-                    .single();
-
+                const { data, error } = await supabase.from('politicas_modulos')
+                    .upsert({ modulo: moduloActualEditando, titulo, tiempo_entrega: tiempoEntrega,
+                        garantia_dias: garantiaDias, moneda, url_terminos: urlTerminos,
+                        notas_importantes: notas, updated_at: new Date().toISOString() },
+                        { onConflict: 'modulo' }).select().single();
                 if (error) throw error;
-
-                // Actualizar caché local
                 politicasData[moduloActualEditando] = data;
-
-                // Re-renderizar
                 renderModules();
-
                 mostrarSuccess('Políticas guardadas correctamente');
                 cerrarEditor();
-            } catch (e) {
-                console.error('Error guardando políticas:', e);
-                alert('Error guardando: ' + e.message);
-            }
+            } catch (e) { console.error('Error guardando políticas:', e); alert('Error guardando: ' + e.message); }
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // GENERAR PDF (con vista previa inline)
-        // ═══════════════════════════════════════════════════════════════════
-        let ultimoDocPDF = null;
-        let ultimoNombrePDF = '';
-
+        // ── Generar PDF premium ───────────────────────────────
+        let ultimoDocPDF = null, ultimoNombrePDF = '';
         async function generarPDF(moduloId, soloPreview = false) {
             const mod = MODULES.find(m => m.id === moduloId);
-            const politicas = politicasData[moduloId];
+            const políticas = politicasData[moduloId];
             if (!mod) return;
-
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-            const PW = 210, PH = 297;
-            const ML = 15, MR = 15;
-            const TW = PW - ML - MR;
-
-            // Paleta exacta
-            const TEAL    = [23,165,152];
-            const TEAL_LT = [235,247,245];
-            const GR_HDR  = [245,245,245];
-            const GR_ROW  = [249,249,249];
-            const GR_SEP  = [220,220,220];
-            const GR_TXT  = [51,51,51];
-            const GR_LT   = [130,130,130];
-            const BLK     = [0,0,0];
-            const WHT     = [255,255,255];
-            const DK      = [26,26,46];
-            const COVER   = [58,68,82];
-
-            // Helpers
+            const doc = new jsPDF({ unit:'mm', format:'a4' });
+            const PW=210, PH=297, ML=15, MR=15, TW=PW-ML-MR;
+            const TEAL=[23,165,152], TEAL_LT=[235,247,245], GR_HDR=[245,245,245], GR_ROW=[249,249,249];
+            const GR_SEP=[220,220,220], GR_TXT=[51,51,51], GR_LT=[130,130,130], BLK=[0,0,0], WHT=[255,255,255];
             const hl=(x,y,w,c,lw)=>{ doc.setDrawColor(...(c||GR_SEP)); doc.setLineWidth(lw||0.3); doc.line(x,y,x+w,y); };
             const fl=(x,y,w,h,c)=>{ doc.setFillColor(...c); doc.rect(x,y,w,h,'F'); };
             const tx=(t,x,y,fnt,sz,c,opts)=>{ doc.setFont('helvetica',fnt||'normal'); doc.setFontSize(sz||9); doc.setTextColor(...(c||GR_TXT)); doc.text(String(t||''),x,y,opts||{}); };
-
             const fecha = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'});
-            const folio = 'POL-' + Date.now().toString().slice(-6);
+            const folio = 'POL-'+Date.now().toString().slice(-6);
 
-            // ===== PORTADA (PAG 1) =====
-            fl(0,0,PW,PH,WHT);
-            fl(0,PH-70,PW,70,[68,83,106]);
+            // Portada
+            fl(0,0,PW,PH,WHT); fl(0,PH-70,PW,70,[68,83,106]);
             tx('SSEPI', PW/2, PH-48, 'bold', 28, WHT, {align:'center'});
             tx('Soluciones de Servicios Enterprise', PW/2, PH-38, 'normal', 11, TEAL, {align:'center'});
             tx(mod.nombre, PW/2, 90, 'bold', 22, WHT, {align:'center'});
             tx('Políticas y Condiciones del Servicio', PW/2, 102, 'normal', 12, [180,190,200], {align:'center'});
             tx('Bulevard Zodiaco 336, Los Limones, C.P. 37448, León, Guanajuato, México', PW/2, PH-22, 'normal', 9, [160,170,180], {align:'center'});
             tx('ventas@ssepi.org  |  www.ssepi.org', PW/2, PH-15, 'normal', 9, [160,170,180], {align:'center'});
-            tx('Folio: ' + folio, PW/2, PH-8, 'normal', 8, [140,150,160], {align:'center'});
+            tx('Folio: '+folio, PW/2, PH-8, 'normal', 8, [140,150,160], {align:'center'});
 
-            // ===== HEADER REUSABLE =====
-            const HH = 47;
-            const FY = PH - 16;
-            const drawHeader = () => {
-                const HR = 38.2;
-                const DX1 = 74.5;
-                const DX2 = 91.0;
-                const px = v => v.toFixed(2);
-                const py = v => (PH - v).toFixed(2);
-                try {
-                    doc.setFillColor(239,246,246);
-                    doc.internal.write(
-                        `${px(0)} ${py(0)} m `+
-                        `${px(PW)} ${py(0)} l `+
-                        `${px(PW)} ${py(HR)} l `+
-                        `${px(DX2)} ${py(HR)} l `+
-                        `${px(88.6)} ${py(39.5)} l `+
-                        `${px(80.0)} ${py(46.9)} l `+
-                        `${px(DX1)} ${py(HH)} l `+
-                        `${px(0)} ${py(HH)} l `+
-                        `h f`
-                    );
-                } catch(e) {
-                    fl(0,0,PW,HH,[239,246,246]);
-                }
-                // Logo SSEPI
+            // Header reusable
+            const HH=47, FY=PH-16;
+            const drawHeader=()=>{
+                const HR=38.2, DX1=74.5, DX2=91.0;
+                const px=v=>v.toFixed(2), py=v=>(PH-v).toFixed(2);
+                try { doc.setFillColor(239,246,246); doc.internal.write(
+                    `${px(0)} ${py(0)} m ${px(PW)} ${py(0)} l ${px(PW)} ${py(HR)} l ${px(DX2)} ${py(HR)} l ${px(88.6)} ${py(39.5)} l ${px(80.0)} ${py(46.9)} l ${px(DX1)} ${py(HH)} l ${px(0)} ${py(HH)} l h f`);
+                } catch(e){ fl(0,0,PW,HH,[239,246,246]); }
                 try { tx('SSEPI', 9, 20, 'bold', 13, TEAL); } catch(_){}
-                // Dirección
-                tx('Bulevard Zodiaco 336, Los Limones,',  PW-5, 13, 'normal', 9, [100,115,125], {align:'right'});
+                tx('Bulevard Zodiaco 336, Los Limones,', PW-5, 13, 'normal', 9, [100,115,125], {align:'right'});
                 tx('C.P. 37448, León, Guanajuato, México', PW-5, 20, 'normal', 9, [100,115,125], {align:'right'});
-                // Tagline
-                doc.setFont('helvetica','italic');
-                doc.setFontSize(8.5);
-                doc.setTextColor(0x3F,0x9E,0x9E);
-                const tagLines = doc.splitTextToSize('Conectamos ingeniería, tecnología y productividad industrial', 63);
-                const tagY0 = tagLines.length > 1 ? 39.0 : 42.0;
-                tagLines.forEach((l,i) => doc.text(l, 9, tagY0 + i*4.2));
-                // Folio derecha
-                const folioLabel = 'Num. de cotización ' + folio;
-                const rightZoneW = PW - DX2 - 6;
-                let fsz = 16;
-                doc.setFont('helvetica','normal');
-                doc.setFontSize(fsz);
-                while(doc.getTextWidth(folioLabel) > rightZoneW - 2 && fsz > 10){ fsz--; doc.setFontSize(fsz); }
-                doc.setTextColor(0x3F,0x9E,0x9E);
-                doc.text(folioLabel, PW-5, HR-2, {align:'right'});
-                return HH + 5;
+                doc.setFont('helvetica','italic'); doc.setFontSize(8.5); doc.setTextColor(0x3F,0x9E,0x9E);
+                const tagLines=doc.splitTextToSize('Conectamos ingeniería, tecnología y productividad industrial',63);
+                const tagY0=tagLines.length>1?39.0:42.0; tagLines.forEach((l,i)=>doc.text(l,9,tagY0+i*4.2));
+                const folioLabel='Num. de cotización '+folio;
+                const rightZoneW=PW-DX2-6; let fsz=16;
+                doc.setFont('helvetica','normal'); doc.setFontSize(fsz);
+                while(doc.getTextWidth(folioLabel)>rightZoneW-2&&fsz>10){ fsz--; doc.setFontSize(fsz); }
+                doc.setTextColor(0x3F,0x9E,0x9E); doc.text(folioLabel,PW-5,HR-2,{align:'right'});
+                return HH+5;
             };
-
-            // ===== FOOTER REUSABLE =====
-            const drawFooter = (pn) => {
-                hl(ML, FY, TW, GR_SEP, 0.3);
-                tx('Num. de cotización ' + folio, ML, FY+4, 'normal', 7, [160,160,160]);
+            // Footer reusable
+            const drawFooter=(pn)=>{
+                hl(ML,FY,TW,GR_SEP,0.3);
+                tx('Num. de cotización '+folio, ML, FY+4, 'normal', 7, [160,160,160]);
                 tx('Conectamos ingeniería, tecnología y productividad industrial', PW/2, FY+4, 'italic', 7, [160,160,160], {align:'center'});
                 tx('Bulevard Zodiaco 336, Los Limones, C.P. 37448, León, Guanajuato, México', PW/2, FY+8, 'normal', 7, [160,160,160], {align:'center'});
                 tx('ventas@ssepi.org', ML, FY+12, 'normal', 8, GR_LT);
-                const totalPgs = doc.internal.pages ? String(doc.internal.pages.length - 1) : '?';
-                tx('Página ' + pn + ' / ' + totalPgs, PW-MR, FY+12, 'normal', 8, GR_LT, {align:'right'});
+                const totalPgs=doc.internal.pages?String(doc.internal.pages.length-1):'?';
+                tx('Página '+pn+' / '+totalPgs, PW-MR, FY+12, 'normal', 8, GR_LT, {align:'right'});
             };
-
-            // ===== DATOS MÓDULO (PAG 2+) =====
-            doc.addPage();
-            let pgNum = 2;
-            let y = drawHeader();
-
-            tx(mod.nombre, ML, y+5, 'bold', 10, BLK);
-            y += 9;
-            if (politicas?.tiempo_entrega) { tx('Tiempo de entrega: ' + politicas.tiempo_entrega, ML, y, 'normal', 9, GR_TXT); y += 5; }
-            if (politicas?.garantia_dias && politicas.garantia_dias > 0) { tx('Garantía: ' + politicas.garantia_dias + ' días', ML, y, 'normal', 9, GR_TXT); y += 5; }
-            if (politicas?.moneda) { tx('Moneda: ' + politicas.moneda, ML, y, 'normal', 9, GR_TXT); y += 5; }
-            hl(ML, y, TW, GR_SEP, 0.4);
-            y += 9;
-
-            // ===== NOTAS IMPORTANTES =====
-            const BODY_BOTTOM = FY - 4;
-            const newPageSolo = () => {
-                drawFooter(pgNum);
-                doc.addPage(); pgNum++;
-                y = drawHeader();
-            };
-
-            if (y + 16 > BODY_BOTTOM) newPageSolo();
-            tx('Notas Importantes', ML+4, y, 'bold', 15, BLK);
-            y += 10;
-
-            const parseNota = (str, idx) => {
-                const n = (idx + 1) + '.';
-                const m = str.match(/^(.*?)\*\*(.+?)\*\*(.*)$/);
-                if (m) return { n, pre: m[1], b: m[2], post: m[3] };
-                return { n, pre: str, b: '', post: '' };
-            };
-
-            const NL = 5.0;
-            const NMAX = TW - 12;
-            const notas = (politicas?.notas_importantes || []).map((n, i) => parseNota(n, i));
-            if (notas.length === 0) {
-                tx('No hay políticas configuradas para este módulo.', ML+10, y+4, 'italic', 10, [150,150,150]);
-                y += 10;
-            }
-
-            notas.forEach(nota => {
+            // Datos módulo
+            doc.addPage(); let pgNum=2, y=drawHeader();
+            tx(mod.nombre, ML, y+5, 'bold', 10, BLK); y+=9;
+            if(políticas?.tiempo_entrega){ tx('Tiempo de entrega: '+políticas.tiempo_entrega, ML, y, 'normal', 9, GR_TXT); y+=5; }
+            if(políticas?.garantia_dias>0){ tx('Garantía: '+políticas.garantia_dias+' días', ML, y, 'normal', 9, GR_TXT); y+=5; }
+            if(políticas?.moneda){ tx('Moneda: '+políticas.moneda, ML, y, 'normal', 9, GR_TXT); y+=5; }
+            hl(ML,y,TW,GR_SEP,0.4); y+=9;
+            // Notas
+            const BODY_BOTTOM=FY-4;
+            const newPageSolo=()=>{ drawFooter(pgNum); doc.addPage(); pgNum++; y=drawHeader(); };
+            if(y+16>BODY_BOTTOM) newPageSolo();
+            tx('Notas Importantes', ML+4, y, 'bold', 15, BLK); y+=10;
+            const parseNota=(str,idx)=>{ const n=(idx+1)+'.', m=str.match(/^(.*?)\*\*(.+?)\*\*(.*)$/); return m?{n,pre:m[1],b:m[2],post:m[3]}:{n,pre:str,b:'',post:''}; };
+            const NL=5.0, NMAX=TW-12;
+            const notas=(políticas?.notas_importantes||[]).map((n,i)=>parseNota(n,i));
+            if(notas.length===0){ tx('No hay políticas configuradas.', ML+10, y+4, 'italic', 10, [150,150,150]); y+=10; }
+            notas.forEach(nota=>{
                 doc.setFont('helvetica','normal'); doc.setFontSize(9);
-                const full = (nota.pre || '') + (nota.b || '') + (nota.post || '');
-                const lines = doc.splitTextToSize(full, NMAX);
-                const nH = lines.length * NL + 2;
-                if (y + nH > BODY_BOTTOM) newPageSolo();
-
-                doc.setFont('helvetica','normal'); doc.setFontSize(9);
-                doc.setTextColor(...GR_TXT);
-                doc.text(nota.n, ML+2, y+4);
-
-                if (!nota.b) {
-                    lines.forEach((l, i) => doc.text(l, ML+10, y+4 + i*NL));
-                } else {
-                    let cx = ML + 10;
-                    const ly = y + 4;
-                    if (nota.pre) {
-                        doc.setFont('helvetica','normal');
-                        doc.text(nota.pre, cx, ly);
-                        cx += doc.getTextWidth(nota.pre);
-                    }
-                    doc.setFont('helvetica','bold');
-                    doc.text(nota.b, cx, ly);
-                    cx += doc.getTextWidth(nota.b);
-                    if (nota.post) {
-                        doc.setFont('helvetica','normal');
-                        const restW = ML + 10 + NMAX - cx;
-                        const postLines = doc.splitTextToSize(nota.post, restW > 20 ? restW : NMAX);
-                        doc.text(postLines[0] || '', cx, ly);
-                        if (postLines.length > 1) {
-                            const rem = postLines.slice(1).join(' ');
-                            const remLines = doc.splitTextToSize(rem, NMAX);
-                            remLines.forEach((l, i) => doc.text(l, ML+10, ly + (i+1)*NL));
-                        }
-                    }
-                    const fullLines = doc.splitTextToSize(full, NMAX);
-                    if (fullLines.length > 1 && nota.post) {
-                        const allPostLines = doc.splitTextToSize(nota.post, NMAX);
-                        if (allPostLines.length > 1) {
-                            allPostLines.slice(1).forEach((l, i) => doc.text(l, ML+10, ly + (i+1)*NL));
-                        }
-                    }
+                const full=(nota.pre||'')+(nota.b||'')+(nota.post||'');
+                const lines=doc.splitTextToSize(full,NMAX);
+                const nH=lines.length*NL+2;
+                if(y+nH>BODY_BOTTOM) newPageSolo();
+                doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...GR_TXT); doc.text(nota.n, ML+2, y+4);
+                if(!nota.b){ lines.forEach((l,i)=>doc.text(l,ML+10,y+4+i*NL)); }
+                else {
+                    let cx=ML+10; const ly=y+4;
+                    if(nota.pre){ doc.setFont('helvetica','normal'); doc.text(nota.pre,cx,ly); cx+=doc.getTextWidth(nota.pre); }
+                    doc.setFont('helvetica','bold'); doc.text(nota.b,cx,ly); cx+=doc.getTextWidth(nota.b);
+                    if(nota.post){ doc.setFont('helvetica','normal'); const restW=ML+10+NMAX-cx; const postLines=doc.splitTextToSize(nota.post,restW>20?restW:NMAX); doc.text(postLines[0]||'',cx,ly); if(postLines.length>1){ const rem=postLines.slice(1).join(' '); const remLines=doc.splitTextToSize(rem,NMAX); remLines.forEach((l,i)=>doc.text(l,ML+10,ly+(i+1)*NL)); } }
                 }
-                y += nH;
+                y+=nH;
             });
-
-            // Términos link
-            y += 6;
-            if (y + 14 > BODY_BOTTOM) newPageSolo();
-            doc.setFont('helvetica','normal'); doc.setFontSize(9);
-            doc.setTextColor(...GR_TXT);
-            const lbl = 'Para mayor información revise nuestros términos y condiciones en: ';
-            doc.text(lbl, ML, y);
-            doc.setTextColor(...TEAL);
-            doc.text(politicas?.url_terminos || 'https://www.ssepi.org/terms', ML + doc.getTextWidth(lbl), y);
-
-            // Footer final
+            y+=6; if(y+14>BODY_BOTTOM) newPageSolo();
+            doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...GR_TXT);
+            const lbl='Para mayor información revise nuestros términos y condiciones en: ';
+            doc.text(lbl, ML, y); doc.setTextColor(...TEAL);
+            doc.text(políticas?.url_terminos||'https://www.ssepi.org/terms', ML+doc.getTextWidth(lbl), y);
             drawFooter(pgNum);
-
-            ultimoDocPDF = doc;
-            ultimoNombrePDF = `Politicas_${mod.nombre.replace(/\s+/g,'_')}_${folio}.pdf`;
-
-            if (soloPreview) {
-                abrirVistaPrevia(mod.nombre);
-            } else {
-                doc.save(ultimoNombrePDF);
-                mostrarSuccess(`PDF descargado: ${ultimoNombrePDF}`);
-            }
+            ultimoDocPDF=doc; ultimoNombrePDF=`Politicas_${mod.nombre.replace(/\s+/g,'_')}_${folio}.pdf`;
+            if(soloPreview){ abrirVistaPrevia(mod.nombre); }
+            else { doc.save(ultimoNombrePDF); mostrarSuccess('PDF descargado: '+ultimoNombrePDF); }
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // VISTA PREVIA INLINE
-        // ═══════════════════════════════════════════════════════════════════
-        function abrirVistaPrevia(tituloModulo) {
-            if (!ultimoDocPDF) return;
-            const dataUri = ultimoDocPDF.output('datauristring');
-            document.getElementById('previewFrame').src = dataUri;
-            document.getElementById('previewTitle').textContent = `👁️ Vista previa: ${tituloModulo}`;
+        // ── Vista previa ────────────────────────────────────
+        function abrirVistaPrevia(tituloModulo){
+            if(!ultimoDocPDF) return;
+            document.getElementById('previewFrame').src=ultimoDocPDF.output('datauristring');
+            document.getElementById('previewTitle').textContent='Vista previa: '+tituloModulo;
             document.getElementById('previewModal').classList.add('active');
         }
-
-        function cerrarVistaPrevia() {
+        function cerrarVistaPrevia(){
             document.getElementById('previewModal').classList.remove('active');
-            document.getElementById('previewFrame').src = '';
+            document.getElementById('previewFrame').src='';
+        }
+        function descargarPDFDesdePreview(){
+            if(ultimoDocPDF&&ultimoNombrePDF){ ultimoDocPDF.save(ultimoNombrePDF); mostrarSuccess('PDF descargado: '+ultimoNombrePDF); }
         }
 
-        function descargarPDFDesdePreview() {
-            if (ultimoDocPDF && ultimoNombrePDF) {
-                ultimoDocPDF.save(ultimoNombrePDF);
-                mostrarSuccess(`PDF descargado: ${ultimoNombrePDF}`);
-            }
-        }
-
-        // ═══════════════════════════════════════════════════════════════════
-        // INICIALIZAR
-        // ═══════════════════════════════════════════════════════════════════
-        async function init() {
-            await verificarSesion();
-        }
-
-        // Exponer funciones globalmente
-        window.generarPDF = generarPDF;
-        window.abrirEditor = abrirEditor;
-        window.cerrarEditor = cerrarEditor;
-        window.agregarNota = agregarNota;
-        window.guardarPoliticas = guardarPoliticas;
-        window.abrirVistaPrevia = abrirVistaPrevia;
-        window.cerrarVistaPrevia = cerrarVistaPrevia;
-        window.descargarPDFDesdePreview = descargarPDFDesdePreview;
-
-        // Iniciar
+        // ── Init ────────────────────────────────────────────
+        async function init(){ await verificarSesion(); }
+        window.generarPDF=generarPDF; window.abrirEditor=abrirEditor; window.cerrarEditor=cerrarEditor;
+        window.agregarNota=agregarNota; window.guardarPoliticas=guardarPoliticas;
+        window.abrirVistaPrevia=abrirVistaPrevia; window.cerrarVistaPrevia=cerrarVistaPrevia;
+        window.descargarPDFDesdePreview=descargarPDFDesdePreview;
         init();
     </script>
 </body>
