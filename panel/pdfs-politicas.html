@@ -286,7 +286,7 @@
         <a href="/panel/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
         <a href="/panel/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
         <a href="/panel/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
-        <a href="/panel/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
+        <a href="/panel/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-clipboard-check"></i></span> Proyectos</a>
         <div class="menu-category">COMERCIAL</div>
         <a href="/panel/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
         <a href="/panel/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
@@ -296,9 +296,32 @@
         <a href="/panel/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
         <a href="/panel/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
         <a href="/panel/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+
+        <!-- Análisis (con submenú) -->
+        <a href="/panel/pages/ssepi_analisis.html" class="nav-item nav-item-has-submenu" id="analisisSubmenuToggle">
+            <span class="submenu-toggle">
+                <span class="icon-box"><i class="fas fa-chart-line"></i></span>
+                <span>Análisis</span>
+            </span>
+            <span class="submenu-chevron"><i class="fas fa-chevron-right"></i></span>
+        </a>
+        <ul class="nav-submenu" id="analisisSubmenu">
+            <li><a href="/panel/pages/ssepi_analisis.html" data-module="analisis_general"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis General</a></li>
+            <li><a href="/panel/pages/ssepi_analisis_ventas.html" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a></li>
+            <li><a href="/panel/pages/ssepi_analisis_taller.html" data-module="analisis_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Análisis Laboratorio</a></li>
+            <li><a href="/panel/pages/ssepi_analisis_motores.html" data-module="analisis_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Análisis Motores</a></li>
+            <li><a href="/panel/pages/ssepi_analisis_automatizacion.html" data-module="analisis_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Análisis Automatización</a></li>
+            <li><a href="/panel/pages/ssepi_analisis_proyectos.html" data-module="analisis_proyectos"><span class="icon-box"><i class="fas fa-clipboard-check"></i></span> Análisis Proyectos</a></li>
+            <li><a href="/panel/pages/ssepi_analisis_compras.html" data-module="analisis_compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Análisis Compras</a></li>
+        </ul>
+
         <a href="/panel/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
-        <a href="/panel/pdfs-politicas.html" class="nav-item active" data-module="pdfs_politicas"><span class="icon-box"><i class="fas fa-file-pdf"></i></span> PDFs y Políticas</a>
+
+        <!-- Configuración (solo admin, automatizacion, electronica) -->
         <a href="/panel/pages/ssepi_configuracion.html" class="nav-item" data-module="configuracion"><span class="icon-box"><i class="fas fa-cog"></i></span> Configuración</a>
+
+        <!-- PDFs y Políticas (solo admin/superadmin) -->
+        <a href="/panel/pdfs-politicas.html" class="nav-item active" data-module="pdfs_politicas"><span class="icon-box"><i class="fas fa-file-pdf"></i></span> PDFs y Políticas</a>
     </nav>
 
     <main>
@@ -700,6 +723,14 @@
                 tx('Página '+pn+' / '+totalPgs, PW-MR, FY+12, 'normal', 8, GR_LT, {align:'right'});
             };
 
+            // Helper: rectángulo con borde + relleno (folder tab)
+            const drawFolder=(x,y,w,h,fillColor,borderColor,lw)=>{
+                doc.setFillColor(...fillColor);
+                doc.setDrawColor(...(borderColor||GR_SEP));
+                doc.setLineWidth(lw||0.4);
+                doc.rect(x,y,w,h,'FD');
+            };
+
             // ── DATOS DINÁMICOS ───────────────────────────────
             const cliente   = document.getElementById('inpCliente')?.value || '';
             const direccion = document.getElementById('inpDireccion')?.value || '';
@@ -711,13 +742,15 @@
 
             // ── CUERPO (Página 2) ──────────────────────────────
             doc.addPage(); let pgNum=2, y=drawHeader();
+            const BODY_BOTTOM=FY-4;
+            const newPageSolo=()=>{ drawFooter(pgNum); doc.addPage(); pgNum++; y=drawHeader(); };
 
-            // SOLAPA 1: CLIENTE (fondo gris)
-            const s1padT=4, s1padB=4, s1padL=3;
+            // SOLAPA 1: CLIENTE (fondo gris #F5F5F5 + borde)
+            const s1padT=5, s1padB=5, s1padL=5;
             let s1y=y, s1h=s1padT;
             if(cliente){ tx(cliente, ML+s1padL, s1y+s1h, 'bold', 11, BLK); s1h+=6; }
             if(direccion){
-                const dirLines=doc.splitTextToSize(direccion, 115);
+                const dirLines=doc.splitTextToSize(direccion, 110);
                 dirLines.forEach((l,i)=>tx(l, ML+s1padL, s1y+s1h+i*4.5, 'normal', 9, GR_TXT));
                 s1h+=dirLines.length*4.5+2;
             }
@@ -725,49 +758,47 @@
             s1h+=s1padB;
             const hasLogo = window._clientLogoB64 && (cliente||direccion);
             if(hasLogo){ s1h = Math.max(s1h, s1padT+22+s1padB); }
-            fl(ML, s1y, TW, s1h, GR_HDR);
-            if(hasLogo){ try{ doc.addImage(window._clientLogoB64,'PNG',PW-MR-35,s1y+s1padT,35,22); }catch(e){} }
-            hl(ML, s1y+s1h, TW, GR_SEP, 0.5);
-            y = s1y + s1h;
+            drawFolder(ML, s1y, TW, s1h, GR_HDR, GR_SEP, 0.5);
+            if(hasLogo){ try{ doc.addImage(window._clientLogoB64,'PNG',PW-MR-35-3,s1y+s1padT,35,22); }catch(e){} }
+            y = s1y + s1h + 4;
 
-            // SOLAPA 2: DETALLES DEL SERVICIO (fondo blanco)
-            y += 6;
-            tx('Detalles del Servicio', ML, y, 'bold', 12, TEAL);
-            hl(ML, y+2, 25, TEAL, 0.8);
-            y += 8;
+            // SOLAPA 2: DETALLES DEL SERVICIO (fondo blanco + borde)
+            const s2pad=5;
+            let s2y=y, s2h=s2pad+2;
+            tx('Detalles del Servicio', ML+s2pad, s2y+s2h, 'bold', 12, TEAL);
+            hl(ML+s2pad, s2y+s2h+2, 25, TEAL, 0.8);
+            s2h+=10;
             const drawPair=(lab1,val1,lab2,val2,yy)=>{
-                const colW=TW/2-4;
-                if(lab1){ tx(lab1, ML, yy, 'normal', 9, GR_LT); tx(val1, ML+48, yy, 'bold', 10, BLK); }
-                if(lab2){ tx(lab2, ML+colW+4, yy, 'normal', 9, GR_LT); tx(val2, ML+colW+52, yy, 'bold', 10, BLK); }
-                return yy+6;
+                const colW=TW/2-8;
+                if(lab1){ tx(lab1, ML+s2pad, yy, 'normal', 9, GR_LT); tx(val1, ML+s2pad+50, yy, 'bold', 10, BLK); }
+                if(lab2){ tx(lab2, ML+s2pad+colW+4, yy, 'normal', 9, GR_LT); tx(val2, ML+s2pad+colW+56, yy, 'bold', 10, BLK); }
+                return yy+6.5;
             };
-            if(tiempoEntrega||garantia){ y=drawPair('Tiempo de entrega:',tiempoEntrega,'Garantía:',garantia,y); }
-            if(moneda||servicio){ y=drawPair('Moneda:',moneda,'Servicio:',servicio,y); }
-            hl(ML, y+2, TW, TEAL, 0.8);
-            y += 6;
+            if(tiempoEntrega||garantia){ y=drawPair('Tiempo de entrega:',tiempoEntrega,'Garantía:',garantia,s2y+s2h); s2h+=6.5; }
+            if(moneda||servicio){ y=drawPair('Moneda:',moneda,'Servicio:',servicio,s2y+s2h); s2h+=6.5; }
+            s2h+=s2pad;
+            if(s2h<28) s2h=28;
+            drawFolder(ML, s2y, TW, s2h, WHT, GR_SEP, 0.5);
+            y = s2y + s2h + 4;
 
-            // SOLAPA 3: NOTAS IMPORTANTES (fondo #EFF6F6)
+            // SOLAPA 3: NOTAS IMPORTANTES (fondo #EFF6F6 + borde)
             const s3pad=5;
-            const s3y=y, BODY_BOTTOM=FY-4;
-            const newPageSolo=()=>{ drawFooter(pgNum); doc.addPage(); pgNum++; y=drawHeader()+s3pad; };
+            let s3y=y;
             const parseNota=(str,idx)=>{ const n=(idx+1)+'.', m=str.match(/^(.*?)\*\*(.+?)\*\*(.*)$/); return m?{n,pre:m[1],b:m[2],post:m[3]}:{n,pre:str,b:'',post:''}; };
             const NL=5.5, NMAX=TW-12;
             const notas=(políticas?.notas_importantes||[]).map((n,i)=>parseNota(n,i));
-            // Medir altura total primero
-            let measureY = s3y + s3pad;
-            let s3h = s3pad + 6; // título
-            if(notas.length===0){ s3h += 10; }
+            // Medir altura primero
+            let s3h=s3pad+6; // título
+            if(notas.length===0){ s3h+=10; }
             notas.forEach(nota=>{
                 const full=(nota.pre||'')+(nota.b||'')+(nota.post||'');
                 const lines=doc.splitTextToSize(full,NMAX);
-                s3h += lines.length*NL+2;
+                s3h+=lines.length*NL+2;
             });
-            s3h += 6 + 4; // espacio + línea final términos
-            if(s3y + s3h > BODY_BOTTOM){ newPageSolo(); }
-            // Dibujar fondo
-            fl(ML, y, TW, s3h, FOLDER);
-            // Dibujar texto encima
-            y += s3pad;
+            s3h+=6+4; // espacio + línea final
+            if(s3y+s3h>BODY_BOTTOM){ newPageSolo(); s3y=y; }
+            drawFolder(ML, s3y, TW, s3h, FOLDER, GR_SEP, 0.5);
+            y=s3y+s3pad;
             tx('Notas Importantes', ML+s3pad, y, 'bold', 14, BLK); y+=6;
             if(notas.length===0){ tx('No hay políticas configuradas.', ML+10, y+4, 'italic', 10, [150,150,150]); y+=10; }
             notas.forEach(nota=>{
@@ -775,7 +806,7 @@
                 const full=(nota.pre||'')+(nota.b||'')+(nota.post||'');
                 const lines=doc.splitTextToSize(full,NMAX);
                 const nH=lines.length*NL+2;
-                if(y+nH>BODY_BOTTOM){ drawFooter(pgNum); doc.addPage(); pgNum++; y=drawHeader()+s3pad; fl(ML, y-s3pad, TW, s3h, FOLDER); }
+                if(y+nH>BODY_BOTTOM){ drawFooter(pgNum); doc.addPage(); pgNum++; y=drawHeader()+s3pad; s3y=y-s3pad; drawFolder(ML, s3y, TW, s3h, FOLDER, GR_SEP, 0.5); }
                 doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...GR_TXT); doc.text(nota.n, ML+s3pad, y+4);
                 if(!nota.b){ lines.forEach((l,i)=>doc.text(l,ML+10,y+4+i*NL)); }
                 else {
