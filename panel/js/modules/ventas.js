@@ -2645,14 +2645,15 @@ const VentasModule = (function() {
                 .from('clientes_tabulador')
                 .select('cliente_nombre, km_ida, horas_invertidas, activo')
                 .order('cliente_nombre');
-            if (error || !data) return [];
-            return data
-                .filter(c => c.activo !== false)
-                .map(c => ({
-                    nombre: c.cliente_nombre,
-                    km: Number(c.km_ida) || 0,
-                    horas: Number(c.horas_invertidas) || 0
-                }));
+            if (error) { console.error('[Ventas] Error Supabase clientes_tabulador:', error); return []; }
+            if (!data) { console.warn('[Ventas] clientes_tabulador: sin datos'); return []; }
+            const filtrados = data.filter(c => c.activo !== false).map(c => ({
+                nombre: c.cliente_nombre,
+                km: Number(c.km_ida) || 0,
+                horas: Number(c.horas_invertidas) || 0
+            }));
+            console.log('[Ventas] clientes_tabulador cargados:', filtrados.length, filtrados.slice(0,3));
+            return filtrados;
         } catch (e) {
             console.warn('[Ventas] Error cargando clientes:', e);
             return [];
