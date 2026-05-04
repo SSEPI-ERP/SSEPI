@@ -2263,13 +2263,14 @@ const VentasModule = (function() {
         const esAutomatizacion = ventasWizardCerebro?.departamento === 'Automatización' ||
                                   ventasWizardCerebro?.departamento === 'Proyectos';
 
-        // Calcular total final para todos
-        const totalFinal = CostosEngine.calcularPrecioFinal({
+        // Calcular desglose completo de costos
+        const desglose = CostosEngine.calcularPrecioFinal({
             km: Number(cliente.km) || 0,
             horasViaje: Number(cliente.horas) || 0,
             horasTaller: horasEstimadas,
             costoRefacciones: 0
-        }).total;
+        });
+        const totalFinal = desglose.total;
 
         // VISTA SIMPLIFICADA - Solo TOTAL FINAL para no admins
         if (!esAdmin) {
@@ -2396,7 +2397,106 @@ const VentasModule = (function() {
             `;
         }
 
+        // ── SECCIÓN: Logística y Viáticos ─────────────────────────
         html += `
+            <div class="calculadora-section" style="margin-top: 20px;">
+                <div class="calculadora-titulo" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+                    <i class="fas fa-gas-pump"></i> Logística y Viáticos
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                    <div>
+                        <label style="font-size:12px; color:var(--text-secondary);">Kilómetros (KM)</label>
+                        <input type="number" id="inpLogisticaKm" value="${cliente.km}" min="0" step="0.1" style="width:100%; padding:8px;" oninput="ventasModule._refreshLogisticaFromInputs()">
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:var(--text-secondary);">Horas de viaje</label>
+                        <input type="number" id="inpLogisticaHoras" value="${cliente.horas}" min="0" step="0.5" style="width:100%; padding:8px;" oninput="ventasModule._refreshLogisticaFromInputs()">
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px;">
+                    <div style="background:var(--bg-hover); padding:10px; border-radius:8px; text-align:center;">
+                        <div style="font-size:11px; color:var(--text-muted);">Gasolina</div>
+                        <div id="lblLogisticaGasolina" style="font-size:16px; font-weight:700; color:var(--c-ventas);">$${gasolina.toFixed(2)}</div>
+                    </div>
+                    <div style="background:var(--bg-hover); padding:10px; border-radius:8px; text-align:center;">
+                        <div style="font-size:11px; color:var(--text-muted);">Traslado técnico</div>
+                        <div id="lblLogisticaTraslado" style="font-size:16px; font-weight:700; color:var(--c-ventas);">$${traslado.toFixed(2)}</div>
+                    </div>
+                    <div style="background:var(--bg-hover); padding:10px; border-radius:8px; text-align:center;">
+                        <div style="font-size:11px; color:var(--text-muted);">Gas + Traslado</div>
+                        <div id="valGasPlusSales" style="font-size:16px; font-weight:700; color:var(--c-ventas);">$${gasolinaMasTraslado.toFixed(2)}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="calculadora-section" style="margin-top: 20px;">
+                <div class="calculadora-titulo" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white;">
+                    <i class="fas fa-wrench"></i> Taller y Gastos
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                    <div>
+                        <label style="font-size:12px; color:var(--text-secondary);">Horas técnicas estimadas</label>
+                        <input type="number" id="inpTechHours" value="${horasEstimadas}" min="0" step="0.5" style="width:100%; padding:8px;" oninput="ventasModule._recalcular()">
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:var(--text-secondary);">Costo refacciones ($)</label>
+                        <input type="number" id="inpParts" value="0" min="0" step="0.01" style="width:100%; padding:8px;" oninput="ventasModule._recalcular()">
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px;">
+                    <div style="background:var(--bg-hover); padding:10px; border-radius:8px; text-align:center;">
+                        <div style="font-size:11px; color:var(--text-muted);">Mano de obra</div>
+                        <div style="font-size:16px; font-weight:700; color:var(--c-ventas);">$${manoObraBase.toFixed(2)}</div>
+                    </div>
+                    <div style="background:var(--bg-hover); padding:10px; border-radius:8px; text-align:center;">
+                        <div style="font-size:11px; color:var(--text-muted);">Gastos fijos</div>
+                        <div id="valFixedCosts" style="font-size:16px; font-weight:700; color:var(--c-ventas);">$${gastosFijosBase.toFixed(2)}</div>
+                    </div>
+                    <div style="background:var(--bg-hover); padding:10px; border-radius:8px; text-align:center;">
+                        <div style="font-size:11px; color:var(--text-muted);">Camioneta</div>
+                        <div id="valTruck" style="font-size:16px; font-weight:700; color:var(--c-ventas);">$${camionetaBase.toFixed(2)}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="calculadora-section" style="margin-top: 20px;">
+                <div class="calculadora-titulo" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                    <i class="fas fa-coins"></i> Totales y Margen
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                    <div>
+                        <label style="font-size:12px; color:var(--text-secondary);">% Utilidad</label>
+                        <input type="number" id="inpUtilidadPct" value="${CostosEngine.CONFIG?.utilidad || 40}" min="0" step="1" style="width:100%; padding:8px;" oninput="ventasModule._recalcular()">
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:var(--text-secondary);">% Crédito</label>
+                        <input type="number" id="inpCreditoPct" value="${CostosEngine.CONFIG?.credito || 3}" min="0" step="0.1" style="width:100%; padding:8px;" oninput="ventasModule._recalcular()">
+                    </div>
+                </div>
+                <div style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span style="font-size:12px; color:var(--text-muted);">Gastos generales</span>
+                        <span id="resGeneralExpenses" style="font-weight:700;">$${desglose.gastosGenerales.toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span style="font-size:12px; color:var(--text-muted);">Con utilidad</span>
+                        <span id="resUtility" style="font-weight:700;">$${desglose.precioConUtilidad.toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span style="font-size:12px; color:var(--text-muted);">Con crédito</span>
+                        <span id="resCredit" style="font-weight:700;">$${desglose.precioAntesIVA.toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span style="font-size:12px; color:var(--text-muted);">IVA ${CostosEngine.CONFIG?.iva || 16}%</span>
+                        <span id="resIVA" style="font-weight:700;">$${desglose.iva.toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:8px; border-top: 2px solid var(--c-ventas); padding-top:8px;">
+                        <span style="font-size:14px; font-weight:700;">TOTAL</span>
+                        <span id="resTotal" style="font-size:14px; font-weight:700; color:var(--c-ventas);">$${totalFinal.toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
+
             <button type="button" class="btn btn-sm btn-primary" onclick="ventasModule._abrirEditorCostos()" style="margin-top: 16px; width: 100%; background: linear-gradient(135deg, #6b7280, #4b5563);">
                 <i class="fas fa-table"></i> Ver Tablas de Costos y Gastos Fijos
             </button>
