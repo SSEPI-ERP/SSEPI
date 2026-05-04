@@ -660,33 +660,33 @@
             const doc = new jsPDF({ unit:'mm', format:'a4' });
             const PW=210, PH=297, ML=15, MR=15, TW=PW-ML-MR;
             const TEAL=[23,165,152], GR_SEP=[220,220,220], GR_TXT=[51,51,51], GR_LT=[130,130,130], BLK=[0,0,0], WHT=[255,255,255];
+            const FOLDER=[239,246,246], GR_HDR=[245,245,245];
             const hl=(x,y,w,c,lw)=>{ doc.setDrawColor(...(c||GR_SEP)); doc.setLineWidth(lw||0.3); doc.line(x,y,x+w,y); };
             const fl=(x,y,w,h,c)=>{ doc.setFillColor(...c); doc.rect(x,y,w,h,'F'); };
             const tx=(t,x,y,fnt,sz,c,opts)=>{ doc.setFont('helvetica',fnt||'normal'); doc.setFontSize(sz||9); doc.setTextColor(...(c||GR_TXT)); doc.text(String(t||''),x,y,opts||{}); };
-            const folio = 'POL-'+Date.now().toString().slice(-6);
+            const folio = document.getElementById('inpFolio')?.value || ('POL-'+Date.now().toString().slice(-6));
 
             // ── PORTADA (Página 1) ─────────────────────────────
             fl(0,0,PW,PH,WHT);
-            tx('Políticas y Condiciones del Servicio', PW/2, 90, 'bold', 18, TEAL, {align:'center'});
-            tx(mod.nombre, PW/2, 105, 'bold', 14, GR_TXT, {align:'center'});
-            tx('Folio: '+folio, PW/2, 118, 'normal', 10, GR_LT, {align:'center'});
-            hl(PW/2-50, 128, 100, GR_SEP, 0.3);
-            const yCorp = PH - 55;
-            tx('SSEPI', PW/2, yCorp, 'bold', 16, BLK, {align:'center'});
-            tx('Soluciones de Servicios Enterprise', PW/2, yCorp+8, 'normal', 10, TEAL, {align:'center'});
-            tx('Bulevard Zodiaco 336, Los Limones, C.P. 37448, León, Guanajuato, México', PW/2, yCorp+16, 'normal', 9, GR_LT, {align:'center'});
-            tx('ventas@ssepi.org  |  www.ssepi.org', PW/2, yCorp+23, 'normal', 9, GR_LT, {align:'center'});
+            tx('SSEPI', PW/2, 70, 'bold', 22, TEAL, {align:'center'});
+            tx('Soluciones de Servicios Enterprise', PW/2, 78, 'normal', 11, GR_LT, {align:'center'});
+            tx('Políticas y Condiciones del Servicio', PW/2, 105, 'bold', 20, BLK, {align:'center'});
+            tx(mod.nombre, PW/2, 120, 'bold', 14, GR_TXT, {align:'center'});
+            hl(PW/2-40, 130, 80, TEAL, 1.2);
+            tx('Folio: '+folio, PW/2, 142, 'normal', 11, BLK, {align:'center'});
+            const yCorp = PH - 50;
+            tx('Bulevard Zodiaco 336, Los Limones, C.P. 37448, León, Guanajuato, México', PW/2, yCorp, 'normal', 9, GR_LT, {align:'center'});
+            tx('ventas@ssepi.org  |  www.ssepi.org', PW/2, yCorp+7, 'normal', 9, GR_LT, {align:'center'});
 
             // ── HEADER REUTILIZABLE (Página 2+) ────────────────
             const FY=PH-16;
             const drawHeader=()=>{
                 const yH = 12;
-                tx('SSEPI', ML, yH, 'bold', 10, TEAL);
-                tx('Bulevard Zodiaco 336, Los Limones, C.P. 37448, León, Guanajuato, México', ML, yH+5, 'normal', 8, GR_LT);
-                tx('Conectamos ingeniería, tecnología y productividad industrial', ML, yH+10, 'italic', 8, TEAL);
-                tx('Num. de póliza '+folio, PW-MR, yH+5, 'normal', 9, GR_LT, {align:'right'});
-                hl(ML, yH+14, TW, GR_SEP, 0.3);
-                return yH + 20;
+                tx('SSEPI', ML, yH, 'bold', 9, GR_LT);
+                tx('Folio: '+folio, PW-MR, yH, 'normal', 9, TEAL, {align:'right'});
+                tx('Conectamos ingeniería, tecnología y productividad industrial', PW/2, yH+5, 'italic', 8, GR_LT, {align:'center'});
+                hl(ML, yH+8, TW, GR_SEP, 0.3);
+                return yH + 13;
             };
 
             // ── FOOTER REUTILIZABLE ────────────────────────────
@@ -700,31 +700,83 @@
                 tx('Página '+pn+' / '+totalPgs, PW-MR, FY+12, 'normal', 8, GR_LT, {align:'right'});
             };
 
+            // ── DATOS DINÁMICOS ───────────────────────────────
+            const cliente   = document.getElementById('inpCliente')?.value || '';
+            const direccion = document.getElementById('inpDireccion')?.value || '';
+            const rfc       = document.getElementById('inpRFC')?.value || '';
+            const tiempoEntrega = document.getElementById('inpTiempoEntrega')?.value || políticas?.tiempo_entrega || '';
+            const garantia  = document.getElementById('inpGarantia')?.value || (políticas?.garantia_dias ? políticas.garantia_dias+' días' : '');
+            const moneda    = document.getElementById('inpMoneda')?.value || políticas?.moneda || '';
+            const servicio  = document.getElementById('inpServicio')?.value || mod.nombre || '';
+
             // ── CUERPO (Página 2) ──────────────────────────────
             doc.addPage(); let pgNum=2, y=drawHeader();
-            tx(mod.nombre, ML, y+4, 'bold', 12, BLK); y+=10;
-            tx('Detalles del Servicio', ML, y, 'bold', 12, BLK); y+=8;
-            if(políticas?.tiempo_entrega){ tx('Tiempo de entrega:', ML, y, 'normal', 10, GR_TXT); tx(políticas.tiempo_entrega, ML+50, y, 'bold', 10, BLK); y+=6; }
-            if(políticas?.garantia_dias>0){ tx('Garantía:', ML, y, 'normal', 10, GR_TXT); tx(políticas.garantia_dias+' días', ML+50, y, 'bold', 10, BLK); y+=6; }
-            if(políticas?.moneda){ tx('Moneda:', ML, y, 'normal', 10, GR_TXT); tx(políticas.moneda, ML+50, y, 'bold', 10, BLK); y+=6; }
-            y+=4; hl(ML,y,TW,GR_SEP,0.4); y+=10;
 
-            // Notas Importantes
-            const BODY_BOTTOM=FY-4;
-            const newPageSolo=()=>{ drawFooter(pgNum); doc.addPage(); pgNum++; y=drawHeader(); };
-            if(y+16>BODY_BOTTOM) newPageSolo();
-            tx('Notas Importantes', ML+4, y, 'bold', 14, BLK); y+=10;
+            // SOLAPA 1: CLIENTE (fondo gris)
+            const s1padT=4, s1padB=4, s1padL=3;
+            let s1y=y, s1h=s1padT;
+            if(cliente){ tx(cliente, ML+s1padL, s1y+s1h, 'bold', 11, BLK); s1h+=6; }
+            if(direccion){
+                const dirLines=doc.splitTextToSize(direccion, 115);
+                dirLines.forEach((l,i)=>tx(l, ML+s1padL, s1y+s1h+i*4.5, 'normal', 9, GR_TXT));
+                s1h+=dirLines.length*4.5+2;
+            }
+            if(rfc){ tx('RFC: '+rfc, ML+s1padL, s1y+s1h, 'normal', 9, GR_TXT); s1h+=5; }
+            s1h+=s1padB;
+            const hasLogo = window._clientLogoB64 && (cliente||direccion);
+            if(hasLogo){ s1h = Math.max(s1h, s1padT+22+s1padB); }
+            fl(ML, s1y, TW, s1h, GR_HDR);
+            if(hasLogo){ try{ doc.addImage(window._clientLogoB64,'PNG',PW-MR-35,s1y+s1padT,35,22); }catch(e){} }
+            hl(ML, s1y+s1h, TW, GR_SEP, 0.5);
+            y = s1y + s1h;
+
+            // SOLAPA 2: DETALLES DEL SERVICIO (fondo blanco)
+            y += 6;
+            tx('Detalles del Servicio', ML, y, 'bold', 12, TEAL);
+            hl(ML, y+2, 25, TEAL, 0.8);
+            y += 8;
+            const drawPair=(lab1,val1,lab2,val2,yy)=>{
+                const colW=TW/2-4;
+                if(lab1){ tx(lab1, ML, yy, 'normal', 9, GR_LT); tx(val1, ML+48, yy, 'bold', 10, BLK); }
+                if(lab2){ tx(lab2, ML+colW+4, yy, 'normal', 9, GR_LT); tx(val2, ML+colW+52, yy, 'bold', 10, BLK); }
+                return yy+6;
+            };
+            if(tiempoEntrega||garantia){ y=drawPair('Tiempo de entrega:',tiempoEntrega,'Garantía:',garantia,y); }
+            if(moneda||servicio){ y=drawPair('Moneda:',moneda,'Servicio:',servicio,y); }
+            hl(ML, y+2, TW, TEAL, 0.8);
+            y += 6;
+
+            // SOLAPA 3: NOTAS IMPORTANTES (fondo #EFF6F6)
+            const s3pad=5;
+            const s3y=y, BODY_BOTTOM=FY-4;
+            const newPageSolo=()=>{ drawFooter(pgNum); doc.addPage(); pgNum++; y=drawHeader()+s3pad; };
             const parseNota=(str,idx)=>{ const n=(idx+1)+'.', m=str.match(/^(.*?)\*\*(.+?)\*\*(.*)$/); return m?{n,pre:m[1],b:m[2],post:m[3]}:{n,pre:str,b:'',post:''}; };
-            const NL=5.0, NMAX=TW-12;
+            const NL=5.5, NMAX=TW-12;
             const notas=(políticas?.notas_importantes||[]).map((n,i)=>parseNota(n,i));
+            // Medir altura total primero
+            let measureY = s3y + s3pad;
+            let s3h = s3pad + 6; // título
+            if(notas.length===0){ s3h += 10; }
+            notas.forEach(nota=>{
+                const full=(nota.pre||'')+(nota.b||'')+(nota.post||'');
+                const lines=doc.splitTextToSize(full,NMAX);
+                s3h += lines.length*NL+2;
+            });
+            s3h += 6 + 4; // espacio + línea final términos
+            if(s3y + s3h > BODY_BOTTOM){ newPageSolo(); }
+            // Dibujar fondo
+            fl(ML, y, TW, s3h, FOLDER);
+            // Dibujar texto encima
+            y += s3pad;
+            tx('Notas Importantes', ML+s3pad, y, 'bold', 14, BLK); y+=6;
             if(notas.length===0){ tx('No hay políticas configuradas.', ML+10, y+4, 'italic', 10, [150,150,150]); y+=10; }
             notas.forEach(nota=>{
                 doc.setFont('helvetica','normal'); doc.setFontSize(9);
                 const full=(nota.pre||'')+(nota.b||'')+(nota.post||'');
                 const lines=doc.splitTextToSize(full,NMAX);
                 const nH=lines.length*NL+2;
-                if(y+nH>BODY_BOTTOM) newPageSolo();
-                doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...GR_TXT); doc.text(nota.n, ML+2, y+4);
+                if(y+nH>BODY_BOTTOM){ drawFooter(pgNum); doc.addPage(); pgNum++; y=drawHeader()+s3pad; fl(ML, y-s3pad, TW, s3h, FOLDER); }
+                doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...GR_TXT); doc.text(nota.n, ML+s3pad, y+4);
                 if(!nota.b){ lines.forEach((l,i)=>doc.text(l,ML+10,y+4+i*NL)); }
                 else {
                     let cx=ML+10; const ly=y+4;
@@ -734,11 +786,10 @@
                 }
                 y+=nH;
             });
-            y+=6; if(y+14>BODY_BOTTOM) newPageSolo();
-            doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...GR_TXT);
-            const lbl='Para mayor información revise nuestros términos y condiciones en: ';
-            doc.text(lbl, ML, y); doc.setTextColor(...TEAL);
-            doc.text(políticas?.url_terminos||'https://www.ssepi.org/terms', ML+doc.getTextWidth(lbl), y);
+            y+=6;
+            doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...GR_LT);
+            doc.text('Para mayor información revise nuestros términos y condiciones en: '+ (políticas?.url_terminos||'https://www.ssepi.org/terms'), ML+s3pad, y);
+
             drawFooter(pgNum);
             ultimoDocPDF=doc; ultimoNombrePDF=`Politicas_${mod.nombre.replace(/\s+/g,'_')}_${folio}.pdf`;
             if(soloPreview){ abrirVistaPrevia(mod.nombre); }
