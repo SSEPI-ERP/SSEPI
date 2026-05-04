@@ -9,429 +9,507 @@
     <script src="/panel/js/core/supabase-config.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
+        :root {
+            --teal: #17a598;
+            --teal-dark: #0d9488;
+            --teal-light: #e8f6f4;
+            --bg-dark: #0f172a;
+            --bg-card: rgba(255,255,255,0.97);
+            --glass: rgba(255,255,255,0.06);
+            --glass-border: rgba(255,255,255,0.1);
+            --shadow-soft: 0 8px 32px rgba(0,0,0,0.25);
+            --shadow-hover: 0 20px 60px rgba(0,0,0,0.35);
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --radius-sm: 10px;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: radial-gradient(ellipse at 0% 0%, #16213e 0%, #0f172a 50%, #1a1a2e 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 24px;
+            color: #333;
+            -webkit-font-smoothing: antialiased;
         }
         .container {
-            max-width: 1400px;
+            max-width: 1440px;
             margin: 0 auto;
         }
+
+        /* Header */
         header {
-            text-align: center;
-            padding: 30px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 16px;
-            margin-bottom: 30px;
+            position: relative;
+            padding: 36px 40px;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            margin-bottom: 36px;
+            overflow: hidden;
+        }
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(23,165,152,0.15) 0%, transparent 70%);
+            pointer-events: none;
         }
         header h1 {
-            color: #17a598;
-            font-size: 2.5rem;
-            margin-bottom: 10px;
+            color: #fff;
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
         }
+        header h1 span { color: var(--teal); }
         header p {
-            color: #828282;
-            font-size: 1.1rem;
+            color: rgba(255,255,255,0.55);
+            font-size: 1.05rem;
+            font-weight: 400;
         }
+        .header-actions { display: flex; gap: 12px; align-items: center; }
+
+        /* Grid */
         .modules-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
+            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+            gap: 28px;
+            margin-bottom: 48px;
         }
+        @media (max-width: 640px) {
+            .modules-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Card */
         .module-card {
-            background: rgba(255,255,255,0.95);
-            border-radius: 16px;
-            padding: 25px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            transition: transform 0.3s ease;
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 0;
+            box-shadow: var(--shadow-soft);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(0,0,0,0.04);
+            overflow: hidden;
+            position: relative;
+        }
+        .module-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--teal), var(--teal-dark));
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
         .module-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-6px) scale(1.01);
+            box-shadow: var(--shadow-hover);
         }
+        .module-card:hover::after { opacity: 1; }
+
+        .module-card-inner { padding: 28px; }
         .module-header {
             display: flex;
-            align-items: center;
-            gap: 15px;
+            align-items: flex-start;
+            gap: 18px;
             margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
         }
         .module-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
+            width: 60px;
+            height: 60px;
+            min-width: 60px;
+            border-radius: var(--radius-md);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 28px;
             color: white;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
         }
-        .module-title {
-            flex: 1;
+        .module-icon::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 60%);
+            border-radius: inherit;
         }
+        .module-title { flex: 1; }
         .module-title h2 {
-            font-size: 1.4rem;
-            color: #333;
-            margin-bottom: 5px;
+            font-size: 1.35rem;
+            color: #1a1a2e;
+            margin-bottom: 6px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
         }
         .module-title .tiempo-entrega {
-            font-size: 0.9rem;
-            color: #17a598;
-            font-weight: 500;
+            font-size: 0.88rem;
+            color: var(--teal);
+            font-weight: 600;
+            background: var(--teal-light);
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
         }
-        .politicas-section {
-            margin-bottom: 20px;
+
+        .garantia-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            color: #7c3a00;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(252,182,159,0.3);
         }
+
+        .politicas-section { margin-bottom: 18px; }
         .politicas-section h3 {
-            font-size: 1rem;
-            color: #17a598;
-            margin-bottom: 12px;
+            font-size: 0.95rem;
+            color: var(--teal);
+            margin-bottom: 14px;
             display: flex;
             align-items: center;
             gap: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .nota-item {
-            padding: 10px 12px;
-            background: #f8f9fa;
-            border-radius: 8px;
+            padding: 12px 14px;
+            background: #f8fafc;
+            border-radius: var(--radius-sm);
             margin-bottom: 8px;
             font-size: 0.9rem;
-            color: #444;
-            border-left: 3px solid #17a598;
+            color: #374151;
+            border-left: 3px solid var(--teal);
+            line-height: 1.5;
+            transition: background 0.2s;
         }
-        .nota-item strong {
-            color: #17a598;
-        }
-        .garantia-badge {
+        .nota-item:hover { background: #f1f5f9; }
+        .nota-item strong { color: var(--teal-dark); font-weight: 700; }
+        .nota-item .nota-num {
             display: inline-block;
-            padding: 6px 12px;
-            background: linear-gradient(135deg, #17a598, #0d9488);
+            min-width: 22px;
+            height: 22px;
+            line-height: 22px;
+            text-align: center;
+            background: var(--teal);
             color: white;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 15px;
+            border-radius: 50%;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-right: 8px;
+            vertical-align: middle;
         }
+        .nota-empty {
+            color: #9ca3af;
+            font-style: italic;
+            padding: 12px;
+            text-align: center;
+        }
+
         .pdf-actions {
             display: flex;
             gap: 10px;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 2px solid #f0f0f0;
+            margin-top: 4px;
+            padding-top: 18px;
+            border-top: 1px solid #e5e7eb;
         }
+
+        /* Buttons */
         .btn {
             flex: 1;
             padding: 12px 16px;
             border: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 600;
+            border-radius: var(--radius-sm);
+            font-size: 0.88rem;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
+            transition: all 0.25s ease;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
         }
         .btn-primary {
-            background: linear-gradient(135deg, #17a598, #0d9488);
+            background: linear-gradient(135deg, var(--teal), var(--teal-dark));
             color: white;
+            box-shadow: 0 4px 14px rgba(23,165,152,0.35);
         }
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(23, 165, 152, 0.4);
+            box-shadow: 0 6px 20px rgba(23,165,152,0.45);
         }
         .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
         }
         .btn-secondary:hover {
-            background: #e0e0e0;
+            background: #e2e8f0;
+            border-color: #cbd5e1;
         }
         .btn-edit {
-            background: #2196f3;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
             color: white;
+            box-shadow: 0 4px 14px rgba(59,130,246,0.3);
         }
         .btn-edit:hover {
-            background: #1976d2;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59,130,246,0.4);
         }
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #828282;
+        .btn-save {
+            background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+            color: white;
         }
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f0f0f0;
-            border-top-color: #17a598;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .error-msg {
-            background: #fee;
-            color: #c00;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .success-msg {
-            background: #efe;
-            color: #060;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+        .btn-cancel {
+            background: #f1f5f9;
+            color: #475569;
         }
 
-        /* Login Screen */
-        body.login-active {
-            overflow: hidden;
-        }
-        .login-screen {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-screen.active {
-            display: flex;
-        }
-        .login-box {
-            background: white;
-            border-radius: 16px;
-            padding: 40px;
-            max-width: 400px;
-            width: 90%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        }
-        .login-box h2 {
-            color: #17a598;
+        /* Loading */
+        .loading {
             text-align: center;
-            margin-bottom: 10px;
-            font-size: 1.8rem;
+            padding: 60px 20px;
+            color: rgba(255,255,255,0.6);
         }
-        .login-box p {
-            text-align: center;
-            color: #828282;
-            margin-bottom: 30px;
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: var(--teal);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+            margin: 0 auto 20px;
         }
-        .login-form {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .error-msg {
+            background: linear-gradient(135deg, #fef2f2, #fee2e2);
+            color: #991b1b;
+            padding: 16px 20px;
+            border-radius: var(--radius-md);
+            margin-bottom: 24px;
+            border: 1px solid #fecaca;
+            font-weight: 500;
         }
-        .login-form input {
-            padding: 14px 18px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
+        .success-msg {
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            color: #166534;
+            padding: 16px 20px;
+            border-radius: var(--radius-md);
+            margin-bottom: 24px;
+            border: 1px solid #bbf7d0;
+            font-weight: 500;
         }
-        .login-form input:focus {
-            outline: none;
-            border-color: #17a598;
-        }
-        .login-error {
-            background: #fee;
-            color: #c00;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            display: none;
-        }
+
+        /* Login Screen (hidden) */
+        .login-screen { display: none !important; }
 
         /* Modal Editor */
         .modal-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.65);
+            backdrop-filter: blur(8px);
             z-index: 1000;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
-        .modal-overlay.active {
-            display: flex;
-        }
+        .modal-overlay.active { display: flex; }
         .modal-content {
             background: white;
-            border-radius: 16px;
-            padding: 30px;
-            max-width: 700px;
-            width: 90%;
-            max-height: 80vh;
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            max-width: 720px;
+            width: 100%;
+            max-height: 85vh;
             overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            box-shadow: var(--shadow-hover);
+            animation: modalIn 0.3s ease;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #f1f5f9;
         }
         .modal-header h2 {
-            color: #333;
-            font-size: 1.5rem;
+            color: #1a1a2e;
+            font-size: 1.4rem;
+            font-weight: 700;
         }
         .modal-close {
-            background: none;
+            background: #f1f5f9;
             border: none;
-            font-size: 24px;
+            font-size: 22px;
             cursor: pointer;
-            color: #888;
+            color: #64748b;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
         }
-        .modal-close:hover {
-            color: #333;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
+        .modal-close:hover { background: #e2e8f0; color: #334155; }
+        .form-group { margin-bottom: 22px; }
         .form-group label {
             display: block;
-            font-weight: 600;
-            color: #333;
+            font-weight: 700;
+            color: #374151;
             margin-bottom: 8px;
+            font-size: 0.9rem;
         }
         .form-group input,
         .form-group textarea {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
+            padding: 12px 14px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: var(--radius-sm);
             font-size: 14px;
             font-family: inherit;
-        }
-        .form-group textarea {
-            min-height: 100px;
-            resize: vertical;
+            background: #fafbfc;
+            transition: all 0.2s;
         }
         .form-group input:focus,
         .form-group textarea:focus {
             outline: none;
-            border-color: #17a598;
-            box-shadow: 0 0 0 3px rgba(23, 165, 152, 0.1);
+            border-color: var(--teal);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(23,165,152,0.1);
         }
+        .form-group textarea { min-height: 80px; resize: vertical; }
         .nota-editor-item {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
+            background: #f8fafc;
+            padding: 14px;
+            border-radius: var(--radius-sm);
             margin-bottom: 10px;
+            border: 1px solid #e2e8f0;
         }
         .nota-editor-item textarea {
             width: 100%;
-            min-height: 60px;
+            min-height: 56px;
             padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
             font-size: 14px;
+            background: white;
         }
         .modal-actions {
             display: flex;
-            gap: 10px;
-            margin-top: 20px;
+            gap: 12px;
+            margin-top: 24px;
             padding-top: 20px;
-            border-top: 2px solid #f0f0f0;
-        }
-        .btn-save {
-            background: linear-gradient(135deg, #17a598, #0d9488);
-            color: white;
-        }
-        .btn-cancel {
-            background: #e0e0e0;
-            color: #333;
+            border-top: 2px solid #f1f5f9;
         }
 
-        /* Modal Vista Previa PDF */
+        /* Preview Modal */
         .preview-overlay {
             display: none;
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
             background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
             z-index: 2000;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
-        .preview-overlay.active {
-            display: flex;
-        }
+        .preview-overlay.active { display: flex; }
         .preview-box {
             background: white;
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             width: 90%;
-            max-width: 900px;
+            max-width: 960px;
             height: 90vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            box-shadow: var(--shadow-hover);
+            animation: modalIn 0.3s ease;
         }
         .preview-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 20px;
-            background: #1a1a2e;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
             color: white;
         }
-        .preview-header h3 {
-            margin: 0;
-            font-size: 1.1rem;
-        }
-        .preview-frame {
-            flex: 1;
-            border: none;
-            width: 100%;
-        }
+        .preview-header h3 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+        .preview-frame { flex: 1; border: none; width: 100%; background: #f8fafc; }
         .preview-actions {
             display: flex;
-            gap: 10px;
-            padding: 12px 20px;
-            background: #f8f9fa;
-            border-top: 1px solid #e0e0e0;
+            gap: 12px;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
         }
 
+        /* Footer */
         footer {
             text-align: center;
-            padding: 30px;
-            color: #828282;
-            font-size: 0.9rem;
+            padding: 36px;
+            color: rgba(255,255,255,0.4);
+            font-size: 0.88rem;
         }
-        footer a {
-            color: #17a598;
-            text-decoration: none;
+        footer a { color: var(--teal); text-decoration: none; font-weight: 600; }
+        footer a:hover { text-decoration: underline; }
+
+        /* Info bar inside card */
+        .card-infobar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
         }
+        .info-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+        .chip-teal { background: var(--teal-light); color: var(--teal-dark); }
+        .chip-amber { background: #fffbeb; color: #b45309; }
+        .chip-blue { background: #eff6ff; color: #1d4ed8; }
     </style>
 </head>
 <body>
 
     <div class="container">
         <header>
-            <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
                 <div>
-                    <h1>📄 SSEPI - PDFs y Políticas por Módulo</h1>
-                    <p>Genera documentos con las políticas actualizadas de cada departamento</p>
+                    <h1><span>SSEPI</span> — PDFs y Políticas</h1>
+                    <p>Genera documentos profesionales con las políticas actualizadas de cada departamento</p>
                 </div>
-                <button onclick="window.location.href='/panel/panel.html'" class="btn btn-secondary" style="max-width:180px;">
+                <button onclick="window.location.href='/panel/panel.html'" class="btn btn-secondary" style="max-width:200px;">
                     🏠 Volver al Panel
                 </button>
             </div>
@@ -448,8 +526,7 @@
         <div id="modulesGrid" class="modules-grid" style="display:none;"></div>
 
         <footer>
-            <p>SSEPI - Soluciones de Servicios Enterprise</p>
-            <p>Términos y condiciones: <a href="https://www.ssepi.org/terms" target="_blank">ssepi.org/terms</a></p>
+            <p>SSEPI — Soluciones de Servicios Enterprise · <a href="https://www.ssepi.org/terms" target="_blank">Términos y condiciones</a></p>
         </footer>
     </div>
 
@@ -511,7 +588,7 @@
             </div>
 
             <div class="form-group">
-                <label>Notas Importantes (una por línea)</label>
+                <label>Notas Importantes (usa **texto** para negritas)</label>
                 <div id="notasEditor"></div>
                 <button type="button" class="btn btn-secondary" onclick="agregarNota()" style="margin-top: 10px;">
                     ➕ Agregar nota
@@ -625,6 +702,109 @@
         ];
 
         // ═══════════════════════════════════════════════════════════════════
+        // POLÍTICAS DEFAULT (fallback si la BD está vacía)
+        // Usa **texto** para negritas en las notas
+        // ═══════════════════════════════════════════════════════════════════
+        const POLITICAS_DEFAULT = {
+            taller_electronica: {
+                titulo: 'Políticas para reparación de equipos electrónicos',
+                tiempo_entrega: 'INMEDIATA a partir de la OC',
+                garantia_dias: 30,
+                moneda: 'MONEDA NACIONAL',
+                url_terminos: 'https://www.ssepi.org/terms',
+                notas_importantes: [
+                    'SSEPI ofrece **garantía de la unidad** por un período de 30 días, contando a partir de la fecha de entrega. La garantía aplica **únicamente** sobre la falla reparada y los componentes reemplazados durante el servicio realizado.',
+                    'La reparación se limita **exclusivamente** a los componentes y/o fallas detectadas durante la inspección técnica inicial o reportadas por el cliente. En caso de no especificarse una falla concreta, el servicio se entenderá como reparación puntual de los daños visibles o componentes defectuosos identificados.',
+                    'La garantía **NO cubre**:\n• Fallas distintas o adicionales a la reportada y reparada.\n• Daños ocasionados por sobretensiones, picos de voltaje, mala calidad de energía eléctrica, conexiones incorrectas, inversión de fases o cableado defectuoso.\n• Manipulación, modificación o reparación por personal ajeno al taller.\n• Uso del equipo fuera de las especificaciones del fabricante.\n• Daños mecánicos, golpes, cortocircuitos externos o fallas en periféricos conectados.',
+                    'La garantía consiste **únicamente** en la revisión y corrección del problema reparado, no incluye reembolsos en efectivo ni daños indirectos, paros de producción o pérdidas operativas.',
+                    'El servicio **no incluye** instalación ni montaje del equipo en su posición original.',
+                    'Se requiere **ORDEN DE COMPRA** para iniciar el servicio.',
+                    'Después de confirmado el servicio **NO SE ACEPTAN CANCELACIONES**.'
+                ]
+            },
+            taller_motores: {
+                titulo: 'Políticas para reparación de Motores',
+                tiempo_entrega: '1 SEMANA a partir de la OC',
+                garantia_dias: 30,
+                moneda: 'MONEDA NACIONAL',
+                url_terminos: 'https://www.ssepi.org/terms',
+                notas_importantes: [
+                    'SSEPI ofrece **garantía de la unidad** por un período de 30 días, contando a partir de la fecha de entrega. La garantía aplica **únicamente** sobre la falla reparada y los componentes reemplazados durante el servicio realizado.',
+                    'La garantía **NO cubre**:\n• Fallas distintas o adicionales a la reportada y reparada.\n• Daños ocasionados por sobretensiones, picos de voltaje, mala calidad de energía eléctrica, conexiones incorrectas, inversión de fases o cableado defectuoso.\n• Manipulación, modificación o reparación por personal ajeno al taller.\n• Uso del equipo fuera de las especificaciones del fabricante.\n• Daños mecánicos, golpes, cortocircuitos externos o fallas en periféricos conectados.',
+                    'La garantía consiste **únicamente** en la revisión y corrección del problema reparado, no incluye reembolsos en efectivo ni daños indirectos, paros de producción o pérdidas operativas.',
+                    'El servicio **no incluye** instalación ni montaje del equipo en su posición original.',
+                    'Se requiere **ORDEN DE COMPRA** para iniciar el servicio.',
+                    'Después de confirmado el servicio **NO SE ACEPTAN CANCELACIONES**.'
+                ]
+            },
+            ventas_suministros: {
+                titulo: 'Políticas para ventas de suministro',
+                tiempo_entrega: 'Según disponibilidad',
+                garantia_dias: 0,
+                moneda: 'USD / MXN',
+                url_terminos: 'https://www.ssepi.org/terms',
+                notas_importantes: [
+                    'La cotización incluye **únicamente** los suministros y/o refacciones descritas (número de parte, marca y cantidad).',
+                    'La disponibilidad de los productos está **sujeta a confirmación** al momento de la recepción del pago u orden de compra.',
+                    'La existencia mostrada en la cotización o sistema es **referencial** y puede variar sin previo aviso.',
+                    'Precios sujetos a cambio por: Tipo de cambio, Ajustes del fabricante, Disponibilidad de inventario.',
+                    'Precios expresados en **MXN**, salvo indicación contraria.',
+                    'El pago podrá ser en **dólares Americanos o pesos Mexicanos** según el tipo de cambio del diario oficial de la fecha del pago.',
+                    'Los costos de envío **no están incluidos**, salvo que se indique explícitamente.',
+                    'Los tiempos de entrega son **estimados** y comienzan a partir de: Confirmación de pago, Autorización de la orden de compra.',
+                    'Los productos cuentan con **garantía directa del fabricante**, conforme a sus políticas.',
+                    '**No se aceptan devoluciones** en: Refacciones bajo pedido, Productos importados, Material eléctrico/electrónico abierto o usado.',
+                    'Una vez confirmado el pedido o realizado el pago: **No se aceptan cancelaciones** en productos bajo pedido; en stock se aplicarán cargos administrativos.',
+                    'El proveedor no se responsabiliza por errores en selección o aplicación del producto.',
+                    'La factura se emite una vez confirmado el pago.',
+                    'No se realizarán refacturaciones por errores imputables al cliente.'
+                ]
+            },
+            automatizacion: {
+                titulo: 'Políticas para proyectos de Automatización',
+                tiempo_entrega: 'Según alcance del proyecto',
+                garantia_dias: 45,
+                moneda: 'MONEDA NACIONAL',
+                url_terminos: 'https://www.ssepi.org/terms',
+                notas_importantes: [
+                    'Condiciones de pago: **50% de anticipo**, 50% al terminar las actividades y a las pruebas de funcionamiento.',
+                    'Se requiere **Orden de Compra** con el Folio de la cotización.',
+                    'La cotización incluye **únicamente** los conceptos, equipos, servicios y actividades descritos en el documento.',
+                    'Cualquier trabajo, material o modificación no especificada será considerada como trabajo adicional y deberá cotizarse por separado.',
+                    'El alcance está basado en la información técnica proporcionada por el cliente al momento de la cotización.',
+                    'Los precios están sujetos a cambio por variaciones en tipo de cambio, disponibilidad de materiales o ajustes de proveedor.',
+                    'El equipo y/o software entregado seguirá siendo propiedad del proveedor hasta la **liquidación total**.',
+                    'Los tiempos de entrega comienzan a contar a partir de la confirmación del anticipo y aprobación técnica del cliente.',
+                    'Retrasos por causas ajenas al proveedor (falta de información, cambios de alcance, paros del cliente) extienden automáticamente los plazos.',
+                    'Cualquier cambio solicitado después de aprobada la cotización será evaluado y cotizado como **orden de cambio**.',
+                    'Se otorga una **garantía de 45 días naturales** sobre: Programación PLC y HMI, Integración y funcionamiento del sistema, Mano de obra realizada.',
+                    'La garantía no cubre: Fallas por mal uso, sobrecargas eléctricas o mecánicas, manipulación por personal no autorizado, daños por condiciones ambientales fuera de especificación o fallas de equipos suministrados por el cliente.',
+                    'La lógica de control, diagramas y documentación desarrollada son propiedad del proveedor hasta la liquidación total. El cliente podrá usar el sistema **únicamente** para su operación interna.'
+                ]
+            },
+            soporte_planta: {
+                titulo: 'Políticas para Soporte a planta',
+                tiempo_entrega: 'INMEDIATA bajo solicitud',
+                garantia_dias: 0,
+                moneda: 'MONEDA NACIONAL',
+                url_terminos: 'https://www.ssepi.org/terms',
+                notas_importantes: [
+                    'El servicio realizado corresponde a una **atención correctiva puntual** solicitada de manera urgente, enfocada en restablecer la operación del equipo en el menor tiempo posible.',
+                    'Las actividades efectuadas se limitaron a la **falla identificada** al momento de la intervención.',
+                    'Las acciones realizadas incluyeron diagnóstico técnico y corrección específica de la condición detectada durante la visita.',
+                    '**No se realizó**: Revisión integral del sistema, Ingeniería de mejora, Actualización de programas, Sustitución preventiva de componentes adicionales, salvo que se indique expresamente en el reporte.',
+                    'El servicio ejecutado **no constituye una garantía integral** del equipo, sino una intervención correctiva específica.',
+                    'En caso de presentarse una falla distinta o relacionada con otros componentes no intervenidos, se considerará como un **nuevo servicio**.',
+                    'Durante la intervención se pudieron detectar condiciones adicionales que podrían afectar el desempeño o confiabilidad del sistema.',
+                    'Estas observaciones y recomendaciones quedan documentadas en el **Reporte de Servicio** entregado al cliente.',
+                    'La no ejecución de dichas recomendaciones puede derivar en fallas posteriores ajenas a la intervención realizada.',
+                    'El proveedor **no es responsable** por: Daños derivados de condiciones externas (variaciones eléctricas, humedad, manipulación posterior), Fallas originadas por desgaste natural de componentes, Intervenciones posteriores realizadas por terceros.',
+                    'La firma del reporte de servicio confirma la conformidad con las actividades realizadas y el restablecimiento operativo al momento de la entrega.'
+                ]
+            }
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
         // CARGAR POLÍTICAS DESDE BD
         // ═══════════════════════════════════════════════════════════════════
         async function cargarPoliticas() {
@@ -637,15 +817,24 @@
                 if (error) throw error;
 
                 politicasData = {};
+                // Primero poblar con defaults
+                Object.keys(POLITICAS_DEFAULT).forEach(mod => {
+                    politicasData[mod] = { ...POLITICAS_DEFAULT[mod], modulo: mod, activo: true };
+                });
+                // Luego sobrescribir con datos de BD si existen
                 (data || []).forEach(p => {
-                    politicasData[p.modulo] = p;
+                    politicasData[p.modulo] = { ...politicasData[p.modulo], ...p };
                 });
 
                 return true;
             } catch (e) {
                 console.error('Error cargando políticas:', e);
                 mostrarError('Error cargando políticas: ' + e.message);
-                return false;
+                // Fallback total: usar solo defaults
+                Object.keys(POLITICAS_DEFAULT).forEach(mod => {
+                    politicasData[mod] = { ...POLITICAS_DEFAULT[mod], modulo: mod, activo: true };
+                });
+                return true;
             }
         }
 
@@ -675,39 +864,51 @@
 
             MODULES.forEach(mod => {
                 const políticas = politicasData[mod.id];
+                const notas = políticas?.notas_importantes || [];
+
+                // Renderizar notas con número en círculo y soporte para **bold**
+                const notasHtml = notas.length ? notas.map((nota, i) => {
+                    const html = nota
+                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n/g, '<br>');
+                    return `<div class="nota-item"><span class="nota-num">${i + 1}</span>${html}</div>`;
+                }).join('') : '<p class="nota-empty">Sin políticas configuradas</p>';
+
+                const chipsHtml = [];
+                if (políticas?.tiempo_entrega) chipsHtml.push(`<span class="info-chip chip-teal">⏱ ${políticas.tiempo_entrega}</span>`);
+                if (políticas?.moneda) chipsHtml.push(`<span class="info-chip chip-blue">💰 ${políticas.moneda}</span>`);
+                if (políticas?.garantia_dias && políticas.garantia_dias > 0) chipsHtml.push(`<span class="info-chip chip-amber">📋 ${políticas.garantia_dias} días garantía</span>`);
 
                 const card = document.createElement('div');
                 card.className = 'module-card';
                 card.innerHTML = `
-                    <div class="module-header">
-                        <div class="module-icon" style="background: ${mod.color}">${mod.icon}</div>
-                        <div class="module-title">
-                            <h2>${mod.nombre}</h2>
-                            <div class="tiempo-entrega">${políticas?.tiempo_entrega || 'N/A'}</div>
-                        </div>
-                    </div>
-
-                    ${políticas ? `<div class="garantia-badge">📋 Garantía: ${políticas.garantia_dias || 0} días</div>` : ''}
-
-                    <div class="politicas-section">
-                        <h3>📌 Políticas</h3>
-                        ${políticas?.notas_importantes?.map((nota, i) => `
-                            <div class="nota-item">
-                                <strong>${i + 1}.</strong> ${nota}
+                    <div class="module-card-inner">
+                        <div class="module-header">
+                            <div class="module-icon" style="background: ${mod.color}">${mod.icon}</div>
+                            <div class="module-title">
+                                <h2>${mod.nombre}</h2>
+                                <div class="tiempo-entrega">${políticas?.tiempo_entrega || 'N/A'}</div>
                             </div>
-                        `).join('') || '<p style="color:#888">Sin políticas configuradas</p>'}
-                    </div>
+                        </div>
 
-                    <div class="pdf-actions">
-                        <button class="btn btn-primary" onclick="generarPDF('${mod.id}', true)">
-                            👁️ Vista previa
-                        </button>
-                        <button class="btn btn-secondary" onclick="generarPDF('${mod.id}')">
-                            ⬇️ Descargar
-                        </button>
-                        <button class="btn btn-edit" onclick="abrirEditor('${mod.id}')">
-                            ✏️ Editar
-                        </button>
+                        ${chipsHtml.length ? `<div class="card-infobar">${chipsHtml.join('')}</div>` : ''}
+
+                        <div class="politicas-section">
+                            <h3>📌 Políticas</h3>
+                            ${notasHtml}
+                        </div>
+
+                        <div class="pdf-actions">
+                            <button class="btn btn-primary" onclick="generarPDF('${mod.id}', true)">
+                                👁️ Vista previa
+                            </button>
+                            <button class="btn btn-secondary" onclick="generarPDF('${mod.id}')">
+                                ⬇️ Descargar
+                            </button>
+                            <button class="btn btn-edit" onclick="abrirEditor('${mod.id}')">
+                                ✏️ Editar
+                            </button>
+                        </div>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -867,8 +1068,8 @@
             const folio = 'POL-' + Date.now().toString().slice(-6);
 
             // ===== PORTADA (PAG 1) =====
-            fl(0,0,PW,PH,COVER);
-            fl(0,PH-70,PW,70,[42,52,66]);
+            fl(0,0,PW,PH,WHT);
+            fl(0,PH-70,PW,70,[68,83,106]);
             tx('SSEPI', PW/2, PH-48, 'bold', 28, WHT, {align:'center'});
             tx('Soluciones de Servicios Enterprise', PW/2, PH-38, 'normal', 11, TEAL, {align:'center'});
             tx(mod.nombre, PW/2, 90, 'bold', 22, WHT, {align:'center'});
@@ -915,7 +1116,7 @@
                 const tagY0 = tagLines.length > 1 ? 39.0 : 42.0;
                 tagLines.forEach((l,i) => doc.text(l, 9, tagY0 + i*4.2));
                 // Folio derecha
-                const folioLabel = 'Documento ' + folio;
+                const folioLabel = 'Num. de cotización ' + folio;
                 const rightZoneW = PW - DX2 - 6;
                 let fsz = 16;
                 doc.setFont('helvetica','normal');
@@ -929,7 +1130,7 @@
             // ===== FOOTER REUSABLE =====
             const drawFooter = (pn) => {
                 hl(ML, FY, TW, GR_SEP, 0.3);
-                tx('Documento ' + folio, ML, FY+4, 'normal', 7, [160,160,160]);
+                tx('Num. de cotización ' + folio, ML, FY+4, 'normal', 7, [160,160,160]);
                 tx('Conectamos ingeniería, tecnología y productividad industrial', PW/2, FY+4, 'italic', 7, [160,160,160], {align:'center'});
                 tx('Bulevard Zodiaco 336, Los Limones, C.P. 37448, León, Guanajuato, México', PW/2, FY+8, 'normal', 7, [160,160,160], {align:'center'});
                 tx('ventas@ssepi.org', ML, FY+12, 'normal', 8, GR_LT);
