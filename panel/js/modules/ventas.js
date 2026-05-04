@@ -2406,11 +2406,11 @@ const VentasModule = (function() {
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
                     <div>
                         <label style="font-size:12px; color:var(--text-secondary);">Kilómetros (KM)</label>
-                        <input type="number" id="inpLogisticaKm" value="${cliente.km}" min="0" step="0.1" style="width:100%; padding:8px;" oninput="ventasModule._refreshLogisticaFromInputs()">
+                        <input type="number" id="inpLogisticaKm" value="${cliente.km}" min="0" step="0.1" style="width:100%; padding:8px;">
                     </div>
                     <div>
                         <label style="font-size:12px; color:var(--text-secondary);">Horas de viaje</label>
-                        <input type="number" id="inpLogisticaHoras" value="${cliente.horas}" min="0" step="0.5" style="width:100%; padding:8px;" oninput="ventasModule._refreshLogisticaFromInputs()">
+                        <input type="number" id="inpLogisticaHoras" value="${cliente.horas}" min="0" step="0.5" style="width:100%; padding:8px;">
                     </div>
                 </div>
                 <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px;">
@@ -2436,11 +2436,11 @@ const VentasModule = (function() {
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
                     <div>
                         <label style="font-size:12px; color:var(--text-secondary);">Horas técnicas estimadas</label>
-                        <input type="number" id="inpTechHours" value="${horasEstimadas}" min="0" step="0.5" style="width:100%; padding:8px;" oninput="ventasModule._recalcular()">
+                        <input type="number" id="inpTechHours" value="${horasEstimadas}" min="0" step="0.5" style="width:100%; padding:8px;">
                     </div>
                     <div>
                         <label style="font-size:12px; color:var(--text-secondary);">Costo refacciones ($)</label>
-                        <input type="number" id="inpParts" value="0" min="0" step="0.01" style="width:100%; padding:8px;" oninput="ventasModule._recalcular()">
+                        <input type="number" id="inpParts" value="0" min="0" step="0.01" style="width:100%; padding:8px;">
                     </div>
                 </div>
                 <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px;">
@@ -2466,11 +2466,11 @@ const VentasModule = (function() {
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
                     <div>
                         <label style="font-size:12px; color:var(--text-secondary);">% Utilidad</label>
-                        <input type="number" id="inpUtilidadPct" value="${CostosEngine.CONFIG?.utilidad || 40}" min="0" step="1" style="width:100%; padding:8px;" oninput="ventasModule._recalcular()">
+                        <input type="number" id="inpUtilidadPct" value="${CostosEngine.CONFIG?.utilidad || 40}" min="0" step="1" style="width:100%; padding:8px;">
                     </div>
                     <div>
                         <label style="font-size:12px; color:var(--text-secondary);">% Crédito</label>
-                        <input type="number" id="inpCreditoPct" value="${CostosEngine.CONFIG?.credito || 3}" min="0" step="0.1" style="width:100%; padding:8px;" oninput="ventasModule._recalcular()">
+                        <input type="number" id="inpCreditoPct" value="${CostosEngine.CONFIG?.credito || 3}" min="0" step="0.1" style="width:100%; padding:8px;">
                     </div>
                 </div>
                 <div style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px;">
@@ -3023,8 +3023,26 @@ const VentasModule = (function() {
     }
 
     function _adjuntarEventosCalculadora() {
-        document.getElementById('generarCotizacionBtn').onclick = _generarCotizacion;
-        document.getElementById('enviarCotizacionBtn').onclick = _enviarCotizacionCliente;
+        var genBtn = document.getElementById('generarCotizacionBtn');
+        if (genBtn) genBtn.onclick = _generarCotizacion;
+        var envBtn = document.getElementById('enviarCotizacionBtn');
+        if (envBtn) envBtn.onclick = _enviarCotizacionCliente;
+
+        // Inputs de logística
+        var kmIn = document.getElementById('inpLogisticaKm');
+        var hrsIn = document.getElementById('inpLogisticaHoras');
+        if (kmIn) kmIn.addEventListener('input', _refreshLogisticaFromInputs);
+        if (hrsIn) hrsIn.addEventListener('input', _refreshLogisticaFromInputs);
+
+        // Inputs de taller y totales
+        var techH = document.getElementById('inpTechHours');
+        var parts = document.getElementById('inpParts');
+        var utilP = document.getElementById('inpUtilidadPct');
+        var credP = document.getElementById('inpCreditoPct');
+        if (techH) techH.addEventListener('input', _recalcular);
+        if (parts) parts.addEventListener('input', _recalcular);
+        if (utilP) utilP.addEventListener('input', _recalcular);
+        if (credP) credP.addEventListener('input', _recalcular);
     }
 
     // ==================== GENERACIÓN DE COTIZACIÓN ====================
