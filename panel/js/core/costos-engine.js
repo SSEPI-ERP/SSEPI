@@ -10,8 +10,11 @@ export const CostosEngine = (function() {
 
     // ==================== FÓRMULAS BASE ====================
     function getParam(clave, valorPorDefecto) {
-        const key = `${departamentoActual}_${clave}`;
-        return CONFIG[key] !== undefined ? CONFIG[key] : valorPorDefecto;
+        const deptKey = `${departamentoActual}_${clave}`;
+        if (CONFIG[deptKey] !== undefined) return CONFIG[deptKey];
+        const generalKey = `general_${clave}`;
+        if (CONFIG[generalKey] !== undefined) return CONFIG[generalKey];
+        return valorPorDefecto;
     }
 
     function calcularLitros(km) {
@@ -204,20 +207,37 @@ export const CostosEngine = (function() {
             if (error || !data) return CONFIG;
 
             const params = {};
+            // Normaliza claves cortas (usadas en SQL/BD) a las claves largas internas
+            const normalizeKey = {
+                'gasolina': 'gasolina_precio_litro',
+                'rendimiento': 'rendimiento_km_litro',
+                'costo_tecnico': 'tiempo_invertido_hr',
+                'gastos_fijos_hora': 'gastos_fijos_hr',
+                'camioneta_hora': 'camioneta_hr',
+                'mano_obra_hr': 'mano_obra_hr',
+                'utilidad_base': 'utilidad_base',
+                'utilidad_premium': 'utilidad_premium',
+                'credito_pct': 'credito_pct',
+                'iva': 'iva'
+            };
             const keyMap = {
+                'gasolina_precio_litro': 'gasolina',
+                'rendimiento_km_litro': 'rendimiento',
+                'tiempo_invertido_hr': 'costoTecnico',
+                'gastos_fijos_hr': 'gastosFijosHora',
+                'camioneta_hr': 'camionetaHora',
+                'mano_obra_hr': 'manoObraHr',
                 'utilidad_base': 'utilidad',
                 'utilidad_premium': 'utilidad',
                 'credito_pct': 'credito',
-                'gasolina_precio_litro': 'gasolina',
-                'gastos_fijos_hr': 'gastosFijosHora',
-                'camioneta_hr': 'camionetaHora',
                 'iva': 'iva'
             };
             data.forEach(p => {
                 const prefix = p.departamento || 'general';
-                params[`${prefix}_${p.clave}`] = Number(p.valor);
+                const normalized = normalizeKey[p.clave] || p.clave;
+                params[`${prefix}_${normalized}`] = Number(p.valor);
                 // Alias sin prefijo para compatibilidad con ventas.js
-                const alias = keyMap[p.clave];
+                const alias = keyMap[normalized];
                 if (alias) params[alias] = Number(p.valor);
             });
             applyConfig(params);

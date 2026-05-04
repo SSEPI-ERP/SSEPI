@@ -939,7 +939,7 @@ const VentasModule = (function() {
 
         // Cargar configuración de costos desde BD
         try {
-            await CostosEngine.loadFromDatabase();
+            await CostosEngine.loadFromDatabase('ventas');
             tabuladorTaller.clientes = await _cargarClientesTabulador();
             console.log('✅ Costos y clientes cargados desde BD');
         } catch (e) {
@@ -2235,7 +2235,10 @@ const VentasModule = (function() {
             tabuladorTaller.clientes = await _cargarClientesTabulador();
         }
 
-        const clienteTabulador = tabuladorTaller.clientes.find(c => c.nombre === clienteNombre);
+        const clienteTabulador = tabuladorTaller.clientes.find(c =>
+            c.nombre && clienteNombre &&
+            c.nombre.toLowerCase().trim() === clienteNombre.toLowerCase().trim()
+        );
         calculadoraClienteActual = {
             nombre: clienteNombre,
             km: clienteTabulador?.km || 0,
@@ -2626,10 +2629,9 @@ const VentasModule = (function() {
             const { data, error } = await window.supabase
                 .from('gastos_fijos')
                 .select('id, nombre, monto, activo')
-                .eq('activo', true)
                 .order('nombre');
             if (error || !data) return [];
-            return data.filter(g => g.nombre && g.monto !== null);
+            return data.filter(g => g.nombre && g.monto !== null && g.activo !== false);
         } catch (e) {
             console.warn('[Ventas] Error cargando gastos fijos:', e);
             return [];
@@ -2641,15 +2643,16 @@ const VentasModule = (function() {
         try {
             const { data, error } = await window.supabase
                 .from('clientes_tabulador')
-                .select('cliente_nombre, km_ida, horas_invertidas')
-                .eq('activo', true)
+                .select('cliente_nombre, km_ida, horas_invertidas, activo')
                 .order('cliente_nombre');
             if (error || !data) return [];
-            return data.map(c => ({
-                nombre: c.cliente_nombre,
-                km: Number(c.km_ida) || 0,
-                horas: Number(c.horas_invertidas) || 0
-            }));
+            return data
+                .filter(c => c.activo !== false)
+                .map(c => ({
+                    nombre: c.cliente_nombre,
+                    km: Number(c.km_ida) || 0,
+                    horas: Number(c.horas_invertidas) || 0
+                }));
         } catch (e) {
             console.warn('[Ventas] Error cargando clientes:', e);
             return [];
