@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -47,11 +47,23 @@
 
     <!-- SIDEBAR -->
     <nav class="sidebar-left" id="sidebar">
-        <div class="menu-category">AUTOMATIZACIÓN</div>
-        <a href="/panel/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Proyectos</a>
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/panel/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/panel/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/panel/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
         <a href="/panel/pages/ssepi_actividades.html" class="nav-item active" data-module="actividades_automatizacion"><span class="icon-box"><i class="fas fa-calendar-week"></i></span> Actividades</a>
-        <div class="menu-category">EXTERNOS</div>
-        <a href="#" class="nav-item" target="_blank" rel="noopener" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/panel/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/panel/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <a href="/panel/pages/ssepi_suministros.html" class="nav-item" data-module="suministros"><span class="icon-box"><i class="fas fa-boxes-stacked"></i></span> Suministros</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/panel/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/panel/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/panel/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/panel/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/panel/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <a href="/panel/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <a href="/panel/pdfs-politicas.html" class="nav-item" data-module="pdfs_politicas"><span class="icon-box"><i class="fas fa-file-pdf"></i></span> PDFs y Políticas</a>
         <div class="menu-category">PERSONAL</div>
         <a href="/panel/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
     </nav>
@@ -71,6 +83,17 @@
                 </select>
             </div>
             <div class="filtro-grupo">
+                <label>Departamento:</label>
+                <select id="filtroDepartamento">
+                    <option value="todos">Todos</option>
+                    <option value="automatizacion">Automatización</option>
+                    <option value="electronicos">Laboratorio Electrónica</option>
+                    <option value="motores">Motores</option>
+                    <option value="soporte_planta">Soporte en Planta</option>
+                    <option value="administracion">Administración</option>
+                </select>
+            </div>
+            <div class="filtro-grupo">
                 <label>Estado:</label>
                 <select id="filtroEstado">
                     <option value="todos">Todos</option>
@@ -87,28 +110,78 @@
             <button class="btn-filtro" id="aplicarFiltrosBtn"><i class="fas fa-search"></i> Aplicar</button>
         </div>
 
-        <!-- VISTA SEMANAL -->
-        <div class="semana-header">
-            <button class="btn-semana" id="semanaAnterior"><i class="fas fa-chevron-left"></i></button>
-            <div class="semana-titulo">
-                <h2 id="semanaActualTitulo">Semana del XX al XX</h2>
-                <p id="semanaSubtitulo">Lunes a Sábado</p>
+        <!-- TOGGLE VISTA -->
+        <div class="vista-toggle-bar">
+            <div class="vista-toggle-grupo">
+                <button class="vista-toggle-btn active" id="btnVistaSemanal" data-vista="semanal">
+                    <i class="fas fa-calendar-week"></i> Semanal
+                </button>
+                <button class="vista-toggle-btn" id="btnVistaKanban" data-vista="kanban">
+                    <i class="fas fa-columns"></i> Kanban
+                </button>
             </div>
-            <button class="btn-semana" id="semanaSiguiente"><i class="fas fa-chevron-right"></i></button>
-            <button class="btn-ssepi btn-primario" id="btnNuevaActividad" style="margin-left: auto;">
+            <button class="btn-ssepi btn-primario" id="btnNuevaActividad">
                 <i class="fas fa-plus"></i> Nueva Actividad
             </button>
         </div>
 
-        <!-- GRID SEMANAL (Lunes a Sábado) -->
-        <div class="grid-semanal" id="gridSemanal">
-            <!-- Se llena dinámicamente con JS -->
+        <!-- VISTA SEMANAL -->
+        <div id="vistaSemanalContainer">
+            <div class="semana-header">
+                <button class="btn-semana" id="semanaAnterior"><i class="fas fa-chevron-left"></i></button>
+                <div class="semana-titulo">
+                    <h2 id="semanaActualTitulo">Semana del XX al XX</h2>
+                    <p id="semanaSubtitulo">Lunes a Sábado</p>
+                </div>
+                <button class="btn-semana" id="semanaSiguiente"><i class="fas fa-chevron-right"></i></button>
+            </div>
+
+            <!-- GRID SEMANAL (Lunes a Sábado) -->
+            <div class="grid-semanal" id="gridSemanal">
+                <!-- Se llena dinámicamente con JS -->
+            </div>
+
+            <!-- HISTORIAL / LISTADO -->
+            <div class="panel" style="margin-top: 24px;">
+                <h2><i class="fas fa-history"></i> Historial de Actividades</h2>
+                <div class="actividades-lista" id="actividadesLista"></div>
+            </div>
         </div>
 
-        <!-- HISTORIAL / LISTADO -->
-        <div class="panel" style="margin-top: 24px;">
-            <h2><i class="fas fa-history"></i> Historial de Actividades</h2>
-            <div class="actividades-lista" id="actividadesLista"></div>
+        <!-- VISTA KANBAN -->
+        <div id="kanbanContainer" style="display:none;">
+            <div class="kanban-board" id="kanbanBoard">
+                <div class="kanban-column col-pendiente" data-status="pendiente">
+                    <div class="kanban-column-header">
+                        <div class="kanban-column-title"><span class="kanban-dot dot-pendiente"></span>Pendiente</div>
+                        <span class="kanban-count" id="count-pendiente">0</span>
+                    </div>
+                    <div class="kanban-card-list" id="list-pendiente"></div>
+                </div>
+                <div class="kanban-column col-en_progreso" data-status="en_progreso">
+                    <div class="kanban-column-header">
+                        <div class="kanban-column-title"><span class="kanban-dot dot-en_progreso"></span>En Proceso</div>
+                        <span class="kanban-count" id="count-en_progreso">0</span>
+                    </div>
+                    <div class="kanban-card-list" id="list-en_progreso"></div>
+                </div>
+                <div class="kanban-column col-completado" data-status="completado">
+                    <div class="kanban-column-header">
+                        <div class="kanban-column-title"><span class="kanban-dot dot-completado"></span>Terminado</div>
+                        <span class="kanban-count" id="count-completado">0</span>
+                    </div>
+                    <div class="kanban-card-list" id="list-completado"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SIDEBAR KANBAN (Jira-style) -->
+        <div class="kanban-sidebar" id="kanbanSidebar">
+            <div class="kanban-sidebar-header">
+                <h3 id="sidebarTitle"></h3>
+                <button class="kanban-sidebar-close" onclick="window.actividadesModule._closeSidebar()">&times;</button>
+            </div>
+            <div class="kanban-sidebar-body" id="sidebarBody"></div>
         </div>
     </main>
 
@@ -120,6 +193,22 @@
                 <button class="modal-close" id="closeActividadModal">&times;</button>
             </div>
             <div class="modal-body">
+                <div class="form-group">
+                    <label>Departamento <span style="color: #c62828;">*</span></label>
+                    <select id="actDepartamento" class="form-control">
+                        <option value="automatizacion">Automatización</option>
+                        <option value="electronicos">Laboratorio Electrónica</option>
+                        <option value="motores">Motores</option>
+                        <option value="soporte_planta">Soporte en Planta</option>
+                        <option value="administracion">Administración</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Orden / Proyecto vinculado</label>
+                    <select id="actOrden" class="form-control">
+                        <option value="">Sin orden vinculada</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label>Fecha <span style="color: #c62828;">*</span></label>
                     <input type="date" id="actFecha" class="form-control">
@@ -133,6 +222,10 @@
                 <div class="form-group">
                     <label>Resumen de actividades <span style="color: #c62828;">*</span></label>
                     <textarea id="actResumen" class="form-control" rows="4" placeholder="Describe las actividades realizadas..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Notas internas</label>
+                    <textarea id="actNotas" class="form-control" rows="2" placeholder="Notas adicionales (visibles en sidebar Kanban)..."></textarea>
                 </div>
                 <div class="form-group">
                     <label>Archivos (PDF, DOC, DOCX)</label>

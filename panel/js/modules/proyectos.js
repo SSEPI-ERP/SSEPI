@@ -204,10 +204,14 @@ const ProyectosModule = (function() {
     }
 
     function _crearCardKanban(visita) {
+        const origenBadge = visita.origen === 'ventas'
+            ? '<span style="background:#10b981;color:#fff;padding:1px 6px;border-radius:8px;font-size:.65rem;font-weight:700;">DESDE VENTAS</span>'
+            : '';
         return `
             <div class="kanban-card" data-id="${visita.id}">
                 <div class="card-header">
                     <span class="folio">${visita.folio || visita.id.slice(-6)}</span>
+                    ${origenBadge}
                 </div>
                 <div class="card-body">
                     <div class="cliente">${visita.cliente || 'Cliente'}</div>
@@ -224,15 +228,17 @@ const ProyectosModule = (function() {
     function _renderLista(visitas) {
         const container = document.getElementById('listaContainer');
         if (!container) return;
-        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Cliente</th><th>Equipo</th><th>Técnico</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>';
+        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Origen</th><th>Cliente</th><th>Equipo</th><th>Técnico</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>';
         visitas.forEach(v => {
             let estadoClass = '';
             let estadoTexto = '';
             if (v.estado === 'confirmacion') { estadoClass = 'status-confirmacion'; estadoTexto = 'Confirmación'; }
             else if (v.estado === 'proyecto') { estadoClass = 'status-proyecto'; estadoTexto = 'Proyecto'; }
             else if (v.estado === 'cancelado') { estadoClass = 'status-cancelado'; estadoTexto = 'Cancelado'; }
+            const origenLabel = v.origen === 'ventas' ? '<span style="background:#10b981;color:#fff;padding:1px 6px;border-radius:8px;font-size:.65rem;">Ventas</span>' : 'Manual';
             html += `<tr onclick="proyectosModule._editarVisita('${v.id}')">
                 <td>${v.folio || v.id.slice(-6)}</td>
+                <td>${origenLabel}</td>
                 <td>${v.cliente || ''}</td>
                 <td>${v.equipo || ''}</td>
                 <td>${v.tecnico || ''}</td>
@@ -300,6 +306,9 @@ const ProyectosModule = (function() {
         _cargarDatosEnModal(visita);
         var modal = document.getElementById('wsModal');
         if (modal) modal.classList.add('active');
+        if (window.actividadesModule && window.actividadesModule.renderWidgetActividades) {
+            window.actividadesModule.renderWidgetActividades('widgetActividadesProyectoPlanta', id, 'proyectos_automatizacion');
+        }
     }
 
     function _cargarDatosEnModal(visita) {
@@ -319,6 +328,17 @@ const ProyectosModule = (function() {
         document.getElementById('pruebasRealizadas').value = visita.pruebas_realizadas || '';
         document.getElementById('recomendaciones').value = visita.recomendaciones || '';
         document.getElementById('observacionesCliente').value = visita.observaciones_cliente || '';
+
+        // Mostrar badge de origen si viene de ventas
+        var origenInfo = document.getElementById('origenInfo');
+        if (origenInfo) {
+            if (visita.origen === 'ventas') {
+                origenInfo.innerHTML = '<span style="background:#10b981;color:#fff;padding:2px 10px;border-radius:10px;font-size:.75rem;font-weight:700;">Recibida desde Ventas</span>';
+                origenInfo.style.display = 'block';
+            } else {
+                origenInfo.style.display = 'none';
+            }
+        }
 
         document.querySelectorAll('#actividadesCheckbox input').forEach(cb => {
             cb.checked = visita.actividades && visita.actividades.includes(cb.value);

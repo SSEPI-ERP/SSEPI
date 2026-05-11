@@ -8,6 +8,8 @@
 
 import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
+import { CostosEngine } from '../core/costos-engine.js';
+import { pdfGenerator } from '../core/pdf-generator.js';
 import { getPrioritySuppliersForModule } from '../core/ssepi-runtime/priority-suppliers-catalog.js';
 import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
 import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
@@ -17,6 +19,7 @@ const TallerModule = (function() {
     // ==================== ESTADO PRIVADO ====================
     let orders = [];
     let clients = [];
+    let tabuladorClientes = [];
     let inventory = [];
     let comprasVinculadas = {};  // { ordenId: { estado, folio, items } }
     let notificaciones = [];
@@ -37,6 +40,8 @@ const TallerModule = (function() {
     let consumiblesUsados = [];
     let componentesInventario = [];
     let componentesCompra = [];
+    let componentesExtras = []; // Array de { descripcion, cantidad, costo_unitario, subtotal }
+    let reporteImagenes = []; // Array de { id, dataUrl, nombre } para imágenes del reporte PDF
 
     // Filtros
     let filtroFechaInicio = null;
@@ -57,7 +62,7 @@ const TallerModule = (function() {
         { label: 'En espera / En reparación', match: s => s === 'En Espera' || s === 'En reparación' },
         { label: 'Reparado', match: s => s === 'Reparado' },
         { label: 'Entregado / Facturado', match: s => s === 'Entregado' || s === 'Facturado' },
-        { label: 'Cancelado', match: s => s === 'Cancelado' },
+        { label: 'Cancelado', match: s => s === 'Cancelado' || s === 'Cancelada' },
     ];
 
     function _kanbanStageLabel(estado) {
@@ -315,7 +320,8 @@ const TallerModule = (function() {
             _loadOrders(),
             _loadClients(),
             _loadInventory(),
-            _loadComprasVinculadas()
+            _loadComprasVinculadas(),
+            _loadTabuladorClientes()
         ]);
         results.forEach((r, i) => {
             if (r.status === 'rejected') {
@@ -331,13 +337,23 @@ const TallerModule = (function() {
 
     async function _loadOrders() {
         try {
-            // Cargar solo el primer bloque para que el módulo abra rápido.
             orders = await ordenesService.select({}, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 400 });
         } catch (e) {
             console.error('[Taller] Error cargando ordenes_taller:', e);
             orders = [];
             throw e;
         }
+        // Enriquecer órdenes legacy/demo que no tengan rentabilidad calculada
+        orders.forEach(o => {
+            if (!o.rentabilidad_estado && o.costo_total) {
+                const pres = Number(o.costo_presupuestado) || Number(o.costo_total) || 0;
+                const real = CostosEngine.calcularCostoRealLaboratorio(o);
+                o.costo_presupuestado = pres;
+                o.costo_real = real;
+                o.adeudo_generado = Math.max(0, real - pres);
+                o.rentabilidad_estado = CostosEngine.determinarRentabilidad(pres, real);
+            }
+        });
         _applyFilters();
     }
 
@@ -345,6 +361,26 @@ const TallerModule = (function() {
         // Obtener contactos de tipo cliente (provider = false)
         const contactos = await contactosService.select({ tipo: 'client' }, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 2000 });
         clients = contactos;
+    }
+
+    async function _loadTabuladorClientes() {
+        try {
+            const { data, error } = await window.supabase
+                .from('clientes_tabulador')
+                .select('nombre_cliente, km, horas_viaje, activo')
+                .eq('activo', true)
+                .order('nombre_cliente');
+            if (error) { console.warn('[Taller] Error cargando clientes_tabulador:', error); return; }
+            tabuladorClientes = (data || []).map(c => ({
+                nombre: c.nombre_cliente,
+                km: Number(c.km) || 0,
+                horas: Number(c.horas_viaje) || 0
+            }));
+            console.log('[Taller] clientes_tabulador cargados:', tabuladorClientes.length);
+        } catch (e) {
+            console.warn('[Taller] Error cargando tabulador:', e);
+            tabuladorClientes = [];
+        }
     }
 
     async function _loadInventory() {
@@ -379,12 +415,41 @@ const TallerModule = (function() {
         const sel = document.getElementById('selClient');
         if (!sel) return;
         sel.innerHTML = '<option value="">-- Seleccionar --</option>';
+        // Combinar contactos + clientes del tabulador (sin duplicados)
+        const nombres = new Set();
         clients.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.nombre || c.empresa;
-            opt.textContent = c.nombre || c.empresa;
-            sel.appendChild(opt);
+            const nombre = c.nombre || c.empresa;
+            if (nombre && !nombres.has(nombre)) {
+                nombres.add(nombre);
+                const opt = document.createElement('option');
+                opt.value = nombre;
+                opt.textContent = nombre;
+                sel.appendChild(opt);
+            }
         });
+        tabuladorClientes.forEach(tc => {
+            if (tc.nombre && !nombres.has(tc.nombre)) {
+                nombres.add(tc.nombre);
+                const opt = document.createElement('option');
+                opt.value = tc.nombre;
+                opt.textContent = tc.nombre;
+                sel.appendChild(opt);
+            }
+        });
+        // Precargar KM/horas desde clientes_tabulador al cambiar cliente
+        sel.removeEventListener('change', _onSelClientChange);
+        sel.addEventListener('change', _onSelClientChange);
+    }
+
+    function _onSelClientChange() {
+        const sel = document.getElementById('selClient');
+        const nombre = sel ? sel.value : '';
+        if (!nombre) return;
+        const encontrado = tabuladorClientes.find(tc => tc.nombre && tc.nombre.toLowerCase().trim() === nombre.toLowerCase().trim());
+        const kmEl = document.getElementById('tallerKmIda');
+        const hrsEl = document.getElementById('tallerHorasViaje');
+        if (kmEl) kmEl.value = encontrado ? encontrado.km : 0;
+        if (hrsEl) hrsEl.value = encontrado ? encontrado.horas : 0;
     }
 
     function _populateTecnicosFilter() {
@@ -497,7 +562,7 @@ const TallerModule = (function() {
             .channel('taller_ordenes_changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes_taller' }, payload => {
                 _loadOrders();
-                _addToFeed('📋', 'Datos de taller actualizados');
+                _addToFeed('📋', 'Datos de Laboratorio actualizados');
             })
             .subscribe();
         subscriptions.push(subOrdenes);
@@ -516,7 +581,7 @@ const TallerModule = (function() {
                     if (payload.new.estado === 5 && payload.eventType === 'UPDATE') {
                         _mostrarNotificacion({
                             tipo: 'material_entregado',
-                            mensaje: `✅ Materiales de orden ${payload.new.folio} entregados a taller`,
+                            mensaje: `✅ Materiales de orden ${payload.new.folio} entregados a Laboratorio`,
                             ordenTallerId: ordenId
                         });
                     }
@@ -537,11 +602,16 @@ const TallerModule = (function() {
     }
 
     async function _cargarNotificaciones() {
-        const notis = await notificacionesService.select({ para: 'taller', leido: false });
-        notificaciones = notis;
-        if (notis.length > 0) {
-            _mostrarNotificacionesRecientes(notis);
-            _actualizarBadgeNotificaciones(notis.length);
+        try {
+            const notis = await notificacionesService.select({ para: 'taller', leido: false });
+            notificaciones = notis || [];
+            if (notis.length > 0) {
+                _mostrarNotificacionesRecientes(notis);
+                _actualizarBadgeNotificaciones(notis.length);
+            }
+        } catch (e) {
+            console.warn('[Taller] Error cargando notificaciones (modo offline):', e);
+            notificaciones = [];
         }
     }
 
@@ -622,7 +692,7 @@ const TallerModule = (function() {
         else if (vistaActual === 'lista') _renderLista(filtered);
         else if (vistaActual === 'grafica') _renderGrafica(filtered);
 
-        _updateKPIs(filtered);
+        _updateKPIs(orders);
     }
 
     function _renderKanban(ordenes) {
@@ -654,35 +724,63 @@ const TallerModule = (function() {
         const tieneCompraPendiente = compraInfo && compraInfo.estado < 5;
         const compraCompletada = compraInfo && compraInfo.estado === 5;
 
-        let badgeHtml = '';
+        let badgeCompra = '';
         if (tieneCompraPendiente) {
-            badgeHtml = `<span class="badge-warning" title="Compra en proceso: ${compraInfo.folio}">🛒 Compra #${compraInfo.folio}</span>`;
+            badgeCompra = `<span class="badge-warning" title="Compra en proceso: ${compraInfo.folio}">🛒 Compra #${compraInfo.folio}</span>`;
         } else if (compraCompletada) {
-            badgeHtml = `<span class="badge-success" title="Material recibido">✅ Material listo</span>`;
+            badgeCompra = `<span class="badge-success" title="Material recibido">✅ Material listo</span>`;
         }
 
         const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(orden);
         const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(orden) ?? true;
         const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
 
+        // Badge de rentabilidad compacto junto al folio
+        let badgeRentabilidad = '';
+        if (orden.rentabilidad_estado === 'rojo') {
+            badgeRentabilidad = `<span class="badge-rentabilidad-rojo badge-rentabilidad-inline" title="Adeudo $${(orden.adeudo_generado||0).toFixed(2)}">🔴 $${(orden.adeudo_generado||0).toFixed(0)}</span>`;
+        } else if (orden.rentabilidad_estado === 'verde') {
+            badgeRentabilidad = `<span class="badge-rentabilidad-verde badge-rentabilidad-inline">🟢 OK</span>`;
+        }
+
+        // Resumen de extras / notas
+        let extrasHtml = '';
+        const extras = orden.componentes_extras || [];
+        const notas = orden.notas_internas || '';
+        if (extras.length > 0 || notas) {
+            const chips = extras.slice(0, 3).map(e => `<span class="extra-chip">${e.descripcion || 'Extra'}${e.cantidad > 1 ? ' x'+e.cantidad : ''}</span>`).join('');
+            const mas = extras.length > 3 ? `<span class="extra-chip">+${extras.length - 3}</span>` : '';
+            const preview = notas ? `<div class="nota-preview">${notas.slice(0, 90)}${notas.length > 90 ? '…' : ''}</div>` : '';
+            extrasHtml = `<div class="card-extras">
+                ${chips ? `<div class="extra-list">${chips}${mas}</div>` : ''}
+                ${preview}
+            </div>`;
+        }
+
         return `
             <div class="kanban-card ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${orden.id}">
                 <div class="card-header">
-                    <span class="folio">${orden.folio || orden.id.slice(-6)}</span>
-                    ${badgeHtml}
-                    ${badgeCuarentena}
-                    <div class="card-actions">
-                        <button class="btn-icon btn-edit" onclick="event.stopPropagation(); tallerModule._editarOrden('${orden.id}')" title="Editar">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); tallerModule._eliminarOrden('${orden.id}')" title="Eliminar">
-                            <i class="fas fa-trash"></i>
-                        </button>` : ''}
+                    <div class="folio-line">
+                        <span class="folio">${orden.folio || orden.id.slice(-6)}</span>
+                        ${badgeRentabilidad}
+                    </div>
+                    <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
+                        ${badgeCompra}
+                        ${badgeCuarentena}
+                        <div class="card-actions">
+                            <button class="btn-icon btn-edit" onclick="event.stopPropagation(); tallerModule._editarOrden('${orden.id}')" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); tallerModule._eliminarOrden('${orden.id}')" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>` : ''}
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="cliente">${orden.cliente_nombre || 'Cliente'}</div>
                     <div class="equipo">${orden.equipo || 'Equipo'}</div>
+                    ${extrasHtml}
                 </div>
                 <div class="card-footer">
                     <small>Ingreso: ${orden.fecha_ingreso ? new Date(orden.fecha_ingreso).toLocaleDateString() : ''}</small>
@@ -699,7 +797,7 @@ const TallerModule = (function() {
         const vis = _getListaVisibleCols();
         const th = (id, text) => (vis[id] !== false ? `<th>${text}</th>` : '');
         const heads = th('folio', 'Folio') + th('cliente', 'Cliente') + th('equipo', 'Equipo') + th('tecnico', 'Técnico') +
-            th('estado', 'Estado') + th('ingreso', 'Ingreso') + th('reparacion', 'Reparación') + th('recibido', 'Recibido por') + th('acciones', 'Acciones');
+            th('estado', 'Estado') + th('balance', 'Balance') + th('ingreso', 'Ingreso') + th('reparacion', 'Reparación') + th('recibido', 'Recibido por') + th('acciones', 'Acciones');
         let html = `<table class="lista-table"><thead><tr>${heads}</tr></thead><tbody>`;
         ordenes.forEach(o => {
             const compraInfo = comprasVinculadas[o.id];
@@ -712,6 +810,12 @@ const TallerModule = (function() {
             if (vis.equipo !== false) cells.push(`<td>${o.equipo || ''}</td>`);
             if (vis.tecnico !== false) cells.push(`<td>${o.tecnico_responsable || ''}</td>`);
             if (vis.estado !== false) cells.push(`<td>${o.estado || 'Nuevo'}</td>`);
+            if (vis.balance !== false) {
+                const badgeBal = o.rentabilidad_estado === 'rojo'
+                    ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(o.adeudo_generado||0).toFixed(0)}</span>`
+                    : (o.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—');
+                cells.push(`<td>${badgeBal}</td>`);
+            }
             if (vis.ingreso !== false) cells.push(`<td>${o.fecha_ingreso ? new Date(o.fecha_ingreso).toLocaleDateString() : ''}</td>`);
             if (vis.reparacion !== false) cells.push(`<td>${o.fecha_reparacion ? new Date(o.fecha_reparacion).toLocaleDateString() : ''}</td>`);
             if (vis.recibido !== false) cells.push(`<td>${recibidoPor}</td>`);
@@ -841,6 +945,7 @@ const TallerModule = (function() {
         const espera = ordenes.filter(o => o.estado === 'En Espera' || o.estado === 'En reparación').length;
         const reparado = ordenes.filter(o => o.estado === 'Reparado').length;
         const entregado = ordenes.filter(o => o.estado === 'Entregado' || o.estado === 'Facturado').length;
+        const cancelado = ordenes.filter(o => o.estado === 'Cancelado' || o.estado === 'Cancelada').length;
         const conCompra = Object.keys(comprasVinculadas).filter(id => {
             const orden = ordenes.find(o => o.id === id);
             return orden && comprasVinculadas[id].estado < 5;
@@ -851,12 +956,13 @@ const TallerModule = (function() {
         document.getElementById('kpiEspera').innerText = espera;
         document.getElementById('kpiReparado').innerText = reparado;
         document.getElementById('kpiEntregado').innerText = entregado;
+        document.getElementById('kpiCancelado').innerText = cancelado;
         document.getElementById('kpiConCompra').innerText = conCompra;
     }
 
     // ==================== FUNCIONES DEL MODAL (5 PASOS) ====================
     async function _abrirOrden(id) {
-        const orden = orders.find(o => o.id === id);
+        const orden = orders.find(o => String(o.id) === String(id));
         if (!orden) return;
         currentOrder = orden;
         orderId = id;
@@ -870,10 +976,13 @@ const TallerModule = (function() {
         _initWsChatterUI(orden);
         _renderPrioritySupplierBarTaller();
         _renderTimelineTaller(orden.id, orden.estado || 'Nuevo');
+        if (window.actividadesModule && window.actividadesModule.renderWidgetActividades) {
+            window.actividadesModule.renderWidgetActividades('widgetActividadesTaller', id, 'ordenes_taller');
+        }
     }
 
     async function _editarOrden(id) {
-        const orden = orders.find(o => o.id === id);
+        const orden = orders.find(o => String(o.id) === String(id));
         if (!orden) { _showToast('Orden no encontrada', 'error'); return; }
         currentOrder = orden;
         orderId = id;
@@ -885,7 +994,7 @@ const TallerModule = (function() {
     }
 
     function _eliminarOrden(id) {
-        const orden = orders.find(o => o.id === id);
+        const orden = orders.find(o => String(o.id) === String(id));
         if (!orden) { _showErrorModal('Orden no encontrada', 'No se encontró la orden especificada.'); return; }
         // REGLA 1 + REGLA 2: validar cuarentena y etapa antes de eliminar
         if (window.SSEPIStateMachine) {
@@ -1245,22 +1354,41 @@ const TallerModule = (function() {
         document.getElementById('internalNotes').value = orden.notas_internas || '';
         document.getElementById('generalNotes').value = orden.notas_generales || '';
         _setWsGnrlText(orden.notas_generales || '');
+        // Cargar resumen diagnóstico en paso 4 (editable)
+        const resumenDiagEl = document.getElementById('reparacionResumenDiagnostico');
+        if (resumenDiagEl) resumenDiagEl.value = orden.reparacion_resumen_diagnostico || orden.notas_internas || '';
         document.getElementById('horasEstimadas').value = orden.horas_estimadas || 0;
         document.getElementById('recibidoPor').value = orden.recibido_por || '';
+        // Costos
+        const kmEl = document.getElementById('tallerKmIda');
+        if (kmEl) kmEl.value = orden.km_distancia || 0;
+        const hvEl = document.getElementById('tallerHorasViaje');
+        if (hvEl) hvEl.value = orden.horas_viaje || 0;
+        const deEl3 = document.getElementById('tallerDiasEntrega'); if (deEl3) deEl3.value = orden.tiempo_entrega_dias || 0;
+        const hiEl3 = document.getElementById('tallerHorasInvertido'); if (hiEl3) hiEl3.value = orden.horas_invertido || 0;
+        const refEl3 = document.getElementById('tallerRefacciones'); if (refEl3) refEl3.value = orden.refacciones || 0;
+        const ufEl = document.getElementById('tallerUtilidadFactor');
+        if (ufEl) ufEl.value = orden.utilidad_factor || 1.4;
 
         diagnosticoEnlaces = orden.refacciones_enlaces || [];
         diagnosticoInventario = orden.refacciones_inventario || [];
         consumiblesUsados = orden.consumibles_usados || [];
         componentesInventario = orden.componentes_inventario || [];
         componentesCompra = orden.componentes_compra || [];
+        componentesExtras = orden.componentes_extras || [];
         fechaInicioOrden = orden.fecha_inicio || new Date().toISOString();
         fechasEtapas = orden.fechas_etapas || {};
+        _renderRegistroTiempos();
 
         _renderDiagnosticoEnlaces();
         _renderDiagnosticoInventario();
         _renderConsumibles();
         _renderComponentesInventario();
         _renderComponentesCompra();
+        _renderComponentesExtras();
+        _renderPanelRentabilidad();
+        reporteImagenes = orden.reporte_imagenes || [];
+        _renderReporteImagenes();
 
         document.getElementById('resumenCliente').innerText = orden.cliente_nombre || '';
         document.getElementById('resumenEquipo').innerText = orden.equipo || '';
@@ -1453,6 +1581,100 @@ const TallerModule = (function() {
         box.style.display = currentStep === 5 ? '' : 'none';
     }
 
+    function _getEtapaLabels() {
+        return ['Recepción','Confirmado / Diagnóstico','En espera / En reparación','Reparado','Entregado / Facturado'];
+    }
+
+    function _renderRegistroTiemposBase() {
+        const panel = document.getElementById('registroTiemposPanel');
+        if (!panel) return;
+        const labels = _getEtapaLabels();
+        let html = '<div style="display:flex;gap:12px;flex-wrap:wrap;">';
+        for (let i = 1; i <= labels.length; i++) {
+            const ini = fechasEtapas[`etapa${i}_inicio`];
+            const fin = fechasEtapas[`etapa${i}_fin`];
+            let badge = '';
+            if (ini && fin) {
+                const d = new Date(fin) - new Date(ini);
+                const mins = Math.round(d / 60000);
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                const dur = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                badge = `<span style="color:#059669;font-weight:600;">${dur}</span>`;
+            } else if (ini) {
+                badge = `<span style="color:#d97706;font-weight:600;">En curso</span>`;
+            } else {
+                badge = `<span style="color:#94a3b8;">—</span>`;
+            }
+            const iniStr = ini ? new Date(ini).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+            const finStr = fin ? new Date(fin).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+            html += `<div style="min-width:160px;"><strong style="color:#334155;">Etapa ${i}:</strong> ${labels[i-1]}<br><span style="color:#64748b;">${iniStr} → ${finStr}</span> · ${badge}</div>`;
+        }
+        html += '</div>';
+        panel.innerHTML = html;
+    }
+
+    async function _renderRegistroTiemposRelacionados() {
+        const panel = document.getElementById('registroTiemposRelacionados');
+        if (!panel || !currentOrder) return;
+        const supabase = _supabase();
+        if (!supabase) return;
+        let html = '';
+        try {
+            const { data: cots } = await supabase.from('cotizaciones').select('folio,fechas_etapas,estado,created_at').eq('orden_origen_id', currentOrder.id).limit(5).order('created_at',{ascending:false});
+            if (cots && cots.length) {
+                html += '<div style="margin-top:10px;border-top:1px solid #e2e8f0;padding-top:8px;"><strong style="color:#334155;font-size:13px;"><i class="fas fa-file-invoice-dollar"></i> Ventas (cotizaciones vinculadas)</strong><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">';
+                cots.forEach(c => {
+                    const fe = c.fechas_etapas || {};
+                    const ventasLabels = ['Registro','Espera','Cotización','Seguimiento'];
+                    let lineas = [];
+                    for (let i=1;i<=4;i++) {
+                        const ini = fe[`etapa${i}_inicio`];
+                        const fin = fe[`etapa${i}_fin`];
+                        if (ini || fin) {
+                            const iniStr = ini ? new Date(ini).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+                            const finStr = fin ? new Date(fin).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+                            lineas.push(`<span style="color:#64748b;">P${i} ${ventasLabels[i-1]}: ${iniStr}→${finStr}</span>`);
+                        }
+                    }
+                    if (lineas.length) html += `<div style="min-width:180px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;font-size:11px;"><strong>${c.folio||'COT'}</strong> · ${lineas.join(' | ')}</div>`;
+                });
+                html += '</div></div>';
+            }
+        } catch(e) { console.warn('[Taller] tiempos ventas:', e); }
+        try {
+            const cliente = currentOrder.cliente_nombre || '';
+            if (cliente) {
+                const { data: autos } = await supabase.from('proyectos_automatizacion').select('folio,nombre,fechas_etapas,estado,created_at').ilike('cliente','%'+cliente+'%').limit(3).order('created_at',{ascending:false});
+                if (autos && autos.length) {
+                    html += '<div style="margin-top:10px;border-top:1px solid #e2e8f0;padding-top:8px;"><strong style="color:#334155;font-size:13px;"><i class="fas fa-robot"></i> Automatización (mismo cliente)</strong><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">';
+                    autos.forEach(a => {
+                        const fe = a.fechas_etapas || {};
+                        const autoLabels = ['Levantamiento','Ingeniería','Materiales','Desarrollo','Entrega'];
+                        let lineas = [];
+                        for (let i=1;i<=5;i++) {
+                            const ini = fe[`etapa${i}_inicio`];
+                            const fin = fe[`etapa${i}_fin`];
+                            if (ini || fin) {
+                                const iniStr = ini ? new Date(ini).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+                                const finStr = fin ? new Date(fin).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+                                lineas.push(`<span style="color:#64748b;">E${i} ${autoLabels[i-1]}: ${iniStr}→${finStr}</span>`);
+                            }
+                        }
+                        if (lineas.length) html += `<div style="min-width:180px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;font-size:11px;"><strong>${a.folio||'SP-A'}</strong> · ${lineas.join(' | ')}</div>`;
+                    });
+                    html += '</div></div>';
+                }
+            }
+        } catch(e) { console.warn('[Taller] tiempos auto:', e); }
+        panel.innerHTML = html || '';
+    }
+
+    function _renderRegistroTiempos() {
+        _renderRegistroTiemposBase();
+        _renderRegistroTiemposRelacionados().catch(()=>{});
+    }
+
     function _irPaso(paso) {
         if (paso < 1 || paso > 5) return;
         currentStep = paso;
@@ -1462,6 +1684,11 @@ const TallerModule = (function() {
         document.querySelector(`.ws-step-btn[data-step="${paso}"]`).classList.add('active');
         _actualizarBotonesPaso();
         _syncWsGnrlVisibility();
+        // Registrar inicio de etapa automáticamente (solo la primera vez)
+        const campoInicio = `etapa${paso}_inicio`;
+        if (!fechasEtapas[campoInicio]) {
+            fechasEtapas[campoInicio] = new Date().toISOString();
+        }
         if (paso === 2) {
             _renderDiagnosticoEnlaces();
             _renderDiagnosticoInventario();
@@ -1470,7 +1697,10 @@ const TallerModule = (function() {
             _renderConsumibles();
             _renderComponentesInventario();
             _renderComponentesCompra();
+            _renderComponentesExtras();
+            _renderPanelRentabilidad();
         }
+        _renderRegistroTiempos();
     }
 
     function _actualizarBotonesPaso() {
@@ -1482,11 +1712,15 @@ const TallerModule = (function() {
         // Botones PDF - solo visibles en paso 5 Y estado Entregado/Facturado
         const vistaPreviaBtn = document.getElementById('btnVistaPreviaOrdenTaller');
         const imprimirBtn = document.getElementById('btnImprimirOrdenTaller');
+        const reportePdfBtn = document.getElementById('btnReportePDFTaller');
+        const vistaPreviaReporteBtn = document.getElementById('btnVistaPreviaReporteTaller');
         const isPaso5 = currentStep === 5;
         const isEntregadoFacturado = currentOrder && (currentOrder.estado === 'Entregado' || currentOrder.estado === 'Facturado');
         const mostrarPdf = isPaso5 && isEntregadoFacturado;
         if (vistaPreviaBtn) vistaPreviaBtn.classList.toggle('hidden', !mostrarPdf);
         if (imprimirBtn) imprimirBtn.classList.toggle('hidden', !mostrarPdf);
+        if (reportePdfBtn) reportePdfBtn.classList.toggle('hidden', !mostrarPdf);
+        if (vistaPreviaReporteBtn) vistaPreviaReporteBtn.classList.toggle('hidden', !mostrarPdf);
 
         if (currentStep === 1) {
             prevBtn.style.display = 'none';
@@ -1581,6 +1815,64 @@ const TallerModule = (function() {
         });
     }
 
+    // ==================== IMÁGENES PARA REPORTE ====================
+    function _renderReporteImagenes() {
+        const html = reporteImagenes.length === 0
+            ? '<p style="color:var(--text-secondary); font-size:13px;">No hay imágenes cargadas</p>'
+            : reporteImagenes.map((img, idx) => `
+                <div style="position:relative; width:120px; height:120px; border-radius:8px; overflow:hidden; border:1px solid var(--border);">
+                    <img src="${img.dataUrl}" style="width:100%; height:100%; object-fit:cover;" title="${img.nombre}">
+                    <button onclick="tallerModule._eliminarImagenReporte(${idx})" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:24px; height:24px; cursor:pointer; font-size:12px;">✖</button>
+                </div>
+            `).join('');
+        const container = document.getElementById('reporteImagenesPreview');
+        if (container) container.innerHTML = html;
+        const container4 = document.getElementById('reporteImagenesPreviewPaso4');
+        if (container4) container4.innerHTML = html;
+    }
+
+    function _agregarImagenReporte(file) {
+        if (!file || !file.type.startsWith('image/')) return;
+        if (reporteImagenes.length >= 5) {
+            _showToast('Máximo 5 imágenes permitidas');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            reporteImagenes.push({
+                id: 'img-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+                dataUrl: e.target.result,
+                nombre: file.name
+            });
+            _renderReporteImagenes();
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function _eliminarImagenReporte(idx) {
+        reporteImagenes.splice(idx, 1);
+        _renderReporteImagenes();
+    }
+
+    function _initReporteImagenes() {
+        // Input en apartado 1 (info general)
+        const input1 = document.getElementById('reporteImagenesInput');
+        if (input1) {
+            input1.addEventListener('change', function(e) {
+                Array.from(e.target.files).forEach(f => _agregarImagenReporte(f));
+                input1.value = '';
+            });
+        }
+        // Input en paso 4 (reparación)
+        const input4 = document.getElementById('reporteImagenesInputPaso4');
+        if (input4) {
+            input4.addEventListener('change', function(e) {
+                Array.from(e.target.files).forEach(f => _agregarImagenReporte(f));
+                input4.value = '';
+            });
+        }
+    }
+
     function _renderConsumibles() {
         const tbody = document.getElementById('consumiblesBody');
         if (!tbody) return;
@@ -1598,7 +1890,7 @@ const TallerModule = (function() {
                 <td>
                     <select data-index="${idx}" onchange="tallerModule._actualizarConsumibleSeleccion(${idx}, this.value)">
                         <option value="">-- Seleccionar SKU --</option>
-                        ${inventory.filter(p => p.categoria === 'consumible').map(p => `<option value="${p.sku}" ${p.sku === item.sku ? 'selected' : ''}>${p.sku} - ${p.nombre}</option>`).join('')}
+                        ${inventory.map(p => `<option value="${p.sku}" ${p.sku === item.sku ? 'selected' : ''}>${p.sku} - ${p.nombre} (Stock: ${p.stock||0})</option>`).join('')}
                     </select>
                 </td>
                 <td><input type="text" value="${desc}" readonly></td>
@@ -1660,6 +1952,83 @@ const TallerModule = (function() {
         } else {
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay compra vinculada a esta orden</td></tr>';
         }
+    }
+
+    function _renderComponentesExtras() {
+        const tbody = document.getElementById('componentesExtrasBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (componentesExtras.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay componentes extras</td></tr>';
+        } else {
+            componentesExtras.forEach((item, idx) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.descripcion || ''}</td>
+                    <td>${item.cantidad || 0}</td>
+                    <td>$${(item.costo_unitario || 0).toFixed(2)}</td>
+                    <td><strong>$${(item.subtotal || 0).toFixed(2)}</strong></td>
+                    <td><button class="btn-remove" onclick="tallerModule._eliminarComponenteExtra(${idx})">✖</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        const total = componentesExtras.reduce((s, i) => s + (i.subtotal || 0), 0);
+        const disp = document.getElementById('extrasTotalDisplay');
+        if (disp) disp.textContent = total.toFixed(2);
+    }
+
+    function _agregarComponenteExtra() {
+        const descEl = document.getElementById('extraDescInput');
+        const cantEl = document.getElementById('extraCantInput');
+        const costoEl = document.getElementById('extraCostoInput');
+        const desc = (descEl?.value || '').trim();
+        const cant = parseFloat(cantEl?.value) || 0;
+        const costo = parseFloat(costoEl?.value) || 0;
+        if (!desc) { _showToast('Ingresa la descripción del componente extra', 'warning'); return; }
+        if (cant <= 0) { _showToast('La cantidad debe ser mayor a 0', 'warning'); return; }
+        if (costo < 0) { _showToast('El costo no puede ser negativo', 'warning'); return; }
+        componentesExtras.push({ descripcion: desc, cantidad: cant, costo_unitario: costo, subtotal: cant * costo });
+        _renderComponentesExtras();
+        _renderPanelRentabilidad();
+        if (descEl) descEl.value = '';
+        if (cantEl) cantEl.value = '1';
+        if (costoEl) costoEl.value = '';
+        if (tallerAutosaveCtrl) tallerAutosaveCtrl.schedule();
+    }
+
+    function _eliminarComponenteExtra(idx) {
+        componentesExtras.splice(idx, 1);
+        _renderComponentesExtras();
+        _renderPanelRentabilidad();
+        if (tallerAutosaveCtrl) tallerAutosaveCtrl.schedule();
+    }
+
+    function _renderPanelRentabilidad() {
+        const panel = document.getElementById('panelRentabilidad');
+        if (!panel) return;
+        const data = _recolectarDatos();
+        const costoPresupuestado = currentOrder?.costo_presupuestado || currentOrder?.costo_total || data.costo_total || 0;
+        const costoReal = CostosEngine.calcularCostoRealLaboratorio({ ...data, costo_total: costoPresupuestado });
+        const estado = CostosEngine.determinarRentabilidad(costoPresupuestado, costoReal);
+        const adeudo = Math.max(0, costoReal - costoPresupuestado);
+
+        panel.style.display = 'block';
+        panel.className = 'form-section panel-rentabilidad-' + estado;
+        const badge = document.getElementById('rentabilidadBadge');
+        const presEl = document.getElementById('rentabilidadPresupuestado');
+        const realEl = document.getElementById('rentabilidadReal');
+        const adeudoRow = document.getElementById('rentabilidadAdeudoRow');
+        const adeudoEl = document.getElementById('rentabilidadAdeudo');
+
+        if (badge) {
+            badge.className = estado === 'verde' ? 'badge-rentabilidad-verde' : 'badge-rentabilidad-rojo';
+            badge.textContent = estado === 'verde' ? 'Orden rentable' : 'Números rojos';
+        }
+        if (presEl) presEl.textContent = '$' + (costoPresupuestado || 0).toFixed(2);
+        if (realEl) realEl.textContent = '$' + (costoReal || 0).toFixed(2);
+        if (adeudoRow) adeudoRow.style.display = adeudo > 0 ? 'flex' : 'none';
+        if (adeudoEl) adeudoEl.textContent = '$' + (adeudo || 0).toFixed(2);
     }
 
     // ==================== ACTUALIZACIÓN DE LISTAS (desde inputs) ====================
@@ -1839,7 +2208,7 @@ const TallerModule = (function() {
             const nuevaCompra = {
                 folio: `PO-${folioTaller}`,
                 proveedor: 'Por asignar',
-                departamento: 'Taller Electrónica',
+                departamento: 'Laboratorio de Electrónica',
                 fecha: new Date().toISOString(),
                 vinculacion: { tipo: 'taller', id: ordenTallerId, nombre: data.cliente_nombre, folio_taller: folioTaller },
                 items: itemsCompra,  // Se migrarán a compras_items
@@ -1864,7 +2233,7 @@ const TallerModule = (function() {
                 compra_id: compraRef.id,
                 folio: nuevaCompra.folio,
                 cliente: data.cliente_nombre,
-                mensaje: `Nueva solicitud de compra ${nuevaCompra.folio} desde taller`,
+                mensaje: `Nueva solicitud de compra ${nuevaCompra.folio} desde Laboratorio`,
                 leido: false,
                 fecha: new Date().toISOString()
             }, csrfToken);
@@ -1964,6 +2333,7 @@ const TallerModule = (function() {
             await _generarSolicitudCompra();
         }
 
+        _renderRegistroTiempos();
         _showToast(`Etapa ${etapa} finalizada`, 'success');
         if (etapa < 5) _irPaso(etapa + 1);
     }
@@ -1983,9 +2353,45 @@ const TallerModule = (function() {
         data.consumibles_usados = consumiblesUsados;
         data.componentes_inventario = componentesInventario;
         data.componentes_compra = componentesCompra;
+        data.reporte_imagenes = reporteImagenes;
+        const resumenDiagVal = document.getElementById('reparacionResumenDiagnostico');
+        data.reparacion_resumen_diagnostico = resumenDiagVal ? resumenDiagVal.value : '';
         data.fecha_inicio = fechaInicioOrden;
         data.fechas_etapas = fechasEtapas;
         data.recibido_por = document.getElementById('recibidoPor')?.value || '';
+
+        // Calcular costos vía CostosEngine (Laboratorio)
+        try {
+            await CostosEngine.loadFromDatabase('laboratorio');
+            const desglose = CostosEngine.calcularLaboratorio(
+                data.tiempo_entrega_dias || 0,
+                data.km_distancia || 0,
+                data.horas_invertido || 0,
+                data.refacciones || 0,
+                data.utilidad_factor || 1.4
+            );
+            data.costo_gasolina = desglose.gasolina || 0;
+            data.costo_ventas = desglose.ventas || 0;
+            data.costo_tiempo_invertido = desglose.totalTiempoInvertido || 0;
+            data.costo_gastos_fijos = desglose.gastosFijos || 0;
+            data.costo_camioneta = desglose.camioneta || 0;
+            data.costo_total = desglose.credito || 0;
+            console.log(`[SSEPI-COSTOS] Orden ${data.folio || 'nueva'}: gasolina=$${(desglose.gasolina||0).toFixed(2)}, traslado=$${(desglose.totalTiempoInvertido||0).toFixed(2)}, total=$${(desglose.credito||0).toFixed(2)}`);
+        } catch (ce) {
+            console.warn('[SSEPI-COSTOS] Error calculando costos:', ce);
+        }
+
+        // Calcular rentabilidad y adeudo
+        try {
+            const costoPresupuestado = currentOrder?.costo_presupuestado || data.costo_total || 0;
+            const costoReal = CostosEngine.calcularCostoRealLaboratorio({ ...data, costo_total: costoPresupuestado });
+            data.costo_presupuestado = costoPresupuestado;
+            data.costo_real = costoReal;
+            data.adeudo_generado = Math.max(0, costoReal - costoPresupuestado);
+            data.rentabilidad_estado = CostosEngine.determinarRentabilidad(costoPresupuestado, costoReal);
+        } catch (re) {
+            console.warn('[SSEPI-RENTABILIDAD] Error calculando rentabilidad:', re);
+        }
 
         // Auto-avanzar estado según paso actual
         if (!isNewOrder) {
@@ -2014,7 +2420,7 @@ const TallerModule = (function() {
                 if (!silencioso) _showToast('Orden guardada correctamente');
                 // Registrar en historial unificado
                 if (window.SSEPIStateMachine) {
-                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', orderId, 'creacion', `Orden ${data.folio} creada en Taller`, csrfToken);
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', orderId, 'creacion', `Orden ${data.folio} creada en Laboratorio de Electrónica`, csrfToken);
                 }
                 // Auto-avance: si guardó paso 1, pasar a Diagnóstico
                 if (currentStep === 1 && data.estado === 'Nuevo') {
@@ -2063,6 +2469,34 @@ const TallerModule = (function() {
                     console.warn('[Taller] Error notificando a ventas:', e);
                 }
             }
+            // Generar adeudo si la orden salió en números rojos
+            if (data.adeudo_generado > 0 && orderId) {
+                try {
+                    const clienteNombre = document.getElementById('selClient')?.value || '';
+                    const contacto = clients.find(c => c.nombre === clienteNombre);
+                    const clienteId = contacto?.id || currentOrder?.cliente_id;
+                    if (clienteId && window.supabase) {
+                        const adeudoData = {
+                            cliente_id: clienteId,
+                            orden_origen_id: orderId,
+                            orden_tipo: 'taller',
+                            folio_orden: data.folio,
+                            monto_adeudo: data.adeudo_generado,
+                            motivo: `Excedente de costos en orden ${data.folio}`,
+                            recuperado: false
+                        };
+                        await window.supabase.from('clientes_adeudos').insert(adeudoData);
+                        await window.supabase.rpc('actualizar_adeudo_cliente', { p_cliente_id: clienteId });
+                        // Nota interna automática
+                        const notaAdeudo = `[${new Date().toLocaleString('es-MX')}] Sistema: Adeudo generado $${(data.adeudo_generado || 0).toFixed(2)} por excedente de costos en orden ${data.folio}.`;
+                        data.notas_internas = (data.notas_internas || '') + '\n' + notaAdeudo;
+                        await ordenesService.update(orderId, { notas_internas: data.notas_internas }, csrfToken);
+                    }
+                } catch (e) {
+                    console.warn('[Taller] Error generando adeudo:', e);
+                }
+            }
+
             if (!silencioso) {
                 await _loadOrders();
                 _applyFilters();
@@ -2098,6 +2532,16 @@ const TallerModule = (function() {
             factura_numero: document.getElementById('facturaNumero').value,
             entrega_obs: document.getElementById('entregaObs').value,
             recibido_por: document.getElementById('recibidoPor')?.value || '',
+            // Campos costos
+            km_distancia: parseFloat(document.getElementById('tallerKmIda')?.value) || 0,
+            horas_viaje: parseFloat(document.getElementById('tallerHorasViaje')?.value) || 0,
+            tiempo_entrega_dias: parseFloat(document.getElementById('tallerDiasEntrega')?.value) || 0,
+            horas_invertido: parseFloat(document.getElementById('tallerHorasInvertido')?.value) || 0,
+            refacciones: parseFloat(document.getElementById('tallerRefacciones')?.value) || 0,
+            utilidad_factor: parseFloat(document.getElementById('tallerUtilidadFactor')?.value) || 1.4,
+            componentes_extras: componentesExtras || [],
+            fecha_inicio: fechaInicioOrden || new Date().toISOString(),
+            fechas_etapas: fechasEtapas || {},
             updated_at: new Date().toISOString()
         };
     }
@@ -2198,6 +2642,8 @@ const TallerModule = (function() {
         document.getElementById('internalNotes').value = '';
         document.getElementById('generalNotes').value = '';
         _setWsGnrlText('—');
+        const resumenDiagReset = document.getElementById('reparacionResumenDiagnostico');
+        if (resumenDiagReset) resumenDiagReset.value = '';
         document.getElementById('horasEstimadas').value = 0;
         document.getElementById('fechaEntrega').value = new Date().toISOString().slice(0,16);
         document.getElementById('recibeNombre').value = '';
@@ -2205,6 +2651,12 @@ const TallerModule = (function() {
         document.getElementById('facturaNumero').value = '';
         document.getElementById('entregaObs').value = '';
         document.getElementById('recibidoPor').value = '';
+        const kmEl2 = document.getElementById('tallerKmIda'); if (kmEl2) kmEl2.value = 0;
+        const hvEl2 = document.getElementById('tallerHorasViaje'); if (hvEl2) hvEl2.value = 0;
+        const deEl = document.getElementById('tallerDiasEntrega'); if (deEl) deEl.value = 0;
+        const hiEl = document.getElementById('tallerHorasInvertido'); if (hiEl) hiEl.value = 0;
+        const refEl = document.getElementById('tallerRefacciones'); if (refEl) refEl.value = 0;
+        const ufEl2 = document.getElementById('tallerUtilidadFactor'); if (ufEl2) ufEl2.value = 1.4;
         document.getElementById('productImage').value = '';
         document.getElementById('imagePreview').innerHTML = '';
         diagnosticoEnlaces = [];
@@ -2212,11 +2664,15 @@ const TallerModule = (function() {
         consumiblesUsados = [];
         componentesInventario = [];
         componentesCompra = [];
+        componentesExtras = [];
+        reporteImagenes = [];
         _renderDiagnosticoEnlaces();
         _renderDiagnosticoInventario();
         _renderConsumibles();
         _renderComponentesInventario();
         _renderComponentesCompra();
+        _renderComponentesExtras();
+        _renderReporteImagenes();
     }
 
     function _setWsGnrlText(text) {
@@ -2257,7 +2713,7 @@ const TallerModule = (function() {
         item.innerHTML = `
             <div class="feed-dot"></div>
             <div class="feed-meta">
-                <span style="color:var(--c-taller);">TALLER</span>
+                <span style="color:var(--c-taller);">LABORATORIO</span>
                 <span>${new Date().toLocaleTimeString()}</span>
             </div>
             <div class="feed-body">${icono} ${mensaje}</div>
@@ -2444,13 +2900,145 @@ ${toolbar}
 ${printScript}
 </body></html>`;
 
-        const w = window.open('', '_blank', 'noopener,noreferrer');
-        if (!w) {
-            _showToast('Permite ventanas emergentes para impresión', 'info');
-            return;
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
+    }
+
+    async function _generarCotizacionTaller(preview = false) {
+        if (!currentOrder) { _showToast('No hay orden activa', 'warning'); return; }
+        const user = await authService.getCurrentProfile();
+        const orden = currentOrder;
+        const folio = orden.folio || 'SP-E000000';
+        const items = [];
+        if (diagnosticoInventario.length) {
+            diagnosticoInventario.forEach(d => {
+                items.push({ descripcion: d.descripcion || 'Componente', especificaciones: d.sku || '', unidad: 'Pza', precio: Number(d.costo) || 0, cantidad: parseInt(d.cantidad) || 1, entrega: '' });
+            });
         }
-        w.document.write(html);
-        w.document.close();
+        if (consumiblesUsados.length) {
+            consumiblesUsados.forEach(c => {
+                items.push({ descripcion: c.descripcion || 'Consumible', especificaciones: '', unidad: 'Pza', precio: Number(c.costo) || 0, cantidad: 1, entrega: '' });
+            });
+        }
+        if (componentesExtras.length) {
+            componentesExtras.forEach(c => {
+                items.push({ descripcion: c.descripcion || 'Componente extra', especificaciones: '', unidad: 'Pza', precio: Number(c.costo_unitario) || 0, cantidad: parseInt(c.cantidad) || 1, entrega: '' });
+            });
+        }
+        if (!items.length) items.push({ descripcion: '(Sin conceptos cargados)', especificaciones: '', unidad: '', precio: 0, cantidad: 1, entrega: '' });
+        const subtotal = items.reduce((s, i) => s + i.precio * i.cantidad, 0);
+        const iva = subtotal * 0.16;
+        const total = subtotal + iva;
+        const pdfData = {
+            folio,
+            cliente: orden.cliente_nombre || orden.cliente || '',
+            rfc: orden.rfc || '',
+            direccion: orden.direccion || '',
+            fecha: orden.fecha ? new Date(orden.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) : new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            vendedor: orden.tecnico || '',
+            departamento: 'Taller Electrónica',
+            items,
+            subtotal,
+            iva,
+            total
+        };
+        try {
+            await pdfGenerator.generateCotizacion(pdfData, user, preview);
+            if (!preview) _showToast('Cotización PDF generada: ' + folio, 'success');
+        } catch (err) {
+            _showToast('Error al generar cotización: ' + err.message, 'error');
+        }
+    }
+
+    async function _generarReporteTaller(preview = false) {
+        if (!currentOrder) { _showToast('No hay orden activa', 'warning'); return; }
+        const orden = currentOrder;
+        const user = await authService.getCurrentProfile();
+
+        // Recopilar datos del formulario
+        const folio = _formVal('inpFolio') || orden.folio || 'BORRADOR';
+        const cliente = _formVal('selClient') || orden.cliente_nombre || '—';
+        const equipo = _formVal('inpEquip') || orden.equipo || '—';
+        const marca = _formVal('inpBrand') || orden.marca || '—';
+        const modelo = _formVal('inpModel') || orden.modelo || '—';
+        const serie = _formVal('inpSerial') || orden.serie || '—';
+        const falla = _formVal('inpFail') || orden.falla_reportada || '—';
+        const cond = _formVal('inpCond') || orden.condiciones_fisicas || '—';
+        const tecnico = _formVal('techSelect') || orden.tecnico_responsable || '—';
+        const notasInt = _formVal('internalNotes') || orden.notas_internas || '';
+        const notasCli = _formVal('generalNotes') || orden.notas_generales || '';
+        const repNotas = _formVal('reparacionNotas') || '';
+        const resumenDiag = _formVal('reparacionResumenDiagnostico') || orden.reparacion_resumen_diagnostico || '';
+        const entRecibe = _formVal('recibeNombre') || '';
+        const entFecha = _formVal('fechaEntrega') || '';
+        const entObs = _formVal('entregaObs') || '';
+
+        const descServ = [
+            'Equipo: ' + equipo,
+            'Marca/Modelo: ' + marca + ' / ' + modelo,
+            'Serie: ' + serie,
+            'Falla reportada: ' + falla,
+            'Condiciones físicas: ' + cond,
+            '',
+            'Trabajo realizado:',
+            resumenDiag || repNotas || notasInt || '—'
+        ].join('\n');
+
+        const hallazgos = [
+            'Técnico responsable: ' + tecnico,
+            'Notas internas: ' + (notasInt || '—'),
+            'Notas generales: ' + (notasCli || '—')
+        ].join('\n');
+
+        const refacciones = [
+            'Enlaces de refacción: ' + (diagnosticoEnlaces.length ? diagnosticoEnlaces.map(e => e.descripcion).join(', ') : 'Ninguno'),
+            'Inventario usado: ' + (diagnosticoInventario.length ? diagnosticoInventario.map(e => e.descripcion).join(', ') : 'Ninguno'),
+            'Consumibles: ' + (consumiblesUsados.length ? consumiblesUsados.map(e => e.descripcion).join(', ') : 'Ninguno'),
+            'Componentes extras: ' + (componentesExtras.length ? componentesExtras.map(e => `${e.descripcion} (x${e.cantidad} @ $${e.costo_unitario})`).join(', ') : 'Ninguno')
+        ].join('\n');
+
+        const recomendaciones = [
+            'Entregado a: ' + entRecibe,
+            'Fecha de entrega: ' + entFecha,
+            'Observaciones: ' + (entObs || '—')
+        ].join('\n');
+
+        // Recopilar imágenes para el reporte (nuevo módulo + legacy previewEntrega)
+        const imgs = [];
+        if (reporteImagenes && reporteImagenes.length > 0) {
+            reporteImagenes.forEach(img => { if (img.dataUrl) imgs.push(img.dataUrl); });
+        }
+        const previewEntrega = document.getElementById('previewEntrega');
+        if (previewEntrega) {
+            previewEntrega.querySelectorAll('img').forEach(img => {
+                if (img.src && img.src.startsWith('data:') && !imgs.includes(img.src)) imgs.push(img.src);
+            });
+        }
+
+        const pdfData = {
+            folio: folio,
+            cliente: cliente,
+            fecha: new Date().toLocaleDateString('es-MX', {day:'2-digit',month:'2-digit',year:'numeric'}),
+            vendedor: tecnico,
+            departamento: 'Laboratorio de Electrónica',
+            repDescripcion: descServ,
+            repHallazgos: hallazgos,
+            repRefacciones: refacciones,
+            repRecomendaciones: recomendaciones,
+            imagenes: imgs
+        };
+
+        pdfGenerator.generateReport(pdfData, user, preview)
+            .then(() => { if (!preview) _showToast('Reporte generado', 'success'); })
+            .catch(err => { console.error(err); _showToast('Error al generar reporte', 'error'); });
     }
 
     function _imprimirOrdenReparacion() {
@@ -2489,6 +3077,12 @@ ${printScript}
         if (printOrdenBtn) printOrdenBtn.addEventListener('click', () => _imprimirOrdenReparacion());
         const prevOrdenBtn = document.getElementById('btnVistaPreviaOrdenTaller');
         if (prevOrdenBtn) prevOrdenBtn.addEventListener('click', () => _vistaPreviaOrdenReparacion());
+        const reportePdfBtn = document.getElementById('btnReportePDFTaller');
+        if (reportePdfBtn) reportePdfBtn.addEventListener('click', () => _generarReporteTaller(false));
+        const prevReporteBtn = document.getElementById('btnVistaPreviaReporteTaller');
+        if (prevReporteBtn) prevReporteBtn.addEventListener('click', () => _generarReporteTaller(true));
+        const cotPdfBtn = document.getElementById('btnCotizacionPDFTaller');
+        if (cotPdfBtn) cotPdfBtn.addEventListener('click', () => _generarCotizacionTaller(false));
         document.querySelectorAll('.ws-step-btn').forEach(btn => {
             btn.addEventListener('click', (e) => _irPaso(parseInt(e.target.dataset.step)));
         });
@@ -2517,6 +3111,8 @@ ${printScript}
             consumiblesUsados.push({ sku: '', descripcion: '', cantidad: 1 });
             _renderConsumibles();
         });
+        const addExtraBtn = document.getElementById('addComponenteExtraBtn');
+        if (addExtraBtn) addExtraBtn.addEventListener('click', _agregarComponenteExtra);
 
         document.getElementById('aplicarFiltrosBtn').addEventListener('click', () => {
             _applyQuickRangeFromSelect();
@@ -2578,6 +3174,7 @@ ${printScript}
         });
 
         document.getElementById('productImage').addEventListener('change', _previewImage);
+        _initReporteImagenes();
         document.getElementById('fotoEntrega').addEventListener('change', (e) => {
             const preview = document.getElementById('previewEntrega');
             if (e.target.files[0]) {
@@ -2722,6 +3319,7 @@ ${printScript}
         _eliminarComponenteInventario,
         _actualizarComponenteCompra,
         _eliminarComponenteCompra,
+        _eliminarImagenReporte,
         _appendEnlaceProveedor,
     };
 })();

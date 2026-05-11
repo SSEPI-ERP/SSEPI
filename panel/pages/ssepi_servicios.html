@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -8,6 +8,8 @@
     <title>SSEPI · Automatización Industrial</title>
     <link rel="stylesheet" href="/panel/css/main.css">
     <link rel="stylesheet" href="/panel/css/modules/servicios.css">
+    <link rel="stylesheet" href="/panel/css/modules/actividades.css">
+    <link rel="stylesheet" href="/panel/css/modules/calculadoras.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -23,6 +25,12 @@
     <script src="/panel/js/core/nav-by-role.js?v=2"></script>
     <script src="/panel/js/core/folio-formats.js?v=2"></script>
     <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="/panel/js/core/membretes_base64.js?v=2"></script>
+    <script type="module" src="/panel/js/core/pdf-generator.js?v=2"></script>
+    <script type="module" src="/panel/js/core/folio-formats.js?v=2"></script>
+    <script type="module" src="/panel/js/modules/actividades.js?v=2"></script>
     <script type="module" src="/panel/js/modules/servicios.js?v=2"></script>
 </head>
 <body class="page-servicios nav-loading">
@@ -56,23 +64,23 @@
     <nav class="sidebar-left" id="sidebar">
         <div class="menu-category">OPERACIONES</div>
         <a href="/panel/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
-        <a href="/panel/pages/ssepi_analisis_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-chart-pie"></i></span> Análisis Laboratorio</a>
         <a href="/panel/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
         <a href="/panel/pages/ssepi_servicios.html" class="nav-item active" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/panel/pages/ssepi_actividades.html" class="nav-item" data-module="actividades_automatizacion"><span class="icon-box"><i class="fas fa-calendar-week"></i></span> Actividades</a>
         <a href="/panel/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
         <div class="menu-category">COMERCIAL</div>
         <a href="/panel/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
-        <a href="/panel/pages/ssepi_analisis_ventas.html" class="nav-item" data-module="analisis_ventas"><span class="icon-box"><i class="fas fa-chart-bar"></i></span> Análisis Ventas</a>
         <a href="/panel/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <a href="/panel/pages/ssepi_suministros.html" class="nav-item" data-module="suministros"><span class="icon-box"><i class="fas fa-boxes-stacked"></i></span> Suministros</a>
         <div class="menu-category">ADMINISTRACIÓN</div>
         <a href="/panel/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
         <a href="/panel/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
         <a href="/panel/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
-        <a href="/panel/pages/ssepi_import_viewer.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-file-upload"></i></span> Importar datos</a>
         <a href="/panel/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
         <a href="/panel/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
-        <a href="/panel/pages/ssepi_analisis.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-chart-line"></i></span> Análisis</a>
         <a href="/panel/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+                <a href="/panel/pdfs-politicas.html" class="nav-item" data-module="pdfs_politicas"><span class="icon-box"><i class="fas fa-file-pdf"></i></span> PDFs y Políticas</a>
+
         <div class="menu-category">EXTERNOS</div>
         <a href="#" class="nav-item" target="_blank" rel="noopener" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
         <div class="menu-category">PERSONAL</div>
@@ -187,6 +195,9 @@
                 <button class="ws-step-btn" data-step="4">4. Desarrollo</button>
                 <button class="ws-step-btn" data-step="5">5. Entrega</button>
             </div>
+            <!-- Registro de tiempos por etapa -->
+            <div id="registroTiemposPanel" style="margin-top:8px;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:#475569;min-height:24px;"></div>
+            <div id="registroTiemposRelacionados" style="margin-top:4px;"></div>
         </div>
 
         <div class="ws-body">
@@ -203,6 +214,7 @@
                         </div>
                         <div class="input-group"><label>Notas Generales</label><textarea id="paso1_notasGenerales" rows="3"></textarea></div>
                         <div class="input-group"><label>Notas Internas</label><textarea id="paso1_notasInternas" rows="3"></textarea></div>
+                        <div id="widgetActividadesProyecto"></div>
                         <div style="display:flex; justify-content:flex-end;">
                             <button class="btn-etapa" id="guardarPaso1"><i class="fas fa-save"></i> Guardar</button>
                             <button class="btn-etapa" id="terminarEtapa1" data-etapa="1"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
@@ -295,6 +307,29 @@
                             <div class="input-group"><label>Resumen de lo realizado</label><textarea id="entregaResumenAutomatizacion" rows="3" placeholder="Qué se hizo en esta entrega"></textarea></div>
                             <div class="input-group"><label>Responsable de entrega (quién lo hizo)</label><input type="text" id="entregaResponsableAutomatizacion" placeholder="Nombre del ingeniero/técnico"></div>
                         </div>
+
+                        <!-- Panel de Rentabilidad (Semáforo) -->
+                        <div id="panelRentabilidad" class="form-section" style="margin-top:20px; padding:14px; border-radius:8px; display:none;">
+                            <div class="section-title-form" style="font-size:15px; margin-bottom:10px;"><i class="fas fa-chart-pie"></i> Rentabilidad del proyecto</div>
+                            <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:center;">
+                                <div id="rentabilidadBadge" style="padding:8px 16px; border-radius:20px; font-weight:700; font-size:14px; display:inline-block;">—</div>
+                                <div style="flex:1; min-width:200px;">
+                                    <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+                                        <span>Presupuestado:</span>
+                                        <strong id="rentabilidadPresupuestado">$0.00</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+                                        <span>Costo real:</span>
+                                        <strong id="rentabilidadReal">$0.00</strong>
+                                    </div>
+                                    <div id="rentabilidadAdeudoRow" style="display:flex; justify-content:space-between; font-size:13px; color:#b91c1c; font-weight:700; display:none;">
+                                        <span>Adeudo generado:</span>
+                                        <span id="rentabilidadAdeudo">$0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="form-section firmas-entrega">
                             <div class="section-title-form"><i class="fas fa-signature"></i> Firmas</div>
                             <div class="firmas-container">
@@ -306,6 +341,17 @@
                                     <div><strong>Firma del Técnico</strong></div>
                                     <input type="text" id="firmaTecnicoNombreAutomatizacion" placeholder="Nombre y fecha" class="firma-input">
                                 </div>
+                            </div>
+                        </div>
+                        <!-- PDF Cotización + Reporte -->
+                        <div class="form-section" style="margin-top:16px;padding:16px;border:1px solid var(--border);border-radius:8px;">
+                            <div class="section-title-form"><i class="fas fa-file-pdf"></i> Documentos PDF</div>
+                            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+                                <button type="button" class="btn-primary" id="btnCotizacionPDFAuto" title="Generar cotización PDF con membrete institucional"><i class="fas fa-file-invoice-dollar"></i> Cotización PDF</button>
+                                <button type="button" class="btn-secondary" id="btnVistaPreviaCotAuto" title="Vista previa de la cotización"><i class="fas fa-eye"></i> Vista previa</button>
+                                <button type="button" class="btn-primary" id="btnReportePDFAuto" title="Generar reporte de servicio técnico PDF con membrete institucional"><i class="fas fa-file-alt"></i> Reporte PDF</button>
+                                <button type="button" class="btn-secondary" id="btnVistaPreviaRepAuto" title="Vista previa del reporte"><i class="fas fa-eye"></i> Vista previa reporte</button>
+                                <button type="button" class="btn-secondary" id="exportarCronogramaPDF"><i class="fas fa-file-pdf"></i> Exportar Cronograma PDF</button>
                             </div>
                         </div>
                         <button class="btn-nuevo-apartado" id="crearNuevoApartado"><i class="fas fa-plus-circle"></i> Nuevo Apartado</button>

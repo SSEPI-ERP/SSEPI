@@ -12,6 +12,30 @@ const ActividadesModule = (function() {
     let currentActividadId = null;
     let currentSemanaInicio = null;
     let subscriptions = [];
+    let subtareasMap = {};
+    let vistaActual = 'semanal';
+    let draggedActividadId = null;
+    let isAdmin = false;
+    let jiraKeyMap = {};
+    let currentUser = null;
+    let sidebarActividadId = null;
+    let departamentoActual = 'todos';
+    let ordenesCache = {};
+
+    const DEPARTAMENTOS = [
+        { key: 'automatizacion', label: 'Automatización' },
+        { key: 'electronicos', label: 'Laboratorio Electrónica' },
+        { key: 'motores', label: 'Motores' },
+        { key: 'soporte_planta', label: 'Soporte en Planta' },
+        { key: 'administracion', label: 'Administración' }
+    ];
+
+    const ORDEN_MAP = {
+        'automatizacion': { tabla: 'proyectos_automatizacion', label: 'Proyecto', displayField: 'nombre_proyecto', folioField: 'folio' },
+        'electronicos': { tabla: 'ordenes_taller', label: 'Orden', displayField: 'equipo', folioField: 'folio' },
+        'motores': { tabla: 'ordenes_motores', label: 'Orden', displayField: 'equipo', folioField: 'folio' },
+        'soporte_planta': { tabla: 'proyectos_automatizacion', label: 'Proyecto Planta', displayField: 'nombre_proyecto', folioField: 'folio' }
+    };
 
     const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const diasSemanaCortos = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -20,6 +44,7 @@ const ActividadesModule = (function() {
     const actividadesService = createDataService('actividades_diarias');
     const historialService = createDataService('actividades_historial');
     const contactosService = createDataService('contactos');
+    const subtareasService = createDataService('actividades_subtareas');
 
     function createDataService(tableName) {
         return {
@@ -57,6 +82,12 @@ const ActividadesModule = (function() {
     async function init() {
         console.log('✅ [Actividades] Conectado');
 
+        // Leer departamento de URL si existe
+        const urlParams = new URLSearchParams(window.location.search);
+        const deptoUrl = urlParams.get('departamento');
+        if (deptoUrl) departamentoActual = deptoUrl;
+
+        await _detectarRol();
         _setSemanaActual();
         _bindEvents();
         await _loadInitialData();
@@ -64,6 +95,32 @@ const ActividadesModule = (function() {
         _setupRealtime();
 
         console.log('✅ Módulo actividades iniciado');
+    }
+
+    async function _detectarRol() {
+        try {
+            const profile = await window.authService?.getCurrentProfile?.();
+            currentUser = profile;
+            isAdmin = profile && ['admin', 'superadmin'].includes(profile.rol);
+            // Detectar departamento por rol para filtro default
+            const rol = profile?.rol;
+            const rolDepto = {
+                'automatizacion': 'automatizacion',
+                'taller': 'electronicos',
+                'motores': 'motores',
+                'soporte': 'soporte_planta',
+                'administracion': 'administracion',
+                'admin': 'todos',
+                'superadmin': 'todos',
+                'ventas': 'todos'
+            };
+            departamentoActual = rolDepto[rol] || 'todos';
+        } catch (e) {
+            console.warn('[Actividades] No se pudo detectar rol:', e);
+            isAdmin = false;
+            currentUser = null;
+            departamentoActual = 'todos';
+        }
     }
 
     function _setSemanaActual() {
@@ -94,8 +151,11 @@ const ActividadesModule = (function() {
             _loadActividades(),
             _loadTecnicos()
         ]);
+        await _loadSubtareas();
+        _buildJiraKeyMap();
         _renderGridSemanal();
         _renderActividadesLista();
+        if (vistaActual === 'kanban') _renderKanban();
         _populateFiltroTecnicos();
     }
 
@@ -108,12 +168,17 @@ const ActividadesModule = (function() {
         finSemana.setHours(23, 59, 59, 999);
 
         try {
-            const { data, error } = await window.supabase
+            let q = window.supabase
                 .from('actividades_diarias')
-                .select('*')
+                .select('id, fecha, user_id, resumen, estado, archivo_url, archivo_tipo, creado_por, notas, completado_en, duracion_minutos, created_at, departamento, orden_origen_id, orden_origen_tipo')
                 .gte('fecha', inicioSemana.toISOString().split('T')[0])
-                .lte('fecha', finSemana.toISOString().split('T')[0])
-                .order('fecha', { ascending: true });
+                .lte('fecha', finSemana.toISOString().split('T')[0]);
+
+            if (departamentoActual !== 'todos') {
+                q = q.eq('departamento', departamentoActual);
+            }
+
+            const { data, error } = await q.order('fecha', { ascending: true });
 
             if (error) throw error;
             // Resolve creado_por → nombre de usuario en segunda consulta
@@ -126,6 +191,19 @@ const ActividadesModule = (function() {
                     .select('id, nombre, email')
                     .in('id', userIds);
                 if (users) users.forEach(u => { userMap[u.id] = u; });
+            }
+            // Fallback modo local: si no hay usuarios en tabla 'usuarios', usar datos offline conocidos
+            if (Object.keys(userMap).length === 0 && userIds.length > 0) {
+                const fallback = {
+                    'user-001': { nombre: 'Norberto Moro', email: 'norbertomoro4@gmail.com' },
+                    'user-002': { nombre: 'Ventas 1', email: 'ventas1@ssepi.org' },
+                    'user-003': { nombre: 'Laboratorio 1', email: 'laboratorio1@ssepi.org' },
+                    'user-004': { nombre: 'Motores 1', email: 'motores1@ssepi.org' },
+                    'user-005': { nombre: 'Automatizacion 1', email: 'automatizacion1@ssepi.org' },
+                    'user-006': { nombre: 'Ivan Garcia', email: 'ivang.ssepi@gmail.com' },
+                    'user-007': { nombre: 'Admin SSEPI', email: 'administracion@ssepi.org' }
+                };
+                userIds.forEach(id => { if (fallback[id]) userMap[id] = fallback[id]; });
             }
             actividades = rawActividades.map(a => ({
                 ...a,
@@ -167,6 +245,63 @@ const ActividadesModule = (function() {
         }
     }
 
+    // ==================== KANBAN: CARGA Y UTILIDADES ====================
+    async function _loadSubtareas() {
+        if (!window.supabase || actividades.length === 0) return;
+        const ids = actividades.map(a => a.id);
+        try {
+            const { data, error } = await window.supabase
+                .from('actividades_subtareas')
+                .select('*')
+                .in('actividad_id', ids)
+                .order('orden', { ascending: true });
+            if (error) throw error;
+            subtareasMap = {};
+            (data || []).forEach(s => {
+                if (!subtareasMap[s.actividad_id]) subtareasMap[s.actividad_id] = [];
+                subtareasMap[s.actividad_id].push(s);
+            });
+        } catch (error) {
+            console.error('[Actividades] Error cargando subtareas:', error);
+            subtareasMap = {};
+        }
+    }
+
+    function _buildJiraKeyMap() {
+        const sorted = [...actividades].sort((a, b) => new Date(a.created_at || a.fecha) - new Date(b.created_at || b.fecha));
+        jiraKeyMap = {};
+        sorted.forEach((a, idx) => {
+            jiraKeyMap[a.id] = 'ACT-' + String(idx + 1).padStart(3, '0');
+        });
+    }
+
+    function _computeProgress(subtareas) {
+        if (!subtareas || subtareas.length === 0) return 0;
+        const done = subtareas.filter(s => s.done).length;
+        return Math.round((done / subtareas.length) * 100);
+    }
+
+    function _getTecnicoIniciales(act) {
+        const nombre = act.creado_por_usuario?.nombre || act.user_id || 'Técnico';
+        const parts = nombre.trim().split(/\s+/);
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+        return (parts[0] || 'T').substring(0, 2).toUpperCase();
+    }
+
+    function _tiempoTranscurrido(act) {
+        if (!act.completado_en || !act.created_at) return '';
+        const inicio = new Date(act.created_at);
+        const fin = new Date(act.completado_en);
+        const diffMs = fin - inicio;
+        const mins = Math.round(diffMs / 60000);
+        if (mins < 60) return `${mins} min`;
+        const hrs = Math.floor(mins / 60);
+        const rem = mins % 60;
+        if (hrs < 24) return `${hrs}h ${rem}m`;
+        const days = Math.floor(hrs / 24);
+        return `${days}d ${hrs % 24}h`;
+    }
+
     // ==================== RENDERIZADO GRID SEMANAL ====================
     function _renderGridSemanal() {
         const container = document.getElementById('gridSemanal');
@@ -194,8 +329,8 @@ const ActividadesModule = (function() {
             const diaFecha = fechaDia.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
             const fechaStr = fechaDia.toISOString().split('T')[0];
 
-            // Filtrar actividades de este día
-            const actividadesDia = actividades.filter(a => a.fecha === fechaStr);
+            // Filtrar actividades de este día (aplica filtro departamento)
+            const actividadesDia = _filtrarPorDepartamento(actividades).filter(a => a.fecha === fechaStr);
 
             const hasActividades = actividadesDia.length > 0;
             const cardClass = hasActividades ? 'dia-card' : 'dia-card sin-actividades';
@@ -225,6 +360,124 @@ const ActividadesModule = (function() {
                 _verActividad(id);
             });
         });
+    }
+
+    // ==================== RENDERIZADO KANBAN ====================
+    function _renderKanban() {
+        const container = document.getElementById('kanbanBoard');
+        if (!container) return;
+
+        const cols = {
+            pendiente: container.querySelector('.col-pendiente .kanban-card-list'),
+            en_progreso: container.querySelector('.col-en_progreso .kanban-card-list'),
+            completado: container.querySelector('.col-completado .kanban-card-list')
+        };
+        const counts = {
+            pendiente: document.getElementById('count-pendiente'),
+            en_progreso: document.getElementById('count-en_progreso'),
+            completado: document.getElementById('count-completado')
+        };
+
+        const filtered = _filtrarPorDepartamento(_filtrarActividades());
+        const grupos = { pendiente: [], en_progreso: [], completado: [] };
+        filtered.forEach(a => {
+            const st = a.estado || 'pendiente';
+            if (grupos[st]) grupos[st].push(a);
+            else grupos.pendiente.push(a);
+        });
+
+        Object.keys(cols).forEach(key => {
+            if (cols[key]) {
+                cols[key].innerHTML = grupos[key].map(a => _renderKanbanCard(a)).join('');
+            }
+            if (counts[key]) counts[key].textContent = grupos[key].length;
+        });
+
+        _bindKanbanDragEvents();
+    }
+
+    function _filtrarActividades() {
+        const tecnicoId = document.getElementById('filtroTecnico')?.value || 'todos';
+        const estadoVal = document.getElementById('filtroEstado')?.value || 'todos';
+        const buscar = document.getElementById('filtroBuscar')?.value?.toLowerCase() || '';
+        return actividades.filter(a => {
+            if (tecnicoId !== 'todos' && a.user_id !== tecnicoId) return false;
+            if (estadoVal !== 'todos' && a.estado !== estadoVal) return false;
+            if (buscar && !(a.resumen || '').toLowerCase().includes(buscar)) return false;
+            return true;
+        });
+    }
+
+    function _filtrarPorDepartamento(lista) {
+        const filtroDepto = document.getElementById('filtroDepartamento')?.value || 'todos';
+        if (filtroDepto === 'todos') return lista;
+        return lista.filter(a => a.departamento === filtroDepto);
+    }
+
+    function _renderKanbanCard(act) {
+        const key = jiraKeyMap[act.id] || act.id?.slice(0, 6).toUpperCase();
+        const subtareas = subtareasMap[act.id] || [];
+        const progress = _computeProgress(subtareas);
+        const iniciales = _getTecnicoIniciales(act);
+        const nombre = act.creado_por_usuario?.nombre || 'Técnico';
+        const prioridad = act.prioridad || 'media';
+        const pClass = 'priority-' + prioridad;
+        const pLabel = prioridad.charAt(0).toUpperCase() + prioridad.slice(1);
+        const color = _getAvatarColor(act.creado_por || act.user_id);
+
+        // Subtareas visibles en card (máx 3)
+        const done = subtareas.filter(s => s.done).length;
+        const total = subtareas.length;
+        let subsHTML = '';
+        if (total > 0) {
+            const rows = subtareas.slice(0, 3).map(s => `
+                <div class="kanban-subtask-row ${s.done ? 'done' : ''}" onclick="event.stopPropagation();window.actividadesModule._toggleSubtarea('${s.id}')">
+                    <input type="checkbox" class="kanban-subtask-check" ${s.done ? 'checked' : ''} onclick="event.stopPropagation();window.actividadesModule._toggleSubtarea('${s.id}')">
+                    <span class="kanban-subtask-text">${s.titulo || 'Subtarea'}</span>
+                </div>
+            `).join('');
+            const mas = total > 3 ? `<div class="kanban-subtask-mas">+${total - 3} más</div>` : '';
+            subsHTML = `<div class="kanban-subtasks">${rows}${mas}</div>`;
+        }
+
+        // Time badge para completadas
+        let timeHTML = '';
+        if (act.estado === 'completado' && act.completado_en && act.created_at) {
+            const tiempo = _tiempoTranscurrido(act);
+            timeHTML = `<div class="kanban-time-badge">⏱️ ${tiempo}</div>`;
+        }
+
+        return `
+            <div class="kanban-card border-${prioridad}" draggable="true" data-id="${act.id}" data-estado="${act.estado || 'pendiente'}">
+                <div class="kanban-card-top">
+                    <div class="kanban-card-title">${(act.resumen || 'Sin resumen').substring(0, 120)}</div>
+                    <span class="kanban-priority-badge ${pClass}">${pLabel}</span>
+                </div>
+                <div class="kanban-card-meta">
+                    <div class="kanban-card-assignee">
+                        <div class="kanban-card-avatar" style="background:${color}" title="${nombre}">${iniciales}</div>
+                        <span>${nombre}</span>
+                    </div>
+                    <span class="kanban-card-key-mini">${key}</span>
+                </div>
+                ${subsHTML}
+                <div class="kanban-card-progress-wrap">
+                    <div class="kanban-card-progress-label">
+                        <span>Progreso</span>
+                        <span>${progress}%</span>
+                    </div>
+                    <div class="kanban-card-progress-bar"><div class="kanban-card-progress-fill" style="width:${progress}%"></div></div>
+                </div>
+                ${timeHTML}
+            </div>
+        `;
+    }
+
+    function _getAvatarColor(id) {
+        const colors = ['#1976d2','#00796B','#7B1FA2','#C62828','#F57C00','#388E3C','#5D4037','#455A64'];
+        let hash = 0;
+        for (let i = 0; i < (id || '').length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+        return colors[Math.abs(hash) % colors.length];
     }
 
     function _renderActividadMini(act) {
@@ -264,7 +517,8 @@ const ActividadesModule = (function() {
         const container = document.getElementById('actividadesLista');
         if (!container) return;
 
-        if (actividades.length === 0) {
+        const visibles = _filtrarPorDepartamento(actividades);
+        if (visibles.length === 0) {
             container.innerHTML = `
                 <div style="text-align:center; padding:40px; color:var(--text-muted);">
                     <i class="fas fa-inbox" style="font-size:48px; margin-bottom:16px; opacity:0.3;"></i>
@@ -274,7 +528,7 @@ const ActividadesModule = (function() {
             return;
         }
 
-        container.innerHTML = actividades.map(act => {
+        container.innerHTML = visibles.map(act => {
             const estadoClass = act.estado || 'pendiente';
             const estadoLabel = _getEstadoLabel(act.estado);
             const tecnico = act.creado_por_usuario?.nombre || 'Técnico';
@@ -314,6 +568,35 @@ const ActividadesModule = (function() {
         });
     }
 
+    async function _cargarOrdenesPorDepartamento(departamento, seleccionarId = null) {
+        const ordenSelect = document.getElementById('actOrden');
+        if (!ordenSelect || !window.supabase) return;
+        ordenSelect.innerHTML = '<option value="">Sin orden vinculada</option>';
+        if (!departamento || departamento === 'administracion') return;
+
+        const config = ORDEN_MAP[departamento];
+        if (!config) return;
+
+        try {
+            const { data, error } = await window.supabase
+                .from(config.tabla)
+                .select(`id, ${config.folioField}, ${config.displayField}`)
+                .order(config.folioField, { ascending: false })
+                .limit(50);
+            if (error) throw error;
+            (data || []).forEach(o => {
+                const opt = document.createElement('option');
+                opt.value = o.id;
+                const label = o[config.displayField] || o[config.folioField] || 'Sin nombre';
+                opt.textContent = `${o[config.folioField]} — ${label}`;
+                if (seleccionarId && String(o.id) === String(seleccionarId)) opt.selected = true;
+                ordenSelect.appendChild(opt);
+            });
+        } catch (e) {
+            console.warn('[Actividades] Error cargando órdenes:', e);
+        }
+    }
+
     // ==================== MODAL: NUEVA/EDITAR ACTIVIDAD ====================
     function _abrirModalActividad(editId = null) {
         const modal = document.getElementById('actividadModal');
@@ -324,19 +607,28 @@ const ActividadesModule = (function() {
         document.getElementById('actFecha').value = new Date().toISOString().split('T')[0];
         document.getElementById('actTecnico').value = '';
         document.getElementById('actResumen').value = '';
+        document.getElementById('actNotas').value = '';
         document.getElementById('actArchivo').value = '';
         document.getElementById('actEstado').value = 'pendiente';
+        const deptoSel = document.getElementById('actDepartamento');
+        if (deptoSel) deptoSel.value = (departamentoActual !== 'todos' ? departamentoActual : 'automatizacion');
         currentActividadId = null;
 
+        // Cargar órdenes default
+        _cargarOrdenesPorDepartamento(deptoSel ? deptoSel.value : 'automatizacion');
+
         if (editId) {
-            const act = actividades.find(a => a.id === editId);
+            const act = actividades.find(a => String(a.id) === String(editId));
             if (act) {
                 currentActividadId = editId;
                 if (titleEl) titleEl.textContent = 'Editar Actividad';
                 document.getElementById('actFecha').value = act.fecha || '';
                 document.getElementById('actTecnico').value = act.user_id || '';
                 document.getElementById('actResumen').value = act.resumen || '';
+                document.getElementById('actNotas').value = act.notas || '';
                 document.getElementById('actEstado').value = act.estado || 'pendiente';
+                if (deptoSel) deptoSel.value = act.departamento || 'automatizacion';
+                _cargarOrdenesPorDepartamento(act.departamento || 'automatizacion', act.orden_origen_id);
             }
         } else {
             if (titleEl) titleEl.textContent = 'Nueva Actividad';
@@ -361,6 +653,7 @@ const ActividadesModule = (function() {
         const fecha = document.getElementById('actFecha')?.value || '';
         const user_id = document.getElementById('actTecnico')?.value || '';
         const resumen = document.getElementById('actResumen')?.value?.trim() || '';
+        const notas = document.getElementById('actNotas')?.value?.trim() || '';
         const estado = document.getElementById('actEstado')?.value || 'pendiente';
         const archivoInput = document.getElementById('actArchivo');
 
@@ -407,13 +700,21 @@ const ActividadesModule = (function() {
                 archivo_tipo = fileExt.toLowerCase();
             }
 
+            const departamento = document.getElementById('actDepartamento')?.value || 'automatizacion';
+            const ordenId = document.getElementById('actOrden')?.value || null;
+            const config = ORDEN_MAP[departamento];
+
             const row = {
                 fecha,
                 user_id,
                 resumen,
+                notas,
                 estado,
                 archivo_url,
                 archivo_tipo,
+                departamento,
+                orden_origen_id: ordenId,
+                orden_origen_tipo: ordenId ? (config?.tabla || null) : null,
                 creado_por: profile?.id
             };
 
@@ -451,7 +752,7 @@ const ActividadesModule = (function() {
 
     // ==================== VER ACTIVIDAD ====================
     async function _verActividad(id) {
-        const act = actividades.find(a => a.id === id);
+        const act = actividades.find(a => String(a.id) === String(id));
         if (!act) return;
 
         const modal = document.getElementById('verActividadModal');
@@ -590,6 +891,319 @@ const ActividadesModule = (function() {
         });
     }
 
+    // ==================== KANBAN: DRAG & DROP ====================
+    function _bindKanbanDragEvents() {
+        document.querySelectorAll('.kanban-card').forEach(card => {
+            card.addEventListener('dragstart', function(e) {
+                draggedActividadId = this.dataset.id;
+                this.classList.add('dragging');
+                e.dataTransfer?.setData('text/plain', this.dataset.id);
+                e.dataTransfer && (e.dataTransfer.effectAllowed = 'move');
+            });
+            card.addEventListener('dragend', function() {
+                this.classList.remove('dragging');
+                draggedActividadId = null;
+                document.querySelectorAll('.kanban-column').forEach(c => c.classList.remove('drag-over'));
+            });
+            card.addEventListener('click', function(e) {
+                _openSidebar(this.dataset.id);
+            });
+        });
+
+        document.querySelectorAll('.kanban-column').forEach(col => {
+            col.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('drag-over');
+                e.dataTransfer && (e.dataTransfer.dropEffect = 'move');
+            });
+            col.addEventListener('dragleave', function(e) {
+                this.classList.remove('drag-over');
+            });
+            col.addEventListener('drop', async function(e) {
+                e.preventDefault();
+                this.classList.remove('drag-over');
+                const id = draggedActividadId || e.dataTransfer?.getData('text/plain');
+                const nuevoEstado = this.dataset.status;
+                if (!id || !nuevoEstado) return;
+                const act = actividades.find(a => String(a.id) === String(id));
+                if (!act) return;
+                if (!_canMoveCard(act)) {
+                    _showToast('No tienes permiso para mover esta tarjeta', 'error');
+                    return;
+                }
+                if (act.estado === nuevoEstado) return;
+                await _updateActividadEstado(id, nuevoEstado);
+            });
+        });
+    }
+
+    function _canMoveCard(act) {
+        if (isAdmin) return true;
+        if (!currentUser) return false;
+        return act.creado_por === currentUser.id || act.user_id === currentUser.id;
+    }
+
+    async function _updateActividadEstado(id, nuevoEstado) {
+        const updates = { estado: nuevoEstado };
+        if (nuevoEstado === 'completado') {
+            updates.completado_en = new Date().toISOString();
+            const act = actividades.find(a => String(a.id) === String(id));
+            if (act && act.created_at) {
+                const inicio = new Date(act.created_at);
+                const fin = new Date();
+                updates.duracion_minutos = Math.round((fin - inicio) / 60000);
+            }
+        }
+        try {
+            await actividadesService.update(id, updates);
+            await _insertarHistorial(id, 'estado_cambiado', `Estado cambiado a ${nuevoEstado}`, currentUser?.id);
+            _showToast('Estado actualizado', 'success');
+            await _loadActividades();
+            await _loadSubtareas();
+            if (vistaActual === 'kanban') _renderKanban();
+            else { _renderGridSemanal(); _renderActividadesLista(); }
+            if (sidebarActividadId === id) _renderSidebar(id);
+        } catch (err) {
+            console.error('[Actividades] Error cambiando estado:', err);
+            _showToast('Error al cambiar estado', 'error');
+        }
+    }
+
+    // ==================== KANBAN: SIDEBAR ====================
+    function _openSidebar(id) {
+        sidebarActividadId = id;
+        const sidebar = document.getElementById('kanbanSidebar');
+        if (!sidebar) return;
+        _renderSidebar(id);
+        sidebar.classList.add('open');
+        let overlay = document.getElementById('kanbanSidebarOverlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'kanbanSidebarOverlay';
+            overlay.className = 'kanban-sidebar-overlay';
+            overlay.addEventListener('click', _closeSidebar);
+            document.body.appendChild(overlay);
+        }
+        overlay.classList.add('active');
+    }
+
+    function _closeSidebar() {
+        const sidebar = document.getElementById('kanbanSidebar');
+        if (sidebar) sidebar.classList.remove('open');
+        const overlay = document.getElementById('kanbanSidebarOverlay');
+        if (overlay) overlay.classList.remove('active');
+        sidebarActividadId = null;
+    }
+
+    function _renderSidebar(id) {
+        const act = actividades.find(a => String(a.id) === String(id));
+        if (!act) return;
+        const title = document.getElementById('sidebarTitle');
+        const body = document.getElementById('sidebarBody');
+        if (!body) return;
+        const key = jiraKeyMap[id] || id?.slice(0, 6).toUpperCase();
+        const subtareas = subtareasMap[id] || [];
+        const progress = _computeProgress(subtareas);
+        const tiempo = _tiempoTranscurrido(act);
+        const estadoLabel = _getEstadoLabel(act.estado);
+        const estadoClass = act.estado || 'pendiente';
+
+        if (title) title.innerHTML = `<i class="fas fa-ticket-alt"></i> ${key}`;
+
+        body.innerHTML = `
+            <div class="sidebar-section">
+                <div class="sidebar-key">${key}</div>
+                <span class="sidebar-estado ${estadoClass}"><span class="kanban-dot dot-${estadoClass}"></span> ${estadoLabel}</span>
+                ${tiempo ? `<div class="sidebar-tiempo"><i class="fas fa-clock"></i> Tiempo transcurrido: ${tiempo}</div>` : ''}
+            </div>
+
+            <div class="sidebar-section">
+                <h4><i class="fas fa-align-left"></i> Resumen</h4>
+                <p style="font-size:13px; color:var(--text-secondary); line-height:1.5;">${act.resumen || 'Sin resumen'}</p>
+            </div>
+
+            <div class="sidebar-section">
+                <h4><i class="fas fa-sticky-note"></i> Notas</h4>
+                <textarea class="sidebar-notas" id="sidebarNotas" placeholder="Escribe notas internas...">${act.notas || ''}</textarea>
+                ${isAdmin ? `<button class="btn-ssepi btn-primario" style="margin-top:8px;" onclick="window.actividadesModule._guardarNotas('${id}')"><i class="fas fa-save"></i> Guardar Notas</button>` : ''}
+            </div>
+
+            <div class="sidebar-section">
+                <h4><i class="fas fa-tasks"></i> Subtareas (${subtareas.filter(s=>s.done).length}/${subtareas.length})</h4>
+                <div class="sidebar-progress-wrap">
+                    <div class="sidebar-progress-bar"><div class="sidebar-progress-fill" style="width:${progress}%"></div></div>
+                    <span class="sidebar-progress-text">${progress}%</span>
+                </div>
+                <div class="subtareas-list" id="sidebarSubtareas">
+                    ${subtareas.map(s => _renderSubtareaItem(s)).join('')}
+                </div>
+                ${isAdmin ? `<button class="btn-add-subtarea" onclick="window.actividadesModule._addSubtarea('${id}')"><i class="fas fa-plus"></i> Agregar Subtarea</button>` : ''}
+            </div>
+
+            <div class="sidebar-section">
+                <h4><i class="fas fa-user"></i> Técnico</h4>
+                <p style="font-size:13px;">${act.creado_por_usuario?.nombre || 'Técnico'}</p>
+            </div>
+
+            <div class="sidebar-section">
+                <h4><i class="fas fa-calendar"></i> Fecha</h4>
+                <p style="font-size:13px;">${act.fecha ? new Date(act.fecha).toLocaleDateString('es-MX') : '--'}</p>
+            </div>
+        `;
+
+        // Bind checkboxes inline
+        document.querySelectorAll('.subtarea-check').forEach(ch => {
+            ch.addEventListener('change', function() {
+                const sid = this.dataset.id;
+                window.actividadesModule._toggleSubtarea(sid);
+            });
+        });
+    }
+
+    function _renderSubtareaItem(s) {
+        const images = Array.isArray(s.images) ? s.images : (typeof s.images === 'string' ? JSON.parse(s.images || '[]') : []);
+        const thumbs = images.map(img => `
+            <img class="subtarea-thumb" src="${img.url || img}" alt="" onclick="window.open('${img.url || img}', '_blank')">
+        `).join('');
+        return `
+            <div class="subtarea-item ${s.done ? 'done' : ''}" data-id="${s.id}">
+                <input type="checkbox" class="subtarea-check" data-id="${s.id}" ${s.done ? 'checked' : ''}>
+                <div class="subtarea-body">
+                    <input type="text" class="subtarea-title" value="${s.titulo || ''}" data-id="${s.id}"
+                        onblur="window.actividadesModule._updateSubtareaTitle('${s.id}', this.value)"
+                        ${!isAdmin ? 'readonly' : ''}>
+                    <p class="subtarea-desc">${s.descripcion || ''}</p>
+                    <div class="subtarea-images">${thumbs}</div>
+                    ${isAdmin ? `<button class="btn-upload-image" onclick="document.getElementById('subtareaImgInput_${s.id}').click()"><i class="fas fa-image"></i> Adjuntar imagen</button>
+                    <input type="file" id="subtareaImgInput_${s.id}" accept="image/*" style="display:none;"
+                        onchange="window.actividadesModule._uploadSubtareaImage('${s.id}', this.files[0])">` : ''}
+                </div>
+                ${isAdmin ? `<button class="subtarea-delete" onclick="window.actividadesModule._deleteSubtarea('${s.id}')"><i class="fas fa-trash"></i></button>` : ''}
+            </div>
+        `;
+    }
+
+    // ==================== KANBAN: SUBTAREAS CRUD ====================
+    async function _toggleSubtarea(subtareaId) {
+        const s = (Object.values(subtareasMap).flat()).find(x => String(x.id) === String(subtareaId));
+        if (!s) return;
+        try {
+            await subtareasService.update(subtareaId, { done: !s.done });
+            s.done = !s.done;
+            _showToast('Subtarea actualizada', 'success');
+            if (sidebarActividadId === s.actividad_id) _renderSidebar(s.actividad_id);
+            if (vistaActual === 'kanban') _renderKanban();
+        } catch (err) {
+            console.error('[Actividades] Error toggling subtarea:', err);
+            _showToast('Error al actualizar subtarea', 'error');
+        }
+    }
+
+    async function _addSubtarea(actividadId) {
+        if (!isAdmin) return;
+        try {
+            const orden = (subtareasMap[actividadId] || []).length;
+            const inserted = await subtareasService.insert({
+                actividad_id: actividadId,
+                titulo: 'Nueva subtarea',
+                descripcion: '',
+                done: false,
+                images: [],
+                orden
+            });
+            if (inserted) {
+                if (!subtareasMap[actividadId]) subtareasMap[actividadId] = [];
+                subtareasMap[actividadId].push(inserted);
+                _showToast('Subtarea agregada', 'success');
+                _renderSidebar(actividadId);
+                if (vistaActual === 'kanban') _renderKanban();
+            }
+        } catch (err) {
+            console.error('[Actividades] Error agregando subtarea:', err);
+            _showToast('Error al agregar subtarea', 'error');
+        }
+    }
+
+    async function _updateSubtareaTitle(subtareaId, nuevoTitulo) {
+        if (!isAdmin || !nuevoTitulo.trim()) return;
+        try {
+            await subtareasService.update(subtareaId, { titulo: nuevoTitulo.trim() });
+            const s = (Object.values(subtareasMap).flat()).find(x => String(x.id) === String(subtareaId));
+            if (s) s.titulo = nuevoTitulo.trim();
+            if (vistaActual === 'kanban') _renderKanban();
+        } catch (err) {
+            console.error('[Actividades] Error actualizando subtarea:', err);
+        }
+    }
+
+    async function _deleteSubtarea(subtareaId) {
+        if (!isAdmin) return;
+        if (!confirm('¿Eliminar esta subtarea?')) return;
+        try {
+            const s = (Object.values(subtareasMap).flat()).find(x => String(x.id) === String(subtareaId));
+            await subtareasService.delete(subtareaId);
+            if (s && subtareasMap[s.actividad_id]) {
+                subtareasMap[s.actividad_id] = subtareasMap[s.actividad_id].filter(x => x.id !== subtareaId);
+            }
+            _showToast('Subtarea eliminada', 'success');
+            if (sidebarActividadId === s?.actividad_id) _renderSidebar(s.actividad_id);
+            if (vistaActual === 'kanban') _renderKanban();
+        } catch (err) {
+            console.error('[Actividades] Error eliminando subtarea:', err);
+            _showToast('Error al eliminar subtarea', 'error');
+        }
+    }
+
+    async function _uploadSubtareaImage(subtareaId, file) {
+        if (!file || !isAdmin) return;
+        if (file.size > 5 * 1024 * 1024) {
+            _showToast('La imagen no puede pesar más de 5MB', 'error'); return;
+        }
+        try {
+            const ext = file.name.split('.').pop();
+            const fileName = `subtareas/${subtareaId}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+            const { data: uploadData, error: uploadError } = await window.supabase.storage
+                .from('actividades')
+                .upload(fileName, file);
+            if (uploadError) throw uploadError;
+            const { data: { publicUrl } } = window.supabase.storage.from('actividades').getPublicUrl(fileName);
+
+            const s = (Object.values(subtareasMap).flat()).find(x => String(x.id) === String(subtareaId));
+            if (!s) return;
+            const images = Array.isArray(s.images) ? s.images : (typeof s.images === 'string' ? JSON.parse(s.images || '[]') : []);
+            images.push({ url: publicUrl, name: file.name });
+            await subtareasService.update(subtareaId, { images });
+            s.images = images;
+            _showToast('Imagen adjuntada', 'success');
+            if (sidebarActividadId === s.actividad_id) _renderSidebar(s.actividad_id);
+        } catch (err) {
+            console.error('[Actividades] Error subiendo imagen:', err);
+            _showToast('Error al subir imagen', 'error');
+        }
+    }
+
+    async function _guardarNotas(id) {
+        if (!isAdmin) return;
+        const val = document.getElementById('sidebarNotas')?.value || '';
+        try {
+            await actividadesService.update(id, { notas: val });
+            const act = actividades.find(a => a.id === id);
+            if (act) act.notas = val;
+            _showToast('Notas guardadas', 'success');
+        } catch (err) {
+            console.error('[Actividades] Error guardando notas:', err);
+            _showToast('Error al guardar notas', 'error');
+        }
+    }
+
+    function _showToast(message, type = 'info') {
+        if (typeof window.SSEPIToast !== 'undefined') {
+            window.SSEPIToast.show(message, type);
+        } else {
+            console.log(`[Toast ${type}] ${message}`);
+        }
+    }
+
     // ==================== EVENTOS DOM ====================
     function _bindEvents() {
         // Toggle menu
@@ -641,25 +1255,102 @@ const ActividadesModule = (function() {
             document.getElementById('actividadModal').classList.remove('active');
         });
 
+        // Toggle vista Semanal / Kanban
+        const btnVistaSemanal = document.getElementById('btnVistaSemanal');
+        const btnVistaKanban = document.getElementById('btnVistaKanban');
+        if (btnVistaSemanal) {
+            btnVistaSemanal.addEventListener('click', function() {
+                vistaActual = 'semanal';
+                btnVistaSemanal.classList.add('active');
+                btnVistaKanban?.classList.remove('active');
+                document.getElementById('vistaSemanalContainer').style.display = '';
+                document.getElementById('kanbanContainer').style.display = 'none';
+                _renderGridSemanal();
+                _renderActividadesLista();
+            });
+        }
+        if (btnVistaKanban) {
+            btnVistaKanban.addEventListener('click', function() {
+                vistaActual = 'kanban';
+                btnVistaKanban.classList.add('active');
+                btnVistaSemanal?.classList.remove('active');
+                document.getElementById('vistaSemanalContainer').style.display = 'none';
+                document.getElementById('kanbanContainer').style.display = '';
+                _renderKanban();
+            });
+        }
+
         // Filtros
         const aplicarFiltrosBtn = document.getElementById('aplicarFiltrosBtn');
         if (aplicarFiltrosBtn) aplicarFiltrosBtn.addEventListener('click', _aplicarFiltros);
+
+        const filtroDepto = document.getElementById('filtroDepartamento');
+        if (filtroDepto) {
+            filtroDepto.value = departamentoActual;
+            filtroDepto.addEventListener('change', function() {
+                departamentoActual = this.value;
+                _aplicarFiltros();
+            });
+        }
+
+        // Cambio de departamento en modal recarga órdenes
+        const actDepto = document.getElementById('actDepartamento');
+        if (actDepto) {
+            actDepto.addEventListener('change', function() {
+                _cargarOrdenesPorDepartamento(this.value);
+            });
+        }
+    }
+
+    function _aplicarFiltros() {
+        _loadActividades().then(async function() {
+            await _loadSubtareas();
+            _buildJiraKeyMap();
+            if (vistaActual === 'kanban') {
+                _renderKanban();
+            } else {
+                _renderGridSemanal();
+                _renderActividadesLista();
+            }
+        });
     }
 
     // ==================== REALTIME ====================
+    function _populateFiltroTecnicos() {
+        const sel = document.getElementById('filtroTecnico');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Todos</option>' + tecnicos.map(t =>
+            `<option value="${t.id}">${t.nombre}</option>`
+        ).join('');
+    }
     function _setupRealtime() {
         if (!window.supabase) return;
 
         const subActividades = window.supabase
             .channel('actividades_realtime')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'actividades_diarias' }, payload => {
-                _loadActividades().then(() => {
-                    _renderGridSemanal();
-                    _renderActividadesLista();
-                });
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'actividades_diarias' }, async payload => {
+                await _loadActividades();
+                await _loadSubtareas();
+                _buildJiraKeyMap();
+                if (vistaActual === 'kanban') _renderKanban();
+                else { _renderGridSemanal(); _renderActividadesLista(); }
+                if (sidebarActividadId) _renderSidebar(sidebarActividadId);
             })
             .subscribe();
         subscriptions.push(subActividades);
+
+        const subSubtareas = window.supabase
+            .channel('subtareas_realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'actividades_subtareas' }, async payload => {
+                await _loadActividades();
+                await _loadSubtareas();
+                _buildJiraKeyMap();
+                if (vistaActual === 'kanban') _renderKanban();
+                else { _renderGridSemanal(); _renderActividadesLista(); }
+                if (sidebarActividadId) _renderSidebar(sidebarActividadId);
+            })
+            .subscribe();
+        subscriptions.push(subSubtareas);
     }
 
     // ==================== LIMPIEZA ====================
@@ -668,6 +1359,72 @@ const ActividadesModule = (function() {
     }
     window.addEventListener('beforeunload', _cleanup);
 
+    // ==================== WIDGET PARA MÓDULOS OPERATIVOS ====================
+    async function renderWidgetActividades(containerId, ordenId, ordenTipo) {
+        const container = document.getElementById(containerId);
+        if (!container || !window.supabase) return;
+
+        try {
+            const { data, error } = await window.supabase
+                .from('actividades_diarias')
+                .select('id, estado, resumen, fecha, creado_por, departamento')
+                .eq('orden_origen_id', ordenId)
+                .eq('orden_origen_tipo', ordenTipo)
+                .order('fecha', { ascending: false });
+            if (error) throw error;
+
+            const acts = data || [];
+            const total = acts.length;
+            const pendientes = acts.filter(a => a.estado === 'pendiente').length;
+            const enProgreso = acts.filter(a => a.estado === 'en_progreso').length;
+            const completadas = acts.filter(a => a.estado === 'completado').length;
+            const progreso = total > 0 ? Math.round((completadas / total) * 100) : 0;
+
+            const deptoLabel = (DEPARTAMENTOS.find(d => d.key === (acts[0]?.departamento || 'automatizacion'))?.label) || 'Actividades';
+
+            container.innerHTML = `
+                <div class="actividades-widget">
+                    <div class="actividades-widget-header">
+                        <div class="actividades-widget-title">
+                            <i class="fas fa-tasks"></i> ${deptoLabel} — Avance
+                        </div>
+                        <div class="actividades-widget-counts">
+                            <span class="count-pendiente">${pendientes} pend.</span>
+                            <span class="count-en_progreso">${enProgreso} proc.</span>
+                            <span class="count-completado">${completadas} comp.</span>
+                        </div>
+                    </div>
+                    <div class="actividades-widget-progress">
+                        <div class="actividades-widget-bar">
+                            <div class="actividades-widget-fill" style="width:${progreso}%"></div>
+                        </div>
+                        <span class="actividades-widget-pct">${progreso}%</span>
+                    </div>
+                    ${acts.length > 0 ? `
+                        <div class="actividades-widget-list">
+                            ${acts.slice(0, 3).map(a => `
+                                <div class="actividades-widget-item ${a.estado || 'pendiente'}">
+                                    <span class="widget-dot dot-${a.estado || 'pendiente'}"></span>
+                                    <span class="widget-resumen">${(a.resumen || 'Sin resumen').substring(0, 40)}${(a.resumen || '').length > 40 ? '...' : ''}</span>
+                                    <span class="widget-fecha">${a.fecha ? new Date(a.fecha).toLocaleDateString('es-MX') : ''}</span>
+                                </div>
+                            `).join('')}
+                            ${acts.length > 3 ? `<div class="actividades-widget-mas">+${acts.length - 3} más</div>` : ''}
+                        </div>
+                    ` : `<div class="actividades-widget-empty">No hay actividades vinculadas</div>`}
+                    <div class="actividades-widget-actions">
+                        <a href="/panel/pages/ssepi_actividades.html?departamento=${acts[0]?.departamento || 'automatizacion'}" class="btn-ssepi btn-sm btn-secondary">
+                            <i class="fas fa-external-link-alt"></i> Ver actividades
+                        </a>
+                    </div>
+                </div>
+            `;
+        } catch (e) {
+            console.warn('[Actividades] Error renderizando widget:', e);
+            container.innerHTML = `<div class="actividades-widget-empty">Error cargando actividades</div>`;
+        }
+    }
+
     // ==================== EXPOSICIÓN PÚBLICA ====================
     return {
         init,
@@ -675,7 +1432,15 @@ const ActividadesModule = (function() {
         _guardarActividad,
         _verActividad,
         _irSemanaAnterior,
-        _irSemanaSiguiente
+        _irSemanaSiguiente,
+        _closeSidebar,
+        _toggleSubtarea,
+        _addSubtarea,
+        _updateSubtareaTitle,
+        _deleteSubtarea,
+        _uploadSubtareaImage,
+        _guardarNotas,
+        renderWidgetActividades
     };
 })();
 
