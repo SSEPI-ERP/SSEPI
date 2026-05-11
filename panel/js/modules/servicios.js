@@ -9,6 +9,7 @@
 import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
 import { CostosEngine } from '../core/costos-engine.js';
+import { pdfGenerator } from '../core/pdf-generator.js';
 import { getPrioritySuppliersForModule } from '../core/ssepi-runtime/priority-suppliers-catalog.js';
 import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
 import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
@@ -23,6 +24,7 @@ const ServiciosModule = (function() {
     let isNewProject = true;
     let currentStep = 1;
     let fechaInicio = null;
+    let fechasEtapas = {};
 
     // Listas específicas
     let actividades = [];
@@ -350,6 +352,16 @@ const ServiciosModule = (function() {
         return sum;
     }
 
+    function _calcularCostoActualServicios() {
+        const km = Number(document.getElementById('autoCostoKm')?.value) || 0;
+        const hrsCam = Number(document.getElementById('autoCostoHrsCam')?.value) || 0;
+        const mat = _sumMaterialesCostoInventario();
+        const gas = CostosEngine.calcularCostoGasolina(km);
+        const cam = CostosEngine.calcularCostoCamioneta(hrsCam);
+        const act = (actividades || []).reduce((s, a) => s + (Number(a.horas) || 0) * (Number(a.tarifa) || 0), 0);
+        return mat + gas + cam + act;
+    }
+
     function _recalcCostosServicios() {
         const el = document.getElementById('serviciosCostosResumen');
         if (!el) return;
@@ -365,6 +377,33 @@ const ServiciosModule = (function() {
             `<div><strong>Gasolina estimada (${km} km):</strong> ${fmt(gas)}</div>` +
             `<div><strong>Camioneta (${hrsCam} h):</strong> ${fmt(cam)}</div>` +
             `<div style="margin-top:8px;font-weight:800;color:var(--c-automatizacion,#7c3aed);">Subtotal referencia: ${fmt(sub)}</div>`;
+        _renderPanelRentabilidad();
+    }
+
+    function _renderPanelRentabilidad() {
+        const panel = document.getElementById('panelRentabilidad');
+        if (!panel) return;
+        const costoPresupuestado = currentProject?.costo_presupuestado || currentProject?.costo_total || 0;
+        const costoReal = _calcularCostoActualServicios();
+        const estado = CostosEngine.determinarRentabilidad(costoPresupuestado, costoReal);
+        const adeudo = Math.max(0, costoReal - costoPresupuestado);
+
+        panel.style.display = 'block';
+        panel.className = 'form-section panel-rentabilidad-' + estado;
+        const badge = document.getElementById('rentabilidadBadge');
+        const presEl = document.getElementById('rentabilidadPresupuestado');
+        const realEl = document.getElementById('rentabilidadReal');
+        const adeudoRow = document.getElementById('rentabilidadAdeudoRow');
+        const adeudoEl = document.getElementById('rentabilidadAdeudo');
+
+        if (badge) {
+            badge.className = estado === 'verde' ? 'badge-rentabilidad-verde' : 'badge-rentabilidad-rojo';
+            badge.textContent = estado === 'verde' ? 'Proyecto rentable' : 'Números rojos';
+        }
+        if (presEl) presEl.textContent = '$' + (costoPresupuestado || 0).toFixed(2);
+        if (realEl) realEl.textContent = '$' + (costoReal || 0).toFixed(2);
+        if (adeudoRow) adeudoRow.style.display = adeudo > 0 ? 'flex' : 'none';
+        if (adeudoEl) adeudoEl.textContent = '$' + (adeudo || 0).toFixed(2);
     }
 
     async function _loadProjects() {
@@ -374,6 +413,17 @@ const ServiciosModule = (function() {
             console.warn('[Automatización] Error cargando proyectos:', e);
             projects = [];
         }
+        // Enriquecer proyectos legacy/demo sin rentabilidad calculada
+        projects.forEach(p => {
+            if (!p.rentabilidad_estado && p.costo_total) {
+                const pres = Number(p.costo_presupuestado) || Number(p.costo_total) || 0;
+                const real = CostosEngine.calcularCostoRealAutomatizacion(p);
+                p.costo_presupuestado = pres;
+                p.costo_real = real;
+                p.adeudo_generado = Math.max(0, real - pres);
+                p.rentabilidad_estado = CostosEngine.determinarRentabilidad(pres, real);
+            }
+        });
         _applyFilters();
     }
 
@@ -496,13 +546,18 @@ const ServiciosModule = (function() {
         const container = document.getElementById('kanbanContainer');
         if (!container) return;
         const etapas = [
-            { id: 'pendiente', label: 'Pendientes', color: '#ff9800' },
-            { id: 'progreso', label: 'En Progreso', color: '#2196f3' },
-            { id: 'completado', label: 'Completados', color: '#4caf50' }
+            { id: 1, label: 'Levantamiento', color: '#ff9800' },
+            { id: 2, label: 'Ingeniería', color: '#2196f3' },
+            { id: 3, label: 'Materiales', color: '#9c27b0' },
+            { id: 4, label: 'Desarrollo', color: '#f57c00' },
+            { id: 5, label: 'Entrega', color: '#4caf50' }
         ];
         let html = '';
         etapas.forEach(etapa => {
-            const filtrados = proyectos.filter(p => p.estado === etapa.id);
+            const filtrados = proyectos.filter(p => {
+                const etapaActual = p.estado === 'completado' ? 5 : (p.etapa_actual || 1);
+                return etapaActual === etapa.id;
+            });
             html += `
                 <div class="kanban-column">
                     <div class="kanban-header" style="border-bottom-color: ${etapa.color};">
@@ -526,15 +581,42 @@ const ServiciosModule = (function() {
         const linea = _getLineaTiempo(proyecto);
         const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(proyecto);
         const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
+
+        let badgeRentabilidad = '';
+        if (proyecto.rentabilidad_estado === 'rojo') {
+            badgeRentabilidad = `<span class="badge-rentabilidad-rojo badge-rentabilidad-inline" title="Adeudo $${(proyecto.adeudo_generado||0).toFixed(2)}">🔴 $${(proyecto.adeudo_generado||0).toFixed(0)}</span>`;
+        } else if (proyecto.rentabilidad_estado === 'verde') {
+            badgeRentabilidad = `<span class="badge-rentabilidad-verde badge-rentabilidad-inline">🟢 OK</span>`;
+        }
+
+        let extrasHtml = '';
+        const materiales = proyecto.materiales || [];
+        const notas = proyecto.notas_internas || '';
+        if (materiales.length > 0 || notas) {
+            const chips = materiales.slice(0, 3).map(m => `<span class="extra-chip">${m.nombre || 'Material'}${m.cantidad > 1 ? ' x'+m.cantidad : ''}</span>`).join('');
+            const mas = materiales.length > 3 ? `<span class="extra-chip">+${materiales.length - 3}</span>` : '';
+            const preview = notas ? `<div class="nota-preview">${notas.slice(0, 90)}${notas.length > 90 ? '…' : ''}</div>` : '';
+            extrasHtml = `<div class="card-extras">
+                ${chips ? `<div class="extra-list">${chips}${mas}</div>` : ''}
+                ${preview}
+            </div>`;
+        }
+
         return `
             <div class="kanban-card ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${proyecto.id}">
                 <div class="card-header">
-                    <span class="folio">${proyecto.folio || proyecto.id.slice(-6)}</span>
-                    ${badgeCuarentena}
+                    <div class="folio-line">
+                        <span class="folio">${proyecto.folio || proyecto.id.slice(-6)}</span>
+                        ${badgeRentabilidad}
+                    </div>
+                    <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
+                        ${badgeCuarentena}
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="cliente">${proyecto.nombre || 'Sin nombre'}</div>
                     <div class="equipo">${proyecto.cliente || 'Cliente'}</div>
+                    ${extrasHtml}
                     <div class="card-avance">
                         <div class="avance-bar"><div class="avance-fill" style="width:${avance}%"></div></div>
                         <span class="avance-pct">${avance}%</span> · ${proceso}
@@ -552,7 +634,7 @@ const ServiciosModule = (function() {
     function _renderLista(proyectos) {
         const container = document.getElementById('listaContainer');
         if (!container) return;
-        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Proyecto</th><th>Cliente</th><th>Vendedor</th><th>Avance</th><th>Proceso</th><th>Línea de tiempo</th><th>Estado</th></tr></thead><tbody>';
+        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Proyecto</th><th>Cliente</th><th>Vendedor</th><th>Avance</th><th>Etapa</th><th>Línea de tiempo</th><th>Estado</th><th>Balance</th></tr></thead><tbody>';
         proyectos.forEach(p => {
             const { avance, proceso } = _getAvanceYProceso(p);
             const linea = _getLineaTiempo(p);
@@ -565,7 +647,8 @@ const ServiciosModule = (function() {
                 <td><span class="avance-pct">${avance}%</span></td>
                 <td>${proceso}</td>
                 <td><small>${linea}</small></td>
-                <td><span class="status-badge" style="background:${p.estado==='pendiente'?'#ff9800':(p.estado==='progreso'?'#2196f3':'#4caf50')}; color:white;">${p.estado}</span></td>
+                <td><span class="status-badge" style="background:${p.estado==='pendiente'?'#ff9800':(p.estado==='progreso'?'#2196f3':'#4caf50')}; color:white;">${p.estado}</span> · ${proceso}</td>
+                <td>${p.rentabilidad_estado === 'rojo' ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(p.adeudo_generado||0).toFixed(0)}</span>` : (p.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—')}</td>
             </tr>`;
         });
         html += '</tbody></table>';
@@ -616,6 +699,10 @@ const ServiciosModule = (function() {
         const modal = document.getElementById('wsModal');
         if (modal) modal.classList.add('active');
         _irPaso(currentStep);
+        // Cargar widget de actividades vinculadas
+        if (window.actividadesModule && window.actividadesModule.renderWidgetActividades) {
+            window.actividadesModule.renderWidgetActividades('widgetActividadesProyecto', id, 'proyectos_automatizacion');
+        }
     }
 
     async function _abrirNuevoProyecto() {
@@ -797,11 +884,109 @@ const ServiciosModule = (function() {
             { id: 'ap4', titulo: 'Manuales eléctricos', nota: '', archivos: [] },
             { id: 'ap5', titulo: 'Respaldos de programa', nota: '', archivos: [] }
         ];
+        fechaInicio = proyecto.fecha_inicio || new Date().toISOString();
+        fechasEtapas = proyecto.fechas_etapas || {};
+        _renderRegistroTiempos();
 
         _renderActividades();
         _renderMateriales();
         _renderEpicas();
         _renderApartados();
+        _renderPanelRentabilidad();
+    }
+
+    function _getEtapaLabels() {
+        return ['Levantamiento','Ingeniería','Materiales','Desarrollo','Entrega'];
+    }
+
+    function _renderRegistroTiemposBase() {
+        const panel = document.getElementById('registroTiemposPanel');
+        if (!panel) return;
+        const labels = _getEtapaLabels();
+        let html = '<div style="display:flex;gap:12px;flex-wrap:wrap;">';
+        for (let i = 1; i <= labels.length; i++) {
+            const ini = fechasEtapas[`etapa${i}_inicio`];
+            const fin = fechasEtapas[`etapa${i}_fin`];
+            let badge = '';
+            if (ini && fin) {
+                const d = new Date(fin) - new Date(ini);
+                const mins = Math.round(d / 60000);
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                const dur = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                badge = `<span style="color:#059669;font-weight:600;">${dur}</span>`;
+            } else if (ini) {
+                badge = `<span style="color:#d97706;font-weight:600;">En curso</span>`;
+            } else {
+                badge = `<span style="color:#94a3b8;">—</span>`;
+            }
+            const iniStr = ini ? new Date(ini).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+            const finStr = fin ? new Date(fin).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+            html += `<div style="min-width:160px;"><strong style="color:#334155;">Etapa ${i}:</strong> ${labels[i-1]}<br><span style="color:#64748b;">${iniStr} → ${finStr}</span> · ${badge}</div>`;
+        }
+        html += '</div>';
+        panel.innerHTML = html;
+    }
+
+    async function _renderRegistroTiemposRelacionados() {
+        const panel = document.getElementById('registroTiemposRelacionados');
+        if (!panel || !currentProject) return;
+        const supabase = _supabase();
+        if (!supabase) return;
+        let html = '';
+        try {
+            const { data: cots } = await supabase.from('cotizaciones').select('folio,fechas_etapas,estado,created_at').eq('orden_origen_id', currentProject.id).limit(5).order('created_at',{ascending:false});
+            if (cots && cots.length) {
+                html += '<div style="margin-top:10px;border-top:1px solid #e2e8f0;padding-top:8px;"><strong style="color:#334155;font-size:13px;"><i class="fas fa-file-invoice-dollar"></i> Ventas (cotizaciones vinculadas)</strong><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">';
+                cots.forEach(c => {
+                    const fe = c.fechas_etapas || {};
+                    const ventasLabels = ['Registro','Espera','Cotización','Seguimiento'];
+                    let lineas = [];
+                    for (let i=1;i<=4;i++) {
+                        const ini = fe[`etapa${i}_inicio`];
+                        const fin = fe[`etapa${i}_fin`];
+                        if (ini || fin) {
+                            const iniStr = ini ? new Date(ini).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+                            const finStr = fin ? new Date(fin).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+                            lineas.push(`<span style="color:#64748b;">P${i} ${ventasLabels[i-1]}: ${iniStr}→${finStr}</span>`);
+                        }
+                    }
+                    if (lineas.length) html += `<div style="min-width:180px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;font-size:11px;"><strong>${c.folio||'COT'}</strong> · ${lineas.join(' | ')}</div>`;
+                });
+                html += '</div></div>';
+            }
+        } catch(e) { console.warn('[Auto] tiempos ventas:', e); }
+        try {
+            const cliente = currentProject.cliente || '';
+            if (cliente) {
+                const { data: talleres } = await supabase.from('ordenes_taller').select('folio,cliente_nombre,fechas_etapas,estado,created_at').ilike('cliente_nombre','%'+cliente+'%').limit(3).order('created_at',{ascending:false});
+                if (talleres && talleres.length) {
+                    html += '<div style="margin-top:10px;border-top:1px solid #e2e8f0;padding-top:8px;"><strong style="color:#334155;font-size:13px;"><i class="fas fa-microchip"></i> Laboratorio (mismo cliente)</strong><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">';
+                    talleres.forEach(t => {
+                        const fe = t.fechas_etapas || {};
+                        const labLabels = ['Recepción','Confirmado / Diagnóstico','En espera / En reparación','Reparado','Entregado / Facturado'];
+                        let lineas = [];
+                        for (let i=1;i<=5;i++) {
+                            const ini = fe[`etapa${i}_inicio`];
+                            const fin = fe[`etapa${i}_fin`];
+                            if (ini || fin) {
+                                const iniStr = ini ? new Date(ini).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+                                const finStr = fin ? new Date(fin).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+                                lineas.push(`<span style="color:#64748b;">E${i} ${labLabels[i-1]}: ${iniStr}→${finStr}</span>`);
+                            }
+                        }
+                        if (lineas.length) html += `<div style="min-width:180px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;font-size:11px;"><strong>${t.folio||'SP-E'}</strong> · ${lineas.join(' | ')}</div>`;
+                    });
+                    html += '</div></div>';
+                }
+            }
+        } catch(e) { console.warn('[Auto] tiempos lab:', e); }
+        panel.innerHTML = html || '';
+    }
+
+    function _renderRegistroTiempos() {
+        _renderRegistroTiemposBase();
+        _renderRegistroTiemposRelacionados().catch(()=>{});
     }
 
     function _irPaso(paso) {
@@ -814,6 +999,12 @@ const ServiciosModule = (function() {
         const stepBtn = document.querySelector(`.ws-step-btn[data-step="${paso}"]`);
         if (stepBtn) stepBtn.classList.add('active');
         _actualizarBotonesPaso();
+        const campoInicio = `etapa${paso}_inicio`;
+        if (!fechasEtapas[campoInicio]) {
+            fechasEtapas[campoInicio] = new Date().toISOString();
+        }
+        _renderRegistroTiempos();
+        if (paso === 5) _renderPanelRentabilidad();
     }
 
     function _actualizarBotonesPaso() {
@@ -834,6 +1025,18 @@ const ServiciosModule = (function() {
             if (nextBtn) nextBtn.style.display = 'inline-flex';
             if (saveBtn) saveBtn.style.display = 'inline-flex';
         }
+    }
+
+    function _terminarEtapa(etapa) {
+        const campo = `etapa${etapa}_fin`;
+        fechasEtapas[campo] = new Date().toISOString();
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        if (projectId) {
+            proyectosService.update(projectId, { fechas_etapas: fechasEtapas }, csrfToken).catch(e => console.warn('[Auto] update fechas_etapas:', e));
+        }
+        _renderRegistroTiempos();
+        alert(`Etapa ${etapa} finalizada`);
+        if (etapa < 5) _irPaso(etapa + 1);
     }
 
     function _prevStep() { if (currentStep > 1) _irPaso(currentStep - 1); }
@@ -953,7 +1156,137 @@ const ServiciosModule = (function() {
     }
 
     function _exportarCronogramaPDF() {
-        alert('Función de exportar PDF pendiente de implementación');
+        _generarCronogramaPDFInterno(false);
+    }
+
+    async function _generarCotizacionAuto(preview = false) {
+        if (!currentProject) { _showToast('Abre un proyecto primero', 'info'); return; }
+        const user = await authService.getCurrentProfile();
+        const p = currentProject;
+        const items = materiales.map(m => ({
+            descripcion: m.nombre + (m.descripcion ? ' — ' + m.descripcion : ''),
+            especificaciones: m.sku || '',
+            unidad: 'Pza',
+            precio: Number(m.costo_unitario) || 0,
+            cantidad: parseInt(m.cantidad) || 1,
+            entrega: ''
+        }));
+        actividades.forEach(a => {
+            if (a.servicio) {
+                items.push({
+                    descripcion: a.servicio,
+                    especificaciones: a.area || '',
+                    unidad: 'Horas',
+                    precio: (Number(a.horas) || 1) * (a.tipo === 'P' ? 80 : 87),
+                    cantidad: 1,
+                    entrega: ''
+                });
+            }
+        });
+        const subtotal = items.reduce((s, i) => s + i.precio * i.cantidad, 0);
+        const iva = subtotal * 0.16;
+        const total = subtotal + iva;
+        const km = Number(document.getElementById('autoCostoKm')?.value) || 0;
+        const hrsCam = Number(document.getElementById('autoCostoHrsCam')?.value) || 0;
+        if (km > 0 || hrsCam > 0) {
+            const costoGas = CostosEngine.calcularCostoGasolina(km);
+            const costoCam = CostosEngine.calcularCostoCamioneta(hrsCam);
+            if (costoGas > 0) items.push({ descripcion: 'Gasolina (traslado)', especificaciones: km + ' km ida y vuelta', unidad: 'Viaje', precio: costoGas, cantidad: 1, entrega: '' });
+            if (costoCam > 0) items.push({ descripcion: 'Camioneta (traslado)', especificaciones: hrsCam + ' horas', unidad: 'Horas', precio: costoCam, cantidad: 1, entrega: '' });
+        }
+        const folio = p.folio || 'SP-A000000';
+        const pdfData = {
+            folio,
+            cliente: p.cliente_nombre || p.cliente || '',
+            rfc: p.rfc || '',
+            direccion: p.direccion || '',
+            fecha: p.fecha ? new Date(p.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) : new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            vence: p.vence || '',
+            vendedor: p.vendedor || p.ingeniero || '',
+            departamento: 'Automatización',
+            items,
+            subtotal,
+            iva,
+            total
+        };
+        try {
+            await pdfGenerator.generateCotizacion(pdfData, user, preview);
+            if (!preview) _showToast('Cotización PDF generada: ' + folio, 'success');
+        } catch (error) {
+            _showToast('Error al generar PDF: ' + error.message, 'error');
+        }
+    }
+
+    async function _generarReporteAuto(preview = false) {
+        if (!currentProject) { _showToast('Abre un proyecto primero', 'info'); return; }
+        const user = await authService.getCurrentProfile();
+        const p = currentProject;
+        const folio = p.folio || 'SP-A000000';
+        const actividadesTexto = actividades.map(a => `${a.area ? '[' + a.area + '] ' : ''}${a.servicio || a.nombre} — ${a.horas || 0} hrs`).join('\n');
+        const materialesTexto = materiales.map(m => `${m.nombre}${m.sku ? ' (' + m.sku + ')' : ''} ×${m.cantidad || 1}`).join('\n');
+        const epicasTexto = epicas.map(e => `${e.titulo}: ${(e.tareas || []).map(t => t.nombre).join(', ') || 'Sin tareas'}`).join('\n');
+        const pdfData = {
+            folio,
+            cliente: p.cliente_nombre || p.cliente || '',
+            rfc: p.rfc || '',
+            direccion: p.direccion || '',
+            fecha: p.fecha ? new Date(p.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) : new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            vendedor: p.vendedor || p.ingeniero || '',
+            departamento: 'Automatización',
+            repDescripcion: p.notas_generales || actividadesTexto || 'Servicio de automatización realizado',
+            repHallazgos: p.notas_internas || '',
+            repRefacciones: materialesTexto || '',
+            repRecomendaciones: epicasTexto || '',
+            imagenes: []
+        };
+        try {
+            await pdfGenerator.generateReport(pdfData, user, preview);
+            if (!preview) _showToast('Reporte PDF generado: ' + folio, 'success');
+        } catch (error) {
+            _showToast('Error al generar reporte PDF: ' + error.message, 'error');
+        }
+    }
+
+    function _generarCronogramaPDFInterno(preview = false) {
+        const { jsPDF } = window.jspdf;
+        if (!jsPDF) { _showToast('jsPDF no disponible', 'error'); return; }
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+        const PW = 210, PH = 297, ML = 15, MR = 15, TW = PW - ML - MR;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 47, 108);
+        doc.text('CRONOGRAMA DE ACTIVIDADES', ML, 20);
+        doc.setFontSize(10);
+        doc.setTextColor(80, 80, 80);
+        doc.text(currentProject?.folio || '', ML, 28);
+        doc.text(currentProject?.cliente_nombre || currentProject?.cliente || '', ML, 34);
+        doc.text(new Date().toLocaleDateString('es-MX'), PW - MR, 28, { align: 'right' });
+        const head = [['#', 'Área', 'Actividad', 'Tipo', 'Horas', 'Inicio', 'Fin']];
+        const rows = actividades.map((a, i) => [
+            i + 1,
+            a.area || '',
+            a.servicio || a.nombre || '',
+            a.tipo === 'P' ? 'Planta' : 'Oficina',
+            a.horas || 0,
+            a.inicio || '',
+            a.fin || ''
+        ]);
+        doc.autoTable({
+            head,
+            body: rows,
+            startY: 40,
+            margin: { left: ML, right: MR },
+            styles: { fontSize: 8, font: 'helvetica' },
+            headStyles: { fillColor: [0, 47, 108], textColor: 255 },
+            alternateRowStyles: { fillColor: [245, 245, 245] }
+        });
+        if (preview){
+            const blobUrl = doc.output('bloburl');
+            const a = document.createElement('a');
+            a.href = blobUrl; a.target = '_blank'; a.rel = 'noopener';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+        else doc.save('Cronograma_' + (currentProject?.folio || 'auto') + '.pdf');
     }
 
     // ==================== PASO 3: MATERIALES ====================
@@ -1252,8 +1585,22 @@ const ServiciosModule = (function() {
             estado: currentStep === 5 ? 'completado' : (currentStep >= 2 ? 'progreso' : 'pendiente'),
             etapa_actual: currentStep,
             avance: Math.round((currentStep / 5) * 100),
+            fecha_inicio: currentProject?.fecha_inicio || fechaInicio || new Date().toISOString(),
+            fechas_etapas: fechasEtapas,
             updated_at: new Date().toISOString()
         };
+
+        // Calcular rentabilidad y adeudo
+        try {
+            const costoPresupuestado = currentProject?.costo_presupuestado || currentProject?.costo_total || _calcularCostoActualServicios();
+            const costoReal = _calcularCostoActualServicios();
+            data.costo_presupuestado = costoPresupuestado;
+            data.costo_real = costoReal;
+            data.adeudo_generado = Math.max(0, costoReal - costoPresupuestado);
+            data.rentabilidad_estado = CostosEngine.determinarRentabilidad(costoPresupuestado, costoReal);
+        } catch (re) {
+            console.warn('[SSEPI-RENTABILIDAD] Error calculando rentabilidad:', re);
+        }
 
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
@@ -1287,6 +1634,34 @@ const ServiciosModule = (function() {
             _afterServiciosPersistOk();
             _addToFeed('💾', `Proyecto ${data.folio} guardado`);
             _cerrarModal();
+
+            // Generar adeudo si el proyecto salió en números rojos
+            if (data.adeudo_generado > 0 && projectId) {
+                try {
+                    let clienteId = null;
+                    if (window.supabase && data.cliente) {
+                        const { data: contactos } = await window.supabase.from('contactos').select('id').eq('nombre', data.cliente).limit(1);
+                        if (contactos && contactos.length > 0) clienteId = contactos[0].id;
+                    }
+                    if (clienteId) {
+                        const adeudoData = {
+                            cliente_id: clienteId,
+                            orden_origen_id: projectId,
+                            orden_tipo: 'automatizacion',
+                            folio_orden: data.folio,
+                            monto_adeudo: data.adeudo_generado,
+                            motivo: `Excedente de costos en proyecto ${data.folio}`,
+                            recuperado: false
+                        };
+                        await window.supabase.from('clientes_adeudos').insert(adeudoData);
+                        await window.supabase.rpc('actualizar_adeudo_cliente', { p_cliente_id: clienteId });
+                        const notaAdeudo = `[${new Date().toLocaleString('es-MX')}] Sistema: Adeudo generado $${(data.adeudo_generado || 0).toFixed(2)} por excedente de costos en proyecto ${data.folio}.`;
+                        await proyectosService.update(projectId, { notas_internas: (data.notas_internas || '') + '\n' + notaAdeudo }, csrfToken);
+                    }
+                } catch (e) {
+                    console.warn('[Automatización] Error generando adeudo:', e);
+                }
+            }
         } catch (error) {
             console.error(error);
             alert('Error: ' + error.message);
@@ -1295,6 +1670,8 @@ const ServiciosModule = (function() {
 
     async function _completarEntrega() {
         if (currentStep !== 5) return;
+        fechasEtapas['etapa5_fin'] = new Date().toISOString();
+        _renderRegistroTiempos();
         await _guardarProyecto();
     }
 
@@ -1333,10 +1710,15 @@ const ServiciosModule = (function() {
             { id: 'ap4', titulo: 'Manuales eléctricos', nota: '', archivos: [] },
             { id: 'ap5', titulo: 'Respaldos de programa', nota: '', archivos: [] }
         ];
+        fechaInicio = new Date().toISOString();
+        fechasEtapas = {};
+        const panel = document.getElementById('registroTiemposPanel');
+        if (panel) panel.innerHTML = '';
         _renderActividades();
         _renderMateriales();
         _renderEpicas();
         _renderApartados();
+        _renderPanelRentabilidad();
     }
 
     function _cerrarModal() {
@@ -1481,6 +1863,10 @@ const ServiciosModule = (function() {
         if (byId('agregarActividad')) byId('agregarActividad').addEventListener('click', _agregarActividad);
         if (byId('generarCronograma')) byId('generarCronograma').addEventListener('click', _generarCronograma);
         if (byId('exportarCronogramaPDF')) byId('exportarCronogramaPDF').addEventListener('click', _exportarCronogramaPDF);
+        if (byId('btnCotizacionPDFAuto')) byId('btnCotizacionPDFAuto').addEventListener('click', () => _generarCotizacionAuto(false));
+        if (byId('btnVistaPreviaCotAuto')) byId('btnVistaPreviaCotAuto').addEventListener('click', () => _generarCotizacionAuto(true));
+        if (byId('btnReportePDFAuto')) byId('btnReportePDFAuto').addEventListener('click', () => _generarReporteAuto(false));
+        if (byId('btnVistaPreviaRepAuto')) byId('btnVistaPreviaRepAuto').addEventListener('click', () => _generarReporteAuto(true));
         if (byId('agregarDesdeInventario')) byId('agregarDesdeInventario').addEventListener('click', _agregarDesdeInventario);
         if (byId('agregarMaterialManual')) byId('agregarMaterialManual').addEventListener('click', _agregarMaterialManual);
         if (byId('guardarMateriales')) byId('guardarMateriales').addEventListener('click', _guardarMateriales);
@@ -1496,8 +1882,10 @@ const ServiciosModule = (function() {
 
         for (let i = 1; i <= 4; i++) {
             const btn = byId(`terminarEtapa${i}`);
-            if (btn) btn.addEventListener('click', () => _irPaso(i + 1));
+            if (btn) btn.addEventListener('click', () => _terminarEtapa(i));
         }
+        const btnTerminar5 = byId('terminarEtapa5');
+        if (btnTerminar5) btnTerminar5.addEventListener('click', () => _terminarEtapa(5));
 
         const aplicarBtn = byId('aplicarFiltrosBtn');
         if (aplicarBtn) aplicarBtn.addEventListener('click', () => {
@@ -1587,7 +1975,9 @@ const ServiciosModule = (function() {
         _actualizarNotaApartado,
         _subirArchivo,
         _eliminarArchivo,
-        _eliminarApartado
+        _eliminarApartado,
+        _generarCotizacionAuto,
+        _generarReporteAuto
     };
 })();
 

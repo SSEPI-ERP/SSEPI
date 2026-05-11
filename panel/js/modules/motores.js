@@ -7,6 +7,8 @@
 
 import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
+import { CostosEngine } from '../core/costos-engine.js';
+import { pdfGenerator } from '../core/pdf-generator.js';
 import { getPrioritySuppliersForModule } from '../core/ssepi-runtime/priority-suppliers-catalog.js';
 import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
 import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
@@ -16,6 +18,7 @@ const MotoresModule = (function() {
     // ==================== ESTADO PRIVADO ====================
     let orders = [];
     let clients = [];
+    let tabuladorClientes = [];
     let inventory = [];
     let comprasVinculadas = {};  // { ordenId: { estado, folio, items } }
     let notificaciones = [];
@@ -36,6 +39,7 @@ const MotoresModule = (function() {
     let consumiblesUsados = [];
     let componentesInventario = [];
     let componentesCompra = [];
+    let componentesExtras = [];
 
     // Filtros
     let filtroFechaInicio = null;
@@ -283,7 +287,8 @@ const MotoresModule = (function() {
             _loadOrders(),
             _loadClients(),
             _loadInventory(),
-            _loadComprasVinculadas()
+            _loadComprasVinculadas(),
+            _loadTabuladorClientes()
         ]);
         _populateClientSelect();
         _populateTecnicosFilter();
@@ -291,6 +296,17 @@ const MotoresModule = (function() {
 
     async function _loadOrders() {
         orders = await ordenesService.select({}, { orderBy: 'fecha_ingreso', ascending: false });
+        // Enriquecer órdenes legacy/demo sin rentabilidad calculada
+        orders.forEach(o => {
+            if (!o.rentabilidad_estado && o.costo_total) {
+                const pres = Number(o.costo_presupuestado) || Number(o.costo_total) || 0;
+                const real = CostosEngine.calcularCostoRealMotores(o);
+                o.costo_presupuestado = pres;
+                o.costo_real = real;
+                o.adeudo_generado = Math.max(0, real - pres);
+                o.rentabilidad_estado = CostosEngine.determinarRentabilidad(pres, real);
+            }
+        });
         _applyFilters();
     }
 
@@ -298,6 +314,26 @@ const MotoresModule = (function() {
         // Obtener contactos de tipo cliente
         const contactos = await contactosService.select({ tipo: 'client' });
         clients = contactos;
+    }
+
+    async function _loadTabuladorClientes() {
+        try {
+            const { data, error } = await window.supabase
+                .from('clientes_tabulador')
+                .select('nombre_cliente, km, horas_viaje, activo')
+                .eq('activo', true)
+                .order('nombre_cliente');
+            if (error) { console.warn('[Motores] Error cargando clientes_tabulador:', error); return; }
+            tabuladorClientes = (data || []).map(c => ({
+                nombre: c.nombre_cliente,
+                km: Number(c.km) || 0,
+                horas: Number(c.horas_viaje) || 0
+            }));
+            console.log('[Motores] clientes_tabulador cargados:', tabuladorClientes.length);
+        } catch (e) {
+            console.warn('[Motores] Error cargando tabulador:', e);
+            tabuladorClientes = [];
+        }
     }
 
     async function _loadInventory() {
@@ -324,12 +360,40 @@ const MotoresModule = (function() {
         const sel = document.getElementById('selClient');
         if (!sel) return;
         sel.innerHTML = '<option value="">-- Seleccionar --</option>';
+        // Combinar contactos + clientes del tabulador (sin duplicados)
+        const nombres = new Set();
         clients.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.nombre || c.empresa;
-            opt.textContent = c.nombre || c.empresa;
-            sel.appendChild(opt);
+            const nombre = c.nombre || c.empresa;
+            if (nombre && !nombres.has(nombre)) {
+                nombres.add(nombre);
+                const opt = document.createElement('option');
+                opt.value = nombre;
+                opt.textContent = nombre;
+                sel.appendChild(opt);
+            }
         });
+        tabuladorClientes.forEach(tc => {
+            if (tc.nombre && !nombres.has(tc.nombre)) {
+                nombres.add(tc.nombre);
+                const opt = document.createElement('option');
+                opt.value = tc.nombre;
+                opt.textContent = tc.nombre;
+                sel.appendChild(opt);
+            }
+        });
+        sel.removeEventListener('change', _onSelClientChange);
+        sel.addEventListener('change', _onSelClientChange);
+    }
+
+    function _onSelClientChange() {
+        const sel = document.getElementById('selClient');
+        const nombre = sel ? sel.value : '';
+        if (!nombre) return;
+        const encontrado = tabuladorClientes.find(tc => tc.nombre && tc.nombre.toLowerCase().trim() === nombre.toLowerCase().trim());
+        const kmEl = document.getElementById('motoresKmIda');
+        const hrsEl = document.getElementById('motoresHorasViaje');
+        if (kmEl) kmEl.value = encontrado ? encontrado.km : 0;
+        if (hrsEl) hrsEl.value = encontrado ? encontrado.horas : 0;
     }
 
     function _populateTecnicosFilter() {
@@ -502,35 +566,61 @@ const MotoresModule = (function() {
         const tieneCompraPendiente = compraInfo && compraInfo.estado < 5;
         const compraCompletada = compraInfo && compraInfo.estado === 5;
 
-        let badgeHtml = '';
+        let badgeCompra = '';
         if (tieneCompraPendiente) {
-            badgeHtml = `<span class="badge-warning" title="Compra en proceso: ${compraInfo.folio}">🛒 Compra #${compraInfo.folio}</span>`;
+            badgeCompra = `<span class="badge-warning" title="Compra en proceso: ${compraInfo.folio}">🛒 Compra #${compraInfo.folio}</span>`;
         } else if (compraCompletada) {
-            badgeHtml = `<span class="badge-success" title="Material recibido">✅ Material listo</span>`;
+            badgeCompra = `<span class="badge-success" title="Material recibido">✅ Material listo</span>`;
         }
 
         const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(orden);
         const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(orden) ?? true;
         const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
 
+        let badgeRentabilidad = '';
+        if (orden.rentabilidad_estado === 'rojo') {
+            badgeRentabilidad = `<span class="badge-rentabilidad-rojo badge-rentabilidad-inline" title="Adeudo $${(orden.adeudo_generado||0).toFixed(2)}">🔴 $${(orden.adeudo_generado||0).toFixed(0)}</span>`;
+        } else if (orden.rentabilidad_estado === 'verde') {
+            badgeRentabilidad = `<span class="badge-rentabilidad-verde badge-rentabilidad-inline">🟢 OK</span>`;
+        }
+
+        let extrasHtml = '';
+        const extras = orden.componentes_extras || [];
+        const notas = orden.notas_internas || '';
+        if (extras.length > 0 || notas) {
+            const chips = extras.slice(0, 3).map(e => `<span class="extra-chip">${e.descripcion || 'Extra'}${e.cantidad > 1 ? ' x'+e.cantidad : ''}</span>`).join('');
+            const mas = extras.length > 3 ? `<span class="extra-chip">+${extras.length - 3}</span>` : '';
+            const preview = notas ? `<div class="nota-preview">${notas.slice(0, 90)}${notas.length > 90 ? '…' : ''}</div>` : '';
+            extrasHtml = `<div class="card-extras">
+                ${chips ? `<div class="extra-list">${chips}${mas}</div>` : ''}
+                ${preview}
+            </div>`;
+        }
+
         return `
             <div class="kanban-card ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${orden.id}">
                 <div class="card-header">
-                    <span class="folio">${orden.folio || orden.id.slice(-6)}</span>
-                    ${badgeHtml}
-                    ${badgeCuarentena}
-                    <div class="card-actions">
-                        <button class="btn-icon btn-edit" onclick="event.stopPropagation(); motoresModule._abrirOrden('${orden.id}')" title="Editar">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); motoresModule._eliminarOrden('${orden.id}')" title="Eliminar">
-                            <i class="fas fa-trash"></i>
-                        </button>` : ''}
+                    <div class="folio-line">
+                        <span class="folio">${orden.folio || orden.id.slice(-6)}</span>
+                        ${badgeRentabilidad}
+                    </div>
+                    <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
+                        ${badgeCompra}
+                        ${badgeCuarentena}
+                        <div class="card-actions">
+                            <button class="btn-icon btn-edit" onclick="event.stopPropagation(); motoresModule._abrirOrden('${orden.id}')" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); motoresModule._eliminarOrden('${orden.id}')" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>` : ''}
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="cliente">${orden.cliente_nombre || 'Cliente'}</div>
                     <div class="motor">${orden.motor || 'Motor'} ${orden.hp ? `(${orden.hp} HP)` : ''}</div>
+                    ${extrasHtml}
                 </div>
                 <div class="card-footer">
                     <small>Ingreso: ${orden.fecha_ingreso ? new Date(orden.fecha_ingreso).toLocaleDateString() : ''}</small>
@@ -544,7 +634,7 @@ const MotoresModule = (function() {
     function _renderLista(ordenes) {
         const container = document.getElementById('listaContainer');
         if (!container) return;
-        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Cliente</th><th>Motor</th><th>HP</th><th>Técnico</th><th>Estado</th><th>Ingreso</th><th>Reparación</th><th>Recibido por</th><th>Acciones</th></tr></thead><tbody>';
+        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Cliente</th><th>Motor</th><th>HP</th><th>Técnico</th><th>Estado</th><th>Balance</th><th>Ingreso</th><th>Reparación</th><th>Recibido por</th><th>Acciones</th></tr></thead><tbody>';
         ordenes.forEach(o => {
             const compraInfo = comprasVinculadas[o.id];
             const recibidoPor = o.recibido_por || '—';
@@ -557,6 +647,7 @@ const MotoresModule = (function() {
                 <td>${o.hp || ''}</td>
                 <td>${o.tecnico_responsable || ''}</td>
                 <td>${o.estado || 'Nuevo'}</td>
+                <td>${o.rentabilidad_estado === 'rojo' ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(o.adeudo_generado||0).toFixed(0)}</span>` : (o.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—')}</td>
                 <td>${o.fecha_ingreso ? new Date(o.fecha_ingreso).toLocaleDateString() : ''}</td>
                 <td>${o.fecha_reparacion ? new Date(o.fecha_reparacion).toLocaleDateString() : ''}</td>
                 <td>${recibidoPor}</td>
@@ -610,7 +701,7 @@ const MotoresModule = (function() {
 
     // ==================== FUNCIONES DEL MODAL (5 PASOS) ====================
     async function _abrirOrden(id) {
-        const orden = orders.find(o => o.id === id);
+        const orden = orders.find(o => String(o.id) === String(id));
         if (!orden) return;
         currentOrder = orden;
         orderId = id;
@@ -623,6 +714,9 @@ const MotoresModule = (function() {
         _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
         _renderPrioritySupplierBarMotores();
         _renderTimelineMotores(orden.id, orden.estado || 'Nuevo');
+        if (window.actividadesModule && window.actividadesModule.renderWidgetActividades) {
+            window.actividadesModule.renderWidgetActividades('widgetActividadesMotores', id, 'ordenes_motores');
+        }
     }
 
     async function _abrirNuevaOrden() {
@@ -660,7 +754,7 @@ const MotoresModule = (function() {
     }
 
     async function _eliminarOrden(id) {
-        const orden = orders.find(o => o.id === id);
+        const orden = orders.find(o => String(o.id) === String(id));
         if (!orden) { _showErrorModal('Orden no encontrada', 'No se encontró la orden especificada.'); return; }
         // REGLA 1 + REGLA 2: validar cuarentena y etapa antes de eliminar
         if (window.SSEPIStateMachine) {
@@ -908,6 +1002,12 @@ const MotoresModule = (function() {
         document.getElementById('generalNotes').value = orden.notas_generales || '';
         document.getElementById('horasEstimadas').value = orden.horas_estimadas || 0;
         document.getElementById('recibidoPor').value = orden.recibido_por || '';
+        // Costos
+        document.getElementById('motoresKmIda').value = orden.km_distancia || 0;
+        document.getElementById('motoresHorasViaje').value = orden.horas_viaje || 0;
+        document.getElementById('motoresDiasEntrega').value = orden.tiempo_entrega_dias || 0;
+        document.getElementById('motoresBecerra').value = orden.becerra || 0;
+        document.getElementById('motoresUtilidadFactor').value = orden.utilidad_factor || 1.4;
 
         diagnosticoEnlaces = orden.refacciones_enlaces || [];
         diagnosticoInventario = orden.refacciones_inventario || [];
@@ -916,12 +1016,16 @@ const MotoresModule = (function() {
         componentesCompra = orden.componentes_compra || [];
         fechaInicioOrden = orden.fecha_inicio || new Date().toISOString();
         fechasEtapas = orden.fechas_etapas || {};
+        _renderRegistroTiempos();
 
         _renderDiagnosticoEnlaces();
         _renderDiagnosticoInventario();
         _renderConsumibles();
         _renderComponentesInventario();
         _renderComponentesCompra();
+        componentesExtras = orden.componentes_extras || [];
+        _renderComponentesExtras();
+        _renderPanelRentabilidad();
 
         document.getElementById('resumenCliente').innerText = orden.cliente_nombre || '';
         document.getElementById('resumenMotor').innerText = orden.motor || '';
@@ -947,6 +1051,100 @@ const MotoresModule = (function() {
         }
     }
 
+    function _getEtapaLabels() {
+        return ['Recepción','Diagnóstico','En Espera','Reparación','Entrega'];
+    }
+
+    function _renderRegistroTiemposBase() {
+        const panel = document.getElementById('registroTiemposPanel');
+        if (!panel) return;
+        const labels = _getEtapaLabels();
+        let html = '<div style="display:flex;gap:12px;flex-wrap:wrap;">';
+        for (let i = 1; i <= labels.length; i++) {
+            const ini = fechasEtapas[`etapa${i}_inicio`];
+            const fin = fechasEtapas[`etapa${i}_fin`];
+            let badge = '';
+            if (ini && fin) {
+                const d = new Date(fin) - new Date(ini);
+                const mins = Math.round(d / 60000);
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                const dur = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                badge = `<span style="color:#059669;font-weight:600;">${dur}</span>`;
+            } else if (ini) {
+                badge = `<span style="color:#d97706;font-weight:600;">En curso</span>`;
+            } else {
+                badge = `<span style="color:#94a3b8;">—</span>`;
+            }
+            const iniStr = ini ? new Date(ini).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+            const finStr = fin ? new Date(fin).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+            html += `<div style="min-width:160px;"><strong style="color:#334155;">Etapa ${i}:</strong> ${labels[i-1]}<br><span style="color:#64748b;">${iniStr} → ${finStr}</span> · ${badge}</div>`;
+        }
+        html += '</div>';
+        panel.innerHTML = html;
+    }
+
+    async function _renderRegistroTiemposRelacionados() {
+        const panel = document.getElementById('registroTiemposRelacionados');
+        if (!panel || !currentOrder) return;
+        const supabase = _supabase();
+        if (!supabase) return;
+        let html = '';
+        try {
+            const { data: cots } = await supabase.from('cotizaciones').select('folio,fechas_etapas,estado,created_at').eq('orden_origen_id', currentOrder.id).limit(5).order('created_at',{ascending:false});
+            if (cots && cots.length) {
+                html += '<div style="margin-top:10px;border-top:1px solid #e2e8f0;padding-top:8px;"><strong style="color:#334155;font-size:13px;"><i class="fas fa-file-invoice-dollar"></i> Ventas (cotizaciones vinculadas)</strong><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">';
+                cots.forEach(c => {
+                    const fe = c.fechas_etapas || {};
+                    const ventasLabels = ['Registro','Espera','Cotización','Seguimiento'];
+                    let lineas = [];
+                    for (let i=1;i<=4;i++) {
+                        const ini = fe[`etapa${i}_inicio`];
+                        const fin = fe[`etapa${i}_fin`];
+                        if (ini || fin) {
+                            const iniStr = ini ? new Date(ini).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+                            const finStr = fin ? new Date(fin).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+                            lineas.push(`<span style="color:#64748b;">P${i} ${ventasLabels[i-1]}: ${iniStr}→${finStr}</span>`);
+                        }
+                    }
+                    if (lineas.length) html += `<div style="min-width:180px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;font-size:11px;"><strong>${c.folio||'COT'}</strong> · ${lineas.join(' | ')}</div>`;
+                });
+                html += '</div></div>';
+            }
+        } catch(e) { console.warn('[Motores] tiempos ventas:', e); }
+        try {
+            const cliente = currentOrder.cliente_nombre || '';
+            if (cliente) {
+                const { data: autos } = await supabase.from('proyectos_automatizacion').select('folio,nombre,fechas_etapas,estado,created_at').ilike('cliente','%'+cliente+'%').limit(3).order('created_at',{ascending:false});
+                if (autos && autos.length) {
+                    html += '<div style="margin-top:10px;border-top:1px solid #e2e8f0;padding-top:8px;"><strong style="color:#334155;font-size:13px;"><i class="fas fa-robot"></i> Automatización (mismo cliente)</strong><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">';
+                    autos.forEach(a => {
+                        const fe = a.fechas_etapas || {};
+                        const autoLabels = ['Levantamiento','Ingeniería','Materiales','Desarrollo','Entrega'];
+                        let lineas = [];
+                        for (let i=1;i<=5;i++) {
+                            const ini = fe[`etapa${i}_inicio`];
+                            const fin = fe[`etapa${i}_fin`];
+                            if (ini || fin) {
+                                const iniStr = ini ? new Date(ini).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+                                const finStr = fin ? new Date(fin).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+                                lineas.push(`<span style="color:#64748b;">E${i} ${autoLabels[i-1]}: ${iniStr}→${finStr}</span>`);
+                            }
+                        }
+                        if (lineas.length) html += `<div style="min-width:180px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;font-size:11px;"><strong>${a.folio||'SP-A'}</strong> · ${lineas.join(' | ')}</div>`;
+                    });
+                    html += '</div></div>';
+                }
+            }
+        } catch(e) { console.warn('[Motores] tiempos auto:', e); }
+        panel.innerHTML = html || '';
+    }
+
+    function _renderRegistroTiempos() {
+        _renderRegistroTiemposBase();
+        _renderRegistroTiemposRelacionados().catch(()=>{});
+    }
+
     function _irPaso(paso) {
         if (paso < 1 || paso > 5) return;
         currentStep = paso;
@@ -955,14 +1153,23 @@ const MotoresModule = (function() {
         document.querySelectorAll('.ws-step-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelector(`.ws-step-btn[data-step="${paso}"]`).classList.add('active');
         _actualizarBotonesPaso();
+        // Registrar inicio de etapa automáticamente (solo la primera vez)
+        const campoInicio = `etapa${paso}_inicio`;
+        if (!fechasEtapas[campoInicio]) {
+            fechasEtapas[campoInicio] = new Date().toISOString();
+        }
         if (paso === 2) {
             _renderDiagnosticoEnlaces();
             _renderDiagnosticoInventario();
         }
+        _renderRegistroTiempos();
+
         if (paso === 4) {
             _renderConsumibles();
             _renderComponentesInventario();
             _renderComponentesCompra();
+            _renderComponentesExtras();
+            _renderPanelRentabilidad();
         }
     }
 
@@ -972,6 +1179,13 @@ const MotoresModule = (function() {
         const saveBtn = document.getElementById('saveOrderBtn');
         const completeBtn = document.getElementById('completeOrderBtn');
         const sinReparacionBtn = document.getElementById('sinReparacionBtn');
+        const reportePdfBtn = document.getElementById('btnReportePDFMotores');
+        const vistaPreviaReporteBtn = document.getElementById('btnVistaPreviaReporteMotores');
+        const isPaso5 = currentStep === 5;
+        const isEntregadoFacturado = currentOrder && (currentOrder.estado === 'Entregado' || currentOrder.estado === 'Facturado');
+        const mostrarReporte = isPaso5 && isEntregadoFacturado;
+        if (reportePdfBtn) reportePdfBtn.classList.toggle('hidden', !mostrarReporte);
+        if (vistaPreviaReporteBtn) vistaPreviaReporteBtn.classList.toggle('hidden', !mostrarReporte);
 
         if (currentStep === 1) {
             prevBtn.style.display = 'none';
@@ -1208,6 +1422,84 @@ const MotoresModule = (function() {
         _renderComponentesCompra();
     }
 
+    // ==================== COMPONENTES EXTRAS Y RENTABILIDAD ====================
+    function _renderComponentesExtras() {
+        const tbody = document.getElementById('componentesExtrasBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (componentesExtras.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay componentes extras</td></tr>';
+        } else {
+            componentesExtras.forEach((item, idx) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.descripcion || ''}</td>
+                    <td>${item.cantidad || 0}</td>
+                    <td>$${(item.costo_unitario || 0).toFixed(2)}</td>
+                    <td><strong>$${(item.subtotal || 0).toFixed(2)}</strong></td>
+                    <td><button class="btn-remove" onclick="motoresModule._eliminarComponenteExtra(${idx})">✖</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        const total = componentesExtras.reduce((s, i) => s + (i.subtotal || 0), 0);
+        const disp = document.getElementById('extrasTotalDisplay');
+        if (disp) disp.textContent = total.toFixed(2);
+    }
+
+    function _agregarComponenteExtra() {
+        const descEl = document.getElementById('extraDescInput');
+        const cantEl = document.getElementById('extraCantInput');
+        const costoEl = document.getElementById('extraCostoInput');
+        const desc = (descEl?.value || '').trim();
+        const cant = parseFloat(cantEl?.value) || 0;
+        const costo = parseFloat(costoEl?.value) || 0;
+        if (!desc) { _showToast('Ingresa la descripción del componente extra', 'warning'); return; }
+        if (cant <= 0) { _showToast('La cantidad debe ser mayor a 0', 'warning'); return; }
+        if (costo < 0) { _showToast('El costo no puede ser negativo', 'warning'); return; }
+        componentesExtras.push({ descripcion: desc, cantidad: cant, costo_unitario: costo, subtotal: cant * costo });
+        _renderComponentesExtras();
+        _renderPanelRentabilidad();
+        if (descEl) descEl.value = '';
+        if (cantEl) cantEl.value = '1';
+        if (costoEl) costoEl.value = '';
+        if (motoresAutosaveCtrl) motoresAutosaveCtrl.schedule();
+    }
+
+    function _eliminarComponenteExtra(idx) {
+        componentesExtras.splice(idx, 1);
+        _renderComponentesExtras();
+        _renderPanelRentabilidad();
+        if (motoresAutosaveCtrl) motoresAutosaveCtrl.schedule();
+    }
+
+    function _renderPanelRentabilidad() {
+        const panel = document.getElementById('panelRentabilidad');
+        if (!panel) return;
+        const data = _recolectarDatos();
+        const costoPresupuestado = currentOrder?.costo_presupuestado || currentOrder?.costo_total || data.costo_total || 0;
+        const costoReal = CostosEngine.calcularCostoRealMotores({ ...data, costo_total: costoPresupuestado });
+        const estado = CostosEngine.determinarRentabilidad(costoPresupuestado, costoReal);
+        const adeudo = Math.max(0, costoReal - costoPresupuestado);
+
+        panel.style.display = 'block';
+        panel.className = 'form-section panel-rentabilidad-' + estado;
+        const badge = document.getElementById('rentabilidadBadge');
+        const presEl = document.getElementById('rentabilidadPresupuestado');
+        const realEl = document.getElementById('rentabilidadReal');
+        const adeudoRow = document.getElementById('rentabilidadAdeudoRow');
+        const adeudoEl = document.getElementById('rentabilidadAdeudo');
+
+        if (badge) {
+            badge.className = estado === 'verde' ? 'badge-rentabilidad-verde' : 'badge-rentabilidad-rojo';
+            badge.textContent = estado === 'verde' ? 'Orden rentable' : 'Números rojos';
+        }
+        if (presEl) presEl.textContent = '$' + (costoPresupuestado || 0).toFixed(2);
+        if (realEl) realEl.textContent = '$' + (costoReal || 0).toFixed(2);
+        if (adeudoRow) adeudoRow.style.display = adeudo > 0 ? 'flex' : 'none';
+        if (adeudoEl) adeudoEl.textContent = '$' + (adeudo || 0).toFixed(2);
+    }
+
     // ==================== ACCIONES ESPECIALES ====================
     async function _sinReparacion() {
         if (!confirm('¿Marcar como "Sin reparación"? Esto moverá la orden a "En espera" y notificará a compras.')) return;
@@ -1416,6 +1708,7 @@ const MotoresModule = (function() {
             const csrfToken = sessionStorage.getItem('csrfToken');
             await ordenesService.update(orderId, { fechas_etapas: fechasEtapas }, csrfToken);
         }
+        _renderRegistroTiempos();
         alert(`✅ Etapa ${etapa} finalizada`);
         if (etapa < 5) _irPaso(etapa + 1);
     }
@@ -1440,6 +1733,36 @@ const MotoresModule = (function() {
         data.fecha_inicio = fechaInicioOrden;
         data.fechas_etapas = fechasEtapas;
         data.recibido_por = document.getElementById('recibidoPor')?.value || '';
+
+        // Calcular costos vía CostosEngine (Motores)
+        try {
+            await CostosEngine.loadFromDatabase('motores');
+            const desglose = CostosEngine.calcularMotores(
+                data.tiempo_entrega_dias || 0,
+                data.km_distancia || 0,
+                data.becerra || 0,
+                data.utilidad_factor || 1.4
+            );
+            data.costo_gasolina = desglose.gasolina || 0;
+            data.costo_ventas = desglose.ventas || 0;
+            data.costo_camioneta = desglose.camioneta || 0;
+            data.costo_total = desglose.credito || 0;
+            console.log(`[SSEPI-COSTOS] Orden ${data.folio || 'nueva'}: gasolina=$${(desglose.gasolina||0).toFixed(2)}, camioneta=$${(desglose.camioneta||0).toFixed(2)}, total=$${(desglose.credito||0).toFixed(2)}`);
+        } catch (ce) {
+            console.warn('[SSEPI-COSTOS] Error calculando costos:', ce);
+        }
+
+        // Calcular rentabilidad y adeudo
+        try {
+            const costoPresupuestado = currentOrder?.costo_presupuestado || data.costo_total || 0;
+            const costoReal = CostosEngine.calcularCostoRealMotores({ ...data, costo_total: costoPresupuestado });
+            data.costo_presupuestado = costoPresupuestado;
+            data.costo_real = costoReal;
+            data.adeudo_generado = Math.max(0, costoReal - costoPresupuestado);
+            data.rentabilidad_estado = CostosEngine.determinarRentabilidad(costoPresupuestado, costoReal);
+        } catch (re) {
+            console.warn('[SSEPI-RENTABILIDAD] Error calculando rentabilidad:', re);
+        }
 
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
@@ -1471,6 +1794,34 @@ const MotoresModule = (function() {
             }
             _afterMotoresPersistOk();
             _addToFeed('💾', `Orden ${data.folio} guardada`);
+
+            // Generar adeudo si la orden salió en números rojos
+            if (data.adeudo_generado > 0 && orderId) {
+                try {
+                    const clienteNombre = document.getElementById('selClient')?.value || '';
+                    const contacto = clients.find(c => c.nombre === clienteNombre);
+                    const clienteId = contacto?.id || currentOrder?.cliente_id;
+                    if (clienteId && window.supabase) {
+                        const adeudoData = {
+                            cliente_id: clienteId,
+                            orden_origen_id: orderId,
+                            orden_tipo: 'motores',
+                            folio_orden: data.folio,
+                            monto_adeudo: data.adeudo_generado,
+                            motivo: `Excedente de costos en orden ${data.folio}`,
+                            recuperado: false
+                        };
+                        await window.supabase.from('clientes_adeudos').insert(adeudoData);
+                        await window.supabase.rpc('actualizar_adeudo_cliente', { p_cliente_id: clienteId });
+                        const notaAdeudo = `[${new Date().toLocaleString('es-MX')}] Sistema: Adeudo generado $${(data.adeudo_generado || 0).toFixed(2)} por excedente de costos en orden ${data.folio}.`;
+                        data.notas_internas = (data.notas_internas || '') + '\n' + notaAdeudo;
+                        await ordenesService.update(orderId, { notas_internas: data.notas_internas }, csrfToken);
+                    }
+                } catch (e) {
+                    console.warn('[Motores] Error generando adeudo:', e);
+                }
+            }
+
         } catch (error) {
             console.error(error);
             if (!silencioso) alert('Error al guardar: ' + error.message);
@@ -1508,6 +1859,15 @@ const MotoresModule = (function() {
             factura_numero: document.getElementById('facturaNumero').value,
             entrega_obs: document.getElementById('entregaObs').value,
             recibido_por: document.getElementById('recibidoPor')?.value || '',
+            // Campos costos
+            km_distancia: parseFloat(document.getElementById('motoresKmIda')?.value) || 0,
+            horas_viaje: parseFloat(document.getElementById('motoresHorasViaje')?.value) || 0,
+            tiempo_entrega_dias: parseFloat(document.getElementById('motoresDiasEntrega')?.value) || 0,
+            becerra: parseFloat(document.getElementById('motoresBecerra')?.value) || 0,
+            utilidad_factor: parseFloat(document.getElementById('motoresUtilidadFactor')?.value) || 1.4,
+            componentes_extras: componentesExtras || [],
+            fecha_inicio: fechaInicioOrden || new Date().toISOString(),
+            fechas_etapas: fechasEtapas || {},
             updated_at: new Date().toISOString()
         };
     }
@@ -1609,6 +1969,11 @@ const MotoresModule = (function() {
         document.getElementById('facturaNumero').value = '';
         document.getElementById('entregaObs').value = '';
         document.getElementById('recibidoPor').value = '';
+        document.getElementById('motoresKmIda').value = 0;
+        document.getElementById('motoresHorasViaje').value = 0;
+        document.getElementById('motoresDiasEntrega').value = 0;
+        document.getElementById('motoresBecerra').value = 0;
+        document.getElementById('motoresUtilidadFactor').value = 1.4;
         document.getElementById('productImage').value = '';
         document.getElementById('imagePreview').innerHTML = '';
         diagnosticoEnlaces = [];
@@ -1616,11 +1981,13 @@ const MotoresModule = (function() {
         consumiblesUsados = [];
         componentesInventario = [];
         componentesCompra = [];
+        componentesExtras = [];
         _renderDiagnosticoEnlaces();
         _renderDiagnosticoInventario();
         _renderConsumibles();
         _renderComponentesInventario();
         _renderComponentesCompra();
+        _renderComponentesExtras();
     }
 
     function _previewImage() {
@@ -1683,6 +2050,122 @@ const MotoresModule = (function() {
         setTimeout(() => alertDiv.remove(), 4000);
     }
 
+    async function _generarCotizacionMotores(preview = false) {
+        if (!currentOrder) { _showToast('No hay orden activa', 'warning'); return; }
+        const user = await authService.getCurrentProfile();
+        const orden = currentOrder;
+        const folio = _formVal('inpFolio') || orden.folio || 'SP-M000000';
+        const items = [];
+        if (orden.refacciones && orden.refacciones.length) {
+            orden.refacciones.forEach(r => {
+                items.push({ descripcion: r.descripcion || r.nombre || 'Refacción', especificaciones: r.sku || '', unidad: 'Pza', precio: Number(r.costo) || 0, cantidad: parseInt(r.cantidad) || 1, entrega: '' });
+            });
+        }
+        if (!items.length) items.push({ descripcion: '(Sin refacciones cargadas)', especificaciones: '', unidad: '', precio: 0, cantidad: 1, entrega: '' });
+        const subtotal = items.reduce((s, i) => s + i.precio * i.cantidad, 0);
+        const iva = subtotal * 0.16;
+        const total = subtotal + iva;
+        const pdfData = {
+            folio,
+            cliente: _formVal('selClient') || orden.cliente_nombre || '',
+            rfc: orden.rfc || '',
+            direccion: orden.direccion || '',
+            fecha: orden.fecha ? new Date(orden.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) : new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            vendedor: orden.tecnico || '',
+            departamento: 'Taller Motores',
+            items,
+            subtotal,
+            iva,
+            total
+        };
+        try {
+            await pdfGenerator.generateCotizacion(pdfData, user, preview);
+            if (!preview) _showToast('Cotización PDF generada: ' + folio, 'success');
+        } catch (err) {
+            _showToast('Error al generar cotización: ' + err.message, 'error');
+        }
+    }
+
+    async function _generarReporteMotores(preview = false) {
+        if (!currentOrder) { _showToast('No hay orden activa', 'warning'); return; }
+        const orden = currentOrder;
+        const user = await authService.getCurrentProfile();
+
+        const folio = _formVal('inpFolio') || orden.folio || 'BORRADOR';
+        const cliente = _formVal('selClient') || orden.cliente_nombre || '—';
+        const motor = _formVal('inpEquip') || orden.motor || '—';
+        const marca = _formVal('inpBrand') || orden.marca || '—';
+        const modelo = _formVal('inpModel') || orden.modelo || '—';
+        const serie = _formVal('inpSerial') || orden.serie || '—';
+        const hp = _formVal('inpHP') || orden.hp || '—';
+        const rpm = _formVal('inpRPM') || orden.rpm || '—';
+        const voltaje = _formVal('inpVoltaje') || orden.voltaje || '—';
+        const falla = _formVal('inpFail') || orden.falla_reportada || '—';
+        const cond = _formVal('inpCond') || orden.condiciones_fisicas || '—';
+        const tecnico = _formVal('techSelect') || orden.tecnico_responsable || '—';
+        const notasInt = _formVal('internalNotes') || orden.notas_internas || '';
+        const notasCli = _formVal('generalNotes') || orden.notas_generales || '';
+        const repNotas = _formVal('reparacionNotas') || '';
+        const entRecibe = _formVal('recibeNombre') || '';
+        const entFecha = _formVal('fechaEntrega') || '';
+        const entObs = _formVal('entregaObs') || '';
+
+        const descServ = [
+            'Motor: ' + motor,
+            'Marca/Modelo: ' + marca + ' / ' + modelo,
+            'Serie: ' + serie,
+            'HP: ' + hp + ' | RPM: ' + rpm + ' | Voltaje: ' + voltaje,
+            'Falla reportada: ' + falla,
+            'Condiciones físicas: ' + cond,
+            '',
+            'Trabajo realizado:',
+            repNotas || notasInt || '—'
+        ].join('\n');
+
+        const hallazgos = [
+            'Técnico responsable: ' + tecnico,
+            'Notas internas: ' + (notasInt || '—'),
+            'Notas generales: ' + (notasCli || '—')
+        ].join('\n');
+
+        const refacciones = [
+            'Enlaces de refacción: ' + (diagnosticoEnlaces.length ? diagnosticoEnlaces.map(e => e.descripcion).join(', ') : 'Ninguno'),
+            'Inventario usado: ' + (diagnosticoInventario.length ? diagnosticoInventario.map(e => e.descripcion).join(', ') : 'Ninguno'),
+            'Consumibles: ' + (consumiblesUsados.length ? consumiblesUsados.map(e => e.descripcion).join(', ') : 'Ninguno')
+        ].join('\n');
+
+        const recomendaciones = [
+            'Entregado a: ' + entRecibe,
+            'Fecha de entrega: ' + entFecha,
+            'Observaciones: ' + (entObs || '—')
+        ].join('\n');
+
+        const imgs = [];
+        const previewEntrega = document.getElementById('previewEntrega');
+        if (previewEntrega) {
+            previewEntrega.querySelectorAll('img').forEach(img => {
+                if (img.src && img.src.startsWith('data:')) imgs.push(img.src);
+            });
+        }
+
+        const pdfData = {
+            folio: folio,
+            cliente: cliente,
+            fecha: new Date().toLocaleDateString('es-MX', {day:'2-digit',month:'2-digit',year:'numeric'}),
+            vendedor: tecnico,
+            departamento: 'Taller Motores',
+            repDescripcion: descServ,
+            repHallazgos: hallazgos,
+            repRefacciones: refacciones,
+            repRecomendaciones: recomendaciones,
+            imagenes: imgs
+        };
+
+        pdfGenerator.generateReport(pdfData, user, preview)
+            .then(() => { if (!preview) _showToast('Reporte generado', 'success'); })
+            .catch(err => { console.error(err); _showToast('Error al generar reporte', 'error'); });
+    }
+
     // ==================== EVENTOS DOM ====================
     function _bindEvents() {
         document.getElementById('toggleMenu').addEventListener('click', _toggleMenu);
@@ -1690,6 +2173,12 @@ const MotoresModule = (function() {
         document.getElementById('newOrderBtn').addEventListener('click', _abrirNuevaOrden);
         document.getElementById('closeWsBtn').addEventListener('click', _cerrarModal);
         document.getElementById('cancelWsBtn').addEventListener('click', _cerrarModal);
+        const reportePdfBtn = document.getElementById('btnReportePDFMotores');
+        if (reportePdfBtn) reportePdfBtn.addEventListener('click', () => _generarReporteMotores(false));
+        const prevReporteBtn = document.getElementById('btnVistaPreviaReporteMotores');
+        if (prevReporteBtn) prevReporteBtn.addEventListener('click', () => _generarReporteMotores(true));
+        const cotPdfBtn = document.getElementById('btnCotizacionPDFMotores');
+        if (cotPdfBtn) cotPdfBtn.addEventListener('click', () => _generarCotizacionMotores(false));
         document.querySelectorAll('.ws-step-btn').forEach(btn => {
             btn.addEventListener('click', (e) => _irPaso(parseInt(e.target.dataset.step)));
         });
@@ -1718,6 +2207,8 @@ const MotoresModule = (function() {
             consumiblesUsados.push({ sku: '', descripcion: '', cantidad: 1 });
             _renderConsumibles();
         });
+        const addComponenteExtraBtn = document.getElementById('addComponenteExtraBtn');
+        if (addComponenteExtraBtn) addComponenteExtraBtn.addEventListener('click', _agregarComponenteExtra);
 
         document.getElementById('aplicarFiltrosBtn').addEventListener('click', () => {
             filtroFechaInicio = document.getElementById('filtroFechaInicio').valueAsDate;
