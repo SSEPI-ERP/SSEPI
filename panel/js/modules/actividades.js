@@ -1460,7 +1460,7 @@ const ActividadesModule = (function() {
                         <a href="/panel/pages/ssepi_actividades.html?departamento=${acts[0]?.departamento || 'automatizacion'}" class="btn-ssepi btn-sm btn-secondary">
                             <i class="fas fa-external-link-alt"></i> Ver actividades
                         </a>
-                        <button class="btn-ssepi btn-sm btn-primario" onclick="window.actividadesModule._abrirModalDesdeWidget('${acts[0]?.departamento || 'automatizacion'}', ${JSON.stringify(ordenId)}, '${ordenTipo}')">
+                        <button class="btn-ssepi btn-sm btn-primario" onclick="window.actividadesModule._abrirModalDesdeWidget('${acts[0]?.departamento || ''}', ${JSON.stringify(ordenId)}, '${ordenTipo}')">
                             <i class="fas fa-plus"></i> Nueva Actividad
                         </button>
                     </div>
