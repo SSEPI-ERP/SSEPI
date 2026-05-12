@@ -46,3 +46,4 @@ ollama-data/
 Thumbs.db
 
 .vercel
+.env.cloudflare
