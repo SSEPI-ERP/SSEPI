@@ -203,6 +203,24 @@ export class AuthService {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) return null;
 
+    // Modo SSEPI-NEXT-LOCAL (offline): el user_metadata ya tiene rol/nombre/departamento
+    var isLocal = window.location.port === '3333' || window.location.port === '3443' || window.location.hostname.endsWith('.trycloudflare.com') || window.__SSEPI_NEXT_MODE__;
+    if (isLocal && user.user_metadata) {
+      var rol = user.user_metadata.rol || 'ventas';
+      var perfil = {
+        id: user.id,
+        email: user.email,
+        nombre: user.user_metadata.nombre || user.email,
+        rol: rol,
+        departamento: user.user_metadata.departamento || null,
+        auth_user_id: user.id,
+        ver_costos: true
+      };
+      try { sessionStorage.setItem('ssepi_rol', rol); } catch (e) {}
+      try { sessionStorage.setItem('ssepi_profile', JSON.stringify(perfil)); } catch (e) {}
+      return perfil;
+    }
+
     // Intentar primero usuarios/users (tu proyecto no usa tabla profiles)
     const { data: usuarioData, error: usuarioError } = await this.supabase
       .from('usuarios')
