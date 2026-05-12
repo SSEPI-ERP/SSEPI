@@ -145,11 +145,8 @@ if %errorlevel%==0 (
     echo      Puede tardar unos segundos mas en arrancar.
 )
 
-:: [7] Abrir navegador (perfil limpio = login fresco)
-echo [7] Abriendo navegador...
-set "TMPDIR=%TEMP%\ssepi-chrome-%RANDOM%"
-mkdir "%TMPDIR%" 2>nul
-start chrome --user-data-dir="%TMPDIR%" --no-first-run --no-default-browser-check "http://localhost:3333/panel/login.html"
+:: [7] Abrir navegador via Cloudflare Tunnel (URL publica)
+echo [7] Abriendo tunel Cloudflare y navegador...
 
 echo.
 echo =========================================
@@ -211,16 +208,16 @@ echo     Laboratorio NISHIKAWA:   $23,173.29
 echo     Auto    BOLSAS ALTOS:    $345,318.95
 echo     Auto    CONDUMEX:        $161,211.07
 echo =========================================
+:: [8] Iniciar tunel Cloudflare automaticamente (URL publica)
+echo [8] Iniciando tunel Cloudflare...
+start "Cloudflare Tunnel SSEPI" cmd /k "cd /d %~dp0ssepinext && iniciar-tunel-cloudflare.bat"
 echo.
-echo  [OPCIONAL] Deseas iniciar el tunel de Cloudflare?
-echo   Esto crea una URL publica (ej. https://abc123.trycloudflare.com)
-echo   para acceder desde cualquier lugar sin problemas de sesion.
+echo =========================================
+echo   SSEPI LOCAL + TUNEL PUBLICO - LISTO
 echo.
-set /p INICIARTUNEL="Iniciar tunel Cloudflare? (s/n): "
-if /i "%INICIARTUNEL%"=="s" (
-    echo.
-    echo [TUNEL] Iniciando en ventana separada...
-    start "Cloudflare Tunnel SSEPI" cmd /k "cd /d %~dp0ssepinext && iniciar-tunel-cloudflare.bat"
-)
+echo   Tunel Cloudflare iniciando...
+echo   Chrome se abrira solo con la URL publica.
+echo   Espera ~15 segundos.
+echo =========================================
 echo.
 pause
