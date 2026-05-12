@@ -71,8 +71,9 @@ echo   Cada vez que reinicies el tunel cambia.
 echo =========================================
 echo.
 
-:: Abrir Chrome con la URL publica
-start chrome "%TUNNELURL%"
+:: Abrir Chrome con la URL publica al login
+echo [TUNEL] Abriendo Chrome...
+start chrome "%TUNNELURL%/panel/login.html"
 
 echo [TUNEL] Chrome abierto con la URL publica.
 echo [TUNEL] El tunel sigue corriendo en segundo plano.
