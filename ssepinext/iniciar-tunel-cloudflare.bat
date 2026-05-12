@@ -5,12 +5,10 @@ echo =========================================
 echo   SSEPI - Cloudflare Tunnel (trycloudflare)
 echo =========================================
 echo.
-echo  Iniciando tunel para localhost:3333...
-echo  Esto puede tardar 5-10 segundos.
-echo.
 
 :: Ruta a cloudflared (ajustar si esta en otra ubicacion)
 set "CF=C:\Program Files (x86)\cloudflared\cloudflared.exe"
+set "TUNNELLOG=%TEMP%\ssepi-tunnel.log"
 
 if not exist "%CF%" (
     echo ERROR: No se encontro cloudflared.exe en:
@@ -21,6 +19,9 @@ if not exist "%CF%" (
     pause
     exit /b 1
 )
+
+:: Limpiar log anterior
+if exist "%TUNNELLOG%" del /q "%TUNNELLOG%"
 
 :: Verificar que el servidor local este activo
 curl -s http://localhost:3333/api/health >nul 2>nul
@@ -33,9 +34,47 @@ if %errorlevel% neq 0 (
 )
 
 echo [TUNEL] Conectando a Cloudflare...
-"%CF%" tunnel --url http://localhost:3333
-
-:: Si llega aqui, el tunel se ceró
+echo [TUNEL] Espera ~10 segundos para obtener la URL publica...
 echo.
-echo [TUNEL] Tunel cerrado.
+
+:: Iniciar cloudflared en ventana minimizada redirigiendo output al log
+start "Cloudflare Tunnel SSEPI" /MIN cmd /c ""%CF%" tunnel --url http://localhost:3333 > "%TUNNELLOG%" 2>&1"
+
+:: Esperar a que genere la URL
+timeout /t 12 /nobreak >nul
+
+:: Parsear URL con PowerShell (robusto)
+echo [TUNEL] Obteniendo URL publica...
+set "TUNNELURL="
+for /f "usebackq delims=" %%a in (`powershell -Command "$txt=Get-Content '%TUNNELLOG%' -Raw; if($txt -match 'https://[a-z0-9-]+\.trycloudflare\.com'){ $matches[0] } else { 'NOT_FOUND' }"`) do (
+    set "TUNNELURL=%%a"
+)
+
+if "%TUNNELURL%"=="NOT_FOUND" (
+    echo.
+    echo [TUNEL] No se pudo obtener la URL automaticamente.
+    echo [TUNEL] Revisa la ventana del tunel o el log en:
+    echo   %TUNNELLOG%
+    pause
+    exit /b 1
+)
+
+echo.
+echo =========================================
+echo   TUNEL ACTIVO
+echo.
+echo   URL PUBLICA:
+echo     %TUNNELURL%
+echo.
+echo   Esta URL es temporal.
+echo   Cada vez que reinicies el tunel cambia.
+echo =========================================
+echo.
+
+:: Abrir Chrome con la URL publica
+start chrome "%TUNNELURL%"
+
+echo [TUNEL] Chrome abierto con la URL publica.
+echo [TUNEL] La ventana del tunel sigue corriendo en segundo plano.
+echo.
 pause
