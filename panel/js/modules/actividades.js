@@ -31,10 +31,10 @@ const ActividadesModule = (function() {
     ];
 
     const ORDEN_MAP = {
-        'automatizacion': { tabla: 'proyectos_automatizacion', label: 'Proyecto', displayField: 'nombre_proyecto', folioField: 'folio' },
+        'automatizacion': { tabla: 'proyectos_automatizacion', label: 'Proyecto', displayField: 'nombre', folioField: 'folio' },
         'electronicos': { tabla: 'ordenes_taller', label: 'Orden', displayField: 'equipo', folioField: 'folio' },
         'motores': { tabla: 'ordenes_motores', label: 'Orden', displayField: 'equipo', folioField: 'folio' },
-        'soporte_planta': { tabla: 'proyectos_automatizacion', label: 'Proyecto Planta', displayField: 'nombre_proyecto', folioField: 'folio' }
+        'soporte_planta': { tabla: 'proyectos_automatizacion', label: 'Proyecto Planta', displayField: 'nombre', folioField: 'folio' }
     };
 
     const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
