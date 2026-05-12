@@ -60,15 +60,16 @@ const ActividadesModule = (function() {
             },
             async insert(row, csrfToken) {
                 if (!window.supabase) return null;
-                const { data, error } = await window.supabase.from(tableName).insert(row).select().single();
+                const { data, error } = await window.supabase.from(tableName).insert(row).select();
                 if (error) throw error;
-                return data;
+                // Proxy local devuelve objeto plano; Supabase real devuelve array
+                return Array.isArray(data) ? data[0] : data;
             },
             async update(id, row, csrfToken) {
                 if (!window.supabase) return null;
-                const { data, error } = await window.supabase.from(tableName).update(row).eq('id', id).select().single();
+                const { data, error } = await window.supabase.from(tableName).update(row).eq('id', id).select();
                 if (error) throw error;
-                return data;
+                return Array.isArray(data) ? data[0] : data;
             },
             async delete(id, csrfToken) {
                 if (!window.supabase) return;

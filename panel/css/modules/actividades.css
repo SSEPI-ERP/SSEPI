@@ -14,9 +14,46 @@
     background: var(--bg-panel);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 16px 20px;
+    padding: 12px 16px;
     margin-bottom: 20px;
     box-shadow: var(--shadow-header);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.page-actividades .filtro-grupo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 160px;
+}
+
+.page-actividades .filtro-grupo label {
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.page-actividades .filtro-grupo input,
+.page-actividades .filtro-grupo select {
+    padding: 7px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.page-actividades .btn-filtro {
+    padding: 8px 16px;
+    font-size: 12px;
+    flex-shrink: 0;
 }
 
 /* ========== VISTA SEMANAL ========== */
