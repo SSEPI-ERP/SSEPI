@@ -34,16 +34,16 @@ if %errorlevel% neq 0 (
 )
 
 echo [TUNEL] Conectando a Cloudflare...
-echo [TUNEL] Espera ~10 segundos para obtener la URL publica...
+echo [TUNEL] Espera ~15 segundos para obtener la URL publica...
 echo.
 
-:: Iniciar cloudflared en ventana minimizada redirigiendo output al log
-start "Cloudflare Tunnel SSEPI" /MIN cmd /c ""%CF%" tunnel --url http://localhost:3333 > "%TUNNELLOG%" 2>&1"
+:: Iniciar cloudflared en background usando PowerShell (maneja espacios en ruta)
+powershell -WindowStyle Hidden -Command "Start-Process '%CF%' -ArgumentList 'tunnel','--url','http://localhost:3333' -RedirectStandardOutput '%TUNNELLOG%' -RedirectStandardError '%TUNNELLOG%' -WindowStyle Hidden"
 
 :: Esperar a que genere la URL
-timeout /t 12 /nobreak >nul
+timeout /t 15 /nobreak >nul
 
-:: Parsear URL con PowerShell (robusto)
+:: Parsear URL del log
 echo [TUNEL] Obteniendo URL publica...
 set "TUNNELURL="
 for /f "usebackq delims=" %%a in (`powershell -Command "$txt=Get-Content '%TUNNELLOG%' -Raw; if($txt -match 'https://[a-z0-9-]+\.trycloudflare\.com'){ $matches[0] } else { 'NOT_FOUND' }"`) do (
@@ -75,6 +75,10 @@ echo.
 start chrome "%TUNNELURL%"
 
 echo [TUNEL] Chrome abierto con la URL publica.
-echo [TUNEL] La ventana del tunel sigue corriendo en segundo plano.
+echo [TUNEL] El tunel sigue corriendo en segundo plano.
+echo.
+echo NOTA: Todo lo que guardes a traves de esta URL se guarda en tu
+       base de datos local (ssepi-local.db). Los cambios se reflejan
+       automaticamente en todos los modulos.
 echo.
 pause
