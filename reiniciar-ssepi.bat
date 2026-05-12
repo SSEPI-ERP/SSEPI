@@ -210,7 +210,7 @@ echo     Auto    CONDUMEX:        $161,211.07
 echo =========================================
 :: [8] Iniciar tunel Cloudflare automaticamente (URL publica)
 echo [8] Iniciando tunel Cloudflare...
-start "Cloudflare Tunnel SSEPI" cmd /k "cd /d %~dp0ssepinext && iniciar-tunel-cloudflare.bat"
+start "Cloudflare Tunnel SSEPI" /D "%~dp0ssepinext" cmd /k iniciar-tunel-cloudflare.bat
 echo.
 echo =========================================
 echo   SSEPI LOCAL + TUNEL PUBLICO - LISTO
