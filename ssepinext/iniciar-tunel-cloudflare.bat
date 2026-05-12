@@ -6,19 +6,40 @@ echo   SSEPI - Cloudflare Tunnel (trycloudflare)
 echo =========================================
 echo.
 
-:: Ruta a cloudflared (ajustar si esta en otra ubicacion)
-set "CF=C:\Program Files (x86)\cloudflared\cloudflared.exe"
+:: Buscar cloudflared.exe en PATH o ubicaciones comunes
+set "CF="
+for /f "usebackq delims=" %%a in (`where cloudflared.exe 2>nul`) do (
+    set "CF=%%a"
+    goto :found
+)
+if exist "C:\Program Files (x86)\cloudflared\cloudflared.exe" (
+    set "CF=C:\Program Files (x86)\cloudflared\cloudflared.exe"
+    goto :found
+)
+if exist "C:\Program Files\cloudflared\cloudflared.exe" (
+    set "CF=C:\Program Files\cloudflared\cloudflared.exe"
+    goto :found
+)
+if exist "%LOCALAPPDATA%\cloudflared\cloudflared.exe" (
+    set "CF=%LOCALAPPDATA%\cloudflared\cloudflared.exe"
+    goto :found
+)
+:found
+
 set "TUNNELLOG=%TEMP%\ssepi-tunnel.log"
 
-if not exist "%CF%" (
-    echo ERROR: No se encontro cloudflared.exe en:
-    echo   %CF%
+if "%CF%"=="" (
+    echo ERROR: No se encontro cloudflared.exe.
     echo.
     echo Descargalo desde: https://github.com/cloudflare/cloudflared/releases
     echo Instalalo y reintenta.
     pause
     exit /b 1
 )
+
+echo [TUNEL] cloudflared encontrado:
+echo   %CF%
+echo.
 
 :: Limpiar log anterior
 if exist "%TUNNELLOG%" del /q "%TUNNELLOG%"
@@ -37,7 +58,7 @@ echo [TUNEL] Conectando a Cloudflare...
 echo [TUNEL] Espera ~15 segundos para obtener la URL publica...
 echo.
 
-:: Iniciar cloudflared en background usando PowerShell (maneja espacios en ruta)
+:: Iniciar cloudflared en background usando PowerShell
 powershell -WindowStyle Hidden -Command "Start-Process '%CF%' -ArgumentList 'tunnel','--url','http://localhost:3333' -RedirectStandardOutput '%TUNNELLOG%' -RedirectStandardError '%TUNNELLOG%' -WindowStyle Hidden"
 
 :: Esperar a que genere la URL
@@ -53,8 +74,7 @@ for /f "usebackq delims=" %%a in (`powershell -Command "$txt=Get-Content '%TUNNE
 if "%TUNNELURL%"=="NOT_FOUND" (
     echo.
     echo [TUNEL] No se pudo obtener la URL automaticamente.
-    echo [TUNEL] Revisa la ventana del tunel o el log en:
-    echo   %TUNNELLOG%
+    echo [TUNEL] Revisa el log en: %TUNNELLOG%
     pause
     exit /b 1
 )
@@ -75,11 +95,12 @@ echo.
 echo [TUNEL] Abriendo Chrome...
 start chrome "%TUNNELURL%/panel/login.html"
 
+echo.
 echo [TUNEL] Chrome abierto con la URL publica.
 echo [TUNEL] El tunel sigue corriendo en segundo plano.
 echo.
 echo NOTA: Todo lo que guardes a traves de esta URL se guarda en tu
-       base de datos local (ssepi-local.db). Los cambios se reflejan
-       automaticamente en todos los modulos.
+echo       base de datos local (ssepi-local.db). Los cambios se reflejan
+echo       automaticamente en todos los modulos.
 echo.
 pause
