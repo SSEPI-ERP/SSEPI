@@ -27,11 +27,10 @@ if (-not $CF) {
 
 Write-Host "[TUNEL] cloudflared encontrado: $CF" -ForegroundColor Cyan
 
-# Archivos de log
-$outFile = "$env:TEMP\ssepi-tunnel-out.log"
-$errFile = "$env:TEMP\ssepi-tunnel-err.log"
-if (Test-Path $outFile) { Remove-Item $outFile -Force }
-if (Test-Path $errFile) { Remove-Item $errFile -Force }
+# Archivos de log unicos por sesion (evita bloqueo si hay proceso anterior)
+$ts = Get-Date -Format "yyyyMMdd-HHmmss"
+$outFile = "$env:TEMP\ssepi-tunnel-out-$ts.log"
+$errFile = "$env:TEMP\ssepi-tunnel-err-$ts.log"
 
 # Verificar servidor local
 try {
