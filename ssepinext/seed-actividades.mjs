@@ -147,14 +147,30 @@ async function seedActividades() {
   if (ordenesMotores.length > 0) {
     const m1 = ordenesMotores[0];
     actividades.push(
-      { fecha: fechas[0], resumen: `Rebobinado motor — ${m1.folio}`, estado: 'completado', notas: 'Rebobinado de motor trifásico.', creado_por: 'user-004', user_id: 'user-004', prioridad: 'alta', departamento: 'motores', orden_origen_id: m1.id, orden_origen_tipo: 'ordenes_motores', completado_en: `${fechas[0]}T15:00:00.000Z`, duracion_minutos: 300 },
-      { fecha: fechas[1], resumen: `Prueba de aislamiento — ${m1.folio}`, estado: 'en_progreso', notas: 'Pruebas de resistencia de aislamiento.', creado_por: 'user-004', user_id: 'user-004', prioridad: 'alta', departamento: 'motores', orden_origen_id: m1.id, orden_origen_tipo: 'ordenes_motores' }
+      { fecha: fechas[0], resumen: `Rebobinado motor — ${m1.folio}`, estado: 'completado', notas: 'Rebobinado de motor trifásico 50HP WEG. Cortocircuito intervuelta reparado.', creado_por: 'user-004', user_id: 'user-004', prioridad: 'alta', departamento: 'motores', orden_origen_id: m1.id, orden_origen_tipo: 'ordenes_motores', completado_en: `${fechas[0]}T15:00:00.000Z`, duracion_minutos: 300 },
+      { fecha: fechas[1], resumen: `Prueba de aislamiento — ${m1.folio}`, estado: 'en_progreso', notas: 'Pruebas de resistencia de aislamiento post-rebobinado.', creado_por: 'user-004', user_id: 'user-004', prioridad: 'alta', departamento: 'motores', orden_origen_id: m1.id, orden_origen_tipo: 'ordenes_motores' }
     );
   }
   if (ordenesMotores.length > 1) {
     const m2 = ordenesMotores[1];
     actividades.push(
-      { fecha: fechas[3], resumen: `Ajuste de escobillas — ${m2.folio}`, estado: 'pendiente', notas: 'Ajuste y reemplazo de escobillas.', creado_por: 'user-004', user_id: 'user-004', prioridad: 'media', departamento: 'motores', orden_origen_id: m2.id, orden_origen_tipo: 'ordenes_motores' }
+      { fecha: fechas[3], resumen: `Ajuste de escobillas — ${m2.folio}`, estado: 'pendiente', notas: 'Ajuste y reemplazo de escobillas motor DC Baldor.', creado_por: 'user-004', user_id: 'user-004', prioridad: 'media', departamento: 'motores', orden_origen_id: m2.id, orden_origen_tipo: 'ordenes_motores' }
+    );
+  }
+
+  // Actividades vinculadas a Soporte en Planta
+  if (proyectos.length > 2) {
+    const sp1 = proyectos[2];
+    actividades.push(
+      { fecha: fechas[0], resumen: `Mantenimiento preventivo — ${sp1.folio}`, estado: 'completado', notas: 'Mantenimiento preventivo quincenal línea de tejido. Calibración sensores tensión.', creado_por: 'user-005', user_id: 'user-005', prioridad: 'alta', departamento: 'soporte_planta', orden_origen_id: sp1.id, orden_origen_tipo: 'proyectos_automatizacion', completado_en: `${fechas[0]}T16:00:00.000Z`, duracion_minutos: 480 },
+      { fecha: fechas[2], resumen: `Actualización firmware variadores — ${sp1.folio}`, estado: 'completado', notas: 'Update firmware ABB ACS355 y verificación de parámetros.', creado_por: 'user-005', user_id: 'user-005', prioridad: 'media', departamento: 'soporte_planta', orden_origen_id: sp1.id, orden_origen_tipo: 'proyectos_automatizacion', completado_en: `${fechas[2]}T14:00:00.000Z`, duracion_minutos: 180 }
+    );
+  }
+  if (proyectos.length > 3) {
+    const sp2 = proyectos[3];
+    actividades.push(
+      { fecha: fechas[1], resumen: `Diagnóstico emergencia — ${sp2.folio}`, estado: 'completado', notas: 'Diagnóstico en sitio sistema de visión. Cámara Cognex con lente contaminado.', creado_por: 'user-005', user_id: 'user-005', prioridad: 'alta', departamento: 'soporte_planta', orden_origen_id: sp2.id, orden_origen_tipo: 'proyectos_automatizacion', completado_en: `${fechas[1]}T18:00:00.000Z`, duracion_minutos: 360 },
+      { fecha: fechas[3], resumen: `Recalibración visión artificial — ${sp2.folio}`, estado: 'pendiente', notas: 'Recalibración de sistema de visión con nuevo patrón de referencia.', creado_por: 'user-005', user_id: 'user-005', prioridad: 'alta', departamento: 'soporte_planta', orden_origen_id: sp2.id, orden_origen_tipo: 'proyectos_automatizacion' }
     );
   }
 
@@ -196,6 +212,52 @@ async function seedActividades() {
       { titulo: 'Setup Cypress', descripcion: 'Instalar y configurar Cypress en el proyecto', done: true, orden: 0 },
       { titulo: 'Test login', descripcion: 'Flujo completo de login en E2E', done: true, orden: 1 },
       { titulo: 'Test checkout', descripcion: 'Flujo E2E de carrito hasta confirmación de pago', done: true, orden: 2 }
+    ],
+    // Actividades vinculadas (proyectos, taller) — sin subtareas
+    [], [], [], [], [], [], [], [],
+    // Actividad Motor: Rebobinado motor
+    [
+      { titulo: 'Desarme y limpieza', descripcion: 'Desarmar motor, limpiar estator y rotor', done: true, orden: 0 },
+      { titulo: 'Diagnóstico devanado', descripcion: 'Prueba de aislamiento y localizar corto', done: true, orden: 1 },
+      { titulo: 'Rebobinado estator', descripcion: 'Insertar nuevo devanado AWG 12 clase H', done: true, orden: 2 },
+      { titulo: 'Impregnación y curado', descripcion: 'Barniz epóxico y curado 4h a 120°C', done: true, orden: 3 }
+    ],
+    // Actividad Motor: Prueba de aislamiento
+    [
+      { titulo: 'Prueba megger', descripcion: 'Medir resistencia de aislamiento 500V', done: false, orden: 0 },
+      { titulo: 'Prueba de vacío', descripcion: 'Aplicar 2.5kV durante 60s', done: false, orden: 1 },
+      { titulo: 'Balanceo dinámico', descripcion: 'Balancear rotor en máquina', done: false, orden: 2 }
+    ],
+    // Actividad Motor: Ajuste de escobillas
+    [
+      { titulo: 'Inspección conmutador', descripcion: 'Verificar segmentos y ranuras', done: false, orden: 0 },
+      { titulo: 'Reemplazo escobillas', descripcion: 'Instalar escobillas E46F3', done: false, orden: 1 },
+      { titulo: 'Ajuste presión', descripcion: 'Ajustar presión a 150-200 g/cm²', done: false, orden: 2 }
+    ],
+    // Actividades Soporte Planta: Mantenimiento preventivo
+    [
+      { titulo: 'Inspección PLC', descripcion: 'Verificar estado módulos y conexiones', done: true, orden: 0 },
+      { titulo: 'Calibración sensores', descripcion: 'Calibrar sensores de tensión 0-50N', done: true, orden: 1 },
+      { titulo: 'Limpieza gabinetes', descripcion: 'Limpiar polvo y verificar ventilación', done: true, orden: 2 },
+      { titulo: 'Respaldo programa', descripcion: 'Respaldar programa PLC y entregar copia', done: true, orden: 3 }
+    ],
+    // Actividades Soporte Planta: Update firmware
+    [
+      { titulo: 'Descargar firmware', descripcion: 'Obtener versión más reciente de ABB', done: true, orden: 0 },
+      { titulo: 'Instalación', descripcion: 'Flashear firmware via ToolCable', done: true, orden: 1 },
+      { titulo: 'Verificación parámetros', descripcion: 'Validar configuración post-update', done: true, orden: 2 }
+    ],
+    // Actividades Soporte Planta: Diagnóstico emergencia
+    [
+      { titulo: 'Inspección cámara', descripcion: 'Verificar lente y conexiones', done: true, orden: 0 },
+      { titulo: 'Reemplazo lente', descripcion: 'Instalar lente con anillo de aire', done: true, orden: 1 },
+      { titulo: 'Recalibración', descripcion: 'Ajustar patrón de referencia', done: true, orden: 2 }
+    ],
+    // Actividades Soporte Planta: Recalibración
+    [
+      { titulo: 'Nuevo patrón', descripcion: 'Definir patrón de referencia actualizado', done: false, orden: 0 },
+      { titulo: 'Ajuste threshold', descripcion: 'Configurar tolerancias de rechazo', done: false, orden: 1 },
+      { titulo: 'Prueba producción', descripcion: 'Validar a 360 botellas/minuto', done: false, orden: 2 }
     ]
   ];
 
@@ -218,9 +280,10 @@ async function seedActividades() {
   }
 
   // Insertar subtareas
-  for (let i = 0; i < subtareasSeed.length; i++) {
+  for (let i = 0; i < createdIds.length; i++) {
     const actId = createdIds[i];
     const subs = subtareasSeed[i];
+    if (!subs || subs.length === 0) continue;
     for (const s of subs) {
       try {
         await stmtSub.insert(null, { ...s, actividad_id: actId });
@@ -238,10 +301,11 @@ async function seedActividades() {
   console.log(`  - Pendiente: ${pendientes} actividades`);
   console.log(`  - En Progreso: ${enProgreso} actividades`);
   console.log(`  - Completado: ${completadas} actividades`);
-  console.log(`  - Subtareas totales: 18`);
+  console.log(`  - Subtareas totales: ~28`);
   console.log(`  - Vinculadas a proyectos: ${proyectos.length} proyectos`);
   console.log(`  - Vinculadas a taller: ${ordenesTaller.length} órdenes`);
   console.log(`  - Vinculadas a motores: ${ordenesMotores.length} órdenes`);
+  console.log(`  - Vinculadas a soporte planta: ${Math.max(0, proyectos.length - 2)} proyectos`);
 }
 
 seedActividades().catch(err => {

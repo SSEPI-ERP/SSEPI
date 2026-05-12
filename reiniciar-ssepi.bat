@@ -64,6 +64,24 @@ if %errorlevel%==0 (
     echo      (Si ya existen se omiten duplicados)
 )
 
+:: [3a] Seed: ordenes de motores demo
+echo [3a] Ordenes de motores demo...
+node seed-ordenes-motores.mjs 2>nul
+if %errorlevel%==0 (
+    echo      OK - Ordenes motores insertadas.
+) else (
+    echo      (Error en motores - continuando)
+)
+
+:: [3a2] Seed: proyectos soporte en planta demo
+echo [3a2] Proyectos soporte en planta demo...
+node seed-proyectos-soporte-planta.mjs 2>nul
+if %errorlevel%==0 (
+    echo      OK - Soporte en planta insertados.
+) else (
+    echo      (Error en soporte planta - continuando)
+)
+
 :: [3b] Seed: pipeline conectado
 echo [3b] Pipeline (cotizaciones, ventas, compras, facturas)...
 node seed-pipeline.mjs 2>nul
