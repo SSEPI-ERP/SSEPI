@@ -650,6 +650,49 @@ const ActividadesModule = (function() {
         modal.classList.add('active');
     }
 
+    // Abrir modal desde widget de módulo operativo (pre-llena departamento + orden)
+    function _abrirModalDesdeWidget(departamento, ordenId, ordenTipo) {
+        const deptoMap = {
+            'proyectos_automatizacion': 'automatizacion',
+            'ordenes_taller': 'electronicos',
+            'ordenes_motores': 'motores'
+        };
+        const depto = departamento || deptoMap[ordenTipo] || 'automatizacion';
+
+        // Reset form
+        document.getElementById('actFecha').value = new Date().toISOString().split('T')[0];
+        document.getElementById('actTecnico').value = '';
+        document.getElementById('actResumen').value = '';
+        document.getElementById('actNotas').value = '';
+        document.getElementById('actArchivo').value = '';
+        document.getElementById('actEstado').value = 'pendiente';
+        currentActividadId = null;
+
+        const deptoSel = document.getElementById('actDepartamento');
+        if (deptoSel) deptoSel.value = depto;
+
+        const titleEl = document.getElementById('actividadModalTitle');
+        if (titleEl) titleEl.textContent = 'Nueva Actividad';
+
+        // Cargar órdenes del departamento y pre-seleccionar la orden actual
+        _cargarOrdenesPorDepartamento(depto, ordenId);
+
+        // Populate técnicos
+        const tecnicoSelect = document.getElementById('actTecnico');
+        if (tecnicoSelect) {
+            tecnicoSelect.innerHTML = '<option value="">Seleccionar...</option>';
+            tecnicos.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.textContent = t.nombre;
+                tecnicoSelect.appendChild(opt);
+            });
+        }
+
+        const modal = document.getElementById('actividadModal');
+        if (modal) modal.classList.add('active');
+    }
+
     async function _guardarActividad() {
         const fecha = document.getElementById('actFecha')?.value || '';
         const user_id = document.getElementById('actTecnico')?.value || '';
@@ -1417,6 +1460,9 @@ const ActividadesModule = (function() {
                         <a href="/panel/pages/ssepi_actividades.html?departamento=${acts[0]?.departamento || 'automatizacion'}" class="btn-ssepi btn-sm btn-secondary">
                             <i class="fas fa-external-link-alt"></i> Ver actividades
                         </a>
+                        <button class="btn-ssepi btn-sm btn-primario" onclick="window.actividadesModule._abrirModalDesdeWidget('${acts[0]?.departamento || 'automatizacion'}', ${JSON.stringify(ordenId)}, '${ordenTipo}')">
+                            <i class="fas fa-plus"></i> Nueva Actividad
+                        </button>
                     </div>
                 </div>
             `;
@@ -1430,6 +1476,7 @@ const ActividadesModule = (function() {
     return {
         init,
         _abrirModalActividad,
+        _abrirModalDesdeWidget,
         _guardarActividad,
         _verActividad,
         _irSemanaAnterior,
