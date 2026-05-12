@@ -27,9 +27,11 @@ if (-not $CF) {
 
 Write-Host "[TUNEL] cloudflared encontrado: $CF" -ForegroundColor Cyan
 
-# Limpiar log anterior
-$logFile = "$env:TEMP\ssepi-tunnel.log"
-if (Test-Path $logFile) { Remove-Item $logFile -Force }
+# Archivos de log
+$outFile = "$env:TEMP\ssepi-tunnel-out.log"
+$errFile = "$env:TEMP\ssepi-tunnel-err.log"
+if (Test-Path $outFile) { Remove-Item $outFile -Force }
+if (Test-Path $errFile) { Remove-Item $errFile -Force }
 
 # Verificar servidor local
 try {
@@ -42,26 +44,24 @@ try {
 Write-Host "[TUNEL] Conectando a Cloudflare..." -ForegroundColor Cyan
 Write-Host "[TUNEL] Espera ~15 segundos..." -ForegroundColor Cyan
 
-# Iniciar cloudflared en background
-$psi = New-Object System.Diagnostics.ProcessStartInfo
-$psi.FileName = $CF
-$psi.Arguments = "tunnel","--url","http://localhost:3333"
-$psi.RedirectStandardOutput = $true
-$psi.RedirectStandardError = $true
-$psi.UseShellExecute = $false
-$psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
-
-$proc = [System.Diagnostics.Process]::Start($psi)
+# Iniciar cloudflared en background redirigiendo output a archivos
+$proc = Start-Process -FilePath $CF `
+    -ArgumentList "tunnel","--url","http://localhost:3333" `
+    -RedirectStandardOutput $outFile `
+    -RedirectStandardError $errFile `
+    -WindowStyle Hidden -PassThru
 
 # Esperar a que genere la URL
 Start-Sleep -Seconds 15
 
-# Leer log y parsear URL
+# Leer logs y parsear URL
 $output = ""
-if ($proc.StandardOutput -and -not $proc.StandardOutput.EndOfStream) {
-    $output = $proc.StandardOutput.ReadToEnd()
+if (Test-Path $outFile) {
+    $output += Get-Content $outFile -Raw -ErrorAction SilentlyContinue
 }
-$output += Get-Content $logFile -Raw -ErrorAction SilentlyContinue
+if (Test-Path $errFile) {
+    $output += Get-Content $errFile -Raw -ErrorAction SilentlyContinue
+}
 
 if ($output -match "(https://[a-z0-9-]+\.trycloudflare\.com)") {
     $tunnelUrl = $matches[1]
@@ -89,7 +89,12 @@ if ($output -match "(https://[a-z0-9-]+\.trycloudflare\.com)") {
     pause
 } else {
     Write-Host "[TUNEL] No se pudo obtener la URL automaticamente." -ForegroundColor Red
-    Write-Host "Revisa el log en: $logFile" -ForegroundColor Yellow
+    Write-Host "Revisa los logs en:" -ForegroundColor Yellow
+    Write-Host "  $outFile" -ForegroundColor Yellow
+    Write-Host "  $errFile" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Contenido del log:" -ForegroundColor Gray
+    Write-Host $output -ForegroundColor Gray
     pause
 }
 
