@@ -86,7 +86,14 @@ if ($output -match "(https://[a-z0-9-]+\.trycloudflare\.com)") {
     Write-Host ""
     Write-Host "NOTA: Todo lo que guardes se guarda en tu base local." -ForegroundColor Gray
     Write-Host ""
-    pause
+    Write-Host "Presiona Enter para cerrar el tunel..." -ForegroundColor Cyan
+    try {
+        $null = Read-Host
+    } catch {
+        # Modo no interactivo: esperar a que el proceso termine (nunca)
+        Write-Host "[TUNEL] Modo no interactivo. Esperando..." -ForegroundColor Gray
+        $proc.WaitForExit()
+    }
 } else {
     Write-Host "[TUNEL] No se pudo obtener la URL automaticamente." -ForegroundColor Red
     Write-Host "Revisa los logs en:" -ForegroundColor Yellow
@@ -98,6 +105,7 @@ if ($output -match "(https://[a-z0-9-]+\.trycloudflare\.com)") {
     pause
 }
 
-# Cuando el usuario presione una tecla, matar el proceso
+# Cerrar tunel
 Write-Host "[TUNEL] Cerrando tunel..." -ForegroundColor Cyan
-if (-not $proc.HasExited) { $proc.Kill() }
+if ($proc -and -not $proc.HasExited) { $proc.Kill() }
+
