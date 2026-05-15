@@ -360,13 +360,33 @@ const VentasModule = (function() {
                     (async () => {
                         const adeudo = await _consultarAdeudoCliente(contactoId);
                         const banner = document.getElementById('wizardAdeudoBanner');
+                        const rolActual = sessionStorage.getItem('ssepi_rol') || '';
+                        const esAdmin = ['admin','superadmin','contabilidad'].includes(rolActual);
                         if (banner) {
                             if (adeudo > 0) {
-                                banner.innerHTML = `<div class="alert-adeudo" style="padding:10px 14px; background:#fff7ed; border:1px solid #fdba74; border-radius:8px; color:#9a3412; font-size:13px;">
-                                    <i class="fas fa-exclamation-triangle" style="margin-right:6px;"></i>
-                                    Este cliente tiene un adeudo acumulado de <strong>$${adeudo.toLocaleString()}</strong>.
-                                    Se recuperará automáticamente en esta cotización.
-                                </div>`;
+                                if (esAdmin) {
+                                    banner.innerHTML = `<div class="alert-adeudo" style="padding:10px 14px; background:#fff7ed; border:1px solid #fdba74; border-radius:8px; color:#9a3412; font-size:13px;">
+                                        <i class="fas fa-exclamation-triangle" style="margin-right:6px;"></i>
+                                        Este cliente tiene un adeudo acumulado de <strong>$${adeudo.toLocaleString()}</strong>.
+                                        <label style="display:block;margin-top:6px;"><input type="checkbox" id="chkIncluirAdeudo"> Incluir adeudo en cotización</label>
+                                    </div>`;
+                                } else {
+                                    banner.innerHTML = `<div class="alert-adeudo" style="padding:10px 14px; background:#fff7ed; border:1px solid #fdba74; border-radius:8px; color:#9a3412; font-size:13px;">
+                                        <i class="fas fa-exclamation-triangle" style="margin-right:6px;"></i>
+                                        Cliente con historial pendiente. Notificar a admin.
+                                    </div>`;
+                                    // Notificar a admin
+                                    try {
+                                        await notificacionesService.insert({
+                                            para: 'admin',
+                                            tipo: 'adeudo_alerta',
+                                            cliente_id: contactoId,
+                                            mensaje: `Vendedor ${rolActual} seleccionó cliente con adeudo de $${adeudo.toLocaleString()}`,
+                                            leido: false,
+                                            fecha: new Date().toISOString()
+                                        });
+                                    } catch (nErr) { console.warn('[Ventas] Notificación adeudo error:', nErr); }
+                                }
                                 banner.style.display = 'block';
                             } else {
                                 banner.style.display = 'none';

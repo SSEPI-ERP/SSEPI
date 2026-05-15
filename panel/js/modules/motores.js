@@ -248,6 +248,22 @@ const MotoresModule = (function() {
         }
     }
 
+    async function _cargarVendedores() {
+        try {
+            var vendedores = await authService.getUsersByRol(['ventas', 'admin', 'superadmin']);
+            var select = document.getElementById('recibidoPorSelect');
+            if (!select) return;
+            var valActual = select.value;
+            select.innerHTML = '<option value="">Selecciona vendedor...</option>' +
+                vendedores.map(function(v) {
+                    return '<option value="' + (v.nombre || v.email) + '" data-id="' + (v.id || '') + '">' + (v.nombre || v.email) + '</option>';
+                }).join('');
+            if (valActual) select.value = valActual;
+        } catch (e) {
+            console.error('[Motores] Error cargando vendedores:', e);
+        }
+    }
+
     // ==================== INICIALIZACIÓN ====================
     async function init() {
         console.log('✅ [Motores] Conectado');
@@ -259,6 +275,7 @@ const MotoresModule = (function() {
         _cargarNotificaciones();
         _renderPrioritySupplierBarMotores();
         _initMotoresAutosave();
+        _cargarVendedores();
         _tryResumeMotoresDraft();
         _initExportButton();
         _cargarTecnicos();
@@ -1050,7 +1067,8 @@ const MotoresModule = (function() {
         document.getElementById('internalNotes').value = orden.notas_internas || '';
         document.getElementById('generalNotes').value = orden.notas_generales || '';
         document.getElementById('horasEstimadas').value = orden.horas_estimadas || 0;
-        document.getElementById('recibidoPor').value = orden.recibido_por || '';
+        var sel = document.getElementById('recibidoPorSelect');
+        if (sel) sel.value = orden.vendedor_nombre || orden.recibido_por || '';
         // Costos
         document.getElementById('motoresKmIda').value = orden.km_distancia || 0;
         document.getElementById('motoresHorasViaje').value = orden.horas_viaje || 0;
@@ -1781,7 +1799,11 @@ const MotoresModule = (function() {
         data.componentes_compra = componentesCompra;
         data.fecha_inicio = fechaInicioOrden;
         data.fechas_etapas = fechasEtapas;
-        data.recibido_por = document.getElementById('recibidoPor')?.value || '';
+        var selVend = document.getElementById('recibidoPorSelect');
+        var optVend = selVend ? selVend.selectedOptions[0] : null;
+        data.vendedor_id = optVend ? (optVend.dataset.id || '') : '';
+        data.vendedor_nombre = selVend ? selVend.value : '';
+        data.recibido_por = data.vendedor_nombre;
 
         // Calcular costos vía CostosEngine (Motores)
         try {
@@ -1918,7 +1940,7 @@ const MotoresModule = (function() {
             recibe_identificacion: document.getElementById('recibeIdentificacion').value,
             factura_numero: document.getElementById('facturaNumero').value,
             entrega_obs: document.getElementById('entregaObs').value,
-            recibido_por: document.getElementById('recibidoPor')?.value || '',
+            recibido_por: document.getElementById('recibidoPorSelect')?.value || '',
             // Campos costos
             km_distancia: parseFloat(document.getElementById('motoresKmIda')?.value) || 0,
             horas_viaje: parseFloat(document.getElementById('motoresHorasViaje')?.value) || 0,
@@ -2035,7 +2057,7 @@ const MotoresModule = (function() {
         document.getElementById('recibeIdentificacion').value = '';
         document.getElementById('facturaNumero').value = '';
         document.getElementById('entregaObs').value = '';
-        document.getElementById('recibidoPor').value = '';
+        document.getElementById('recibidoPorSelect').value = '';
         document.getElementById('motoresKmIda').value = 0;
         document.getElementById('motoresHorasViaje').value = 0;
         document.getElementById('motoresDiasEntrega').value = 0;

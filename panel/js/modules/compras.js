@@ -466,6 +466,33 @@ const ComprasModule = (function() {
             if (error) throw error;
 
             _showToast('✅ Compra recibida. Inventario actualizado.', 'success');
+            // H13: Notificar a Laboratorio si la compra estaba vinculada
+            if (compra.vinculacion && compra.vinculacion.tipo === 'taller' && compra.vinculacion.id) {
+                try {
+                    const ordenId = compra.vinculacion.id;
+                    const folio = compra.folio || compraId;
+                    await notificacionesService.insert({
+                        para: 'admin',
+                        tipo: 'compra_autorizada',
+                        compra_id: compraId,
+                        folio,
+                        orden_id: ordenId,
+                        mensaje: `Compra ${folio} autorizada/recibida. Materiales listos para Laboratorio.`,
+                        leido: false,
+                        fecha: new Date().toISOString()
+                    });
+                    const historialService = createDataService('orden_historial');
+                    await historialService.insert({
+                        orden_id: ordenId,
+                        evento: 'compra_autorizada',
+                        descripcion: `Compra #${folio} autorizada/recibida. Materiales disponibles.`,
+                        usuario: profile?.nombre || 'Sistema',
+                        fecha: new Date().toISOString()
+                    });
+                } catch (h13Err) {
+                    console.warn('[Compras] H13 notificación error:', h13Err);
+                }
+            }
             await _loadCompras();
             _abrirDetalle(compraId);
         } catch (error) {

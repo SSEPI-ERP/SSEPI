@@ -34,6 +34,7 @@ const TallerModule = (function() {
 
     let tallerDraftSessionKey = null;
     let tallerAutosaveCtrl = null;
+    let perfilUsuario = null;
 
     // Listas específicas
     let diagnosticoEnlaces = [];
@@ -290,6 +291,7 @@ const TallerModule = (function() {
     // ==================== INICIALIZACIÓN ====================
     async function init() {
         console.log('✅ [Taller] Conectado');
+        try { perfilUsuario = await authService.getCurrentProfile(); } catch(e) {}
         _bindEvents();
         await _initUI();
         try {
@@ -2079,6 +2081,7 @@ const TallerModule = (function() {
         const costoReal = CostosEngine.calcularCostoRealLaboratorio({ ...data, costo_total: costoPresupuestado });
         const estado = CostosEngine.determinarRentabilidad(costoPresupuestado, costoReal);
         const adeudo = Math.max(0, costoReal - costoPresupuestado);
+        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
 
         panel.style.display = 'block';
         panel.className = 'form-section panel-rentabilidad-' + estado;
@@ -2092,10 +2095,10 @@ const TallerModule = (function() {
             badge.className = estado === 'verde' ? 'badge-rentabilidad-verde' : 'badge-rentabilidad-rojo';
             badge.textContent = estado === 'verde' ? 'Orden rentable' : 'Números rojos';
         }
-        if (presEl) presEl.textContent = '$' + (costoPresupuestado || 0).toFixed(2);
-        if (realEl) realEl.textContent = '$' + (costoReal || 0).toFixed(2);
+        if (presEl) presEl.textContent = verCostos ? '$' + (costoPresupuestado || 0).toFixed(2) : '—';
+        if (realEl) realEl.textContent = verCostos ? '$' + (costoReal || 0).toFixed(2) : '—';
         if (adeudoRow) adeudoRow.style.display = adeudo > 0 ? 'flex' : 'none';
-        if (adeudoEl) adeudoEl.textContent = '$' + (adeudo || 0).toFixed(2);
+        if (adeudoEl) adeudoEl.textContent = verCostos ? '$' + (adeudo || 0).toFixed(2) : '—';
     }
 
     // ==================== ACTUALIZACIÓN DE LISTAS (desde inputs) ====================
@@ -2614,8 +2617,10 @@ const TallerModule = (function() {
                     console.warn('[Taller] Error notificando a ventas:', e);
                 }
             }
-            // Generar adeudo si la orden salió en números rojos
-            if (data.adeudo_generado > 0 && orderId) {
+            // Generar adeudo si la orden salió en números rojos + extras
+            const costoExtras = (componentesExtras || []).reduce((s, i) => s + (i.subtotal || 0), 0);
+            const adeudoTotal = (data.adeudo_generado || 0) + costoExtras;
+            if (adeudoTotal > 0 && orderId) {
                 try {
                     const clienteNombre = document.getElementById('selClient')?.value || '';
                     const contacto = clients.find(c => c.nombre === clienteNombre);
@@ -2626,14 +2631,14 @@ const TallerModule = (function() {
                             orden_origen_id: orderId,
                             orden_tipo: 'taller',
                             folio_orden: data.folio,
-                            monto_adeudo: data.adeudo_generado,
-                            motivo: `Excedente de costos en orden ${data.folio}`,
+                            monto_adeudo: adeudoTotal,
+                            motivo: `Excedente de costos${costoExtras > 0 ? ' + materiales extra' : ''} en orden ${data.folio}`,
                             recuperado: false
                         };
                         await window.supabase.from('clientes_adeudos').insert(adeudoData);
                         await window.supabase.rpc('actualizar_adeudo_cliente', { p_cliente_id: clienteId });
                         // Nota interna automática
-                        const notaAdeudo = `[${new Date().toLocaleString('es-MX')}] Sistema: Adeudo generado $${(data.adeudo_generado || 0).toFixed(2)} por excedente de costos en orden ${data.folio}.`;
+                        const notaAdeudo = `[${new Date().toLocaleString('es-MX')}] Sistema: Adeudo generado $${(adeudoTotal || 0).toFixed(2)} por excedente de costos${costoExtras > 0 ? ' y materiales extra' : ''} en orden ${data.folio}.`;
                         data.notas_internas = (data.notas_internas || '') + '\n' + notaAdeudo;
                         await ordenesService.update(orderId, { notas_internas: data.notas_internas }, csrfToken);
                     }
