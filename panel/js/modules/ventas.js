@@ -2589,12 +2589,15 @@ const VentasModule = (function() {
                     Agrega refacciones desde el Inventario Maestro o componentes manualmente.
                 </p>
                 <table class="componentes-table">
-                    <thead><tr><th>Componente</th><th>Cantidad</th><th>Subtotal</th><th></th></tr></thead>
+                    <thead><tr><th>Componente</th><th>Cantidad</th><th>Costo Compra</th><th>Costo Venta</th><th>Subtotal</th><th></th></tr></thead>
                     <tbody id="componentesTableBody"></tbody>
                 </table>
-                <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:10px; margin-top:15px;">
-                    <input type="text" id="compNombre" placeholder="Componente" style="padding:8px;">
+                <datalist id="listaInventarioVentas">${inventario.map(i => `<option value="${(i.nombre || i.descripcion || i.sku || '').replace(/"/g, '&quot;')}" data-sku="${(i.sku || '').replace(/"/g, '&quot;')}" data-costo="${i.costo_online || i.costo_local || i.costo || 0}">`).join('')}</datalist>
+                <div style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr auto; gap:10px; margin-top:15px;">
+                    <input type="text" id="compNombre" list="listaInventarioVentas" placeholder="Componente" style="padding:8px;" oninput="ventasModule._autoCompletarComponente(this.value)">
                     <input type="number" id="compCantidad" value="1" min="1" style="padding:8px;">
+                    <input type="number" id="compCostoCompra" placeholder="Costo compra" style="padding:8px;" readonly title="Auto-completado desde inventario">
+                    <input type="number" id="compCosto" placeholder="Costo venta" style="padding:8px;">
                     <button class="btn btn-sm btn-primary" onclick="ventasModule._agregarComponente()">Agregar</button>
                 </div>
             </div>
@@ -2758,28 +2761,44 @@ const VentasModule = (function() {
     function _agregarComponente() {
         const nombre = document.getElementById('compNombre')?.value;
         const cantidad = parseFloat(document.getElementById('compCantidad')?.value) || 1;
-        const costo = parseFloat(document.getElementById('compCosto')?.value) || 0;
+        const costoVenta = parseFloat(document.getElementById('compCosto')?.value) || 0;
+        const costoCompra = parseFloat(document.getElementById('compCostoCompra')?.value) || 0;
         if (!nombre) { _showToast('Ingrese el nombre del componente', 'warning'); return; }
-        calculadoraComponentes.push({ nombre, cantidad, costo_unitario: costo, subtotal: cantidad * costo });
+        calculadoraComponentes.push({ nombre, cantidad, costo_unitario: costoVenta, costo_compra: costoCompra, subtotal: cantidad * costoVenta });
         _renderizarComponentes();
         _recalcular();
         document.getElementById('compNombre').value = '';
         document.getElementById('compCantidad').value = 1;
         document.getElementById('compCosto').value = 0;
+        document.getElementById('compCostoCompra').value = 0;
+    }
+
+    function _autoCompletarComponente(valor) {
+        if (!valor) return;
+        const item = inventario.find(i => (i.nombre || i.descripcion || i.sku || '') === valor);
+        if (item) {
+            const costo = item.costo_online || item.costo_local || item.costo || 0;
+            const cc = document.getElementById('compCostoCompra');
+            if (cc) cc.value = costo;
+            const cv = document.getElementById('compCosto');
+            if (cv && !cv.value) cv.value = (costo * 1.4).toFixed(2);
+        }
     }
 
     function _renderizarComponentes() {
         const tbody = document.getElementById('componentesTableBody');
         if (!tbody) return;
+        const rolActual = sessionStorage.getItem('ssepi_rol') || '';
+        const esAdmin = ['admin', 'automatizacion', 'electronica', 'superadmin'].includes(rolActual);
         if (calculadoraComponentes.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay componentes agregados</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="${esAdmin ? 6 : 4}" style="text-align:center;">No hay componentes agregados</td></tr>`;
             return;
         }
         tbody.innerHTML = calculadoraComponentes.map((comp, idx) => `
             <tr>
                 <td>${comp.nombre}</td>
                 <td>${comp.cantidad}</td>
-                <td>$${comp.costo_unitario.toFixed(2)}</td>
+                ${esAdmin ? `<td>$${(comp.costo_compra || 0).toFixed(2)}</td><td>$${comp.costo_unitario.toFixed(2)}</td>` : ''}
                 <td>$${comp.subtotal.toFixed(2)}</td>
                 <td><button class="btn-remove" onclick="ventasModule._eliminarComponente(${idx})">✖</button></td>
             </tr>
@@ -5510,6 +5529,7 @@ const VentasModule = (function() {
         _abrirCalculadora,
         _agregarComponente,
         _eliminarComponente,
+        _autoCompletarComponente,
         _recalcular,
         _refreshLogisticaFromInputs,
         _abrirRegistroViaticos,
