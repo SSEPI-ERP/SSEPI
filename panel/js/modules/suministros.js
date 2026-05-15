@@ -375,6 +375,12 @@ const SuministrosModule = (function() {
         const resultado = engine.calcularSuministros(dias, km, proveedor, utilidadPct / 100 + 1);
 
         const folio = await _generateFolio();
+        const fechaConfirmacion = document.getElementById('cotFechaConfirmacion')?.value || '';
+        const fechaCertificacion = document.getElementById('cotFechaCertificacion')?.value || '';
+        const entregaEsperada = document.getElementById('cotEntregaEsperada')?.value || '';
+        const llegada = document.getElementById('cotLlegada')?.value || '';
+        const precorsoImportes = document.getElementById('cotPrecorsoImportes')?.value || '';
+        const precorsoImporto = document.getElementById('cotPrecorsoImporto')?.value || '';
         const cotizacionData = {
             folio,
             cliente_nombre: cliente.nombre || '',
@@ -385,7 +391,7 @@ const SuministrosModule = (function() {
             subtotal: resultado.proveedor,
             iva: resultado.credito * 0.16,
             total: resultado.credito * 1.16,
-            cerebro_registro: { dias, km, proveedor, utilidadPct, resultado },
+            cerebro_registro: { dias, km, proveedor, utilidadPct, resultado, fecha_confirmacion: fechaConfirmacion, fecha_certificacion: fechaCertificacion, entrega_esperada: entregaEsperada, llegada, precorso_importes: precorsoImportes, precorso_importo: precorsoImporto },
             componentes: carrito.map(item => ({
                 source: item.source, id: item.id, codigo: item.codigo, descripcion: item.descripcion,
                 categoria: item.categoria, cantidad: item.qty, precio_unitario: item.precio,
