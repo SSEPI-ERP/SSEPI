@@ -1628,6 +1628,27 @@ const TallerModule = (function() {
             } catch (e) {
                 /* audit_logs opcional */
             }
+            // 3) orden_historial
+            try {
+                const { data: histRows } = await supabase
+                    .from('orden_historial')
+                    .select('fecha,evento,descripcion,usuario')
+                    .eq('orden_id', orden.id)
+                    .order('fecha', { ascending: false })
+                    .limit(30);
+                if (histRows && histRows.length) {
+                    histRows.forEach(h => {
+                        const d = h.fecha ? new Date(h.fecha) : null;
+                        items.push({
+                            when: d ? d.toLocaleString('es-MX') : '—',
+                            title: String(h.evento || 'EVENTO').toUpperCase(),
+                            body: String(h.descripcion || '') + (h.usuario ? ` — ${h.usuario}` : '')
+                        });
+                    });
+                }
+            } catch (e) {
+                /* orden_historial opcional */
+            }
         }
 
         if (!items.length) {
@@ -2587,6 +2608,18 @@ const TallerModule = (function() {
             }
             _afterTallerPersistOk();
             _addToFeed('💾', `Orden ${data.folio} guardada`);
+
+            // E8: Registrar en orden_historial
+            try {
+                const historialService = createDataService('orden_historial');
+                await historialService.insert({
+                    orden_id: orderId,
+                    evento: 'actualizacion',
+                    descripcion: `Orden ${data.folio} guardada — estado: ${data.estado}`,
+                    usuario: perfilUsuario?.nombre || 'Sistema',
+                    fecha: new Date().toISOString()
+                }, csrfToken);
+            } catch (histErr) { console.warn('[Taller] Error historial:', histErr); }
 
             // Notificar a ventas: actualizar estado de la cotización vinculada
             if (data.estado && data.estado !== 'Nuevo' && orderId) {
