@@ -165,7 +165,9 @@
       "PowerShell(Out-Null *)",
       "WebSearch",
       "Bash(findstr /I \"\\\\.jpg \\\\.jpeg \\\\.png \\\\.svg \\\\.webp \\\\.gif\")",
-      "PowerShell(Get-ChildItem *)"
+      "PowerShell(Get-ChildItem *)",
+      "Bash(Select-Object -Last 50)",
+      "PowerShell(\\(Get-Content 'E:\\\\SSEPI\\\\panel\\\\js\\\\modules\\\\ventas.js' | Select-Object -Last 50\\) -join \"`n\")"
     ]
   }
 }
