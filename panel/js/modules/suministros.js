@@ -36,6 +36,12 @@ const SuministrosModule = (function() {
         try { perfilUsuario = await authService.getCurrentProfile(); } catch(e) {}
         await _loadData();
         _bindEvents();
+        _aplicarVisibilidadCostos();
+    }
+
+    function _aplicarVisibilidadCostos() {
+        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+        document.querySelectorAll('.col-costo-compra').forEach(el => { el.style.display = verCostos ? '' : 'none'; });
     }
 
     async function _loadData() {
@@ -195,9 +201,10 @@ const SuministrosModule = (function() {
         if (vistaActual === 'grid') {
             container.innerHTML = page.map(item => _renderCard(item)).join('');
         } else {
-            container.innerHTML = `<table class="data-table"><thead><tr><th>Fuente</th><th>Código</th><th>Descripción</th><th>Categoría</th><th>Precio</th><th>Stock/Prov.</th><th></th></tr></thead><tbody>${page.map(item => _renderRow(item)).join('')}</tbody></table>`;
+            container.innerHTML = `<table class="data-table"><thead><tr><th>Fuente</th><th>Código</th><th>Descripción</th><th>Categoría</th><th>Precio Venta</th><th class="col-costo-compra">Costo Compra</th><th>Stock/Prov.</th><th></th></tr></thead><tbody>${page.map(item => _renderRow(item)).join('')}</tbody></table>`;
         }
         _renderPagination(filtered.length);
+        _aplicarVisibilidadCostos();
     }
 
     function _renderCard(item) {
@@ -205,7 +212,11 @@ const SuministrosModule = (function() {
         const badge = item.source === 'BOM' ? '<span class="source-badge source-badge-bom">BOM</span>' :
                       item.source === 'CONSUMIBLE' ? '<span class="source-badge source-badge-consumible">CONS</span>' :
                       '<span class="source-badge source-badge-stock">STOCK</span>';
-        const precio = (item.precio || 0) > 0 ? `$${Number(item.precio).toLocaleString('es-MX',{minimumFractionDigits:2})}` : '—';
+        const costoCompra = item.precio || 0;
+        const precioVenta = costoCompra > 0 ? costoCompra * 1.4 : 0;
+        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+        const precioBadge = precioVenta > 0 ? `<span class="card-price-venta">Venta: $${Number(precioVenta).toLocaleString('es-MX',{minimumFractionDigits:2})}</span>` : '';
+        const costoBadge = verCostos && costoCompra > 0 ? `<span class="card-price-costo">Costo: $${Number(costoCompra).toLocaleString('es-MX',{minimumFractionDigits:2})}</span>` : '';
         const provArr = Array.isArray(item.proveedores) ? item.proveedores : [];
         const stockInfo = item.stock !== null && item.stock !== undefined ? `<span class="card-stock">${item.stock} pzas</span>` :
                           provArr.length > 0 ? `<span class="card-provs">${provArr.length} prov.</span>` : '';
@@ -222,7 +233,8 @@ const SuministrosModule = (function() {
                 <div class="card-desc" title="${_esc(desc)}">${_esc(desc.substring(0,55))}${desc.length > 55 ? '…' : ''}</div>
                 <div class="card-cat">${_esc(item.categoria)}</div>
                 <div class="card-footer">
-                    <span class="card-price">${precio}</span>
+                    ${precioBadge}
+                    ${costoBadge}
                     ${stockInfo}
                     ${inCart ? '<span class="card-added">✓</span>' : `<button class="btn-add-item" onclick="suministrosModule._addToCartDirect('${item.id}','${item.source}')">+ Agregar</button>`}
                 </div>
@@ -238,7 +250,11 @@ const SuministrosModule = (function() {
         const badge = item.source === 'BOM' ? '<span class="source-badge source-badge-bom">BOM</span>' :
                       item.source === 'CONSUMIBLE' ? '<span class="source-badge source-badge-consumible">CONS</span>' :
                       '<span class="source-badge source-badge-stock">STOCK</span>';
-        const precio = (item.precio || 0) > 0 ? `$${Number(item.precio).toLocaleString('es-MX',{minimumFractionDigits:2})}` : '—';
+        const costoCompra = item.precio || 0;
+        const precioVenta = costoCompra > 0 ? costoCompra * 1.4 : 0;
+        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+        const precioVentaStr = precioVenta > 0 ? `$${Number(precioVenta).toLocaleString('es-MX',{minimumFractionDigits:2})}` : '—';
+        const costoCompraStr = verCostos && costoCompra > 0 ? `$${Number(costoCompra).toLocaleString('es-MX',{minimumFractionDigits:2})}` : '—';
         const stockInfo = item.stock !== null && item.stock !== undefined ? `<strong>${item.stock}</strong> pzas` :
                           provArr.length > 0 ? `${provArr.length} prov.` : '—';
         const inCart = carrito.some(c => c.id === item.id && c.source === item.source);
@@ -246,10 +262,10 @@ const SuministrosModule = (function() {
         return `<tr>
             <td>${badge}</td><td><strong>${_esc(item.codigo)}</strong></td>
             <td title="${_esc(desc)}">${_esc(desc.substring(0,60))}${desc.length>60?'…':''}</td>
-            <td>${_esc(item.categoria)}</td><td>${precio}</td><td>${stockInfo}</td>
+            <td>${_esc(item.categoria)}</td><td>${precioVentaStr}</td><td class="col-costo-compra">${costoCompraStr}</td><td>${stockInfo}</td>
             <td>${inCart ? '<span style="color:#10b981">✓</span>' : `<button class="btn-add-item" onclick="suministrosModule._addToCartDirect('${item.id}','${item.source}')">+</button>`}</td>
         </tr>`;
-        } catch(e) { console.error('[Suministros] Error rendering row:', e, item); return '<tr><td colspan="7">Error</td></tr>'; }
+        } catch(e) { console.error('[Suministros] Error rendering row:', e, item); return '<tr><td colspan="8">Error</td></tr>'; }
     }
 
     function _renderPagination(total) {
@@ -294,8 +310,9 @@ const SuministrosModule = (function() {
         const totalItems = document.getElementById('carritoTotalItems');
         const totalPrecio = document.getElementById('carritoTotalPrecio');
         if (!tbody) return;
+        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
         if (carrito.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="carrito-empty">Agrega artículos del catálogo</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="8" class="carrito-empty">Agrega artículos del catálogo</td></tr>`;
             if (totalItems) totalItems.textContent = '0';
             if (totalPrecio) totalPrecio.textContent = '$0.00';
             return;
@@ -309,11 +326,13 @@ const SuministrosModule = (function() {
                           '<span class="source-badge source-badge-stock">STOCK</span>';
             const stockWarn = (item.source === 'STOCK' || item.source === 'CONSUMIBLE') && item.stock !== null && item.qty > item.stock ?
                 ` <span style="color:#dc2626;font-size:.75rem">(stock:${item.stock})</span>` : '';
+            const costoCompraStr = verCostos ? `$${(item.precio||0).toLocaleString('es-MX',{minimumFractionDigits:2})}` : '—';
             return `<tr>
                 <td>${badge}</td>
                 <td><strong>${_esc(item.codigo)}</strong> — ${_esc(item.descripcion.substring(0,40))}</td>
                 <td><input type="number" value="${item.qty}" min="1" style="width:55px" onchange="suministrosModule._updateCartQty(${idx},parseInt(this.value))">${stockWarn}</td>
                 <td>$${(item.precio||0).toLocaleString('es-MX',{minimumFractionDigits:2})}</td>
+                <td class="col-costo-compra">${costoCompraStr}</td>
                 <td><strong>$${sub.toLocaleString('es-MX',{minimumFractionDigits:2})}</strong></td>
                 <td>${item.link ? `<a href="${item.link}" target="_blank" class="supplier-link"><i class="fas fa-external-link-alt"></i></a>` : '—'}</td>
                 <td><button class="btn-remove" onclick="suministrosModule._removeFromCart(${idx})">✖</button></td>
@@ -396,20 +415,31 @@ const SuministrosModule = (function() {
         if (!folio) { _showToast('Guarda la cotización primero', 'warning'); return; }
 
         const comprasService = createDataService('compras');
-        const itemsCompra = carrito.map(item => ({
-            descripcion: item.descripcion, sku: item.codigo, cantidad: item.qty,
-            precio_unitario: item.precio, link_proveedor: item.link, source: item.source
-        }));
         const compraData = {
             folio: 'CMP-' + folio,
             proveedor_nombre: (carrito.find(i => i.proveedores?.length > 0)?.proveedores?.[0]?.nombre) || '',
-            departamento: 'Suministro', estado: 3, items: itemsCompra,
+            departamento: 'Suministro', estado: 1,
             vinculacion: { tipo: 'cotizacion_suministro', folio },
             observaciones: `Compra derivada de suministro ${folio}`
         };
 
         try {
-            await comprasService.insert(compraData);
+            const inserted = await comprasService.insert(compraData);
+            const compraId = inserted?.id || inserted?.[0]?.id;
+            if (compraId) {
+                const itemsService = createDataService('compras_items');
+                for (const item of carrito) {
+                    await itemsService.insert({
+                        compra_id: compraId,
+                        sku: item.codigo || '',
+                        descripcion: item.descripcion || '',
+                        cantidad: item.qty || 1,
+                        costo_unitario: item.precio || 0,
+                        costo_total: (item.qty || 1) * (item.precio || 0),
+                        link_proveedor: item.link || ''
+                    });
+                }
+            }
             try {
                 await enqueueCoiJob({ erp_source: 'compra', erp_id: compraData.folio, folio: compraData.folio, idempotency_key: `compra:suministro:${folio}`, payload_json: compraData });
             } catch (coiErr) { console.warn('[Suministros] COI compra error:', coiErr?.message || coiErr); }
