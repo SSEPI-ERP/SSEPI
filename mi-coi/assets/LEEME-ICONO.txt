@@ -6,13 +6,12 @@ Icono SSEPI COI (barra de tareas + acceso directo)
    o  mi-coi\assets\logo.png
 
 2) Genera el .ico para Windows (acceso directo):
-     python scripts\generar_icono_desde_logo.py
-   (usa Pillow; crea mi-coi\assets\app.ico)
+     Ejecuta installer\build-installer.bat
+     (descarga Python portable, instala dependencias, genera app.ico
+      y compila el instalador SSEPI-COI-Setup.exe)
 
-3) Abrir COI sin CMD:
-     Doble clic en SSEPI COI.vbs
-   o  scripts\crear_acceso_directo.ps1  (acceso en Escritorio con icono)
-
-Bridge sin CMD (opcional): Iniciar_bridge_oculto.vbs
+3) Instalar en cualquier PC:
+     Ejecuta SSEPI-COI-Setup.exe
+     Crea accesos directos en Escritorio y Menu Inicio automaticamente.
 
 Ya se genero app.ico desde logo.png en este proyecto.

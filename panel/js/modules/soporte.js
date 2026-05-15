@@ -82,7 +82,31 @@ const SoporteModule = (function() {
     }
 
     async function _loadVisits() {
-        visits = await visitasService.select({}, { orderBy: 'fecha', ascending: false });
+        const visitas = await visitasService.select({}, { orderBy: 'fecha', ascending: false });
+        const proyectos = await proyectosService.select({}, { orderBy: 'fecha_creacion', ascending: false });
+        const proyectosNormalizados = proyectos.map(p => ({
+            id: p.id,
+            folio: p.folio,
+            cliente: p.cliente_nombre || p.cliente || '',
+            equipo: p.nombre || '',
+            tecnico: p.ingeniero || p.vendedor || '',
+            fecha: p.fecha_creacion || p.fecha || '',
+            estado: 'proyecto',
+            _esProyecto: true,
+            area: '',
+            ubicacion: p.direccion || '',
+            responsableCliente: '',
+            departamento: 'Automatizacion',
+            horaInicio: '',
+            horaFinal: '',
+            objetivo: '',
+            descripcionActividades: p.notas_generales || '',
+            pruebasRealizadas: '',
+            recomendaciones: p.notas_internas || '',
+            observacionesCliente: '',
+            actividades: []
+        }));
+        visits = [...proyectosNormalizados, ...visitas];
         _applyFilters();
     }
 
@@ -227,6 +251,10 @@ const SoporteModule = (function() {
     async function _editarVisita(id) {
         const visita = visits.find(v => v.id === id);
         if (!visita) return;
+        if (visita._esProyecto) {
+            window.location.hash = '#proyectos_automatizacion';
+            return;
+        }
         currentVisit = visita;
         visitId = id;
         isNewVisit = false;

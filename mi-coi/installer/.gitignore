@@ -1,0 +1,10 @@
+# Staging y dependencias descargadas
+staging/
+python.tar.gz
+get-pip.py
+Output/
+*.exe
+
+# Archivos temporales de build
+*.tmp
+*.log

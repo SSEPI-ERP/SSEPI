@@ -173,7 +173,7 @@ export class AuthService {
     if (lastErr) throw lastErr;
   }
 
-  /** Lee si el usuario actual puede ver costos (tabla users_ver_costos). Por defecto true. */
+  /** Lee si el usuario actual puede ver costos (tabla users_ver_costos). Por defecto false (fail-closed). */
   async _getVerCostos(authUserId) {
     try {
       const { data, error } = await this.supabase
@@ -181,10 +181,10 @@ export class AuthService {
         .select('ver_costos')
         .eq('auth_user_id', authUserId)
         .maybeSingle();
-      if (error || !data) return true;
+      if (error || !data) return false;
       return data.ver_costos === true;
     } catch {
-      return true;
+      return false;
     }
   }
 
@@ -214,7 +214,7 @@ export class AuthService {
         rol: rol,
         departamento: user.user_metadata.departamento || null,
         auth_user_id: user.id,
-        ver_costos: true
+        ver_costos: (rol === 'admin' || rol === 'superadmin')
       };
       try { sessionStorage.setItem('ssepi_rol', rol); } catch (e) {}
       try { sessionStorage.setItem('ssepi_profile', JSON.stringify(perfil)); } catch (e) {}
@@ -526,6 +526,30 @@ export class AuthService {
       return null;
     }
     return user;
+  }
+
+  // ==================== LISTAR USUARIOS POR ROL ====================
+  async getUsersByRol(roles) {
+    try {
+      var isLocal = window.location.port === '3333' || window.location.port === '3443' || window.location.hostname.endsWith('.trycloudflare.com') || window.__SSEPI_NEXT_MODE__;
+      if (isLocal) {
+        var resp = await fetch('/api/auth/users');
+        if (!resp.ok) throw new Error('Error cargando usuarios offline');
+        var json = await resp.json();
+        var rows = json.data || [];
+        return rows.filter(function(u) { return roles.includes(u.rol); }).map(function(u) {
+          return { id: u.id, nombre: u.nombre, email: u.email, rol: u.rol, departamento: u.departamento };
+        });
+      }
+      var _ref4 = await this.supabase.from('usuarios').select('id, nombre, email, rol, departamento').in('rol', roles);
+      var data = _ref4.data;
+      var error = _ref4.error;
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.error('[AuthService] Error getUsersByRol:', e);
+      return [];
+    }
   }
 }
 

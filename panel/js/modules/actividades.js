@@ -4,6 +4,9 @@
 // FUNCIONALIDAD: Bitácora semanal, subida de archivos, historial
 // ================================================
 
+import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
+import { authService } from '../core/auth-service.js';
+
 const ActividadesModule = (function() {
     // ==================== ESTADO PRIVADO ====================
     let actividades = [];
@@ -94,8 +97,30 @@ const ActividadesModule = (function() {
         await _loadInitialData();
         _startClock();
         _setupRealtime();
+        _initExportButton();
 
         console.log('✅ Módulo actividades iniciado');
+    }
+
+    async function _initExportButton() {
+        try {
+            const profile = await authService.getCurrentProfile();
+            if (!isAdminExportAllowed(profile)) return;
+            createExportButton('exportCSVContainer', function() {
+                const headers = [
+                    { key: 'id', label: 'ID' },
+                    { key: 'fecha', label: 'Fecha' },
+                    { key: 'resumen', label: 'Resumen' },
+                    { key: 'estado', label: 'Estado' },
+                    { key: 'departamento', label: 'Departamento' },
+                    { key: 'prioridad', label: 'Prioridad' },
+                    { key: 'user_id', label: 'User ID' },
+                    { key: 'orden_origen_id', label: 'Orden Vinculada' },
+                    { key: 'duracion_minutos', label: 'Duración (min)' }
+                ];
+                downloadCSV('actividades_' + new Date().toISOString().slice(0,10) + '.csv', actividades, headers);
+            });
+        } catch (e) { console.warn('[Actividades] Export CSV init:', e); }
     }
 
     async function _detectarRol() {
@@ -113,9 +138,14 @@ const ActividadesModule = (function() {
                 'administracion': 'administracion',
                 'admin': 'todos',
                 'superadmin': 'todos',
-                'ventas': 'todos'
+                'ventas': 'todos',
+                'ventas_sin_compras': 'electronicos'
             };
             departamentoActual = rolDepto[rol] || 'todos';
+            // Guardar departamentos expandidos para roles que operan en múltiples áreas
+            if (rol === 'automatizacion') {
+                departamentoActual = 'automatizacion_soporte';
+            }
         } catch (e) {
             console.warn('[Actividades] No se pudo detectar rol:', e);
             isAdmin = false;
@@ -175,8 +205,11 @@ const ActividadesModule = (function() {
                 .gte('fecha', inicioSemana.toISOString().split('T')[0])
                 .lte('fecha', finSemana.toISOString().split('T')[0]);
 
-            if (departamentoActual !== 'todos') {
+            if (departamentoActual !== 'todos' && departamentoActual !== 'automatizacion_soporte') {
                 q = q.eq('departamento', departamentoActual);
+            }
+            if (departamentoActual === 'automatizacion_soporte') {
+                q = q.in('departamento', ['automatizacion', 'soporte_planta']);
             }
 
             const { data, error } = await q.order('fecha', { ascending: true });
@@ -220,25 +253,19 @@ const ActividadesModule = (function() {
         if (!window.supabase) return;
 
         try {
-            const { data, error } = await window.supabase
-                .from('contactos')
-                .select('id, nombre, email')
-                .eq('tipo', 'tecnico')
-                .order('nombre');
-
+            // Intentar contactos tipo técnico primero
+            var _ref = await window.supabase.from('contactos').select('id, nombre, email').eq('tipo', 'tecnico').order('nombre');
+            var data = _ref.data;
+            var error = _ref.error;
             if (error) throw error;
             tecnicos = data || [];
 
-            // Si no hay técnicos marcados como tal, cargar usuarios con rol automatizacion
+            // Fallback: usuarios del sistema (offline o cloud)
             if (tecnicos.length === 0) {
-                const { data: usuarios, error: err2 } = await window.supabase
-                    .from('usuarios')
-                    .select('id, nombre, email')
-                    .in('rol', ['automatizacion', 'admin', 'superadmin']);
-
-                if (!err2 && usuarios) {
-                    tecnicos = usuarios;
-                }
+                var usuarios = await authService.getUsersByRol(['taller', 'electronica', 'motores', 'automatizacion', 'admin', 'superadmin']);
+                tecnicos = usuarios.map(function(u) {
+                    return { id: u.id, nombre: u.nombre || u.email, email: u.email };
+                });
             }
         } catch (error) {
             console.error('[Actividades] Error cargando técnicos:', error);
@@ -331,7 +358,7 @@ const ActividadesModule = (function() {
             const fechaStr = fechaDia.toISOString().split('T')[0];
 
             // Filtrar actividades de este día (aplica filtro departamento)
-            const actividadesDia = _filtrarPorDepartamento(actividades).filter(a => a.fecha === fechaStr);
+            const actividadesDia = _filtrarPorDepartamento(_filtrarActividades()).filter(a => a.fecha === fechaStr);
 
             const hasActividades = actividadesDia.length > 0;
             const cardClass = hasActividades ? 'dia-card' : 'dia-card sin-actividades';
@@ -400,10 +427,13 @@ const ActividadesModule = (function() {
     function _filtrarActividades() {
         const tecnicoId = document.getElementById('filtroTecnico')?.value || 'todos';
         const estadoVal = document.getElementById('filtroEstado')?.value || 'todos';
+        const tipoVal = document.getElementById('filtroTipo')?.value || 'todos';
         const buscar = document.getElementById('filtroBuscar')?.value?.toLowerCase() || '';
         return actividades.filter(a => {
             if (tecnicoId !== 'todos' && a.user_id !== tecnicoId) return false;
             if (estadoVal !== 'todos' && a.estado !== estadoVal) return false;
+            if (tipoVal === 'diaria' && a.orden_origen_id) return false;
+            if (tipoVal === 'evento' && !a.orden_origen_id) return false;
             if (buscar && !(a.resumen || '').toLowerCase().includes(buscar)) return false;
             return true;
         });
@@ -412,6 +442,7 @@ const ActividadesModule = (function() {
     function _filtrarPorDepartamento(lista) {
         const filtroDepto = document.getElementById('filtroDepartamento')?.value || 'todos';
         if (filtroDepto === 'todos') return lista;
+        if (filtroDepto === 'automatizacion_soporte') return lista.filter(a => ['automatizacion', 'soporte_planta'].includes(a.departamento));
         return lista.filter(a => a.departamento === filtroDepto);
     }
 
@@ -518,7 +549,7 @@ const ActividadesModule = (function() {
         const container = document.getElementById('actividadesLista');
         if (!container) return;
 
-        const visibles = _filtrarPorDepartamento(actividades);
+        const visibles = _filtrarPorDepartamento(_filtrarActividades());
         if (visibles.length === 0) {
             container.innerHTML = `
                 <div style="text-align:center; padding:40px; color:var(--text-muted);">
@@ -726,21 +757,24 @@ const ActividadesModule = (function() {
                     return;
                 }
 
-                // Subir a Supabase Storage
+                // Subir a Supabase Storage (o local si offline)
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
-                const { data: uploadData, error: uploadError } = await window.supabase.storage
-                    .from('actividades')
-                    .upload(fileName, file);
-
-                if (uploadError) throw uploadError;
-
-                // Obtener URL pública
-                const { data: { publicUrl } } = window.supabase.storage
-                    .from('actividades')
-                    .getPublicUrl(fileName);
-
-                archivo_url = publicUrl;
+                const isOffline = window.location.port === '3333' || window.location.port === '3443' || window.location.hostname.endsWith('.trycloudflare.com') || window.__SSEPI_NEXT_MODE__;
+                if (isOffline) {
+                    const res = await fetch('/api/upload', { method: 'POST', headers: { 'X-Filename': fileName }, body: file });
+                    const json = await res.json();
+                    archivo_url = json.data.url;
+                } else {
+                    const { data: uploadData, error: uploadError } = await window.supabase.storage
+                        .from('actividades')
+                        .upload(fileName, file);
+                    if (uploadError) throw uploadError;
+                    const { data: { publicUrl } } = window.supabase.storage
+                        .from('actividades')
+                        .getPublicUrl(fileName);
+                    archivo_url = publicUrl;
+                }
                 archivo_tipo = fileExt.toLowerCase();
             }
 
@@ -1206,11 +1240,20 @@ const ActividadesModule = (function() {
         try {
             const ext = file.name.split('.').pop();
             const fileName = `subtareas/${subtareaId}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-            const { data: uploadData, error: uploadError } = await window.supabase.storage
-                .from('actividades')
-                .upload(fileName, file);
-            if (uploadError) throw uploadError;
-            const { data: { publicUrl } } = window.supabase.storage.from('actividades').getPublicUrl(fileName);
+            const isOffline = window.location.port === '3333' || window.location.port === '3443' || window.location.hostname.endsWith('.trycloudflare.com') || window.__SSEPI_NEXT_MODE__;
+            let publicUrl = '';
+            if (isOffline) {
+                const res = await fetch('/api/upload', { method: 'POST', headers: { 'X-Filename': fileName }, body: file });
+                const json = await res.json();
+                publicUrl = json.data.url;
+            } else {
+                const { data: uploadData, error: uploadError } = await window.supabase.storage
+                    .from('actividades')
+                    .upload(fileName, file);
+                if (uploadError) throw uploadError;
+                const { data: { publicUrl: url } } = window.supabase.storage.from('actividades').getPublicUrl(fileName);
+                publicUrl = url;
+            }
 
             const s = (Object.values(subtareasMap).flat()).find(x => String(x.id) === String(subtareaId));
             if (!s) return;

@@ -1432,3 +1432,96 @@
     display: flex;
     justify-content: space-between;
 }
+
+/* ========== Panel órdenes operativas + pipeline (Ventas) ========== */
+.panel-operativas-ventas .pipeline-cross-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+    scroll-snap-type: x mandatory;
+}
+.panel-operativas-ventas .pipeline-card {
+    min-width: 220px;
+    scroll-snap-align: start;
+}
+.panel-operativas-cross {
+    margin: 0 0 22px;
+    padding: 18px 20px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--bg-panel);
+}
+.panel-operativas-cross h2 {
+    font-size: 1.1rem;
+    margin: 0 0 6px;
+}
+.panel-operativas-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0 0 14px;
+    line-height: 1.45;
+}
+.op-subtitle {
+    font-size: 0.95rem;
+    margin: 0 0 10px;
+    color: var(--text-primary);
+}
+.operativas-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.operativas-tabs button {
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-body);
+    cursor: pointer;
+    font-size: 13px;
+}
+.operativas-tabs button.active {
+    background: var(--c-ventas);
+    color: #fff;
+    border-color: transparent;
+}
+.operativas-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 340px;
+    overflow-y: auto;
+}
+.op-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-body);
+    font-size: 13px;
+}
+.op-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.op-actions {
+    flex-shrink: 0;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+.op-empty {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+.op-link:hover {
+    opacity: 0.92;
+}

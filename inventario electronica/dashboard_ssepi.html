@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Inventario SSEPI 2025</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --text: #f1f5f9;
+    --text2: #94a3b8;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --success: #34d399;
+    --danger: #f87171;
+    --warning: #fbbf24;
+    --border: #334155;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 20px;
+  }
+  .container { max-width: 1400px; margin: 0 auto; }
+  header {
+    text-align: center;
+    padding: 30px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 30px;
+  }
+  header h1 { font-size: 2rem; color: var(--accent); letter-spacing: -0.5px; }
+  header p { color: var(--text2); margin-top: 8px; }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 30px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.2s;
+  }
+  .kpi-card:hover { transform: translateY(-3px); }
+  .kpi-value { font-size: 1.8rem; font-weight: 700; color: var(--accent); }
+  .kpi-label { font-size: 0.85rem; color: var(--text2); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .controls input, .controls select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    min-width: 220px;
+  }
+  .controls input:focus, .controls select:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+  .btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.9; }
+  .btn-secondary {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 40px;
+  }
+  table { width: 100%; border-collapse: collapse; min-width: 900px; }
+  thead { background: var(--surface2); position: sticky; top: 0; }
+  th {
+    padding: 14px 12px;
+    text-align: left;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text2);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  th:hover { color: var(--accent); }
+  th .sort-icon { margin-left: 6px; opacity: 0.5; font-size: 0.7rem; }
+  th.active .sort-icon { opacity: 1; color: var(--accent); }
+  td {
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 0.92rem;
+    vertical-align: middle;
+  }
+  tbody tr:hover { background: rgba(56,189,248,0.06); }
+  .col-codigo { font-weight: 600; color: var(--accent); white-space: nowrap; }
+  .col-desc { max-width: 320px; }
+  .col-num { text-align: right; font-variant-numeric: tabular-nums; }
+  .col-links a {
+    display: inline-block;
+    margin-right: 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--surface2);
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.78rem;
+    border: 1px solid var(--border);
+    transition: background 0.2s;
+  }
+  .col-links a:hover { background: var(--accent); color: #0f172a; }
+
+  .prompt-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .prompt-section h2 {
+    font-size: 1.3rem;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .prompt-section p { color: var(--text2); margin-bottom: 16px; font-size: 0.95rem; }
+  .prompt-box {
+    width: 100%;
+    min-height: 380px;
+    background: #0b1220;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    color: #e2e8f0;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    resize: vertical;
+    white-space: pre;
+    overflow: auto;
+  }
+  .prompt-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  footer {
+    text-align: center;
+    padding: 30px 0;
+    color: var(--text2);
+    font-size: 0.85rem;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+
+  @media (max-width: 768px) {
+    header h1 { font-size: 1.5rem; }
+    .controls input, .controls select { min-width: 100%; }
+    th, td { padding: 10px 8px; font-size: 0.85rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Inventario Electronica SSEPI 2025</h1>
+    <p>Dashboard interactivo de componentes electronicos con filtrado, ordenamiento y reconstruccion por IA.</p>
+  </header>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpi-skus">84</div>
+      <div class="kpi-label">SKUs registrados</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpi-piezas">353</div>
+      <div class="kpi-label">Total piezas</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpi-valor">$16,898</div>
+      <div class="kpi-label">Valor total (MXN)</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpi-prom">$104.27</div>
+      <div class="kpi-label">Costo promedio</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <input type="text" id="searchInput" placeholder="Buscar por codigo, descripcion o ubicacion...">
+    <select id="encapFilter">
+      <option value="">Todos los encapsulados</option>
+    </select>
+    <button class="btn btn-secondary" onclick="resetFilters()">Limpiar filtros</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="invTable">
+      <thead>
+        <tr>
+          <th onclick="sortTable('codigo')">Codigo <span class="sort-icon">&#8693;</span></th>
+          <th onclick="sortTable('descripcion')">Descripcion <span class="sort-icon">&#8693;</span></th>
+          <th onclick="sortTable('existencia')">Existencia <span class="sort-icon">&#8693;</span></th>
+          <th onclick="sortTable('ubicacion')">Ubicacion <span class="sort-icon">&#8693;</span></th>
+          <th onclick="sortTable('encapsulado')">Encapsulado <span class="sort-icon">&#8693;</span></th>
+          <th>Links</th>
+          <th onclick="sortTable('costo')">Costo U. (MXN) <span class="sort-icon">&#8693;</span></th>
+          <th onclick="sortTable('total')">Total Linea (MXN) <span class="sort-icon">&#8693;</span></th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="prompt-section">
+    <h2>Prompt de Reconstruccion</h2>
+    <p>Copia el siguiente prompt y pegalo en un chat nuevo de IA para regenerar exactamente esta tabla y analisis sin volver a subir el Excel.</p>
+    <textarea class="prompt-box" id="promptBox" readonly></textarea>
+    <div class="prompt-actions">
+      <button class="btn" onclick="copyPrompt()">Copiar al portapapeles</button>
+      <button class="btn btn-secondary" onclick="downloadPrompt()">Descargar como .txt</button>
+    </div>
+  </div>
+
+  <footer>
+    Generado automaticamente desde el archivo <b>inventario electronica ssepi (2).xlsx</b> &mdash; Inventario 2025 SSEPI.
+  </footer>
+</div>
+
+<script>
+const rawData = [
+  {"codigo":"LM339","descripcion":"AMPLIFICADOR COMPARADOR","existencia":7,"ubicacion":"A1","encapsulado":"DIP 14","link_octopart":"https://octopart.com/search?q=LM339","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=LM339","link_mouser":"https://www.mouser.mx/c/?q=LM339","costo":15,"total":105},
+  {"codigo":"LM339","descripcion":"AMPLIFICADOR COMPARADOR","existencia":9,"ubicacion":"A1","encapsulado":"SOIC 14","link_octopart":"https://octopart.com/search?q=LM339","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=LM339","link_mouser":"https://www.mouser.mx/c/?q=LM339","costo":15,"total":135},
+  {"codigo":"CD4046BE","descripcion":"CIRCUITO SINCRONIZADOR DE FASE","existencia":4,"ubicacion":"A2","encapsulado":"DIP14","link_octopart":"https://octopart.com/search?q=CD4046BE","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=CD4046BE","link_mouser":"https://www.mouser.mx/c/?q=CD4046BE","costo":25,"total":100},
+  {"codigo":"LM393","descripcion":"COMPARADOR DUAL","existencia":18,"ubicacion":"B1","encapsulado":"SOIC 8","link_octopart":"https://octopart.com/search?q=LM393","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=LM393","link_mouser":"https://www.mouser.mx/c/?q=LM393","costo":12,"total":216},
+  {"codigo":"74HC85","descripcion":"High-Speed CMOS Logic 4-Bit Magnitude Comparator","existencia":7,"ubicacion":"C1","encapsulado":"SOIC 14","link_octopart":"https://octopart.com/search?q=74HC85","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=74HC85","link_mouser":"https://www.mouser.mx/c/?q=74HC85","costo":20,"total":140},
+  {"codigo":"74HC85","descripcion":"High-Speed CMOS Logic 4-Bit Magnitude Comparator","existencia":5,"ubicacion":"C1","encapsulado":"DIP 14","link_octopart":"https://octopart.com/search?q=74HC85","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=74HC85","link_mouser":"https://www.mouser.mx/c/?q=74HC85","costo":20,"total":100},
+  {"codigo":"HEF40106","descripcion":"Hex inverting Schmitt trigger","existencia":4,"ubicacion":"A2","encapsulado":"DIP14","link_octopart":"https://octopart.com/search?q=HEF40106","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=HEF40106","link_mouser":"https://www.mouser.mx/c/?q=HEF40106","costo":18,"total":72},
+  {"codigo":"74HC00","descripcion":"COMPUERTAS NAND","existencia":5,"ubicacion":"D1","encapsulado":"DIP14","link_octopart":"https://octopart.com/search?q=74HC00","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=74HC00","link_mouser":"https://www.mouser.mx/c/?q=74HC00","costo":10,"total":50},
+  {"codigo":"IRFBC40","descripcion":"MOSFET CHANEL N","existencia":5,"ubicacion":"E1","encapsulado":"TO-220","link_octopart":"https://octopart.com/search?q=IRFBC40","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=IRFBC40","link_mouser":"https://www.mouser.mx/c/?q=IRFBC40","costo":45,"total":225},
+  {"codigo":"RHRP15100","descripcion":"DIODO HIPERFAST","existencia":4,"ubicacion":"E1","encapsulado":"TO-220","link_octopart":"https://octopart.com/search?q=RHRP15100","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=RHRP15100","link_mouser":"https://www.mouser.mx/c/?q=RHRP15100","costo":50,"total":200},
+  {"codigo":"2N6344","descripcion":"TRIACS 8AMPER","existencia":1,"ubicacion":"F1","encapsulado":"TO220","link_octopart":"https://octopart.com/search?q=2N6344","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=2N6344","link_mouser":"https://www.mouser.mx/c/?q=2N6344","costo":40,"total":40},
+  {"codigo":"FB3307Z","descripcion":"MOSFET CHANEL N","existencia":2,"ubicacion":"F1","encapsulado":"TO-220","link_octopart":"https://octopart.com/search?q=FB3307Z","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=FB3307Z","link_mouser":"https://www.mouser.mx/c/?q=FB3307Z","costo":35,"total":70},
+  {"codigo":"74LS21","descripcion":"DUAL 4-INPUT POSITIVE-AND GATES","existencia":2,"ubicacion":"G1","encapsulado":"DIP 14","link_octopart":"https://octopart.com/search?q=74LS21","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=74LS21","link_mouser":"https://www.mouser.mx/c/?q=74LS21","costo":15,"total":30},
+  {"codigo":"74LS14","descripcion":"SCHMITT TRIGGERSDUAL GATE/HEX INVERTER","existencia":2,"ubicacion":"G1","encapsulado":"DIP14","link_octopart":"https://octopart.com/search?q=74LS14","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=74LS14","link_mouser":"https://www.mouser.mx/c/?q=74LS14","costo":15,"total":30},
+  {"codigo":"AM26LS31","descripcion":"Quadruple Differential Line Driver","existencia":4,"ubicacion":"H1","encapsulado":"SOIC 14","link_octopart":"https://octopart.com/search?q=AM26LS31","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=AM26LS31","link_mouser":"https://www.mouser.mx/c/?q=AM26LS31","costo":30,"total":120},
+  {"codigo":"HCPL-0453","descripcion":"Optoacopladores de alta velocidad 1MBd 1Ch 16mA","existencia":13,"ubicacion":"B2","encapsulado":"SOIC 8","link_octopart":"https://octopart.com/search?q=HCPL-0453","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=HCPL-0453","link_mouser":"https://www.mouser.mx/c/?q=HCPL-0453","costo":60,"total":780},
+  {"codigo":"NCP5106BDR2G","descripcion":"Controladores de puertas HIGH VOLT MOSFET DR LO MOSFET IGBT","existencia":3,"ubicacion":"C2","encapsulado":"SOIC 8","link_octopart":"https://octopart.com/search?q=NCP5106BDR2G","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=NCP5106BDR2G","link_mouser":"https://www.mouser.mx/c/?q=NCP5106BDR2G","costo":25,"total":75},
+  {"codigo":"IRFR3411","descripcion":"MOSFET N-CH 100V 32A DPAK","existencia":1,"ubicacion":"C2","encapsulado":"TO-252AA","link_octopart":"https://octopart.com/search?q=IRFR3411","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=IRFR3411","link_mouser":"https://www.mouser.mx/c/?q=IRFR3411","costo":25,"total":25},
+  {"codigo":"DSEI30-06A","descripcion":"Diodo epitaxial de recuperacion rapida","existencia":1,"ubicacion":"D2","encapsulado":"","link_octopart":"https://octopart.com/search?q=DSEI30-06A","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=DSEI30-06A","link_mouser":"https://www.mouser.mx/c/?q=DSEI30-06A","costo":80,"total":80},
+  {"codigo":"TLH-4951","descripcion":"BATERIA 3.6","existencia":1,"ubicacion":"E2","encapsulado":"1/2AA","link_octopart":"https://octopart.com/search?q=TLH-4951","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=TLH-4951","link_mouser":"https://www.mouser.mx/c/?q=TLH-4951","costo":150,"total":150},
+  {"codigo":"XL-050F","descripcion":"BATERIA 3.6V","existencia":1,"ubicacion":"E2","encapsulado":"1/2AA","link_octopart":"https://octopart.com/search?q=XL-050F","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=XL-050F","link_mouser":"https://www.mouser.mx/c/?q=XL-050F","costo":120,"total":120},
+  {"codigo":"F2/250E","descripcion":"Fusible ceramico de accion retardada 2A/250V","existencia":3,"ubicacion":"F2","encapsulado":"","link_octopart":"https://octopart.com/search?q=F2/250E+","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=F2/250E+","link_mouser":"https://www.mouser.mx/c/?q=F2/250E+","costo":15,"total":45},
+  {"codigo":"083AG324A2","descripcion":"Controlador de sumidero Darlington de 8 canales","existencia":6,"ubicacion":"F2","encapsulado":"","link_octopart":"https://octopart.com/search?q=083AG324A2","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=083AG324A2","link_mouser":"https://www.mouser.mx/c/?q=083AG324A2","costo":15,"total":90},
+  {"codigo":"M81738FP","descripcion":"Controlador de medio puente de alto voltaje de 1200 V","existencia":2,"ubicacion":"G2","encapsulado":"","link_octopart":"https://octopart.com/search?q=M81738FP","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=M81738FP","link_mouser":"https://www.mouser.mx/c/?q=M81738FP","costo":250,"total":500},
+  {"codigo":"HEF4094BT","descripcion":"Registro de desplazamiento serial de 8 etapas.","existencia":2,"ubicacion":"E3","encapsulado":"SO16","link_octopart":"https://octopart.com/search?q=HEF4094BT","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=HEF4094BT","link_mouser":"https://www.mouser.mx/c/?q=HEF4094BT","costo":15,"total":30},
+  {"codigo":"74HCT02","descripcion":"COMPUERTAS LOGICAS NOR","existencia":7,"ubicacion":"B3","encapsulado":"SOIC 14","link_octopart":"https://octopart.com/search?q=74HCT02","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=74HCT02","link_mouser":"https://www.mouser.mx/c/?q=74HCT02","costo":15,"total":105},
+  {"codigo":"HCF4094","descripcion":"Registro de bus de desplazamiento y almacenamiento de 8 etapas con salidas de 3 etapas","existencia":3,"ubicacion":"C3","encapsulado":"SO16","link_octopart":"https://octopart.com/search?q=HCF4094","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=HCF4094","link_mouser":"https://www.mouser.mx/c/?q=HCF4094","costo":15,"total":45},
+  {"codigo":"SN75176BP","descripcion":"INTERFAS RS485/422","existencia":4,"ubicacion":"D3","encapsulado":"SOIC-8","link_octopart":"https://octopart.com/search?q=SN75176BP","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=SN75176BP","link_mouser":"https://www.mouser.mx/c/?q=SN75176BP","costo":15,"total":60},
+  {"codigo":"TL598CN","descripcion":"CONTROLADOR PWM","existencia":2,"ubicacion":"F3","encapsulado":"DIP-16","link_octopart":"https://octopart.com/search?q=TL598CN","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=TL598CN","link_mouser":"https://www.mouser.mx/c/?q=TL598CN","costo":15,"total":30},
+  {"codigo":"CD4011BE","descripcion":"Puertas NAND CMOS","existencia":11,"ubicacion":"G3","encapsulado":"DIP-14","link_octopart":"https://octopart.com/search?q=CD4011BE","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=CD4011BE","link_mouser":"https://www.mouser.mx/c/?q=CD4011BE","costo":15,"total":165},
+  {"codigo":"TEXTOOL/3M","descripcion":"BASE PARA MICROCONTROLADOR DE EDC","existencia":1,"ubicacion":"A4","encapsulado":"","link_octopart":"https://octopart.com/search?q=TEXTOOL/3M","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=TEXTOOL/3M","link_mouser":"https://www.mouser.mx/c/?q=TEXTOOL/3M","costo":15,"total":15},
+  {"codigo":"HCPL-786J","descripcion":"OPTOACOPLADOR Data Acquisition ADCs/DACs - Specialized Isolated Modular","existencia":6,"ubicacion":"C4","encapsulado":"SOIC-16","link_octopart":"https://octopart.com/search?q=HCPL-786J","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=HCPL-786J","link_mouser":"https://www.mouser.mx/c/?q=HCPL-786J","costo":180,"total":1080},
+  {"codigo":"LT1791IS","descripcion":"INTERFAS RS485/422","existencia":2,"ubicacion":"D4","encapsulado":"SOIC-14","link_octopart":"https://octopart.com/search?q=LT1791IS","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=LT1791IS","link_mouser":"https://www.mouser.mx/c/?q=LT1791IS","costo":150,"total":300},
+  {"codigo":"CD4013","descripcion":"FLIP-FLOP","existencia":2,"ubicacion":"E4","encapsulado":"DIP-14","link_octopart":"https://octopart.com/search?q=CD4013","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=CD4013","link_mouser":"https://www.mouser.mx/c/?q=CD4013","costo":15,"total":30},
+  {"codigo":"MC14503BDR2G","descripcion":"Hex Non-Inverting 3-State Buffer","existencia":5,"ubicacion":"F4","encapsulado":"SOIC-16","link_octopart":"https://octopart.com/search?q=MC14503BDR2G","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=MC14503BDR2G","link_mouser":"https://www.mouser.mx/c/?q=MC14503BDR2G","costo":15,"total":75},
+  {"codigo":"BZX55C18-TR","descripcion":"DIODO ZENER 18V 0.5W","existencia":4,"ubicacion":"G4","encapsulado":"","link_octopart":"https://octopart.com/search?q=BZX55C18-TR","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=BZX55C18-TR","link_mouser":"https://www.mouser.mx/c/?q=BZX55C18-TR","costo":15,"total":60},
+  {"codigo":"SK310BQ-LTP","descripcion":"DIODO SCHOTTKY","existencia":4,"ubicacion":"H4","encapsulado":"DO214AA","link_octopart":"https://octopart.com/search?q=SK310BQ-LTP","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=SK310BQ-LTP","link_mouser":"https://www.mouser.mx/c/?q=SK310BQ-LTP","costo":15,"total":60},
+  {"codigo":"CD4001","descripcion":"COMPUERTAS LOGICAS NOR","existencia":9,"ubicacion":"A5","encapsulado":"","link_octopart":"https://octopart.com/search?q=CD4001","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=CD4001","link_mouser":"https://www.mouser.mx/c/?q=CD4001","costo":15,"total":135},
+  {"codigo":"MC33167TVG","descripcion":"SWITCHING REGULADOR 40V 5A","existencia":2,"ubicacion":"H3","encapsulado":"TO-220","link_octopart":"https://octopart.com/search?q=MC33167TVG","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=MC33167TVG","link_mouser":"https://www.mouser.mx/c/?q=MC33167TVG","costo":80,"total":160},
+  {"codigo":"TOP250YN","descripcion":"AC/DC Converters 210 W 85-265 VAC 290 W 230 VAC","existencia":2,"ubicacion":"B5","encapsulado":"TO-220","link_octopart":"https://octopart.com/search?q=TOP250YN","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=TOP250YN","link_mouser":"https://www.mouser.mx/c/?q=TOP250YN","costo":85,"total":170},
+  {"codigo":"RMS-100E","descripcion":"RESISTENCIA 10 OHMS","existencia":10,"ubicacion":"C5","encapsulado":"SMD","link_octopart":"https://octopart.com/search?q=RMS-100E","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=RMS-100E","link_mouser":"https://www.mouser.mx/c/?q=RMS-100E","costo":15,"total":150},
+  {"codigo":"0325020.MXF80P","descripcion":"FUSIBLE AMERICANO250V 20A SLO-BLO","existencia":3,"ubicacion":"D5","encapsulado":"AMERICANO","link_octopart":"https://octopart.com/search?q=0325020.MXF80P","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=0325020.MXF80P","link_mouser":"https://www.mouser.mx/c/?q=0325020.MXF80P","costo":15,"total":45},
+  {"codigo":"D2F-01FL-T","descripcion":"MICRO SWITCH","existencia":3,"ubicacion":"E5","encapsulado":"","link_octopart":"https://octopart.com/search?q=D2F-01FL-T","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=D2F-01FL-T","link_mouser":"https://www.mouser.mx/c/?q=D2F-01FL-T","costo":15,"total":45},
+  {"codigo":"CC1R5-2412DF-E","descripcion":"CONVERTIDOR DC/DC AISLADO 1.5W 12V","existencia":1,"ubicacion":"F5","encapsulado":"","link_octopart":"https://octopart.com/search?q=CC1R5-2412DF-E","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=CC1R5-2412DF-E","link_mouser":"https://www.mouser.mx/c/?q=CC1R5-2412DF-E","costo":210,"total":210},
+  {"codigo":"3700630410","descripcion":"FUSIBLE 0.063A","existencia":2,"ubicacion":"G5","encapsulado":"","link_octopart":"https://octopart.com/search?q=3700630410","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=3700630410","link_mouser":"https://www.mouser.mx/c/?q=3700630410","costo":15,"total":30},
+  {"codigo":"GBU2510-G","descripcion":"PUENTE RECTIFICADOR 25A","existencia":1,"ubicacion":"H5","encapsulado":"","link_octopart":"https://octopart.com/search?q=GBU2510-G","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=GBU2510-G","link_mouser":"https://www.mouser.mx/c/?q=GBU2510-G","costo":35,"total":35},
+  {"codigo":"FM1","descripcion":"FUSIBLE MINI 1 A 250 V","existencia":4,"ubicacion":"A6","encapsulado":"","link_octopart":"https://octopart.com/search?q=FM1","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=FM1","link_mouser":"https://www.mouser.mx/c/?q=FM1","costo":15,"total":60},
+  {"codigo":"MMBF4393LT1G","descripcion":"MOSFET 30V 30ma","existencia":5,"ubicacion":"B6","encapsulado":"SOT-23","link_octopart":"https://octopart.com/search?q=MMBF4393LT1G","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=MMBF4393LT1G","link_mouser":"https://www.mouser.mx/c/?q=MMBF4393LT1G","costo":15,"total":75},
+  {"codigo":"LM358","descripcion":"AMPLIFICADOR OPERACIONAL DUAL","existencia":3,"ubicacion":"C6","encapsulado":"SOIC 8","link_octopart":"https://octopart.com/search?q=LM358","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=LM358","link_mouser":"https://www.mouser.mx/c/?q=LM358","costo":10,"total":30},
+  {"codigo":"LM324","descripcion":"AMPLIFICADOR OPERACIONAL 4","existencia":4,"ubicacion":"D6","encapsulado":"SOIC 16","link_octopart":"https://octopart.com/search?q=LM324","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=LM324","link_mouser":"https://www.mouser.mx/c/?q=LM324","costo":12,"total":48},
+  {"codigo":"CC3-2405SF-E","descripcion":"CONVERTIDOR DC/DC AISLADO 3W 5V 0.6A","existencia":1,"ubicacion":"E6","encapsulado":"","link_octopart":"https://octopart.com/search?q=CC3-2405SF-E","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=CC3-2405SF-E","link_mouser":"https://www.mouser.mx/c/?q=CC3-2405SF-E","costo":300,"total":300},
+  {"codigo":"FGA60N65SMD","descripcion":"IGBT 650V 60A","existencia":2,"ubicacion":"F6","encapsulado":"TO3PN","link_octopart":"https://octopart.com/search?q=FGA60N65SMD","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=FGA60N65SMD","link_mouser":"https://www.mouser.mx/c/?q=FGA60N65SMD","costo":110,"total":220},
+  {"codigo":"LM25575MHX/NOPB","descripcion":"REGULADORES DE VOLTAJE 42V 1.5A","existencia":4,"ubicacion":"G6","encapsulado":"TSSOP 16","link_octopart":"https://octopart.com/search?q=LM25575MHX/NOPB","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=LM25575MHX/NOPB","link_mouser":"https://www.mouser.mx/c/?q=LM25575MHX/NOPB","costo":15,"total":60},
+  {"codigo":"SKA20420","descripcion":"RELEVADOR DE ESTADO SOLIDO","existencia":3,"ubicacion":"B7","encapsulado":"","link_octopart":"https://octopart.com/search?q=SKA20420","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=SKA20420","link_mouser":"https://www.mouser.mx/c/?q=SKA20420","costo":15,"total":45},
+  {"codigo":"74HC00","descripcion":"COMPUERTAS NAND","existencia":2,"ubicacion":"F7","encapsulado":"SOIC 14","link_octopart":"https://octopart.com/search?q=74HC00","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=74HC00","link_mouser":"https://www.mouser.mx/c/?q=74HC00","costo":10,"total":20},
+  {"codigo":"MC74HC165","descripcion":"REGISTRO DE 8 BITS","existencia":2,"ubicacion":"G7","encapsulado":"SOIC 16","link_octopart":"https://octopart.com/search?q=MC74HC165","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=MC74HC165","link_mouser":"https://www.mouser.mx/c/?q=MC74HC165","costo":15,"total":30},
+  {"codigo":"BC847","descripcion":"Bipolar Transistors - BJT SOT23 45V .1A NPN GP TRANS","existencia":26,"ubicacion":"H7","encapsulado":"SOT-23","link_octopart":"https://octopart.com/search?q=BC847","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=BC847","link_mouser":"https://www.mouser.mx/c/?q=BC847","costo":2,"total":52},
+  {"codigo":"2SC2873","descripcion":"TRANSISTOR NPN","existencia":2,"ubicacion":"A8","encapsulado":"SOT-89","link_octopart":"https://octopart.com/search?q=2SC2873","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=2SC2873","link_mouser":"https://www.mouser.mx/c/?q=2SC2873","costo":15,"total":30},
+  {"codigo":"M27C512-10F1","descripcion":"MEMORIA EPROM","existencia":2,"ubicacion":"C8","encapsulado":"DIP 28","link_octopart":"https://octopart.com/search?q=M27C512-10F1","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=M27C512-10F1","link_mouser":"https://www.mouser.mx/c/?q=M27C512-10F1","costo":15,"total":30},
+  {"codigo":"10XSIH-SP-5X20","descripcion":"PORTA FUSIBLES PARA TARJETAS ECOBOLSAS","existencia":8,"ubicacion":"D8","encapsulado":"","link_octopart":"https://octopart.com/search?q=10XSIH-SP-5X20","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=10XSIH-SP-5X20","link_mouser":"https://www.mouser.mx/c/?q=10XSIH-SP-5X20","costo":15,"total":120},
+  {"codigo":"PM150RSE060","descripcion":"MODULO IGBT MITSUBISHI","existencia":1,"ubicacion":"T13","encapsulado":"","link_octopart":"https://octopart.com/search?q=PM150RSE060","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=PM150RSE060","link_mouser":"https://www.mouser.mx/c/?q=PM150RSE060","costo":2600,"total":2600},
+  {"codigo":"SKKD 100/16","descripcion":"DIODO DUAL SEMIKRON","existencia":3,"ubicacion":"U13","encapsulado":"","link_octopart":"https://octopart.com/search?q=SKKD+100/16","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=SKKD+100/16","link_mouser":"https://www.mouser.mx/c/?q=SKKD+100/16","costo":1100,"total":3300},
+  {"codigo":"B43544-E2228-M2","descripcion":"CAPACITOR 2200UF 250V","existencia":0,"ubicacion":"T14","encapsulado":"","link_octopart":"https://octopart.com/search?q=B43544-E2228-M2","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=B43544-E2228-M2","link_mouser":"https://www.mouser.mx/c/?q=B43544-E2228-M2","costo":250,"total":0},
+  {"codigo":"0D22A2","descripcion":"CAPACITOR 560UF 450V","existencia":2,"ubicacion":"V13","encapsulado":"","link_octopart":"https://octopart.com/search?q=0D22A2","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=0D22A2","link_mouser":"https://www.mouser.mx/c/?q=0D22A2","costo":15,"total":30},
+  {"codigo":"P011351481","descripcion":"TERMINAL ROJO 3/16","existencia":10,"ubicacion":"W13","encapsulado":"","link_octopart":"https://octopart.com/search?q=P011351481","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=P011351481","link_mouser":"https://www.mouser.mx/c/?q=P011351481","costo":15,"total":150},
+  {"codigo":"PFB14421293","descripcion":"TERMINAL NEGRO 3/16","existencia":5,"ubicacion":"W14","encapsulado":"","link_octopart":"https://octopart.com/search?q=PFB14421293","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=PFB14421293","link_mouser":"https://www.mouser.mx/c/?q=PFB14421293","costo":15,"total":75},
+  {"codigo":"KTR10EZPJ4R7","descripcion":"RESISTENCIA 4.7 OHMS","existencia":9,"ubicacion":"I1","encapsulado":"","link_octopart":"https://octopart.com/search?q=KTR10EZPJ4R7","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=KTR10EZPJ4R7","link_mouser":"https://www.mouser.mx/c/?q=KTR10EZPJ4R7","costo":15,"total":135},
+  {"codigo":"SR1210JR-074R7L","descripcion":"RESISTENCIA 4.7 OHMS","existencia":10,"ubicacion":"I1","encapsulado":"","link_octopart":"https://octopart.com/search?q=SR1210JR-074R7L","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=SR1210JR-074R7L","link_mouser":"https://www.mouser.mx/c/?q=SR1210JR-074R7L","costo":15,"total":150},
+  {"codigo":"CRCW25124R7OJNEGIF","descripcion":"RESISTENCIA 4.7 OHMS","existencia":10,"ubicacion":"I2","encapsulado":"","link_octopart":"https://octopart.com/search?q=CRCW25124R7OJNEGIF","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=CRCW25124R7OJNEGIF","link_mouser":"https://www.mouser.mx/c/?q=CRCW25124R7OJNEGIF","costo":15,"total":150},
+  {"codigo":"A4985SLPTR-T","descripcion":"1A DUAL FULL BRIDGE","existencia":4,"ubicacion":"","encapsulado":"","link_octopart":"https://octopart.com/search?q=A4985SLPTR-T","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=A4985SLPTR-T","link_mouser":"https://www.mouser.mx/c/?q=A4985SLPTR-T","costo":15,"total":60},
+  {"codigo":"CM200DY-12NF","descripcion":"MODULO IGBT MITSUBISHI","existencia":1,"ubicacion":"Q14","encapsulado":"","link_octopart":"https://octopart.com/search?q=CM200DY-12NF","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=CM200DY-12NF","link_mouser":"https://www.mouser.mx/c/?q=CM200DY-12NF","costo":1300,"total":1300},
+  {"codigo":"DC-24-1","descripcion":"FUENTE IN 120-220VAC / OUT 24VDC","existencia":3,"ubicacion":"Q15","encapsulado":"","link_octopart":"https://octopart.com/search?q=DC-24-1","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=DC-24-1","link_mouser":"https://www.mouser.mx/c/?q=DC-24-1","costo":15,"total":45},
+  {"codigo":"LM2596","descripcion":"DC-DC FUENTE REGULABLE IN 24VDC / OUT 0 - 24 VDC","existencia":6,"ubicacion":"R13","encapsulado":"","link_octopart":"https://octopart.com/search?q=LM2596","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=LM2596","link_mouser":"https://www.mouser.mx/c/?q=LM2596","costo":15,"total":90},
+  {"codigo":"TC33X-2-503G","descripcion":"potenciometro 3mm 50k ohms","existencia":1,"ubicacion":"F9","encapsulado":"","link_octopart":"https://octopart.com/search?q=TC33X-2-503G","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=TC33X-2-503G","link_mouser":"https://www.mouser.mx/c/?q=TC33X-2-503G","costo":15,"total":15},
+  {"codigo":"AD8512BRZ","descripcion":"amplificador operacional low noise","existencia":1,"ubicacion":"G9","encapsulado":"soic 8","link_octopart":"https://octopart.com/search?q=AD8512BRZ","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=AD8512BRZ","link_mouser":"https://www.mouser.mx/c/?q=AD8512BRZ","costo":450,"total":450},
+  {"codigo":"TL074IYDT","descripcion":"amplificador operacional","existencia":1,"ubicacion":"","encapsulado":"soic 14","link_octopart":"https://octopart.com/search?q=TL074IYDT","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=TL074IYDT","link_mouser":"https://www.mouser.mx/c/?q=TL074IYDT","costo":15,"total":15},
+  {"codigo":"TLP352","descripcion":"OPTOACOPLADOR","existencia":4,"ubicacion":"B9","encapsulado":"","link_octopart":"https://octopart.com/search?q=TLP352","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=TLP352","link_mouser":"https://www.mouser.mx/c/?q=TLP352","costo":15,"total":60},
+  {"codigo":"A4980KLPTR","descripcion":"CONTROLADOR DE DISPAROS","existencia":1,"ubicacion":"G8","encapsulado":"","link_octopart":"https://octopart.com/search?q=A4980KLPTR","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=A4980KLPTR","link_mouser":"https://www.mouser.mx/c/?q=A4980KLPTR","costo":15,"total":15},
+  {"codigo":"BZT52HC13","descripcion":"DIODO ZENER 13V","existencia":9,"ubicacion":"H8","encapsulado":"","link_octopart":"https://octopart.com/search?q=BZT52HC13","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=BZT52HC13","link_mouser":"https://www.mouser.mx/c/?q=BZT52HC13","costo":15,"total":135},
+  {"codigo":"MAX232ECWET","descripcion":"INTERFAZ RS-232","existencia":1,"ubicacion":"C9","encapsulado":"","link_octopart":"https://octopart.com/search?q=MAX232ECWET","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=MAX232ECWET","link_mouser":"https://www.mouser.mx/c/?q=MAX232ECWET","costo":65,"total":65},
+  {"codigo":"ST485EBDR","descripcion":"TRANSCEIVER RS485/422","existencia":1,"ubicacion":"D9","encapsulado":"","link_octopart":"https://octopart.com/search?q=ST485EBDR","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=ST485EBDR","link_mouser":"https://www.mouser.mx/c/?q=ST485EBDR","costo":15,"total":15},
+  {"codigo":"74HC08D","descripcion":"COMPUERTA LOGICA","existencia":1,"ubicacion":"E9","encapsulado":"","link_octopart":"https://octopart.com/search?q=74HC08D","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=74HC08D","link_mouser":"https://www.mouser.mx/c/?q=74HC08D","costo":15,"total":15},
+  {"codigo":"PS2802-4-A","descripcion":"HI-ISO DARLING 4 CH","existencia":1,"ubicacion":"D10","encapsulado":"","link_octopart":"https://octopart.com/search?q=PS2802-4-A","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=PS2802-4-A","link_mouser":"https://www.mouser.mx/c/?q=PS2802-4-A","costo":15,"total":15},
+  {"codigo":"TPD2007F","descripcion":"COMPUERTA","existencia":4,"ubicacion":"E10","encapsulado":"","link_octopart":"https://octopart.com/search?q=TPD2007F","link_digikey":"https://www.digikey.com.mx/es/products/result?keywords=TPD2007F","link_mouser":"https://www.mouser.mx/c/?q=TPD2007F","costo":90,"total":360}
+];
+
+let filtered = [...rawData];
+let sortCol = '';
+let sortAsc = true;
+
+function renderTable(data) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = data.map(r => {
+    const links = [];
+    if (r.link_octopart) links.push(`<a href="${r.link_octopart}" target="_blank" rel="noopener">Octopart</a>`);
+    if (r.link_digikey) links.push(`<a href="${r.link_digikey}" target="_blank" rel="noopener">DigiKey</a>`);
+    if (r.link_mouser) links.push(`<a href="${r.link_mouser}" target="_blank" rel="noopener">Mouser</a>`);
+    return `<tr>
+      <td class="col-codigo">${r.codigo}</td>
+      <td class="col-desc">${r.descripcion}</td>
+      <td class="col-num">${r.existencia}</td>
+      <td>${r.ubicacion || '-'}</td>
+      <td>${r.encapsulado || '-'}</td>
+      <td class="col-links">${links.join('')}</td>
+      <td class="col-num">$${r.costo.toFixed(2)}</td>
+      <td class="col-num">$${r.total.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function sortTable(col) {
+  if (sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; }
+  const key = col;
+  filtered.sort((a, b) => {
+    let av = a[key], bv = b[key];
+    if (typeof av === 'string') av = av.toLowerCase();
+    if (typeof bv === 'string') bv = bv.toLowerCase();
+    if (av < bv) return sortAsc ? -1 : 1;
+    if (av > bv) return sortAsc ? 1 : -1;
+    return 0;
+  });
+  renderTable(filtered);
+  document.querySelectorAll('th').forEach(th => th.classList.remove('active'));
+  const thMap = {codigo:0, descripcion:1, existencia:2, ubicacion:3, encapsulado:4, costo:6, total:7};
+  const th = document.querySelectorAll('th')[thMap[col]];
+  if (th) th.classList.add('active');
+}
+
+function applyFilters() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  const enc = document.getElementById('encapFilter').value;
+  filtered = rawData.filter(r => {
+    const matchesQ = !q || [r.codigo, r.descripcion, r.ubicacion, r.encapsulado].some(v => (v||'').toLowerCase().includes(q));
+    const matchesEnc = !enc || (r.encapsulado || '').toLowerCase() === enc.toLowerCase();
+    return matchesQ && matchesEnc;
+  });
+  if (sortCol) sortTable(sortCol); else renderTable(filtered);
+}
+
+function resetFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('encapFilter').value = '';
+  filtered = [...rawData];
+  sortCol = '';
+  renderTable(filtered);
+  document.querySelectorAll('th').forEach(th => th.classList.remove('active'));
+}
+
+function populateEncapFilter() {
+  const encs = [...new Set(rawData.map(r => r.encapsulado).filter(Boolean))].sort();
+  const sel = document.getElementById('encapFilter');
+  encs.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e; opt.textContent = e;
+    sel.appendChild(opt);
+  });
+}
+
+function formatMoney(n) {
+  return '$' + n.toLocaleString('en-US', {maximumFractionDigits:2});
+}
+
+function buildPrompt() {
+  const stats = {
+    total_lineas: rawData.length,
+    total_piezas: rawData.reduce((s, r) => s + r.existencia, 0),
+    valor_total: rawData.reduce((s, r) => s + r.total, 0),
+    costo_promedio: rawData.reduce((s, r) => s + r.costo, 0) / rawData.length,
+    costo_max: Math.max(...rawData.map(r => r.costo)),
+    costo_min: Math.min(...rawData.map(r => r.costo)),
+    top_valiosos: [...rawData].sort((a,b) => b.total - a.total).slice(0,10).map(r => ({codigo:r.codigo, descripcion:r.descripcion, total:r.total})),
+    encapsulados_top: Object.entries(rawData.reduce((acc,r)=>{if(r.encapsulado){acc[r.encapsulado]=(acc[r.encapsulado]||0)+1;}return acc;},{})).sort((a,b)=>b[1]-a[1]).slice(0,5)
+  };
+
+  const prompt = `INSTRUCCION MAESTRA DE RECONSTRUCCION - INVENTARIO ELECTRONICA SSEPI 2025
+
+Actua como un desarrollador experto en Frontend y Analista de Datos. La siguiente informacion proviene del archivo Excel original "inventario electronica ssepi (2).xlsx" y debe ser reconstruida exactamente.
+
+ESTRUCTURA DEL INVENTARIO:
+- Nombre: Inventario Electronica SSEPI 2025
+- Filas validas: ${stats.total_lineas}
+- Total piezas: ${stats.total_piezas}
+- Valor total inventario: ${formatMoney(stats.valor_total)} MXN
+- Costo unitario promedio: ${formatMoney(stats.costo_promedio)} MXN
+- Rango de costos: ${formatMoney(stats.costo_min)} - ${formatMoney(stats.costo_max)} MXN
+
+TOP 10 PRODUCTOS MAS VALIOSOS (por valor total linea):
+${stats.top_valiosos.map((r,i)=>`${i+1}. ${r.codigo} - ${r.descripcion} : ${formatMoney(r.total)} MXN`).join('\n')}
+
+ENCAPSULADOS MAS COMUNES:
+${stats.encapsulados_top.map(([e,c],i)=>`${i+1}. ${e}: ${c} lineas`).join('\n')}
+
+DATOS COMPLETOS DEL INVENTARIO (JSON exacto):
+${JSON.stringify(rawData, null, 2)}
+
+TAREA:
+Genera un unico archivo HTML autocontenido (CSS integrado en <style>) que:
+1. Muestre una tabla interactiva con TODAS las filas anteriores, incluyendo columnas: Codigo, Descripcion, Existencia, Ubicacion, Encapsulado, Links (Octopart, DigiKey, Mouser como botones clicables), Costo Unitario (MXN), Total Linea (MXN).
+2. Permita filtrado por texto y ordenamiento por columnas.
+3. Use un tema oscuro profesional con acentos azul/cian.
+4. Incluya KPIs superiores con las estadisticas exactas mencionadas arriba.
+5. Mantenga los links de proveedores como enlaces clicables reales.
+6. Agregue una seccion inferior titulada "Prompt de Reconstruccion" con este mismo prompt incrustado en un textarea para replicabilidad futura.
+
+No omitas ningun registro. Usa exactamente los valores numericos, textos y URLs proporcionados.`;
+
+  document.getElementById('promptBox').value = prompt;
+}
+
+function copyPrompt() {
+  const box = document.getElementById('promptBox');
+  box.select();
+  document.execCommand('copy');
+  alert('Prompt copiado al portapapeles.');
+}
+
+function downloadPrompt() {
+  const blob = new Blob([document.getElementById('promptBox').value], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'prompt_reconstruccion_ssepi.txt';
+  a.click();
+}
+
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+document.getElementById('encapFilter').addEventListener('change', applyFilters);
+
+populateEncapFilter();
+renderTable(rawData);
+buildPrompt();
+</script>
+</body>
+</html>

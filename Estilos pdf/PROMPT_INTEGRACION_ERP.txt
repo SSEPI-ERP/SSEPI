@@ -1,0 +1,161 @@
+================================================================================
+  PROMPT TÉCNICO PARA INTEGRACIÓN EN ERP PRINCIPAL
+  Sistema: Generador de PDFs SSEPI (Cotizaciones + Reportes de Servicio)
+================================================================================
+
+OBJETIVO DE LA SESIÓN ANTERIOR
+--------------------------------------------------------------------------------
+Se construyó un generador dual de PDFs en un solo HTML que produce:
+1. COTIZACIONES (5 páginas): Membrete institucional + tabla de productos +
+   totales + tiempo de entrega + notas + términos de pago.
+2. REPORTES DE SERVICIO TÉCNICO: Membrete institucional (P1) + contenido
+   descriptivo con secciones de texto + evidencias fotográficas (P2+).
+
+Ambos usan membrete institucional dinámico por departamento y comparten
+infraestructura de jsPDF + headers/footers reutilizables.
+
+ARCHIVOS ENTREGABLES (copiar al proyecto destino)
+--------------------------------------------------------------------------------
+1. ssepi_servicios_enterprise_v11.html  -> HTML con generarPDF() y generarReportePDF()
+2. membretes_base64.js                  -> Diccionario JPEG base64 (~1 MB)
+3. convert_membretes.py                 -> Script para regenerar el diccionario
+
+ARQUITECTURA TÉCNICA A REPLICAR
+--------------------------------------------------------------------------------
+- Motor: jsPDF 2.5.1 + jspdf-autotable 3.5.28.
+- Formato: A4, unit:'mm'. PW=210, PH=297, ML=15, MR=15, TW=180.
+- Membrete: JPEG 150 DPI escalado a A4 completo.
+  doc.addImage(membreteB64, 'JPEG', 0, 0, PW, PH);
+- Compresión: JPEG quality 85 para reducir payload (~15 MB PNG → ~1 MB).
+- jsPDF incluye fuentes built-in: helvetica, times, courier (usar times para
+  look institucional y helvetica para UI limpia).
+- Capa 0: membrete JPEG. Capa 1: textos dinámicos encima.
+
+FLUJO DE PÁGINAS — COTIZACIÓN (generarPDF)
+--------------------------------------------------------------------------------
+Página 1: Membrete institucional completo (sin texto encima).
+           Solo imagen de fondo. No tabla, no datos del cliente.
+Página 2: drawHeader() + datos cliente + tabla productos + subtotal/iva/total.
+           Si la tabla es muy larga, continúa en página 3 (autoTable).
+Página 3 (fija): Tiempo de entrega (según DEPTO_POLICIES).
+Página 4 (fija): Notas importantes (políticas del departamento, bullets).
+Página 5 (fija): Términos de pago (texto legal) + drawFooter(pgNum).
+
+FLUJO DE PÁGINAS — REPORTE (generarReportePDF)
+--------------------------------------------------------------------------------
+Página 1: Membrete + datos básicos del servicio (folio, cliente, fecha, RFC,
+           vendedor) escritos con tipografía grande, bold, azul institucional.
+Página 2+: drawHeader() + secciones dinámicas:
+  - Descripción del servicio realizado
+  - Hallazgos / Observaciones
+  - Refacciones utilizadas
+  - Recomendaciones al cliente
+  - Evidencias fotográficas (grid 2 columnas con borde sutil)
+- drawFooter() en cada página, número de página dinámico.
+
+ENCABEZADO REUTILIZABLE (drawHeader)
+--------------------------------------------------------------------------------
+- Forma diagonal #EFF6F6 replicada con doc.internal.write(path commands).
+- Logo SSEPI (PNG base64, LOGO_SQ) en x=9, y=9, 28x28 mm.
+- Dirección SSEPI arriba a la derecha.
+- Tagline itálico en teal (#3F9E9E): "Conectamos ingeniería, tecnología..."
+- "Num. de cotización FOLIO" en zona derecha, escalado automático si excede.
+- Retorna Y=HH+5 (53.5 mm) donde inicia el contenido.
+
+FOOTER REUTILIZABLE (drawFooter)
+--------------------------------------------------------------------------------
+- Línea separadora en Y=PH-16.
+- Línea 1: "Num. de cotización FOLIO" | tagline centrado.
+- Línea 2: dirección completa centrada.
+- Línea 3: Tel. | ventas@ssepi.org | www.ssepi.org | Página N / total.
+
+CONTRATO DE DATOS (qué necesita cada función)
+--------------------------------------------------------------------------------
+generarPDF():
+  deptoKey   = document.getElementById('selDepto')?.value || 'automatizacion';
+  folio      = document.getElementById('inpFolio')?.value;
+  cliente    = document.getElementById('inpClientSearch')?.value;
+  dir        = document.getElementById('inpAddress')?.value;
+  rfc        = document.getElementById('inpRFC')?.value;
+  fecha      = new Date().toLocaleDateString('es-MX',{...});
+  vence      = document.getElementById('inpVence')?.value;
+  vendedor   = document.getElementById('inpVendedor')?.value;
+  productos  = [] // desc, specs, unidad, precio, qty, entrega
+  subtotal, iva, total = números
+  LOGO_SQ    = base64 PNG del logo SSEPI (variable global)
+  window.MEMBRETES[deptoKey] = base64 JPEG del membrete
+
+generarReportePDF():
+  folio, cliente, dir, rfc, fecha, vendedor (mismos campos que arriba).
+  repDescripcion, repHallazgos, repRefacciones, repRecomendaciones (textareas).
+  window._reportImages = [] // array de base64 JPEG de fotos subidas
+
+MAPEO DE DEPARTAMENTOS A CLAVES
+--------------------------------------------------------------------------------
+  MEMBRETES:
+    'automatizacion'  -> Encabezado AutoM.pdf
+    'electronicos'    -> Encabezado ELectronica.pdf
+    'motores'         -> Encabezado motores.pdf
+    'suministros'     -> Encabezado suministro.pdf
+
+  DEPTO_POLICIES (texto de notas + tiempo de entrega):
+    'electronicos'    -> Reparación de Equipos Electrónicos
+    'motores'         -> Reparación de Motores
+    'suministros'     -> Ventas de Suministro
+    'automatizacion'  -> (default)
+
+REGLAS DE ESTILO EN PÁGINA 1 (MEMBRETE)
+--------------------------------------------------------------------------------
+- NO dibujar rectángulos blancos ni fondos antes de addImage.
+- autoTable en P2+: usar theme:'plain', fillColor:false para transparencia.
+- Textos sobre membrete deben ubicarse en el sector central/blanco del
+  diseño (aprox X=75–135 mm), evitando los bordes de color.
+
+REGLAS DE TIPOGRAFÍA ACTUALES
+--------------------------------------------------------------------------------
+- Cotización (generarPDF): tipografía 'times' (serif, look institucional)
+  para títulos, tabla, notas, términos.
+- Reporte (generarReportePDF): 'helvetica' para contenido limpio, 'times'
+  opcional para títulos.
+- Datos de primera página del reporte: 'times', bold, 14–18 pt, azul #002F6C.
+
+ADVERTENCIAS CONOCIDAS
+--------------------------------------------------------------------------------
+- membretes_base64.js pesa ~1 MB gracias a JPEG 150 DPI quality 85.
+- Si el bundle es muy pesado, evaluar lazy-load por fetch().
+- Las coordenadas Y de los textos en P1 son estimadas por departamento;
+  los diseños de membrete varían y pueden necesitar ajuste visual.
+- El salto de página de P1→P2 en cotización DEBE ir DESPUÉS de definir
+  drawHeader() y drawFooter(), o lanzará ReferenceError.
+
+SI LOS MEMBRETES CAMBIAN EN EL FUTURO
+--------------------------------------------------------------------------------
+1. Reemplazar el PDF en la carpeta formatos/.
+2. Ejecutar: python convert_membretes.py
+3. Copiar el nuevo membretes_base64.js generado al proyecto destino.
+4. Recargar la página (F5). No requiere recompilación.
+
+================================================================================
+  RESUMEN PARA CLAUDE EN LA SIGUIENTE SESIÓN
+================================================================================
+
+"Tengo un ERP con generador de PDFs usando jsPDF y autotable. Ya tengo la
+lógica de tablas, totales y footer funcionando. Necesito integrar el sistema
+de membretes institucionales dinámicos por departamento y un generador de
+reportes de servicio técnico desarrollados en la sesión anterior.
+
+Archivos clave:
+- membretes_base64.js (diccionario JPEG base64, ~1 MB)
+- ssepi_servicios_enterprise_v11.html con:
+  · generarPDF(): cotización de 5 páginas (membrete P1, contenido P2+)
+  · generarReportePDF(): reporte con membrete P1 + texto + fotos P2+
+
+Instrucciones:
+1. Buscar en mi ERP la función generarPDF existente.
+2. Separar P1 (membrete limpio) de P2 (header + tabla + contenido).
+3. Agregar generarReportePDF() con secciones de texto e imágenes.
+4. Definir drawHeader() y drawFooter() ANTES de usarlos en saltos de página.
+5. Cambiar fuente a 'times' para look institucional si es necesario.
+6. Adaptar coordenadas de texto al diseño visual real de cada membrete."
+
+================================================================================

@@ -1,3 +1,4 @@
+import { spawn } from 'child_process';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -20,7 +21,23 @@ const db = await getDb();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Seed usuarios offline por defecto si la tabla esta vacia (no bloqueante)
+// Catálogo de pruebas (VPS local / túnel): se crean si no existen en offline_usuarios.
+// El túnel Cloudflare no filtra por usuario; el login es siempre contra esta SQLite vía /api/auth/login.
+const OFFLINE_USERS_CATALOG = [
+  { id: 'user-001', email: 'norbertomoro4@gmail.com', password: 'Ssepi2025!', nombre: 'Norberto Moro', rol: 'superadmin', departamento: 'Administracion' },
+  { id: 'user-002', email: 'ventas1@ssepi.org', password: 'Ssepi2025!', nombre: 'Ventas 1', rol: 'ventas', departamento: 'Ventas' },
+  { id: 'user-003', email: 'laboratorio1@ssepi.org', password: 'Ssepi2025!', nombre: 'Laboratorio 1', rol: 'admin', departamento: 'Laboratorio' },
+  { id: 'user-004', email: 'motores1@ssepi.org', password: 'Ssepi2025!', nombre: 'Motores 1', rol: 'admin', departamento: 'Motores' },
+  { id: 'user-005', email: 'automatizacion1@ssepi.org', password: 'Ssepi2025!', nombre: 'Automatizacion 1', rol: 'automatizacion', departamento: 'Automatizacion' },
+  { id: 'user-006', email: 'ivang.ssepi@gmail.com', password: 'Ssepi2025!', nombre: 'Ivan Garcia', rol: 'automatizacion', departamento: 'Automatizacion' },
+  { id: 'user-007', email: 'administracion@ssepi.org', password: 'Ssepi2025!', nombre: 'Admin SSEPI', rol: 'admin', departamento: 'Administracion' },
+  { id: 'user-008', email: 'automatizacion@ssepi.org', password: 'Ssepi2025!', nombre: 'Automatización', rol: 'admin', departamento: 'Automatizacion' },
+  { id: 'user-009', email: 'ventas@ssepi.org', password: 'Ssepi2025!', nombre: 'Ventas Admin', rol: 'admin', departamento: 'Ventas' },
+  { id: 'user-010', email: 'electronica@ssepi.org', password: 'Ssepi2025!', nombre: 'Electrónica Admin', rol: 'admin', departamento: 'Electrónica' },
+  { id: 'user-011', email: 'electronica.ssepi@gmail.com', password: 'Ssepi2025!', nombre: 'Ventas SSEPI', rol: 'ventas_sin_compras', departamento: 'Ventas' },
+];
+
+// Seed inicial si la tabla está vacía + asegurar filas del catálogo (idempotente)
 (async function seedDefaultUsers() {
   try {
     const check = db.prepare(`SELECT COUNT(*) as c FROM offline_usuarios`);
@@ -29,21 +46,23 @@ app.use(express.json({ limit: '10mb' }));
     check.free();
     if (count === 0) {
       console.log('[offline-server] offline_usuarios vacia. Creando usuarios por defecto...');
-      const users = [
-        { id: 'user-001', email: 'norbertomoro4@gmail.com', password: 'Ssepi2025!', nombre: 'Norberto Moro', rol: 'superadmin', departamento: 'Administracion' },
-        { id: 'user-002', email: 'ventas1@ssepi.org', password: 'Ssepi2025!', nombre: 'Ventas 1', rol: 'ventas', departamento: 'Ventas' },
-        { id: 'user-003', email: 'laboratorio1@ssepi.org', password: 'Ssepi2025!', nombre: 'Laboratorio 1', rol: 'admin', departamento: 'Laboratorio' },
-        { id: 'user-004', email: 'motores1@ssepi.org', password: 'Ssepi2025!', nombre: 'Motores 1', rol: 'admin', departamento: 'Motores' },
-        { id: 'user-005', email: 'automatizacion1@ssepi.org', password: 'Ssepi2025!', nombre: 'Automatizacion 1', rol: 'automatizacion', departamento: 'Automatizacion' },
-        { id: 'user-006', email: 'ivang.ssepi@gmail.com', password: 'Ssepi2025!', nombre: 'Ivan Garcia', rol: 'automatizacion', departamento: 'Automatizacion' },
-        { id: 'user-007', email: 'administracion@ssepi.org', password: 'Ssepi2025!', nombre: 'Admin SSEPI', rol: 'admin', departamento: 'Administracion' }
-      ];
-      for (const u of users) {
+      for (const u of OFFLINE_USERS_CATALOG) {
         try {
-          const passHash = await registerOfflineUser(u.email, u.password, u.nombre, u.rol, u.departamento, u.id);
+          await registerOfflineUser(u.email, u.password, u.nombre, u.rol, u.departamento, u.id);
         } catch (e) { /* ya existe o error */ }
       }
       console.log('[offline-server] Usuarios por defecto creados.');
+    } else {
+      for (const u of OFFLINE_USERS_CATALOG) {
+        try {
+          await registerOfflineUser(u.email, u.password, u.nombre, u.rol, u.departamento, u.id);
+          console.log('[offline-server] Usuario de catálogo añadido:', u.email);
+        } catch (e) {
+          if (!String(e.message || e).includes('ya existe')) {
+            console.warn('[offline-server] Catálogo usuario', u.email, e.message || e);
+          }
+        }
+      }
     }
   } catch (e) {
     console.warn('[offline-server] Seed usuarios skipped:', e.message);
@@ -161,6 +180,73 @@ app.post('/api/auth/register', async (req, res) => {
 app.use('/proxy', createOfflineProxyRouter(db));
 
 // ========================================
+// TIMBRADO FINKOK (solo local)
+// ========================================
+app.post('/api/facturar/timbrar', async (req, res) => {
+  try {
+    const payload = req.body;
+    if (!payload || !Array.isArray(payload.conceptos) || payload.conceptos.length === 0) {
+      return res.status(400).json({ exito: false, error: 'Payload invalido: se requiere receptor y al menos un concepto' });
+    }
+    const wrapperPath = path.join(__dirname, 'finkok-timbrar-wrapper.py');
+    if (!fs.existsSync(wrapperPath)) {
+      return res.status(500).json({ exito: false, error: 'Wrapper Finkok no encontrado: ' + wrapperPath });
+    }
+
+    const py = spawn('python', [wrapperPath], {
+      cwd: path.join(__dirname, '..', 'mi-coi'),
+      env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    py.stdout.on('data', (data) => { stdout += data.toString('utf-8'); });
+    py.stderr.on('data', (data) => { stderr += data.toString('utf-8'); });
+
+    py.on('error', (err) => {
+      console.error('[FinkokEndpoint] spawn error:', err.message);
+      if (!res.headersSent) {
+        res.status(500).json({ exito: false, error: 'No se pudo ejecutar Python: ' + err.message });
+      }
+    });
+
+    py.on('close', (code) => {
+      if (res.headersSent) return;
+      if (code !== 0) {
+        console.error(`[FinkokEndpoint] Python salio con codigo ${code}. stderr:`, stderr);
+        return res.status(500).json({ exito: false, error: 'Error en timbrado Finkok (codigo ' + code + ')', detalle: stderr });
+      }
+      try {
+        const resultado = JSON.parse(stdout);
+        if (resultado.exito && resultado.uuid && resultado.xml_timbrado) {
+          // Guardar XML en disco
+          try {
+            const facturasDir = path.join(__dirname, 'facturas_timbradas');
+            if (!fs.existsSync(facturasDir)) fs.mkdirSync(facturasDir, { recursive: true });
+            const xmlFile = path.join(facturasDir, `${resultado.uuid}.xml`);
+            fs.writeFileSync(xmlFile, resultado.xml_timbrado, 'utf-8');
+            resultado.xml_path = xmlFile;
+          } catch (e) {
+            console.warn('[FinkokEndpoint] No se pudo guardar XML:', e.message);
+          }
+        }
+        res.json(resultado);
+      } catch (e) {
+        console.error('[FinkokEndpoint] JSON parse error. stdout:', stdout, 'stderr:', stderr);
+        res.status(500).json({ exito: false, error: 'Respuesta invalida del wrapper Finkok', raw: stdout, stderr });
+      }
+    });
+
+    py.stdin.write(JSON.stringify(payload), 'utf-8');
+    py.stdin.end();
+  } catch (err) {
+    console.error('[FinkokEndpoint] Error:', err.message);
+    res.status(500).json({ exito: false, error: err.message });
+  }
+});
+
+// ========================================
 // API SEARCH ENDPOINTS (BOM + Inventario)
 // ========================================
 app.get('/api/bom-search', (req, res) => {
@@ -232,6 +318,55 @@ app.get('/api/inventory-search', (req, res) => {
 });
 
 // ========================================
+// UPLOADS LOCALES (modo offline)
+// ========================================
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+app.post('/api/upload', express.raw({ type: '*/*', limit: '20mb' }), (req, res) => {
+  try {
+    const filename = req.headers['x-filename'] || `upload_${Date.now()}`;
+    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filePath = path.join(UPLOADS_DIR, safeName);
+    fs.writeFileSync(filePath, req.body);
+    res.json({
+      data: {
+        path: safeName,
+        url: `/uploads/${safeName}`,
+        localPath: filePath
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/uploads/:filename', (req, res) => {
+  try {
+    const safeName = req.params.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filePath = path.join(UPLOADS_DIR, safeName);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Archivo no encontrado' });
+    res.sendFile(path.resolve(filePath));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Servir imágenes de clientes subcarpeta
+app.get('/uploads/clientes/:filename', (req, res) => {
+  try {
+    const safeName = req.params.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filePath = path.join(UPLOADS_DIR, 'clientes', safeName);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Archivo no encontrado' });
+    res.sendFile(path.resolve(filePath));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ========================================
 // Health
 // ========================================
 app.get('/api/health', (_req, res) => {
@@ -246,13 +381,26 @@ app.get('/proxy/realtime/v1/websocket', (_req, res) => {
 });
 
 // ========================================
+// SERVIR LANDING PAGE (raíz)
+// ========================================
+// Redirección de rutas relativas mal resueltas desde /landing
+app.get('/landing/panel/login.html', (_req, res) => res.redirect('/panel/login.html'));
+app.get('/landing/panel/panel.html', (_req, res) => res.redirect('/panel/panel.html'));
+
+app.use('/landing', express.static(path.join(__dirname, '..', 'panel', 'landing')));
+
+// ========================================
 // SERVIR ERP WEB + ASSETS
 // ========================================
 app.use('/panel', express.static(path.join(__dirname, '..', 'panel')));
 app.use('/assets', express.static(path.join(__dirname, '..', 'panel', 'assets')));
+app.use('/excel', express.static(path.join(__dirname, '..', 'excel')));
+app.use('/facturas_timbradas', express.static(path.join(__dirname, 'facturas_timbradas')));
+
+app.get('/favicon.svg', (_req, res) => res.sendFile(path.join(__dirname, '..', 'panel', 'landing', 'favicon.svg')));
 
 app.get('/', (_req, res) => {
-  res.redirect('/panel/login.html');
+  res.redirect('/landing/index.html');
 });
 
 // ========================================

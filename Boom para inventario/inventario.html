@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOM SSEPI - Inventario</title>
+<script src="bom_data.js"></script>
+<script src="bom_images.js"></script>
+<style>
+:root {
+  --bg-primary: #0f1117;
+  --bg-secondary: #1a1d27;
+  --bg-tertiary: #242836;
+  --bg-hover: #2d3245;
+  --text-primary: #e8eaed;
+  --text-secondary: #9aa0a6;
+  --text-muted: #6b7280;
+  --accent: #4f8cf7;
+  --accent-hover: #6ba0ff;
+  --accent-dim: rgba(79,140,247,0.12);
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --border: #2d3348;
+  --border-light: #3a4058;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* HEADER */
+.app-header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.app-header h1 { font-size: 20px; font-weight: 600; }
+.app-header .logo {
+  width: 36px; height: 36px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 16px; color: #fff;
+}
+.img-count {
+  font-size: 12px;
+  background: var(--success);
+  color: #000;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* STATS BAR */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  padding: 16px 24px;
+  margin: 0 24px;
+}
+.stat-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.stat-card .label { font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; }
+.stat-card .value { font-size: 22px; font-weight: 700; margin-top: 2px; }
+.stat-card .value.accent { color: var(--accent); }
+.stat-card .value.success { color: var(--success); }
+.stat-card .value.warning { color: var(--warning); }
+
+/* TOOLBAR */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 24px;
+  align-items: center;
+}
+.search-box {
+  flex: 1;
+  min-width: 220px;
+  position: relative;
+}
+.search-box input {
+  width: 100%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 12px 9px 36px;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-box input:focus { border-color: var(--accent); }
+.search-box .icon {
+  position: absolute; left: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted); font-size: 16px;
+}
+.filter-select {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  min-width: 150px;
+}
+.filter-select:focus { border-color: var(--accent); }
+.filter-select option { background: var(--bg-secondary); }
+
+/* TABLE */
+.table-container {
+  margin: 0 24px 24px;
+  overflow-x: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead { position: sticky; top: 0; z-index: 10; }
+th {
+  background: var(--bg-tertiary);
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+th:hover { color: var(--accent); }
+td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+tr:hover td { background: var(--bg-hover); }
+.item-num { font-weight: 600; color: var(--accent); text-align: center; min-width: 40px; }
+.part-number { font-family: 'Consolas', monospace; font-size: 12px; color: #c9d1d9; word-break: break-all; }
+.category-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.status-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.status-actualizado { background: rgba(52,211,153,0.15); color: var(--success); }
+.status-no-actualizado { background: rgba(251,191,36,0.15); color: var(--warning); }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.status-actualizado .status-dot { background: var(--success); }
+.status-no-actualizado .status-dot { background: var(--warning); }
+.price { font-weight: 600; color: var(--success); white-space: nowrap; }
+.expand-btn {
+  background: none; border: none; color: var(--accent);
+  cursor: pointer; font-size: 18px; padding: 2px 6px;
+  border-radius: 4px; transition: background 0.2s;
+}
+.expand-btn:hover { background: var(--accent-dim); }
+
+/* PRODUCT IMAGE */
+.product-thumb {
+  width: 50px; height: 50px;
+  border-radius: 6px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.product-thumb:hover { transform: scale(1.15); border-color: var(--accent); }
+.img-placeholder-thumb {
+  width: 50px; height: 50px;
+  background: var(--bg-tertiary);
+  border: 1px dashed var(--border-light);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.img-placeholder-thumb:hover { border-color: var(--accent); }
+
+/* MODAL */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1000;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 20px;
+  overflow-y: auto;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 100%; max-width: 950px;
+  box-shadow: var(--shadow);
+}
+.modal-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 20px 24px; border-bottom: 1px solid var(--border);
+}
+.modal-header h2 { font-size: 16px; }
+.modal-close {
+  background: none; border: none; color: var(--text-secondary);
+  font-size: 24px; cursor: pointer; padding: 0 4px; line-height: 1;
+}
+.modal-close:hover { color: var(--text-primary); }
+.modal-body { padding: 20px 24px; }
+.modal-body .field { margin-bottom: 14px; }
+.modal-body .field-label {
+  font-size: 11px; text-transform: uppercase;
+  color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 2px;
+}
+.modal-body .field-value { font-size: 14px; color: var(--text-primary); }
+.modal-suppliers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px; margin-top: 16px;
+}
+
+/* MODAL IMAGE */
+.modal-image-container {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.modal-image {
+  max-width: 250px;
+  max-height: 200px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  object-fit: contain;
+  background: #fff;
+  cursor: pointer;
+}
+.modal-image-placeholder {
+  width: 180px; height: 140px;
+  background: var(--bg-tertiary);
+  border: 2px dashed var(--border-light);
+  border-radius: var(--radius);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.modal-image-placeholder:hover { border-color: var(--accent); }
+.modal-image-placeholder .icon { font-size: 36px; margin-bottom: 4px; }
+
+.supplier-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.supplier-card h4 {
+  font-size: 13px; color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.supplier-card .supplier-name { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+.supplier-card .supplier-price { font-size: 18px; font-weight: 700; color: var(--success); margin-bottom: 4px; }
+.supplier-card .supplier-delivery { font-size: 12px; color: var(--warning); margin-bottom: 6px; }
+.supplier-card a { color: var(--accent); text-decoration: none; font-size: 12px; word-break: break-all; }
+.supplier-card a:hover { text-decoration: underline; }
+
+/* CATEGORY COLORS */
+.cat-plcs { background: rgba(79,140,247,0.15); color: #6ba0ff; }
+.cat-hmis { background: rgba(168,85,247,0.15); color: #c084fc; }
+.cat-servodrives { background: rgba(251,146,60,0.15); color: #fb923c; }
+.cat-servo-motor { background: rgba(251,146,60,0.2); color: #fb923c; }
+.cat-sensores { background: rgba(52,211,153,0.15); color: #34d399; }
+.cat-encoder { background: rgba(45,212,191,0.15); color: #2dd4bf; }
+.cat-comunicacion { background: rgba(96,165,250,0.15); color: #60a5fa; }
+.cat-alimentacion { background: rgba(250,204,21,0.15); color: #facc15; }
+.cat-proteccion { background: rgba(248,113,113,0.15); color: #f87171; }
+.cat-motor { background: rgba(251,146,60,0.2); color: #fb923c; }
+.cat-variador { background: rgba(139,92,246,0.15); color: #a78bfa; }
+.cat-material-electrico { background: rgba(156,163,175,0.15); color: #9ca3af; }
+.cat-accesorios { background: rgba(107,114,128,0.15); color: #9ca3af; }
+.cat-materiales-mecanicos { background: rgba(163,163,163,0.15); color: #a3a3a3; }
+.cat-seguridad { background: rgba(248,113,113,0.2); color: #f87171; }
+.cat-flejadoras { background: rgba(236,72,153,0.15); color: #f472b6; }
+.cat-camara { background: rgba(56,189,248,0.15); color: #38bdf8; }
+.cat-default { background: rgba(107,114,128,0.15); color: #9ca3af; }
+
+/* PAGINATION */
+.pagination {
+  display: flex; justify-content: center; align-items: center;
+  gap: 6px; padding: 16px 24px 24px;
+}
+.page-btn {
+  background: var(--bg-tertiary); border: 1px solid var(--border);
+  color: var(--text-primary); padding: 6px 12px;
+  border-radius: var(--radius); cursor: pointer; font-size: 13px;
+  transition: all 0.2s;
+}
+.page-btn:hover { background: var(--bg-hover); }
+.page-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.page-info { color: var(--text-secondary); font-size: 13px; margin: 0 8px; }
+
+.no-results { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+
+/* LIGHTBOX */
+.lightbox {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.9);
+  z-index: 2000;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+.lightbox.active { display: flex; }
+.lightbox img { max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: 8px; }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .app-header { padding: 12px 16px; }
+  .toolbar { padding: 8px 16px; }
+  .stats-bar { padding: 12px 16px; margin: 0 16px; }
+  .table-container { margin: 0 16px 16px; }
+  .modal-suppliers { grid-template-columns: 1fr; }
+  .modal-image-container { flex-direction: column; }
+  .product-thumb, .img-placeholder-thumb { width: 40px; height: 40px; }
+}
+</style>
+</head>
+<body>
+
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('active')">
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<div class="app-header">
+  <div class="logo">B</div>
+  <h1>BOM SSEPI - Inventario</h1>
+  <span class="img-count" id="imgCount" style="display:none"></span>
+  <div style="flex:1"></div>
+  <button class="btn btn-secondary" id="btnExport" onclick="exportFiltered()">&#128190; Exportar CSV</button>
+</div>
+
+<div id="appContent">
+  <div class="stats-bar" id="statsBar"></div>
+  <div class="toolbar">
+    <div class="search-box">
+      <span class="icon">&#128269;</span>
+      <input type="text" id="searchInput" placeholder="Buscar por n&uacute;mero de parte, descripci&oacute;n, proveedor..." oninput="applyFilters()">
+    </div>
+    <select class="filter-select" id="categoryFilter" onchange="applyFilters()">
+      <option value="">Todas las categor&iacute;as</option>
+    </select>
+    <select class="filter-select" id="statusFilter" onchange="applyFilters()">
+      <option value="">Todos los estados</option>
+      <option value="ACTUALIZADO">Actualizado</option>
+      <option value="NO ACTUALIZADO">No Actualizado</option>
+    </select>
+    <select class="filter-select" id="supplierFilter" onchange="applyFilters()">
+      <option value="">Todos los proveedores</option>
+    </select>
+    <select class="filter-select" id="rowsPerPage" onchange="applyFilters()">
+      <option value="25">25 filas</option>
+      <option value="50" selected>50 filas</option>
+      <option value="100">100 filas</option>
+      <option value="999">Todas</option>
+    </select>
+  </div>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('item')"># <span class="sort-arrow" id="sort-item"></span></th>
+          <th>Img</th>
+          <th onclick="sortBy('partNumber')">N&uacute;mero de Parte <span class="sort-arrow" id="sort-partNumber"></span></th>
+          <th onclick="sortBy('category')">Categor&iacute;a <span class="sort-arrow" id="sort-category"></span></th>
+          <th onclick="sortBy('status')">Estado <span class="sort-arrow" id="sort-status"></span></th>
+          <th>Descripci&oacute;n</th>
+          <th onclick="sortBy('bestPrice')">Mejor Precio <span class="sort-arrow" id="sort-bestPrice"></span></th>
+          <th>Proveedor</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+  <div class="no-results" id="noResults" style="display:none">
+    <div style="font-size:48px">&#128269;</div>
+    <div>No se encontraron resultados</div>
+  </div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle"></h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// ========== DATA ==========
+const allItemsRaw = BOM_DATA || [];
+let allItems = [];
+let filteredItems = [];
+let currentPage = 1;
+let sortField = 'item';
+let sortDir = 'asc';
+let imageMap = {};
+
+const catClassMap = {
+  "PLC'S": 'cat-plcs', "HMI'S": 'cat-hmis',
+  "SERVODRIVES": 'cat-servodrives', "SERVO MOTOR": 'cat-servo-motor',
+  "SENSORES": 'cat-sensores', "ENCODER": 'cat-encoder',
+  "COMUNICACIÓN": 'cat-comunicacion', "COMUNICACION": 'cat-comunicacion',
+  "ALIMENTACIÓN": 'cat-alimentacion', "ALIMENTACION": 'cat-alimentacion',
+  "PROTECCION ELECTRICA": 'cat-proteccion', "PROTECCIÓN ELÉCTRICA": 'cat-proteccion',
+  "MOTORES": 'cat-motor', "VARIADOR": 'cat-variador',
+  "MATERIAL ELECTRICO": 'cat-material-electrico', "ACCESORIOS": 'cat-accesorios',
+  "MATERIALES MECÁNICOS": 'cat-materiales-mecanicos', "MATERIALES MECANICOS": 'cat-materiales-mecanicos',
+  "SEGURIDAD IND": 'cat-seguridad', "FLEJADORAS": 'cat-flejadoras',
+  "CÁMARA": 'cat-camara', "CAMARA": 'cat-camara',
+};
+function getCatClass(cat) {
+  if (!cat) return 'cat-default';
+  const key = cat.toUpperCase().trim();
+  for (const [k, v] of Object.entries(catClassMap)) { if (key === k.toUpperCase()) return v; }
+  return 'cat-default';
+}
+
+function parsePrice(s) {
+  if (!s) return 0;
+  let v = s.replace(/^\$/, '').trim();
+  if (v.includes('.') && v.includes(',')) v = v.replace(/\./g, '').replace(',', '.');
+  else if (v.includes(',') && !v.includes('.')) v = v.replace(',', '.');
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+function formatPrice(s) {
+  const n = parsePrice(s);
+  if (n === 0) return s || '-';
+  return '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function formatMoney(n) {
+  if (n >= 1000000) return '$' + (n / 1000000).toFixed(2) + 'M';
+  return '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+function escapeHtml(t) {
+  if (!t) return '';
+  const d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+// ========== IMAGE LOADING ==========
+function getImageSrc(item) {
+  const key = String(item.item);
+  const pn = item.partNumber;
+  for (const k of [key, pn]) {
+    if (imageMap[k] && imageMap[k].dataUri) return imageMap[k].dataUri;
+  }
+  // Also try matching by partNumber substring
+  for (const [k, v] of Object.entries(imageMap)) {
+    if (v.dataUri && pn && (k.includes(pn) || pn.includes(k))) return v.dataUri;
+  }
+  return null;
+}
+
+function loadImageMap() {
+  if (typeof BOM_IMAGES !== 'undefined' && BOM_IMAGES) {
+    imageMap = BOM_IMAGES;
+    let count = 0;
+    Object.values(imageMap).forEach(v => { if (v.dataUri) count++; });
+    document.getElementById('imgCount').textContent = count + ' imgs';
+    document.getElementById('imgCount').style.display = 'inline';
+    renderStats();
+    applyFilters();
+  }
+}
+
+function showLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('active');
+}
+
+// ========== INIT ==========
+function initData() {
+  // Process raw data - calculate best price per item
+  allItems = allItemsRaw.map((raw, idx) => {
+    let bestPrice = '', bestPriceNum = Infinity, bestSupplierIdx = 0;
+    const suppliers = raw.suppliers || [];
+    suppliers.forEach((s, i) => {
+      const n = parsePrice(s.price);
+      if (n > 0 && n < bestPriceNum) { bestPriceNum = n; bestPrice = s.price; bestSupplierIdx = i; }
+    });
+    return {
+      ...raw,
+      item: raw.item || String(idx + 1),
+      bestPrice: bestPrice || (suppliers[0]?.price || ''),
+      bestPriceNum: bestPriceNum === Infinity ? 0 : bestPriceNum,
+      bestSupplierIdx
+    };
+  });
+
+  populateFilters();
+  renderStats();
+  applyFilters();
+  loadImageMap();
+}
+
+function populateFilters() {
+  const cats = [...new Set(allItems.map(i => i.category))].filter(Boolean).sort();
+  const catSel = document.getElementById('categoryFilter');
+  catSel.innerHTML = '<option value="">Todas las categorías</option>';
+  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
+
+  const sups = new Set();
+  allItems.forEach(i => (i.suppliers || []).forEach(s => { if (s.name) sups.add(s.name.trim()); }));
+  const supSel = document.getElementById('supplierFilter');
+  supSel.innerHTML = '<option value="">Todos los proveedores</option>';
+  [...sups].sort().forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; supSel.appendChild(o); });
+}
+
+function renderStats() {
+  const total = allItems.length;
+  const updated = allItems.filter(i => i.status.toUpperCase().includes('ACTUALIZADO') && !i.status.toUpperCase().includes('NO')).length;
+  const notUpdated = allItems.filter(i => i.status.toUpperCase().includes('NO ACTUALIZADO') || i.status.toUpperCase().includes('NOACTUALIZADO')).length;
+  const categories = [...new Set(allItems.map(i => i.category))].filter(Boolean).length;
+  let totalCost = 0;
+  allItems.forEach(i => { totalCost += i.bestPriceNum; });
+  let imgCount = 0;
+  allItems.forEach(i => { if (getImageSrc(i)) imgCount++; });
+
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-card"><div class="label">Total Artículos</div><div class="value accent">${total}</div></div>
+    <div class="stat-card"><div class="label">Actualizados</div><div class="value success">${updated}</div></div>
+    <div class="stat-card"><div class="label">No Actualizados</div><div class="value warning">${notUpdated}</div></div>
+    <div class="stat-card"><div class="label">Categorías</div><div class="value">${categories}</div></div>
+    <div class="stat-card"><div class="label">Costo Total</div><div class="value accent">${formatMoney(totalCost)}</div></div>
+    <div class="stat-card"><div class="label">Con Imagen</div><div class="value">${imgCount}/${total}</div></div>
+  `;
+}
+
+// ========== FILTER & SORT ==========
+function applyFilters() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const catFilter = document.getElementById('categoryFilter').value;
+  const statusFilter = document.getElementById('statusFilter').value;
+  const supFilter = document.getElementById('supplierFilter').value;
+
+  filteredItems = allItems.filter(item => {
+    if (search) {
+      const s = (item.partNumber + ' ' + item.description + ' ' + item.category + ' ' + (item.suppliers || []).map(s => s.name).join(' ')).toLowerCase();
+      if (!s.includes(search)) return false;
+    }
+    if (catFilter && item.category !== catFilter) return false;
+    if (statusFilter) {
+      const st = item.status.toUpperCase();
+      if (statusFilter === 'ACTUALIZADO' && !(st.includes('ACTUALIZADO') && !st.includes('NO'))) return false;
+      if (statusFilter === 'NO ACTUALIZADO' && !st.includes('NO ACTUALIZADO') && !st.includes('NOACTUALIZADO')) return false;
+    }
+    if (supFilter && !(item.suppliers || []).some(s => s.name && s.name.trim() === supFilter)) return false;
+    return true;
+  });
+
+  filteredItems.sort((a, b) => {
+    let va, vb;
+    switch (sortField) {
+      case 'item': va = parseInt(a.item) || 0; vb = parseInt(b.item) || 0; break;
+      case 'partNumber': va = a.partNumber; vb = b.partNumber; break;
+      case 'category': va = a.category; vb = b.category; break;
+      case 'status': va = a.status; vb = b.status; break;
+      case 'bestPrice': va = a.bestPriceNum; vb = b.bestPriceNum; break;
+      default: va = parseInt(a.item) || 0; vb = parseInt(b.item) || 0;
+    }
+    if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+    if (va < vb) return sortDir === 'asc' ? -1 : 1;
+    if (va > vb) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  currentPage = 1;
+  renderTable();
+}
+
+function sortBy(field) {
+  if (sortField === field) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortField = field; sortDir = 'asc'; }
+  document.querySelectorAll('.sort-arrow').forEach(el => el.textContent = '');
+  const arrow = document.getElementById('sort-' + field);
+  if (arrow) arrow.textContent = sortDir === 'asc' ? ' ▲' : ' ▼';
+  applyFilters();
+}
+
+function renderTable() {
+  const perPage = parseInt(document.getElementById('rowsPerPage').value) || 50;
+  const start = (currentPage - 1) * perPage;
+  const end = Math.min(start + perPage, filteredItems.length);
+  const pageItems = filteredItems.slice(start, end);
+
+  const tbody = document.getElementById('tableBody');
+  const noResults = document.getElementById('noResults');
+
+  if (filteredItems.length === 0) {
+    tbody.innerHTML = ''; noResults.style.display = 'block';
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+  noResults.style.display = 'none';
+
+  let html = '';
+  pageItems.forEach((item, idx) => {
+    const globalIdx = start + idx;
+    const statusClass = (item.status.toUpperCase().includes('NO ACTUALIZADO') || item.status.toUpperCase().includes('NOACTUALIZADO'))
+      ? 'status-no-actualizado' : 'status-actualizado';
+    const statusLabel = statusClass === 'status-no-actualizado' ? 'No Actualizado' : 'Actualizado';
+    const bestSup = item.suppliers[item.bestSupplierIdx] || item.suppliers[0] || {};
+    const shortDesc = item.description.length > 100 ? item.description.substring(0, 100) + '...' : item.description;
+    const imgSrc = getImageSrc(item);
+
+    const imgHtml = imgSrc
+      ? `<img src="${escapeHtml(imgSrc)}" class="product-thumb" alt="${escapeHtml(item.partNumber)}" onclick="showLightbox('${escapeHtml(imgSrc)}')" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="img-placeholder-thumb" style="display:none" onclick="openModal(${globalIdx})">&#128247;</div>`
+      : `<div class="img-placeholder-thumb" onclick="openModal(${globalIdx})">&#128247;</div>`;
+
+    html += `<tr>
+      <td class="item-num">${escapeHtml(item.item)}</td>
+      <td>${imgHtml}</td>
+      <td><span class="part-number">${escapeHtml(item.partNumber || 'S/N')}</span></td>
+      <td><span class="category-badge ${getCatClass(item.category)}">${escapeHtml(item.category)}</span></td>
+      <td><span class="status-badge ${statusClass}"><span class="status-dot"></span>${statusLabel}</span></td>
+      <td style="max-width:260px">${escapeHtml(shortDesc)}${item.description.length > 100 ? ' <span style="color:var(--accent);cursor:pointer" onclick="openModal(' + globalIdx + ')">[más]</span>' : ''}</td>
+      <td class="price">${formatPrice(item.bestPrice)}</td>
+      <td style="font-size:12px;max-width:120px">${escapeHtml(bestSup.name || '-')}</td>
+      <td><button class="expand-btn" onclick="openModal(${globalIdx})">&#9654;</button></td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+  renderPagination(perPage);
+}
+
+function renderPagination(perPage) {
+  const totalPages = Math.ceil(filteredItems.length / perPage);
+  if (totalPages <= 1) {
+    document.getElementById('pagination').innerHTML = `<span class="page-info">${filteredItems.length} resultado(s)</span>`;
+    return;
+  }
+  let html = `<button class="page-btn" ${currentPage===1?'disabled':''} onclick="goPage(${currentPage-1})">&#9664;</button>`;
+  const maxVisible = 7;
+  let sp = Math.max(1, currentPage - Math.floor(maxVisible/2));
+  let ep = Math.min(totalPages, sp + maxVisible - 1);
+  if (ep - sp < maxVisible - 1) sp = Math.max(1, ep - maxVisible + 1);
+  if (sp > 1) { html += `<button class="page-btn" onclick="goPage(1)">1</button>`; if (sp > 2) html += '<span class="page-info">...</span>'; }
+  for (let p = sp; p <= ep; p++) html += `<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+  if (ep < totalPages) { if (ep < totalPages - 1) html += '<span class="page-info">...</span>'; html += `<button class="page-btn" onclick="goPage(${totalPages})">${totalPages}</button>`; }
+  html += `<button class="page-btn" ${currentPage===totalPages?'disabled':''} onclick="goPage(${currentPage+1})">&#9654;</button>`;
+  html += `<span class="page-info">${filteredItems.length} resultado(s)</span>`;
+  document.getElementById('pagination').innerHTML = html;
+}
+
+function goPage(p) {
+  const perPage = parseInt(document.getElementById('rowsPerPage').value) || 50;
+  const totalPages = Math.ceil(filteredItems.length / perPage);
+  if (p < 1 || p > totalPages) return;
+  currentPage = p;
+  renderTable();
+  document.querySelector('.table-container').scrollTop = 0;
+}
+
+// ========== MODAL ==========
+function openModal(filteredIdx) {
+  const item = filteredItems[filteredIdx];
+  if (!item) return;
+
+  const statusClass = (item.status.toUpperCase().includes('NO ACTUALIZADO') || item.status.toUpperCase().includes('NOACTUALIZADO'))
+    ? 'status-no-actualizado' : 'status-actualizado';
+  const statusLabel = statusClass === 'status-no-actualizado' ? 'No Actualizado' : 'Actualizado';
+
+  document.getElementById('modalTitle').innerHTML = `<span style="color:var(--accent)">#${escapeHtml(item.item)}</span> ${escapeHtml(item.partNumber || 'S/N')} <span class="category-badge ${getCatClass(item.category)}" style="margin-left:8px">${escapeHtml(item.category)}</span>`;
+
+  const imgSrc = getImageSrc(item);
+  let imageHtml;
+  if (imgSrc) {
+    imageHtml = `<img src="${escapeHtml(imgSrc)}" class="modal-image" alt="${escapeHtml(item.partNumber)}" onclick="showLightbox('${escapeHtml(imgSrc)}')" onerror="this.outerHTML='<div class=\\'modal-image-placeholder\\' onclick=\\'openProductLink(${filteredIdx})\\'><div class=\\'icon\\'>&#128247;</div>Ver en web</div>'" style="cursor:pointer">`;
+  } else {
+    imageHtml = `<div class="modal-image-placeholder" onclick="openProductLink(${filteredIdx})"><div class="icon">&#128247;</div>Ver en web</div>`;
+  }
+
+  let suppliersHtml = '';
+  (item.suppliers || []).forEach((s, idx) => {
+    if (!s.name && !s.price) return;
+    const isBest = idx === item.bestSupplierIdx && (item.suppliers || []).length > 1;
+    suppliersHtml += `
+      <div class="supplier-card" style="${isBest ? 'border-color:var(--success)' : ''}">
+        <h4>${isBest ? '&#11088; Mejor precio' : 'Proveedor ' + (idx + 1)}</h4>
+        <div class="supplier-name">${escapeHtml(s.name || 'No especificado')}</div>
+        <div class="supplier-price">${s.price ? formatPrice(s.price) : '-'}</div>
+        ${s.delivery ? `<div class="supplier-delivery">&#128336; ${escapeHtml(s.delivery)}</div>` : ''}
+        ${s.link ? `<a href="${escapeHtml(s.link)}" target="_blank">&#128279; Ver producto</a>` : ''}
+      </div>`;
+  });
+
+  document.getElementById('modalBody').innerHTML = `
+    <div class="modal-image-container">
+      ${imageHtml}
+      <div style="flex:1">
+        <div class="field">
+          <div class="field-label">Descripción</div>
+          <div class="field-value">${escapeHtml(item.description || '-')}</div>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div class="field" style="flex:1;min-width:180px">
+            <div class="field-label">Estado</div>
+            <div class="field-value"><span class="status-badge ${statusClass}"><span class="status-dot"></span>${statusLabel}</span></div>
+          </div>
+          <div class="field" style="flex:1;min-width:180px">
+            <div class="field-label">Número de Parte</div>
+            <div class="field-value part-number">${escapeHtml(item.partNumber || 'S/N')}</div>
+          </div>
+          <div class="field" style="flex:1;min-width:180px">
+            <div class="field-label">Mejor Precio</div>
+            <div class="field-value" style="font-size:20px;font-weight:700;color:var(--success)">${formatPrice(item.bestPrice)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <div class="field-label" style="margin-bottom:8px">Proveedores (${(item.suppliers || []).filter(s => s.name || s.price).length})</div>
+      <div class="modal-suppliers">
+        ${suppliersHtml || '<div style="color:var(--text-muted)">Sin proveedores</div>'}
+      </div>
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function openProductLink(idx) {
+  const item = filteredItems[idx];
+  if (!item) return;
+  const link = (item.suppliers[0] || {}).link || (item.suppliers[item.bestSupplierIdx] || {}).link;
+  if (link) window.open(link, '_blank');
+  else alert('No hay enlace de producto disponible.');
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); }
+
+// ========== EXPORT ==========
+function exportFiltered() {
+  if (filteredItems.length === 0) { alert('No hay datos para exportar'); return; }
+  let csv = 'ITEM;NUMERO DE PARTE;DESCRIPCION;CATEGORIA;ESTADO;MEJOR PRECIO;PROVEEDOR 1;PRECIO 1;ENTREGA 1;LINK 1;PROVEEDOR 2;PRECIO 2;ENTREGA 2;LINK 2;PROVEEDOR 3;PRECIO 3;ENTREGA 3;LINK 3;PROVEEDOR 4;PRECIO 4;ENTREGA 4;LINK 4\n';
+  filteredItems.forEach(item => {
+    const s = item.suppliers || [];
+    csv += `${item.item};${item.partNumber};${item.description.replace(/;/g, ',')};${item.category};${item.status};${item.bestPrice}`;
+    for (let i = 0; i < 4; i++) csv += `;${(s[i]||{}).name || ''};${(s[i]||{}).price || ''};${(s[i]||{}).delivery || ''};${(s[i]||{}).link || ''}`;
+    csv += '\n';
+  });
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'BOM_filtrado.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ========== KEYBOARD ==========
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { closeModal(); document.getElementById('lightbox').classList.remove('active'); }
+});
+
+// ========== START ==========
+initData();
+</script>
+</body>
+</html>

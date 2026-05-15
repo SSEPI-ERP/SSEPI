@@ -28,7 +28,14 @@
     <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
 </head>
 <body class="page-panel nav-loading">
-    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
+    <script>
+    (function(){
+        var token = localStorage.getItem('sb-offline-token') || sessionStorage.getItem('sb-offline-token-sess');
+        if (!token) { window.location.href = '/panel/login.html'; return; }
+        var r = sessionStorage.getItem('ssepi_rol');
+        if(r) document.body.dataset.rol = r;
+    })();
+    </script>
     <header>
         <div class="header-left">
             <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
@@ -60,10 +67,12 @@
         <a href="/panel/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
         <a href="/panel/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
         <a href="/panel/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/panel/pages/ssepi_actividades.html" class="nav-item" data-module="actividades_automatizacion"><span class="icon-box"><i class="fas fa-calendar-week"></i></span> Actividades</a>
         <a href="/panel/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-clipboard-check"></i></span> Proyectos</a>
         <div class="menu-category">COMERCIAL</div>
         <a href="/panel/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
         <a href="/panel/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <a href="/panel/pages/ssepi_suministros.html" class="nav-item" data-module="suministros"><span class="icon-box"><i class="fas fa-boxes-stacked"></i></span> Suministros</a>
         <div class="menu-category">ADMINISTRACIÓN</div>
         <a href="/panel/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
         <a href="/panel/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
@@ -72,7 +81,7 @@
         <a href="/panel/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
 
         <!-- Análisis (con submenú) -->
-        <a href="/panel/pages/ssepi_analisis.html" class="nav-item nav-item-has-submenu" id="analisisSubmenuToggle">
+        <a href="/panel/pages/ssepi_analisis.html" class="nav-item nav-item-has-submenu" id="analisisSubmenuToggle" data-module="analisis_general">
             <span class="submenu-toggle">
                 <span class="icon-box"><i class="fas fa-chart-line"></i></span>
                 <span>Análisis</span>
@@ -146,6 +155,11 @@
                 <div class="card-title">Automatización</div>
                 <div class="card-desc">Ingeniería y control</div>
             </a>
+            <a href="/panel/pages/ssepi_actividades.html" class="card-module card-actividades" data-module="actividades_automatizacion">
+                <div class="card-big-icon"><i class="fas fa-calendar-week"></i></div>
+                <div class="card-title">Actividades</div>
+                <div class="card-desc">Kanban y bitácora semanal</div>
+            </a>
             <a href="/panel/pages/ssepi_proyectos.html" class="card-module card-proyectos" data-module="proyectos_automatizacion">
                 <div class="card-big-icon"><i class="fas fa-drafting-compass"></i></div>
                 <div class="card-title">Proyectos</div>
@@ -160,6 +174,11 @@
                 <div class="card-big-icon"><i class="fas fa-shopping-cart"></i></div>
                 <div class="card-title">Compras</div>
                 <div class="card-desc">Proveedores y adquisiciones</div>
+            </a>
+            <a href="/panel/pages/ssepi_suministros.html" class="card-module" data-module="suministros">
+                <div class="card-big-icon"><i class="fas fa-boxes-stacked"></i></div>
+                <div class="card-title">Suministros</div>
+                <div class="card-desc">Catálogo BOM y cotizaciones</div>
             </a>
             <a href="/panel/pages/ssepi_contactos.html" class="card-module card-contact" data-module="contactos">
                 <div class="card-big-icon"><i class="fas fa-address-book"></i></div>

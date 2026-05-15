@@ -170,6 +170,137 @@ export const CostosEngine = (function() {
         };
     }
 
+    // ==================== LABORATORIO (Hoja Excel: LABORATORIO) ====================
+    function calcularLaboratorio(dias, km, horasInvertido, refacciones, utilidadFactor) {
+        const gasolinaPrecio = getParam('gasolina_precio_litro', 30);
+        const rendimiento = getParam('rendimiento_km_litro', 10);
+        const ventasPorDia = getParam('ventas_por_dia', 87);
+        const tiempoInvertidoHr = getParam('tiempo_invertido_hr', 80);
+        const gastosFijosHr = getParam('gastos_fijos_hr', 161.85);
+        const camionetaHr = getParam('camioneta_hr', 52.67);
+
+        const gasolina = ((km * 2) / rendimiento) * gasolinaPrecio;
+        const ventas = dias * ventasPorDia;
+        const totalGasVentas = gasolina + ventas;
+        const totalTiempoInvertido = horasInvertido * tiempoInvertidoHr;
+        const gastosFijos = horasInvertido * gastosFijosHr;
+        const camioneta = dias * camionetaHr;
+        const gastosGenerales = totalGasVentas + totalTiempoInvertido + gastosFijos + (refacciones || 0) + camioneta;
+        const factor = utilidadFactor || 1.4;
+        const utilidad = gastosGenerales * factor;
+        const credito = utilidad * 1.03;
+
+        return {
+            dias,
+            km,
+            gasolina,
+            ventas,
+            totalGasVentas,
+            horasInvertido,
+            totalTiempoInvertido,
+            gastosFijos,
+            refacciones: refacciones || 0,
+            camioneta,
+            gastosGenerales,
+            utilidad,
+            credito
+        };
+    }
+
+    // ==================== MOTORES (Hoja Excel: MOTORES) ====================
+    function calcularMotores(dias, km, becerra, utilidadFactor) {
+        const gasolinaPrecio = getParam('gasolina_precio_litro', 30);
+        const rendimiento = getParam('rendimiento_km_litro', 10);
+        const ventasPorDia = getParam('ventas_por_dia', 87);
+        const camionetaHr = getParam('camioneta_hr', 52.67);
+
+        const gasolina = ((km * 2) / rendimiento) * gasolinaPrecio;
+        const ventas = dias * ventasPorDia;
+        const totalGasVentas = gasolina + ventas;
+        const camioneta = dias * camionetaHr;
+        const gastosSU = totalGasVentas + (becerra || 0) + camioneta;
+        const factor = utilidadFactor || 1.4;
+        const utilidad = gastosSU * factor;
+        const credito = utilidad * 1.03;
+
+        return {
+            dias,
+            km,
+            gasolina,
+            ventas,
+            totalGasVentas,
+            becerra: becerra || 0,
+            camioneta,
+            gastosSU,
+            utilidad,
+            credito
+        };
+    }
+
+    // ==================== SUMINISTROS (Hoja Excel: SUMINISTROS) ====================
+    function calcularSuministros(dias, km, proveedor, utilidadFactor) {
+        // Misma fórmula que MOTORES pero con PROVEEDOR en vez de BECERRA
+        const gasolinaPrecio = getParam('gasolina_precio_litro', 30);
+        const rendimiento = getParam('rendimiento_km_litro', 10);
+        const ventasPorDia = getParam('ventas_por_dia', 87);
+        const camionetaHr = getParam('camioneta_hr', 52.67);
+
+        const gasolina = ((km * 2) / rendimiento) * gasolinaPrecio;
+        const ventas = dias * ventasPorDia;
+        const totalGasVentas = gasolina + ventas;
+        const camioneta = dias * camionetaHr;
+        const gastosSU = totalGasVentas + (proveedor || 0) + camioneta;
+        const factor = utilidadFactor || 1.4;
+        const utilidad = gastosSU * factor;
+        const credito = utilidad * 1.03;
+
+        return {
+            dias,
+            km,
+            gasolina,
+            ventas,
+            totalGasVentas,
+            proveedor: proveedor || 0,
+            camioneta,
+            gastosSU,
+            utilidad,
+            credito
+        };
+    }
+
+    // ==================== RENTABILIDAD Y ADEUDOS ====================
+    function calcularCostoRealLaboratorio(data) {
+        const base = Number(data.costo_total) || 0;
+        const extras = (data.componentes_extras || []).reduce((s, i) => s + (Number(i.subtotal) || 0), 0);
+        const consumibles = (data.consumibles_usados || []).reduce((s, i) => s + (Number(i.costo) || 0), 0);
+        const refaccionesInv = (data.refacciones_inventario || []).reduce((s, i) => s + (Number(i.costo) || 0) * (Number(i.cantidad) || 1), 0);
+        const refaccionesEnlaces = (data.refacciones_enlaces || []).reduce((s, i) => s + (Number(i.costo_estimado) || 0), 0);
+        return base + extras + consumibles + refaccionesInv + refaccionesEnlaces;
+    }
+
+    function calcularCostoRealMotores(data) {
+        const base = Number(data.costo_total) || 0;
+        const refacciones = Number(data.refacciones) || 0;
+        const consumibles = (data.consumibles_usados || []).reduce((s, i) => s + (Number(i.costo) || 0), 0);
+        const refaccionesInv = (data.refacciones_inventario || []).reduce((s, i) => s + (Number(i.costo) || 0) * (Number(i.cantidad) || 1), 0);
+        return base + refacciones + consumibles + refaccionesInv;
+    }
+
+    function calcularCostoRealAutomatizacion(data) {
+        const materiales = Number(data.costo_materiales) || 0;
+        const actividades = (data.actividades || []).reduce((s, i) => s + (Number(i.horas) || 0) * (Number(i.tarifa) || 0), 0);
+        const gasolina = Number(data.costo_gasolina) || 0;
+        const camioneta = Number(data.costo_camioneta) || 0;
+        const viaticos = Number(data.costo_viaticos) || 0;
+        return materiales + actividades + gasolina + camioneta + viaticos;
+    }
+
+    function determinarRentabilidad(costoPresupuestado, costoReal) {
+        const pres = Number(costoPresupuestado) || 0;
+        const real = Number(costoReal) || 0;
+        return real > pres ? 'rojo' : 'verde';
+    }
+
     // ==================== CARGA DESDE BD ====================
     function applyConfig(partial) {
         if (!partial || typeof partial !== 'object') return;
@@ -262,6 +393,10 @@ export const CostosEngine = (function() {
 
     // ==================== API PÚBLICA ====================
     return {
+        calcularCostoRealLaboratorio,
+        calcularCostoRealMotores,
+        calcularCostoRealAutomatizacion,
+        determinarRentabilidad,
         loadFromDatabase,
         getConfig,
         applyConfig,
@@ -281,7 +416,10 @@ export const CostosEngine = (function() {
         calcularIVA,
         calcularTotalConIVA,
         calcularPrecioFinal,
-        calcularAutomatizacion
+        calcularAutomatizacion,
+        calcularLaboratorio,
+        calcularMotores,
+        calcularSuministros
     };
 })();
 

@@ -7,6 +7,7 @@
 
 import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
+import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
 import { CostosEngine } from '../core/costos-engine.js';
 import { pdfGenerator } from '../core/pdf-generator.js';
 import { getPrioritySuppliersForModule } from '../core/ssepi-runtime/priority-suppliers-catalog.js';
@@ -116,7 +117,13 @@ const MotoresModule = (function() {
         setv('selClient', d.cliente_nombre);
         setv('inpClientRef', d.referencia);
         setv('inpDateTime', d.fecha_ingreso);
-        setv('inpMotor', d.motor);
+        setv('inpMotorSelect', d.motor);
+            var esOtroMotor = d.motor && !['Motores eléctricos','Rebobinadores'].includes(d.motor);
+            if (esOtroMotor) {
+                document.getElementById('inpMotorSelect').value = 'Otro';
+                document.getElementById('inpMotorOtroWrap').style.display = 'block';
+                document.getElementById('inpMotorOtro').value = d.motor;
+            }
         setv('inpBrand', d.marca);
         setv('inpModel', d.modelo);
         setv('inpSerial', d.serie);
@@ -224,6 +231,23 @@ const MotoresModule = (function() {
         history.replaceState({}, document.title, window.location.pathname);
     }
 
+    // ==================== CARGAR TÉCNICOS ====================
+    async function _cargarTecnicos() {
+        try {
+            var tecnicos = await authService.getUsersByRol(['motores', 'admin', 'superadmin']);
+            var select = document.getElementById('techSelect');
+            if (!select) return;
+            var valActual = select.value;
+            select.innerHTML = '<option value="">Seleccionar</option>' +
+                tecnicos.map(function(t) {
+                    return '<option value="' + (t.nombre || t.email) + '">' + (t.nombre || t.email) + '</option>';
+                }).join('');
+            if (valActual) select.value = valActual;
+        } catch (e) {
+            console.error('[Motores] Error cargando técnicos:', e);
+        }
+    }
+
     // ==================== INICIALIZACIÓN ====================
     async function init() {
         console.log('✅ [Motores] Conectado');
@@ -236,7 +260,32 @@ const MotoresModule = (function() {
         _renderPrioritySupplierBarMotores();
         _initMotoresAutosave();
         _tryResumeMotoresDraft();
+        _initExportButton();
+        _cargarTecnicos();
         console.log('✅ Módulo motores iniciado');
+    }
+
+    async function _initExportButton() {
+        try {
+            const profile = await authService.getCurrentProfile();
+            if (!isAdminExportAllowed(profile)) return;
+            createExportButton('exportCSVContainer', function() {
+                const headers = [
+                    { key: 'folio', label: 'Folio' },
+                    { key: 'estado', label: 'Estado' },
+                    { key: 'cliente_nombre', label: 'Cliente' },
+                    { key: 'equipo', label: 'Equipo' },
+                    { key: 'marca', label: 'Marca' },
+                    { key: 'modelo', label: 'Modelo' },
+                    { key: 'fecha_ingreso', label: 'Fecha Ingreso' },
+                    { key: 'fecha_entrega', label: 'Fecha Entrega' },
+                    { key: 'tecnico_responsable', label: 'Técnico' },
+                    { key: 'costo_total', label: 'Costo Total' },
+                    { key: 'rentabilidad_estado', label: 'Rentabilidad' }
+                ];
+                downloadCSV('ordenes_motores_' + new Date().toISOString().slice(0,10) + '.csv', orders, headers);
+            });
+        } catch (e) { console.warn('[Motores] Export CSV init:', e); }
     }
 
     async function _initUI() {
@@ -258,13 +307,13 @@ const MotoresModule = (function() {
     }
 
     function _setFiltroMesActual() {
-        const now = new Date();
-        filtroFechaInicio = new Date(now.getFullYear(), now.getMonth(), 1);
-        filtroFechaFin = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        // Sin filtro por defecto (mostrar todas las órdenes)
+        filtroFechaInicio = null;
+        filtroFechaFin = null;
         const filtroInicio = document.getElementById('filtroFechaInicio');
         const filtroFin = document.getElementById('filtroFechaFin');
-        if (filtroInicio) filtroInicio.valueAsDate = filtroFechaInicio;
-        if (filtroFin) filtroFin.valueAsDate = filtroFechaFin;
+        if (filtroInicio) filtroInicio.value = '';
+        if (filtroFin) filtroFin.value = '';
     }
 
     function _startClock() {
@@ -981,7 +1030,7 @@ const MotoresModule = (function() {
         document.getElementById('selClient').value = orden.cliente_nombre || '';
         document.getElementById('inpDateTime').value = (orden.fecha_ingreso ? orden.fecha_ingreso.slice(0, 16) : '');
         document.getElementById('inpClientRef').value = orden.referencia || '';
-        document.getElementById('inpMotor').value = orden.motor || '';
+        document.getElementById('inpMotorSelect').value = orden.motor || '';
         document.getElementById('inpBrand').value = orden.marca || '';
         document.getElementById('inpModel').value = orden.modelo || '';
         document.getElementById('inpSerial').value = orden.serie || '';
@@ -1215,7 +1264,7 @@ const MotoresModule = (function() {
         switch(currentStep) {
             case 1:
                 if (!document.getElementById('selClient').value) { alert('Seleccione un cliente'); return false; }
-                if (!document.getElementById('inpMotor').value) { alert('Ingrese el motor'); return false; }
+                if (!document.getElementById('inpMotorSelect').value) { alert('Ingrese el motor'); return false; }
                 break;
             case 2:
                 if (!document.getElementById('techSelect').value) { alert('Seleccione técnico responsable'); return false; }
@@ -1828,12 +1877,23 @@ const MotoresModule = (function() {
         }
     }
 
+    function _obtenerMotor() {
+        var sel = document.getElementById('inpMotorSelect');
+        if (!sel) return '';
+        var val = sel.value;
+        if (val === 'Otro') {
+            var otro = document.getElementById('inpMotorOtro');
+            return otro ? (otro.value.trim() || 'Otro') : 'Otro';
+        }
+        return val;
+    }
+
     function _recolectarDatos() {
         return {
             cliente_nombre: document.getElementById('selClient').value,
             referencia: document.getElementById('inpClientRef').value,
             fecha_ingreso: document.getElementById('inpDateTime').value,
-            motor: document.getElementById('inpMotor').value,
+            motor: _obtenerMotor(),
             marca: document.getElementById('inpBrand').value,
             modelo: document.getElementById('inpModel').value,
             serie: document.getElementById('inpSerial').value,
@@ -1920,6 +1980,13 @@ const MotoresModule = (function() {
         if (!supabase) return null;
         try {
             const fileName = `${Date.now()}_${file.name}`;
+            const isOffline = window.location.port === '3333' || window.location.port === '3443' || window.location.hostname.endsWith('.trycloudflare.com') || window.__SSEPI_NEXT_MODE__;
+            if (isOffline) {
+                const uploadName = `${carpeta}/${fileName}`;
+                const res = await fetch('/api/upload', { method: 'POST', headers: { 'X-Filename': uploadName }, body: file });
+                const json = await res.json();
+                return json.data.url;
+            }
             const { data, error } = await supabase.storage
                 .from('pdfs')
                 .upload(`${carpeta}/${fileName}`, file);
@@ -1943,7 +2010,7 @@ const MotoresModule = (function() {
         document.getElementById('selClient').value = '';
         document.getElementById('inpDateTime').value = new Date().toISOString().slice(0,16);
         document.getElementById('inpClientRef').value = '';
-        document.getElementById('inpMotor').value = '';
+        document.getElementById('inpMotorSelect').value = '';
         document.getElementById('inpBrand').value = '';
         document.getElementById('inpModel').value = '';
         document.getElementById('inpSerial').value = '';

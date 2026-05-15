@@ -224,34 +224,21 @@
         });
     }
 
-    // Renderizar tablas de viáticos (t1-t5)
-    function renderTabuladorViaticos() {
-        // t1: Taller Electrónica
-        renderTablaViatico('tablaViaticoT1Body', clientesTabulador, 'taller');
-        // t2: Laboratorio
-        renderTablaViatico('tablaViaticoT2Body', clientesTabulador, 'laboratorio');
-        // t3: Motores
-        renderTablaViatico('tablaViaticoT3Body', clientesTabulador, 'motores');
-        // t4: Automatización
-        renderTablaViatico('tablaViaticoT4Body', clientesTabulador, 'automatizacion');
-        // t5: Suministros
-        renderTablaViatico('tablaViaticoT5Body', clientesTabulador, 'suministros');
-    }
-
-    function renderTablaViatico(tbodyId, clientes, tipo) {
-        var tbody = document.getElementById(tbodyId);
+    // Renderizar tabulador de viajes (único — reemplaza las 5 pestañas repetidas)
+    function renderTabuladorViajes() {
+        var tbody = document.getElementById('tablaViajesBody');
         if (!tbody) return;
 
-        if (!clientes || clientes.length === 0) {
+        if (!clientesTabulador || clientesTabulador.length === 0) {
             tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-secondary);">No hay datos - Ejecuta migración de clientes_tabulador</td></tr>';
             return;
         }
 
         var ce = window.CostosEngine;
-        var gasolinaPrecio = ce ? ce.CONFIG.gasolina : 30;
-        var tarifaTecnico  = ce ? (ce.CONFIG.costoTecnico || 104.16) : 104.16;
+        var gasolinaPrecio = (ce && ce.CONFIG) ? ce.CONFIG.gasolina : 30;
+        var tarifaTecnico  = (ce && ce.CONFIG) ? (ce.CONFIG.costoTecnico || 104.16) : 104.16;
 
-        tbody.innerHTML = clientes.map(function(c) {
+        tbody.innerHTML = clientesTabulador.map(function(c) {
             var km = Number(c.km) || 0;
             var horas = Number(c.horas_viaje) || 0;
 
@@ -273,6 +260,190 @@
                 '</tr>';
         }).join('');
     }
+
+    // Renderizar tablas de viáticos (t1-t5) — referencia por departamento
+    function renderTabuladorViaticos() {
+        renderTablaViajesT1('tablaViaticoT1Body', clientesTabulador);
+        renderTablaLaboratorioT2('tablaViaticoT2Body', clientesTabulador);
+        renderTablaMotoresT3('tablaViaticoT3Body', clientesTabulador);
+        renderTablaAutomatizacionT4('tablaViaticoT4Body', clientesTabulador);
+        renderTablaSuministrosT5('tablaViaticoT5Body', clientesTabulador);
+    }
+
+    // T1: Viajes (Hoja1 Excel)
+    function renderTablaViajesT1(tbodyId, clientes) {
+        var tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        if (!clientes || clientes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-secondary);">No hay datos - Ejecuta migración de clientes_tabulador</td></tr>';
+            return;
+        }
+        var gasPrecio = parseFloat(document.getElementById('viajeGasPrecio') && document.getElementById('viajeGasPrecio').value) || 24.50;
+        var rend = parseFloat(document.getElementById('viajeRendimiento') && document.getElementById('viajeRendimiento').value) || 9.5;
+        var tarifaTec = parseFloat(document.getElementById('viajeTarifaTecnico') && document.getElementById('viajeTarifaTecnico').value) || 104.16;
+
+        tbody.innerHTML = clientes.map(function(c) {
+            var km = Number(c.km) || 0;
+            var horas = Number(c.horas_viaje) || 0;
+            var kmX2 = km * 2;
+            var litros = kmX2 / rend;
+            var costoGas = litros * gasPrecio;
+            var costoDani = horas * tarifaTec;
+            var total = costoGas + costoDani;
+            return '<tr>' +
+                '<td>' + esc(c.nombre_cliente) + '</td>' +
+                '<td style="text-align: right;">' + kmX2.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">' + litros.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + gasPrecio.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + costoGas.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">' + horas.toFixed(0) + '</td>' +
+                '<td style="text-align: right;">$' + tarifaTec.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + costoDani.toFixed(2) + '</td>' +
+                '<td style="text-align: right; font-weight: bold;">$' + total.toFixed(2) + '</td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    // T2: Laboratorio (Hoja2 Excel)
+    function renderTablaLaboratorioT2(tbodyId, clientes) {
+        var tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        if (!clientes || clientes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="13" style="text-align: center; color: var(--text-secondary);">No hay datos - Importa la hoja LABORATORIO del Excel</td></tr>';
+            return;
+        }
+        var gasPrecio = parseFloat(document.getElementById('labGasPrecio') && document.getElementById('labGasPrecio').value) || 30;
+        var ventasDia = parseFloat(document.getElementById('labVentasDia') && document.getElementById('labVentasDia').value) || 87;
+        var tiempoInv = parseFloat(document.getElementById('labTiempoInv') && document.getElementById('labTiempoInv').value) || 80;
+        var gastosFijos = parseFloat(document.getElementById('labGastosFijos') && document.getElementById('labGastosFijos').value) || 161.85;
+        var camioneta = parseFloat(document.getElementById('labCamioneta') && document.getElementById('labCamioneta').value) || 52.67;
+
+        tbody.innerHTML = clientes.map(function(c) {
+            var km = Number(c.km) || 0;
+            var dias = Number(c.tiempo_entrega_dias) || 0;
+            var horasInv = Number(c.horas_invertido) || 0;
+            var refacc = Number(c.refacciones) || 0;
+            var uf = Number(c.utilidad_factor) || 1.4;
+
+            var gasolina = ((km * 2) / 10) * gasPrecio;
+            var ventas = dias * ventasDia;
+            var totalGV = gasolina + ventas;
+            var totalTInv = horasInv * tiempoInv;
+            var gFijos = horasInv * gastosFijos;
+            var cam = dias * camioneta;
+            var gastosGen = totalGV + totalTInv + gFijos + refacc + cam;
+            var utilidad = gastosGen * uf;
+            var credito = utilidad * 1.03;
+
+            return '<tr>' +
+                '<td>' + esc(c.nombre_cliente) + '</td>' +
+                '<td style="text-align: right;">' + dias.toFixed(0) + '</td>' +
+                '<td style="text-align: right;">$' + gasolina.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + ventas.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + totalGV.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">' + horasInv.toFixed(0) + '</td>' +
+                '<td style="text-align: right;">$' + totalTInv.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + gFijos.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + refacc.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + cam.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + gastosGen.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + utilidad.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + credito.toFixed(2) + '</td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    // T3: Motores (Hoja3 Excel)
+    function renderTablaMotoresT3(tbodyId, clientes) {
+        var tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        if (!clientes || clientes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-secondary);">No hay datos - Importa la hoja MOTORES del Excel</td></tr>';
+            return;
+        }
+        var gasPrecio = parseFloat(document.getElementById('motGasPrecio') && document.getElementById('motGasPrecio').value) || 30;
+        var ventasDia = parseFloat(document.getElementById('motVentasDia') && document.getElementById('motVentasDia').value) || 87;
+        var camioneta = parseFloat(document.getElementById('motCamioneta') && document.getElementById('motCamioneta').value) || 52.67;
+
+        tbody.innerHTML = clientes.map(function(c) {
+            var km = Number(c.km) || 0;
+            var dias = Number(c.tiempo_entrega_dias) || 0;
+            var becerra = Number(c.becerra) || 0;
+            var uf = Number(c.utilidad_factor) || 1.4;
+
+            var gasolina = ((km * 2) / 10) * gasPrecio;
+            var ventas = dias * ventasDia;
+            var totalGV = gasolina + ventas;
+            var cam = dias * camioneta;
+            var gastosSU = totalGV + becerra + cam;
+            var utilidad = gastosSU * uf;
+            var credito = utilidad * 1.03;
+
+            return '<tr>' +
+                '<td>' + esc(c.nombre_cliente) + '</td>' +
+                '<td style="text-align: right;">' + dias.toFixed(0) + '</td>' +
+                '<td style="text-align: right;">$' + gasolina.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + ventas.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + totalGV.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + becerra.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + cam.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + gastosSU.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + utilidad.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + credito.toFixed(2) + '</td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    // T4: Automatización (Hoja4 Excel) — Placeholder, requiere datos específicos
+    function renderTablaAutomatizacionT4(tbodyId, clientes) {
+        var tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="22" style="text-align: center; color: var(--text-secondary);">Automatización requiere importar la hoja AUTOMATIZACIÓN del Excel con hrs por servicio.</td></tr>';
+    }
+
+    // T5: Suministros (Hoja5 Excel)
+    function renderTablaSuministrosT5(tbodyId, clientes) {
+        var tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        if (!clientes || clientes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-secondary);">No hay datos - Importa la hoja SUMINISTROS del Excel</td></tr>';
+            return;
+        }
+        var gasPrecio = parseFloat(document.getElementById('sumGasPrecio') && document.getElementById('sumGasPrecio').value) || 30;
+        var ventasDia = parseFloat(document.getElementById('sumVentasDia') && document.getElementById('sumVentasDia').value) || 87;
+        var camioneta = parseFloat(document.getElementById('sumCamioneta') && document.getElementById('sumCamioneta').value) || 52.67;
+
+        tbody.innerHTML = clientes.map(function(c) {
+            var km = Number(c.km) || 0;
+            var dias = Number(c.tiempo_entrega_dias) || 0;
+            var proveedor = Number(c.proveedor) || 0;
+            var uf = Number(c.utilidad_factor) || 1.4;
+
+            var gasolina = ((km * 2) / 10) * gasPrecio;
+            var ventas = dias * ventasDia;
+            var totalGV = gasolina + ventas;
+            var cam = dias * camioneta;
+            var gastosSU = totalGV + proveedor + cam;
+            var utilidad = gastosSU * uf;
+            var credito = utilidad * 1.03;
+
+            return '<tr>' +
+                '<td>' + esc(c.nombre_cliente) + '</td>' +
+                '<td style="text-align: right;">' + dias.toFixed(0) + '</td>' +
+                '<td style="text-align: right;">$' + gasolina.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + ventas.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + totalGV.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + proveedor.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + cam.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + gastosSU.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + utilidad.toFixed(2) + '</td>' +
+                '<td style="text-align: right;">$' + credito.toFixed(2) + '</td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    // Exponer para que el HTML pueda llamar recalcular
+    window.renderTablaViajes = function() { renderTablaViajesT1('tablaViajesBody', clientesTabulador); };
 
     // Renderizar tabla de clientes del tabulador (para gestión)
     function renderClientesTabuladorTabla() {
@@ -877,7 +1048,7 @@
             if (r.error) throw r.error;
             closeModalTabuladorCliente();
             loadClientesTabulador().then(function() {
-                renderTabuladorViaticos();
+                renderTabuladorViajes();
                 renderClientesTabuladorTabla();
             });
         }).catch(function(e) { alert('Error: ' + (e.message || e)); });
@@ -892,7 +1063,7 @@
             if (r.error) throw r.error;
             closeModalTabuladorCliente();
             loadClientesTabulador().then(function() {
-                renderTabuladorViaticos();
+                renderTabuladorViajes();
                 renderClientesTabuladorTabla();
             });
         }).catch(function(e) { alert('Error: ' + (e.message || e)); });
@@ -1374,13 +1545,39 @@
         el.innerHTML = '<div class="calc-sim-breakdown"><p>Gasolina: <strong>' + r.gasolina.toFixed(2) + '</strong> · Traslado técn.: <strong>' + r.trasladoTecnico.toFixed(2) + '</strong> · MO: <strong>' + r.manoObra.toFixed(2) + '</strong> · G.fijos: <strong>' + r.gastosFijos.toFixed(2) + '</strong> · Camioneta: <strong>' + r.camioneta.toFixed(2) + '</strong> · Refacc.: <strong>' + r.refacciones.toFixed(2) + '</strong></p><p>Gastos generales: <strong>' + r.gastosGenerales.toFixed(2) + '</strong> · + Utilidad: <strong>' + r.precioConUtilidad.toFixed(2) + '</strong> · + Crédito (antes IVA): <strong>' + r.precioAntesIVA.toFixed(2) + '</strong> · IVA: <strong>' + r.iva.toFixed(2) + '</strong></p><p class="calc-sim-total">Total con IVA: <strong>' + r.total.toFixed(2) + '</strong></p></div>';
     }
 
+    function runMotoresSim() {
+        var CE = window.CostosEngine;
+        if (!CE) { alert('Motor CostosEngine no cargado.'); return; }
+        var dias = parseFloat(document.getElementById('motDias').value) || 0;
+        var km = parseFloat(document.getElementById('motKm').value) || 0;
+        var becerra = parseFloat(document.getElementById('motBecerra').value) || 0;
+        var uf = parseFloat(document.getElementById('motUtilidad').value) || 1.4;
+        var r = CE.calcularMotores(dias, km, becerra, uf);
+        var el = document.getElementById('motSimResult');
+        if (!el) return;
+        el.innerHTML = '<div class="calc-sim-breakdown"><p>Gasolina: <strong>' + r.gasolina.toFixed(2) + '</strong> · Ventas: <strong>' + r.ventas.toFixed(2) + '</strong> · Total G+V: <strong>' + r.totalGasVentas.toFixed(2) + '</strong></p><p>Becerra: <strong>' + r.becerra.toFixed(2) + '</strong> · Camioneta: <strong>' + r.camioneta.toFixed(2) + '</strong> · Gastos S/U: <strong>' + r.gastosSU.toFixed(2) + '</strong></p><p class="calc-sim-total">Utilidad (' + (uf*100) + '%): <strong>' + r.utilidad.toFixed(2) + '</strong> · Crédito 3%: <strong>' + r.credito.toFixed(2) + '</strong></p></div>';
+    }
+
+    function runSuministrosSim() {
+        var CE = window.CostosEngine;
+        if (!CE) { alert('Motor CostosEngine no cargado.'); return; }
+        var dias = parseFloat(document.getElementById('sumDias').value) || 0;
+        var km = parseFloat(document.getElementById('sumKm').value) || 0;
+        var proveedor = parseFloat(document.getElementById('sumProveedor').value) || 0;
+        var uf = parseFloat(document.getElementById('sumUtilidad').value) || 1.4;
+        var r = CE.calcularSuministros(dias, km, proveedor, uf);
+        var el = document.getElementById('sumSimResult');
+        if (!el) return;
+        el.innerHTML = '<div class="calc-sim-breakdown"><p>Gasolina: <strong>' + r.gasolina.toFixed(2) + '</strong> · Ventas: <strong>' + r.ventas.toFixed(2) + '</strong> · Total G+V: <strong>' + r.totalGasVentas.toFixed(2) + '</strong></p><p>Proveedor: <strong>' + r.proveedor.toFixed(2) + '</strong> · Camioneta: <strong>' + r.camioneta.toFixed(2) + '</strong> · Gastos S/U: <strong>' + r.gastosSU.toFixed(2) + '</strong></p><p class="calc-sim-total">Utilidad (' + (uf*100) + '%): <strong>' + r.utilidad.toFixed(2) + '</strong> · Crédito 3%: <strong>' + r.credito.toFixed(2) + '</strong></p></div>';
+    }
+
     // --- Selector departamento + cliente en simuladores ---
     function fillClienteSelector() {
         var sel = document.getElementById('selClienteCotizacion');
         if (!sel) return;
         sel.innerHTML = '<option value="">-- Selecciona cliente --</option>' +
             clientesTabulador.map(function(c) {
-                return '<option value="' + esc(c.id) + '" data-km="' + (c.km || 0) + '" data-horas="' + (c.horas_viaje || 0) + '" data-nombre="' + esc(c.nombre_cliente) + '"'>' + esc(c.nombre_cliente) + ' (' + (c.km || 0) + ' km)</option>';
+                return '<option value="' + esc(c.id) + '" data-km="' + (c.km || 0) + '" data-horas="' + (c.horas_viaje || 0) + '" data-nombre="' + esc(c.nombre_cliente) + '">' + esc(c.nombre_cliente) + ' (' + (c.km || 0) + ' km)</option>';
             }).join('');
     }
 
@@ -1392,11 +1589,18 @@
         // Cambiar departamento en CostosEngine
         if (window.CostosEngine) window.CostosEngine.setDepartamento(depto);
 
-        // Mostrar/ocultar simuladores
+        // Mostrar/ocultar simuladores según departamento
         var simLab = document.getElementById('simLaboratorio');
+        var simMotores = document.getElementById('simMotores');
         var simAuto = document.getElementById('simAutomatizacion');
-        if (simLab) simLab.style.display = (depto === 'laboratorio' || depto === 'motores' || depto === 'soporte') ? 'block' : 'none';
-        if (simAuto) simAuto.style.display = (depto === 'automatizacion' || depto === 'suministros') ? 'block' : 'none';
+        var simSuministros = document.getElementById('simSuministros');
+        var simViajes = document.getElementById('simViajes');
+
+        if (simLab) simLab.style.display = (depto === 'laboratorio') ? 'block' : 'none';
+        if (simMotores) simMotores.style.display = (depto === 'motores') ? 'block' : 'none';
+        if (simAuto) simAuto.style.display = (depto === 'automatizacion') ? 'block' : 'none';
+        if (simSuministros) simSuministros.style.display = (depto === 'suministros') ? 'block' : 'none';
+        if (simViajes) simViajes.style.display = (depto === 'soporte') ? 'block' : 'none';
 
         // Actualizar labels
         var labels = document.querySelectorAll('.sim-depto-label');
@@ -1492,8 +1696,24 @@
 
         var bLab = document.getElementById('btnCalcLaboratorio');
         if (bLab) bLab.addEventListener('click', runLaboratorioSim);
+        var bMot = document.getElementById('btnCalcMotores');
+        if (bMot) bMot.addEventListener('click', runMotoresSim);
         var bAuto = document.getElementById('btnCalcAutomatizacion');
         if (bAuto) bAuto.addEventListener('click', runAutomatizacionSim);
+        var bSum = document.getElementById('btnCalcSuministros');
+        if (bSum) bSum.addEventListener('click', runSuministrosSim);
+
+        // Inputs de tarifas base para tablas T1-T5
+        var tarifaInputs = [
+            'viajeGasPrecio','viajeRendimiento','viajeTarifaTecnico',
+            'labGasPrecio','labVentasDia','labTiempoInv','labGastosFijos','labCamioneta',
+            'motGasPrecio','motVentasDia','motCamioneta',
+            'sumGasPrecio','sumVentasDia','sumCamioneta'
+        ];
+        tarifaInputs.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('input', function() { renderTabuladorViaticos(); });
+        });
 
         // Selector departamento + cliente en simuladores
         var selDepto = document.getElementById('selDeptoCotizacion');
@@ -1535,9 +1755,37 @@
 
         // BOM Event listeners
         if (document.getElementById('btnBOMNuevo')) document.getElementById('btnBOMNuevo').addEventListener('click', function() { openModalBOM(null); });
-        if (document.getElementById('btnBOMRecargar')) document.getElementById('btnBOMRecargar').addEventListener('click', function() { loadBOM().then(renderBOM).then(fillBOMFiltros); });
+        if (document.getElementById('btnBOMRecargar')) document.getElementById('btnBOMRecargar').addEventListener('click', function() { loadBOM().then(function() { renderBOM(); fillBOMFiltros(); renderBOMCatalogo(); fillBOMCatalogoCategorias(); }); });
         if (document.getElementById('bomFiltroCategoria')) document.getElementById('bomFiltroCategoria').addEventListener('change', applyBOMFiltros);
         if (document.getElementById('bomFiltroEstado')) document.getElementById('bomFiltroEstado').addEventListener('change', applyBOMFiltros);
+
+        // BOM Catálogo visual listeners
+        var bomCatBusqueda = document.getElementById('bomCatalogoBusqueda');
+        if (bomCatBusqueda) bomCatBusqueda.addEventListener('input', function() {
+            bomCatalogoBusqueda = bomCatBusqueda.value.trim();
+            bomCatalogoPagina = 1;
+            renderBOMCatalogo();
+        });
+        var bomCatSel = document.getElementById('bomCatalogoCategoria');
+        if (bomCatSel) bomCatSel.addEventListener('change', function() {
+            bomCatalogoFiltroCat = bomCatSel.value;
+            bomCatalogoPagina = 1;
+            renderBOMCatalogo();
+        });
+        var btnBomGrid = document.getElementById('btnBomVistaGrid');
+        var btnBomLista = document.getElementById('btnBomVistaLista');
+        if (btnBomGrid) btnBomGrid.addEventListener('click', function() {
+            bomCatalogoVista = 'grid';
+            if (btnBomGrid) btnBomGrid.classList.add('btn-secondary');
+            if (btnBomLista) btnBomLista.classList.remove('btn-secondary');
+            renderBOMCatalogo();
+        });
+        if (btnBomLista) btnBomLista.addEventListener('click', function() {
+            bomCatalogoVista = 'lista';
+            if (btnBomLista) btnBomLista.classList.add('btn-secondary');
+            if (btnBomGrid) btnBomGrid.classList.remove('btn-secondary');
+            renderBOMCatalogo();
+        });
 
         // Servicios Event listeners
         if (document.getElementById('btnServicioNuevo')) document.getElementById('btnServicioNuevo').addEventListener('click', function() { openModalServicio(null); });
@@ -1570,6 +1818,7 @@
             renderFunciones();
             renderCostos();
             renderClientes();
+            renderTabuladorViajes();
             renderTabuladorViaticos();
             renderClientesTabuladorTabla();
             fillClienteSelector();
@@ -1589,6 +1838,8 @@
                     renderBOM();
                     renderServicios();
                     fillBOMFiltros();
+                    renderBOMCatalogo();
+                    fillBOMCatalogoCategorias();
                 } catch (bomErr) {
                     console.warn('[Calculadoras] BOM/Servicios:', bomErr);
                 }
@@ -1596,6 +1847,183 @@
         } catch (e) {
             console.warn('[Calculadoras] init:', e);
         }
+    }
+
+    // ==================== CATÁLOGO VISUAL BOM ====================
+    var bomCatalogoData = [];
+    var bomCatalogoPagina = 1;
+    var bomCatalogoPorPagina = 24;
+    var bomCatalogoVista = 'grid';
+    var bomCatalogoFiltroCat = '';
+    var bomCatalogoBusqueda = '';
+
+    function _bomImageUrl(item) {
+        var idx = window.BOM_IMAGE_INDEX;
+        if (!idx) return '';
+        // 1. Item number lookup (most reliable — from image_map.json)
+        var num = item.numero_item || item.item || '';
+        if (num && idx[String(num)]) return '/panel/assets/bom/' + idx[String(num)];
+        // 2. Part number lookup (normalized: lowercase, remove spaces, dots→dashes, underscores→dashes)
+        var pn = (item.numero_parte || item.part_number || '').toLowerCase().replace(/\s+/g, '').replace(/\./g, '-').replace(/_/g, '-');
+        if (pn && idx[pn]) return '/panel/assets/bom/' + idx[pn];
+        // 3. Part number with underscores preserved
+        var pn2 = (item.numero_parte || item.part_number || '').toLowerCase().replace(/\s+/g, '').replace(/\./g, '-');
+        if (pn2 && idx[pn2]) return '/panel/assets/bom/' + idx[pn2];
+        return '';
+    }
+    }
+
+    function fillBOMCatalogoCategorias() {
+        var sel = document.getElementById('bomCatalogoCategoria');
+        if (!sel) return;
+        var cats = {};
+        bomList.forEach(function(m) {
+            if (m.categoria) cats[m.categoria] = true;
+        });
+        var current = sel.value;
+        sel.innerHTML = '<option value="">Todas las categorías</option>' +
+            Object.keys(cats).sort().map(function(c) {
+                return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+            }).join('');
+        if (current && cats[current]) sel.value = current;
+    }
+
+    function _filterBOMCatalogo() {
+        var term = bomCatalogoBusqueda.toLowerCase();
+        return bomList.filter(function(m) {
+            var matchCat = !bomCatalogoFiltroCat || m.categoria === bomCatalogoFiltroCat;
+            if (!matchCat) return false;
+            if (!term) return true;
+            return (m.descripcion || '').toLowerCase().indexOf(term) >= 0 ||
+                   (m.numero_parte || '').toLowerCase().indexOf(term) >= 0 ||
+                   (m.categoria || '').toLowerCase().indexOf(term) >= 0 ||
+                   (m.proveedor || '').toLowerCase().indexOf(term) >= 0 ||
+                   String(m.item || '').indexOf(term) >= 0;
+        });
+    }
+
+    function renderBOMCatalogo() {
+        var filtered = _filterBOMCatalogo();
+        var totalPages = Math.ceil(filtered.length / bomCatalogoPorPagina) || 1;
+        if (bomCatalogoPagina > totalPages) bomCatalogoPagina = totalPages;
+        var start = (bomCatalogoPagina - 1) * bomCatalogoPorPagina;
+        var page = filtered.slice(start, start + bomCatalogoPorPagina);
+
+        if (bomCatalogoVista === 'grid') {
+            _renderBOMCatalogoGrid(page);
+        } else {
+            _renderBOMCatalogoTabla(page);
+        }
+        _renderBOMCatalogoPaginacion(totalPages);
+    }
+
+    function _renderBOMCatalogoGrid(items) {
+        var container = document.getElementById('bomCatalogoGrid');
+        var tableContainer = document.getElementById('bomCatalogoTabla');
+        if (!container) return;
+        if (tableContainer) tableContainer.style.display = 'none';
+        container.style.display = 'grid';
+
+        if (!items || items.length === 0) {
+            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-secondary);">Sin resultados</div>';
+            return;
+        }
+        container.innerHTML = items.map(function(m) {
+            var imgUrl = _bomImageUrl(m);
+            var imgHtml = imgUrl
+                ? '<div class="card-img" style="background-image: url(\'' + imgUrl + '\'); background-size: contain; background-repeat: no-repeat; background-position: center;"></div>'
+                : '<div class="card-img"><i class="fas fa-microchip card-img-icon"></i></div>';
+            var precio = m.precio_unitario != null ? Number(m.precio_unitario) : 0;
+            var proveedores = '';
+            if (m.proveedor) {
+                proveedores = '<div class="card-prov-row"><span class="card-prov-chip">' + esc(m.proveedor) + '</span></div>';
+            }
+            return '<div class="sum-card" data-bom-id="' + esc(m.id) + '">' +
+                imgHtml +
+                '<div class="card-body">' +
+                    '<div class="card-header-row"><span class="card-code">' + esc(m.numero_parte || m.item || '—') + '</span></div>' +
+                    '<div class="card-desc">' + esc(m.descripcion || '—') + '</div>' +
+                    '<div class="card-cat">' + esc(m.categoria || '') + '</div>' +
+                    proveedores +
+                '</div>' +
+                '<div class="card-footer">' +
+                    '<span class="card-price">$' + precio.toLocaleString('es-MX', {minimumFractionDigits: 2}) + '</span>' +
+                    '<span class="card-stock">' + esc(m.moneda || 'MXN') + '</span>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+
+        container.querySelectorAll('.sum-card[data-bom-id]').forEach(function(card) {
+            card.addEventListener('click', function() {
+                openModalBOM(card.getAttribute('data-bom-id'));
+            });
+        });
+    }
+
+    function _renderBOMCatalogoTabla(items) {
+        var container = document.getElementById('bomCatalogoTabla');
+        var gridContainer = document.getElementById('bomCatalogoGrid');
+        if (!container) return;
+        if (gridContainer) gridContainer.style.display = 'none';
+        container.style.display = 'block';
+
+        if (!items || items.length === 0) {
+            container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--text-secondary);">Sin resultados</p>';
+            return;
+        }
+        var html = '<table class="lista-table"><thead><tr>' +
+            '<th>Img</th><th>Código</th><th>Descripción</th><th>Categoría</th><th>Proveedor</th><th>Precio</th><th>Estado</th>' +
+            '</tr></thead><tbody>';
+        items.forEach(function(m) {
+            var imgUrl = _bomImageUrl(m);
+            var imgCell = imgUrl
+                ? '<td style="width:50px;"><img src="' + imgUrl + '" style="width:40px;height:40px;object-fit:contain;" onerror="this.style.display=\'none\'"></td>'
+                : '<td style="width:50px;text-align:center;"><i class="fas fa-microchip" style="color:var(--text-muted);"></i></td>';
+            html += '<tr style="cursor:pointer;" data-bom-id="' + esc(m.id) + '">' +
+                imgCell +
+                '<td>' + esc(m.numero_parte || m.item || '—') + '</td>' +
+                '<td>' + esc(m.descripcion || '—') + '</td>' +
+                '<td>' + esc(m.categoria || '') + '</td>' +
+                '<td>' + esc(m.proveedor || '') + '</td>' +
+                '<td style="text-align:right;">$' + (m.precio_unitario != null ? Number(m.precio_unitario).toFixed(2) : '0.00') + '</td>' +
+                '<td><span class="status-badge ' + (m.estado === 'Activo' ? 'status-success' : 'status-error') + '">' + esc(m.estado || 'Inactivo') + '</span></td>' +
+                '</tr>';
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+
+        container.querySelectorAll('tr[data-bom-id]').forEach(function(tr) {
+            tr.addEventListener('click', function() {
+                openModalBOM(tr.getAttribute('data-bom-id'));
+            });
+        });
+    }
+
+    function _renderBOMCatalogoPaginacion(totalPages) {
+        var container = document.getElementById('bomCatalogoPaginacion');
+        if (!container || totalPages <= 1) {
+            if (container) container.innerHTML = '';
+            return;
+        }
+        var html = '';
+        if (bomCatalogoPagina > 1) html += '<button data-page="' + (bomCatalogoPagina - 1) + '"><i class="fas fa-chevron-left"></i></button>';
+        for (var i = 1; i <= totalPages; i++) {
+            if (i === bomCatalogoPagina) {
+                html += '<button class="active" data-page="' + i + '">' + i + '</button>';
+            } else if (Math.abs(i - bomCatalogoPagina) <= 2 || i === 1 || i === totalPages) {
+                html += '<button data-page="' + i + '">' + i + '</button>';
+            } else if (i === bomCatalogoPagina - 3 || i === bomCatalogoPagina + 3) {
+                html += '<button disabled>...</button>';
+            }
+        }
+        if (bomCatalogoPagina < totalPages) html += '<button data-page="' + (bomCatalogoPagina + 1) + '"><i class="fas fa-chevron-right"></i></button>';
+        container.innerHTML = html;
+        container.querySelectorAll('button[data-page]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                bomCatalogoPagina = parseInt(btn.getAttribute('data-page'), 10);
+                renderBOMCatalogo();
+            });
+        });
     }
 
     window.calculadorasMod = { init: init };

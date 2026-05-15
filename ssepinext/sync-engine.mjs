@@ -4,7 +4,14 @@ import { createClient } from '@supabase/supabase-js';
 const TABLES_TO_SYNC = [
   'ventas','compras','ordenes_taller','ordenes_motores',
   'proyectos_automatizacion','cotizaciones','facturas',
-  'inventario','contactos','orden_historial','coi_sync_queue'
+  'inventario','contactos','orden_historial','coi_sync_queue',
+  'actividades_diarias','actividades_historial','actividades_subtareas',
+  'clientes_adeudos','notificaciones','suministros_items',
+  'soporte_visitas','ingresos_contabilidad','bom_automatizacion',
+  'calculadoras','calculadora_costos','calculadora_clientes',
+  'calculadora_hoja_filas','servicios_automatizacion',
+  'parametros_costos','clientes_tabulador','estado_pipeline_unificado',
+  'pagos_nomina'
 ];
 
 export class SyncEngine {

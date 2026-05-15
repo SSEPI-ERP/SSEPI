@@ -1,0 +1,14 @@
+{
+  "_schema_version": 1,
+  "_last_updated": "2026-05-05T00:00:00.000Z",
+  "records": [
+    {"nombre":"PLC / HMI","clave":"plc_hmi","tarifa_hr":650,"unidad":"hora","activo":true},
+    {"nombre":"Servomotor","clave":"servomotor","tarifa_hr":700,"unidad":"hora","activo":true},
+    {"nombre":"Diseño de tablero","clave":"diseno_tablero","tarifa_hr":450,"unidad":"hora","activo":true},
+    {"nombre":"Diseño mecanico","clave":"diseno_mecanico","tarifa_hr":900,"unidad":"hora","activo":true},
+    {"nombre":"Instalacion","clave":"instalacion","tarifa_hr":350,"unidad":"hora","activo":true},
+    {"nombre":"Fabricacion","clave":"fabricacion","tarifa_hr":600,"unidad":"hora","activo":true},
+    {"nombre":"Soporte tecnico","clave":"soporte","tarifa_hr":1100,"unidad":"hora","activo":true},
+    {"nombre":"Arquitectura","clave":"arquitectura","tarifa_hr":150,"unidad":"hora","activo":true}
+  ]
+}

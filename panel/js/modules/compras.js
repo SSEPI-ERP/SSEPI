@@ -9,6 +9,7 @@ import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
 import { notifyCompraIfEligible } from '../core/coi-sync-engine.js';
 import { mergePriorityProvidersFirst } from '../core/ssepi-runtime/priority-suppliers-merge.js';
+import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
 
 const ComprasModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -20,6 +21,8 @@ const ComprasModule = (function() {
     let ordenesTaller = [];
     let ordenesMotores = [];
     let proyectos = [];
+    /** Pestaña activa en el panel Laboratorio / Motores / Automatización */
+    let operativasTabCompras = 'taller';
     let currentCompra = null;
     let compraId = null;
     let isNewCompra = true;
@@ -59,7 +62,11 @@ const ComprasModule = (function() {
         }
         _startClock();
         _setupRealtime();
+        _bindOperativasComprasPanel();
+        _renderOperativasComprasList();
+        setTimeout(_consumeVinculacionUrlParams, 500);
         console.log('✅ Módulo compras iniciado');
+        _initExportButton();
     }
 
     async function _initUI() {
@@ -78,6 +85,26 @@ const ComprasModule = (function() {
         }
         _setFiltroMesActual();
         _applyUrlQueryFilters();
+    }
+
+    async function _initExportButton() {
+        try {
+            const profile = await authService.getCurrentProfile();
+            if (!isAdminExportAllowed(profile)) return;
+            createExportButton('exportCSVContainer', function() {
+                const headers = [
+                    { key: 'folio', label: 'Folio' },
+                    { key: 'proveedor', label: 'Proveedor' },
+                    { key: 'departamento', label: 'Departamento' },
+                    { key: 'estado', label: 'Estado' },
+                    { key: 'total', label: 'Total' },
+                    { key: 'fecha_solicitud', label: 'Fecha Solicitud' },
+                    { key: 'fecha_entrega', label: 'Fecha Entrega' },
+                    { key: 'urgencia', label: 'Urgencia' }
+                ];
+                downloadCSV('compras_' + new Date().toISOString().slice(0,10) + '.csv', compras, headers);
+            });
+        } catch (e) { console.warn('[Compras] Export CSV init:', e); }
     }
 
     function _setFiltroMesActual() {
@@ -180,15 +207,19 @@ const ComprasModule = (function() {
     }
 
     async function _loadTaller() {
-        ordenesTaller = await tallerService.select({ estado: ['Nuevo', 'Diagnóstico', 'En Espera'] }, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 });
+        // Misma amplitud que Laboratorio/Ventas: órdenes fuera de Nuevo/Diagnóstico/En espera siguen siendo vinculables en pruebas
+        ordenesTaller = await tallerService.select({}, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 });
+        _renderOperativasComprasList();
     }
 
     async function _loadMotores() {
-        ordenesMotores = await motoresService.select({ estado: ['Nuevo', 'Diagnóstico', 'En Espera'] }, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 });
+        ordenesMotores = await motoresService.select({}, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 });
+        _renderOperativasComprasList();
     }
 
     async function _loadProyectos() {
-        proyectos = await proyectosService.select({ estado: ['pendiente', 'progreso'] }, { orderBy: 'fecha', ascending: false, page: 0, pageSize: 800 });
+        proyectos = await proyectosService.select({}, { orderBy: 'fecha', ascending: false, page: 0, pageSize: 800 });
+        _renderOperativasComprasList();
     }
 
     function _populateProveedoresSelect() {
@@ -294,7 +325,7 @@ const ComprasModule = (function() {
                 }
             })
             .subscribe();
-        subscriptions.push(subNotificaciones);
+        subscriptions.push(subHistorial);
     }
 
     // ==================== FILTROS Y VISTAS ====================
@@ -443,15 +474,95 @@ const ComprasModule = (function() {
         }
     }
 
-    function _showToast(message, type = 'info') {
-        const container = document.getElementById('toastContainer') || document.body;
-        const toast = document.createElement('div');
-        const colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
-        toast.style.cssText = `position:fixed;top:20px;right:20px;z-index:99999;background:${colors[type]};color:white;padding:12px 20px;border-radius:8px;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-width:350px;cursor:pointer;`;
-        toast.textContent = message;
-        toast.onclick = () => toast.remove();
-        container.appendChild(toast);
-        setTimeout(() => toast.remove(), 4000);
+    async function _descargarOC() {
+        const compra = currentCompra;
+        if (!compra) { _showToast('No hay compra seleccionada', 'error'); return; }
+        try {
+            // Cargar plantilla OC.xlsx desde el servidor
+            const resp = await fetch('/excel/OC.xlsx');
+            if (!resp.ok) throw new Error('No se pudo cargar la plantilla OC.xlsx');
+            const arrayBuffer = await resp.arrayBuffer();
+            const wb = XLSX.read(arrayBuffer, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+
+            // Llenar datos del encabezado
+            // F1 C5 = FOLIO
+            if (!ws['E1']) ws['E1'] = {};
+            ws['E1'].v = compra.folio || '';
+            ws['E1'].t = 's';
+
+            // F9 C2 = Numero de orden, F9 C6 = Fecha
+            if (!ws['B9']) ws['B9'] = {};
+            ws['B9'].v = compra.folio || '';
+            ws['B9'].t = 's';
+            if (!ws['F9']) ws['F9'] = {};
+            ws['F9'].v = compra.created_at ? new Date(compra.created_at).toLocaleDateString('es-MX') : '';
+            ws['F9'].t = 's';
+
+            // F12 C2 = Servicio/Departamento
+            if (!ws['B12']) ws['B12'] = {};
+            ws['B12'].v = compra.departamento || '';
+            ws['B12'].t = 's';
+
+            // Llenar items (filas 14-29 = max 16 items)
+            const items = currentCompra.itemsData || compra.items || [];
+            for (let i = 0; i < Math.min(items.length, 16); i++) {
+                const item = items[i];
+                const row = 14 + i;
+                // N.º
+                if (!ws['A' + row]) ws['A' + row] = {};
+                ws['A' + row].v = i + 1;
+                ws['A' + row].t = 'n';
+                // Descripción
+                if (!ws['B' + row]) ws['B' + row] = {};
+                ws['B' + row].v = item.descripcion || '';
+                ws['B' + row].t = 's';
+                // Cantidad
+                if (!ws['C' + row]) ws['C' + row] = {};
+                ws['C' + row].v = Number(item.cantidad || 0);
+                ws['C' + row].t = 'n';
+                // Costo USD
+                if (!ws['D' + row]) ws['D' + row] = {};
+                ws['D' + row].v = Number(item.costo_unitario || 0);
+                ws['D' + row].t = 'n';
+                // Costo MNX (si existe)
+                if (!ws['E' + row]) ws['E' + row] = {};
+                ws['E' + row].v = Number(item.costo_unitario_mxn || item.costo_unitario || 0);
+                ws['E' + row].t = 'n';
+                // Total (cantidad * costo)
+                if (!ws['F' + row]) ws['F' + row] = {};
+                ws['F' + row].v = Number(item.costo_total || (item.cantidad * item.costo_unitario) || 0);
+                ws['F' + row].t = 'n';
+            }
+
+            // Subtotal fila 30 col F
+            if (!ws['F30']) ws['F30'] = {};
+            ws['F30'].v = Number(compra.subtotal || compra.total || 0);
+            ws['F30'].t = 'n';
+
+            // Impuesto fila 31 col F
+            if (!ws['F31']) ws['F31'] = {};
+            const iva = Number(compra.iva || compra.impuesto || (compra.total * 0.16) || 0);
+            ws['F31'].v = iva;
+            ws['F31'].t = 'n';
+
+            // Total fila 32 col F
+            if (!ws['F32']) ws['F32'] = {};
+            ws['F32'].v = Number(compra.total || 0);
+            ws['F32'].t = 'n';
+
+            // Comentarios fila 34 col A
+            if (!ws['A34']) ws['A34'] = {};
+            ws['A34'].v = compra.notas || compra.comentarios || '';
+            ws['A34'].t = 's';
+
+            // Descargar
+            XLSX.writeFile(wb, `OC_${compra.folio || compra.id}.xlsx`);
+            _showToast('OC descargada correctamente', 'success');
+        } catch (e) {
+            console.error('[Compras] Error descargando OC:', e);
+            _showToast('Error al descargar OC: ' + e.message, 'error');
+        }
     }
 
     function _renderGrafica(ordenes) {
@@ -544,7 +655,7 @@ const ComprasModule = (function() {
                         .single();
                     if (ordenTaller) {
                         estatusOrden = {
-                            modulo: 'Taller',
+                            modulo: 'Laboratorio',
                             folio: ordenTaller.folio,
                             estado: ordenTaller.estado,
                             cliente: ordenTaller.cliente_nombre,
@@ -598,6 +709,11 @@ const ComprasModule = (function() {
                     <div><strong>Prioridad:</strong> ${compra.prioridad || 'Normal'}</div>
                     <div><strong>Estado:</strong> ${_getEstadoLabel(compra.estado)}</div>
                 </div>
+                <div style="margin-top: 16px;">
+                    <button onclick="comprasModule._descargarOC()" class="btn-ssepi btn-compras" style="display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-file-excel"></i> Descargar OC
+                    </button>
+                </div>
             </div>
             ${compra.vinculacion ? `
             <div class="detalle-section">
@@ -606,12 +722,12 @@ const ComprasModule = (function() {
                     <div><strong>Tipo:</strong> ${compra.vinculacion.tipo}</div>
                     <div><strong>ID:</strong> ${compra.vinculacion.id}</div>
                     <div><strong>Cliente/Orden:</strong> ${compra.vinculacion.nombre || ''}</div>
-                    <div><strong>Folio Taller:</strong> ${compra.vinculacion.folio_taller || ''}</div>
+                    <div><strong>Folio Laboratorio:</strong> ${compra.vinculacion.folio_taller || ''}</div>
                 </div>
                 ${estatusOrden ? `
                 <div style="margin-top: 12px; padding: 12px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px;">
                     <div style="color: #0369a1; font-weight: 600; margin-bottom: 8px;">
-                        <i class="fas fa-${estatusOrden.modulo === 'Taller' ? 'microchip' : estatusOrden.modulo === 'Motores' ? 'industry' : 'robot'}"></i>
+                        <i class="fas fa-${estatusOrden.modulo === 'Laboratorio' ? 'microchip' : estatusOrden.modulo === 'Motores' ? 'industry' : 'robot'}"></i>
                         Estatus en ${estatusOrden.modulo}
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
@@ -693,7 +809,7 @@ const ComprasModule = (function() {
 
     function _resetFormulario() {
         document.getElementById('proveedorSelect').value = '';
-        document.getElementById('departamentoSelect').value = 'Taller Electrónica';
+        document.getElementById('departamentoSelect').value = 'Laboratorio de Electrónica';
         document.getElementById('fechaRequerida').value = new Date().toISOString().split('T')[0];
         document.getElementById('prioridadSelect').value = 'Normal';
         document.getElementById('vinculacionTipo').value = '';
@@ -745,7 +861,7 @@ const ComprasModule = (function() {
         const payload = {
             folio,
             proveedor: proveedor || 'PENDIENTE',
-            departamento: departamento || 'Taller Electrónica',
+            departamento: departamento || 'Laboratorio de Electrónica',
             fecha: new Date().toISOString(),
             fecha_requerida: fechaRequerida || new Date().toISOString().split('T')[0],
             prioridad: prioridad || 'Normal',
@@ -897,7 +1013,7 @@ const ComprasModule = (function() {
                         compra_id: inserted.id,
                         folio,
                         orden_id: vinculacion.id,
-                        mensaje: `Nueva orden de compra ${folio} creada para taller`,
+                        mensaje: `Nueva orden de compra ${folio} creada para Laboratorio`,
                         leido: false,
                         fecha: new Date().toISOString()
                     }, csrfToken);
@@ -923,9 +1039,9 @@ const ComprasModule = (function() {
             } else if (tipo === 'motor') {
                 const orden = await motoresService.getById(id);
                 return orden?.cliente_nombre || '';
-            } else if (tipo === 'proyecto') {
+            } else if (tipo === 'proyecto' || tipo === 'automatizacion') {
                 const proy = await proyectosService.getById(id);
-                return proy?.cliente || '';
+                return proy?.cliente || proy?.nombre || '';
             }
         } catch (e) {
             console.error(e);
@@ -938,13 +1054,13 @@ const ComprasModule = (function() {
 
         let compraData = null;
         let ordenTallerData = null;
-        let departamentoPorDefecto = 'Taller Electrónica';
+        let departamentoPorDefecto = 'Laboratorio de Electrónica';
 
         try {
             // Primero obtener datos de la orden de taller
             if (tipo === 'taller') {
                 ordenTallerData = await tallerService.getById(id);
-                departamentoPorDefecto = 'Taller Electrónica';
+                departamentoPorDefecto = 'Laboratorio de Electrónica';
                 console.log('[Compras] Orden taller:', ordenTallerData);
             } else if (tipo === 'motor') {
                 ordenTallerData = await motoresService.getById(id);
@@ -1065,14 +1181,15 @@ const ComprasModule = (function() {
         if (imprimirOC) imprimirOC.addEventListener('click', function () {
             var el = document.getElementById('detalleContenido');
             if (!el) return;
-            var ventana = window.open('', '_blank');
-            ventana.document.write('<!DOCTYPE html><html><head><title>Orden de compra</title><style>body{font-family:Inter,sans-serif;padding:20px;} table{border-collapse:collapse;} th,td{border:1px solid #ddd;padding:8px;}</style></head><body><h2>Orden de compra</h2>' + el.innerHTML + '</body></html>');
-            ventana.document.close();
-            ventana.focus();
-            setTimeout(function () { ventana.print(); ventana.close(); }, 300);
+            var html = '<!DOCTYPE html><html><head><title>Orden de compra</title><style>body{font-family:Inter,sans-serif;padding:20px;} table{border-collapse:collapse;} th,td{border:1px solid #ddd;padding:8px;}</style></head><body><h2>Orden de compra</h2>' + el.innerHTML + '</body></html>';
+            var blob = new Blob([html], { type: 'text/html' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.rel = 'noopener';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
         });
-        var descargarPDFOC = document.getElementById('descargarPDFOrdenCompraBtn');
-        if (descargarPDFOC) descargarPDFOC.addEventListener('click', async function () {
+        async function _generarPDFCompra(preview = false) {
             if (!currentCompra || !window.pdfGenerator) return;
             var user = await authService.getCurrentProfile();
             var data = {
@@ -1082,8 +1199,12 @@ const ComprasModule = (function() {
                 items: (currentCompra.items || []).map(function (i) { return { desc: i.desc, sku: i.sku, qty: i.qty, price: i.price }; }),
                 total: currentCompra.total
             };
-            window.pdfGenerator.generateOrdenCompra(data, user);
-        });
+            await window.pdfGenerator.generateOrdenCompra(data, user, preview);
+        }
+        var descargarPDFOC = document.getElementById('descargarPDFOrdenCompraBtn');
+        if (descargarPDFOC) descargarPDFOC.addEventListener('click', () => _generarPDFCompra(false));
+        var vistaPreviaPDFOC = document.getElementById('vistaPreviaPDFOrdenCompraBtn');
+        if (vistaPreviaPDFOC) vistaPreviaPDFOC.addEventListener('click', () => _generarPDFCompra(true));
         document.getElementById('closeNuevaOrdenModal').addEventListener('click', () => {
             document.getElementById('nuevaOrdenModal').classList.remove('active');
         });
@@ -1164,6 +1285,100 @@ const ComprasModule = (function() {
         }
     }
 
+    function _operativaVigente(row) {
+        const s = String(row.estado || '').toLowerCase();
+        return !s.includes('cancel');
+    }
+
+    function _bindOperativasComprasPanel() {
+        const host = document.getElementById('operativasTabsCompras');
+        if (!host) return;
+        host.querySelectorAll('button[data-op-tab]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                operativasTabCompras = btn.getAttribute('data-op-tab') || 'taller';
+                host.querySelectorAll('button[data-op-tab]').forEach(function (b) {
+                    b.classList.toggle('active', b.getAttribute('data-op-tab') === operativasTabCompras);
+                });
+                _renderOperativasComprasList();
+            });
+        });
+    }
+
+    function _renderOperativasComprasList() {
+        const list = document.getElementById('operativasListCompras');
+        if (!list) return;
+        const nt = (ordenesTaller || []).filter(_operativaVigente).length;
+        const nm = (ordenesMotores || []).filter(_operativaVigente).length;
+        const np = (proyectos || []).filter(_operativaVigente).length;
+        const c1 = document.getElementById('opCountTaller');
+        const c2 = document.getElementById('opCountMotor');
+        const c3 = document.getElementById('opCountAuto');
+        if (c1) c1.textContent = '(' + nt + ')';
+        if (c2) c2.textContent = '(' + nm + ')';
+        if (c3) c3.textContent = '(' + np + ')';
+        let rows = operativasTabCompras === 'motor' ? ordenesMotores : (operativasTabCompras === 'auto' ? proyectos : ordenesTaller);
+        rows = (rows || []).filter(_operativaVigente).slice(0, 50);
+        function esc(s) {
+            const d = document.createElement('div');
+            d.textContent = s == null ? '' : String(s);
+            return d.innerHTML;
+        }
+        if (!rows.length) {
+            list.innerHTML = '<div class="op-empty">No hay órdenes o proyectos en esta pestaña (o sin permiso de lectura).</div>';
+            return;
+        }
+        const tipoVinc = operativasTabCompras === 'motor' ? 'motor' : (operativasTabCompras === 'auto' ? 'automatizacion' : 'taller');
+        list.innerHTML = rows.map(function (r) {
+            const folio = r.folio || (r.id && String(r.id).slice(-8)) || '—';
+            const cliente = r.cliente_nombre || r.cliente || r.nombre || '—';
+            const st = r.estado || '—';
+            const id = r.id;
+            return '<div class="op-row">' +
+                '<div><strong>' + esc(folio) + '</strong> · ' + esc(cliente) + '<br><span class="op-meta">' + esc(st) + '</span></div>' +
+                '<div class="op-actions">' +
+                '<button type="button" class="btn-ssepi btn-compras op-go" style="font-size:12px;padding:6px 12px;" data-vinc-tipo="' + esc(tipoVinc) + '" data-vinc-id="' + esc(id) + '">Nueva compra vinculada</button>' +
+                '</div></div>';
+        }).join('');
+        list.querySelectorAll('.op-go').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const t = btn.getAttribute('data-vinc-tipo');
+                const vid = btn.getAttribute('data-vinc-id');
+                const dep = document.getElementById('departamentoSelect');
+                if (dep) {
+                    if (t === 'taller') dep.value = 'Laboratorio de Electrónica';
+                    else if (t === 'motor') dep.value = 'Taller Motores';
+                    else dep.value = 'Automatización';
+                }
+                const selTipo = document.getElementById('vinculacionTipo');
+                if (selTipo) selTipo.value = t === 'automatizacion' ? 'automatizacion' : t;
+                const selId = document.getElementById('vinculacionId');
+                if (selId) selId.value = vid;
+                _nuevaOrden();
+            });
+        });
+    }
+
+    function _consumeVinculacionUrlParams() {
+        const p = new URLSearchParams(window.location.search);
+        const vt = p.get('vincTipo');
+        const vid = p.get('vincId');
+        if (!vt || !vid) return;
+        const dep = document.getElementById('departamentoSelect');
+        if (dep) {
+            if (vt === 'taller') dep.value = 'Laboratorio de Electrónica';
+            else if (vt === 'motor') dep.value = 'Taller Motores';
+            else if (vt === 'automatizacion' || vt === 'proyecto') dep.value = 'Automatización';
+        }
+        const selTipo = document.getElementById('vinculacionTipo');
+        if (selTipo) selTipo.value = vt === 'proyecto' ? 'proyecto' : vt;
+        const selId = document.getElementById('vinculacionId');
+        if (selId) selId.value = vid;
+        _nuevaOrden();
+        try {
+            history.replaceState({}, document.title, window.location.pathname);
+        } catch (e) { /* ignore */ }
+    }
+
     // ==================== LIMPIEZA ====================
     function _cleanup() {
         subscriptions.forEach(sub => sub.unsubscribe());
@@ -1177,7 +1392,8 @@ const ComprasModule = (function() {
         _abrirDetalle,
         _crearOrdenDesdeSolicitud,
         _verProveedor,
-        _recibirCompra
+        _recibirCompra,
+        _descargarOC
     };
 })();
 

@@ -1,0 +1,13 @@
+{
+  "_schema_version": 1,
+  "_last_updated": "2026-05-05T00:00:00.000Z",
+  "records": [
+    {"sku":"BOM-PLC-001","nombre":"PLC Allen Bradley CompactLogix","cantidad_base":1,"precio_unitario":4500,"categoria":"control","activo":true},
+    {"sku":"BOM-HMI-001","nombre":"HMI PanelView Plus 7","cantidad_base":1,"precio_unitario":3200,"categoria":"interfaz","activo":true},
+    {"sku":"BOM-SRV-001","nombre":"Servomotor Allen Bradley Kinetix 5500","cantidad_base":1,"precio_unitario":6800,"categoria":"motion","activo":true},
+    {"sku":"BOM-VFD-001","nombre":"Variador PowerFlex 525","cantidad_base":1,"precio_unitario":2800,"categoria":"drive","activo":true},
+    {"sku":"BOM-TER-001","nombre":"Terminales y conectores","cantidad_base":1,"precio_unitario":450,"categoria":"electricos","activo":true},
+    {"sku":"BOM-CBL-001","nombre":"Cable apantallado 4x1.5mm","cantidad_base":50,"precio_unitario":35,"categoria":"cableado","activo":true},
+    {"sku":"BOM-NEU-001","nombre":"Neumatica valvulas y actuadores","cantidad_base":1,"precio_unitario":2200,"categoria":"neumatica","activo":true}
+  ]
+}

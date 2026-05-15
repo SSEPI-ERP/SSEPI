@@ -7,11 +7,53 @@
 
 import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
+import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
 
 const InventarioModule = (function() {
     // ==================== ESTADO PRIVADO ====================
     let productos = [];
-    let categoriaActual = 'refaccion';
+    let categoriaActual = 'todas';
+
+    // Mapeo de subcategorías específicas a categorías principales del tab
+    const CAT_MAP = {
+        'ic_analogo': 'refaccion', 'ic_digital': 'refaccion', 'semiconductor_potencia': 'refaccion',
+        'resistencia': 'refaccion', 'capacitor': 'refaccion', 'diodo': 'refaccion', 'transistor': 'refaccion',
+        'optoacoplador': 'refaccion', 'fuente_regulador': 'refaccion', 'fusible': 'refaccion',
+        'relevador': 'refaccion', 'bateria': 'refaccion', 'memoria': 'refaccion',
+        'interfaz_comunicacion': 'refaccion', 'conector_accesorio': 'refaccion', 'controlador': 'refaccion',
+        'plc': 'refaccion', 'hmi': 'refaccion', 'servodrive': 'refaccion', 'servomotor': 'refaccion',
+        'sensor': 'refaccion', 'encoder': 'refaccion', 'comunicacion': 'refaccion',
+        'alimentacion': 'refaccion', 'proteccion_electrica': 'refaccion', 'variador': 'refaccion',
+        'motor': 'refaccion', 'camara': 'refaccion',
+        'material_electrico': 'almacenable', 'material_mecanico': 'almacenable',
+        'seguridad_industrial': 'almacenable', 'flejadota': 'almacenable',
+        'consumible_soldadura': 'consumible', 'consumible_limpieza': 'consumible',
+        'consumible_quimico': 'consumible', 'consumible_termico': 'consumible', 'consumible_proteccion': 'consumible'
+    };
+
+    async function _initExportButton() {
+        try {
+            const profile = await authService.getCurrentProfile();
+            if (!isAdminExportAllowed(profile)) return;
+            createExportButton('exportCSVContainer', function() {
+                const headers = [
+                    { key: 'sku', label: 'SKU' },
+                    { key: 'nombre', label: 'Nombre' },
+                    { key: 'categoria', label: 'Categoría' },
+                    { key: 'stock', label: 'Stock' },
+                    { key: 'ubicacion', label: 'Ubicación' },
+                    { key: 'precio', label: 'Precio' }
+                ];
+                downloadCSV('inventario_' + new Date().toISOString().slice(0,10) + '.csv', productos, headers);
+            });
+        } catch (e) { console.warn('[Inventario] Export CSV init:', e); }
+    }
+
+    function _mainCat(cat) {
+        if (!cat) return 'refaccion';
+        if (['refaccion', 'almacenable', 'consumible', 'servicio'].includes(cat)) return cat;
+        return CAT_MAP[cat] || 'refaccion';
+    }
     let busqueda = '';
     let vistaActual = 'table';
     let chartInstance = null;
@@ -149,6 +191,7 @@ const InventarioModule = (function() {
             console.error('[Inventario] init error:', e);
         }
         console.log('✅ Módulo inventario iniciado');
+        _initExportButton();
     }
 
     /** Oculta columnas Costo/Valor y KPI valor total para no-admins. Oculta crear/editar para no-admins. */
@@ -337,7 +380,7 @@ const InventarioModule = (function() {
 
     async function _loadProductos() {
         try {
-            productos = await inventarioService.select({}, { orderBy: 'sku', ascending: true });
+            productos = await inventarioService.select({}, { orderBy: 'sku', ascending: true, pageSize: 500 });
             productos = (productos || []).map(p => ({ ...p, stock: p.stock != null ? p.stock : (p.existencia != null ? p.existencia : 0) }));
         } catch (error) {
             console.warn('[Inventario] Error cargando productos:', error);
@@ -353,7 +396,7 @@ const InventarioModule = (function() {
 
     // ==================== FILTRADO Y RENDERIZADO ====================
     function _filtrarYRenderizar() {
-        let filtrados = productos.filter(p => p.categoria === categoriaActual);
+        let filtrados = categoriaActual === 'todas' ? productos : productos.filter(p => _mainCat(p.categoria) === categoriaActual);
         if (busqueda) {
             filtrados = filtrados.filter(p => 
                 (p.sku && p.sku.toLowerCase().includes(busqueda)) ||
@@ -398,7 +441,8 @@ const InventarioModule = (function() {
 
         let badgeClass = '';
         let badgeText = '';
-        switch(p.categoria) {
+        const mainCat = _mainCat(p.categoria);
+        switch(mainCat) {
             case 'refaccion': badgeClass = 'badge-refaccion'; badgeText = 'Refacción'; break;
             case 'almacenable': badgeClass = 'badge-almacenable'; badgeText = 'Almacenable'; break;
             case 'consumible': badgeClass = 'badge-consumible'; badgeText = 'Consumible'; break;
@@ -497,7 +541,7 @@ const InventarioModule = (function() {
         const categorias = ['refaccion', 'almacenable', 'consumible', 'servicio'];
         const nombres = ['Refacciones', 'Almacenables', 'Consumibles', 'Servicios'];
         const valores = categorias.map(cat =>
-            productos.filter(p => p.categoria === cat).reduce((sum, p) => sum + ((p.costo || 0) * (p.stock || 0)), 0)
+            productos.filter(p => _mainCat(p.categoria) === cat).reduce((sum, p) => sum + ((p.costo || 0) * (p.stock || 0)), 0)
         );
         chartInstance = new Chart(ctx, {
             type: 'doughnut',
@@ -552,7 +596,7 @@ const InventarioModule = (function() {
         document.getElementById('modalTitle').innerText = 'Nuevo Producto';
         document.getElementById('productId').value = '';
         document.getElementById('productForm').reset();
-        document.getElementById('productCategory').value = categoriaActual;
+        document.getElementById('productCategory').value = categoriaActual === 'todas' ? 'refaccion' : categoriaActual;
         document.getElementById('stockInput').value = 0;
         document.getElementById('deleteProductBtn').style.display = 'none';
         var updateBtn = document.getElementById('updateProductBtn');
@@ -720,7 +764,7 @@ const InventarioModule = (function() {
         if (n.includes('automatizacion')) return 'almacenable';
         if (n.includes('herramienta') || n.includes('herramientas')) return 'almacenable';
         if (n.includes('costo') || n.includes('costos') || n.includes('precio') || n.includes('precios')) return 'refaccion';
-        return categoriaActual || 'refaccion';
+        return categoriaActual === 'todas' ? 'todas' : (categoriaActual || 'refaccion');
     }
 
     async function _leerArchivoComoArrayBuffer(file) {

@@ -86,6 +86,7 @@
                 <label>Departamento:</label>
                 <select id="filtroDepartamento">
                     <option value="todos">Todos</option>
+                    <option value="automatizacion_soporte">Automatización + Soporte</option>
                     <option value="automatizacion">Automatización</option>
                     <option value="electronicos">Laboratorio Electrónica</option>
                     <option value="motores">Motores</option>
@@ -101,6 +102,14 @@
                     <option value="en_progreso">En Progreso</option>
                     <option value="completado">Completado</option>
                     <option value="revisado">Revisado</option>
+                </select>
+            </div>
+            <div class="filtro-grupo">
+                <label>Tipo:</label>
+                <select id="filtroTipo">
+                    <option value="todos">Todos</option>
+                    <option value="diaria">Diaria</option>
+                    <option value="evento">Evento</option>
                 </select>
             </div>
             <div class="filtro-grupo">
@@ -120,6 +129,7 @@
                     <i class="fas fa-columns"></i> Kanban
                 </button>
             </div>
+            <div id="exportCSVContainer"></div>
             <button class="btn-ssepi btn-primario" id="btnNuevaActividad">
                 <i class="fas fa-plus"></i> Nueva Actividad
             </button>

@@ -14,6 +14,7 @@ import { getPrioritySuppliersForModule } from '../core/ssepi-runtime/priority-su
 import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
 import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
 import { purgeDraftRecordKeys } from '../core/ssepi-runtime/draft-purge-keys.js';
+import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
 
 const TallerModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -143,7 +144,13 @@ const TallerModule = (function() {
         setv('selClient', d.cliente_nombre);
         setv('inpClientRef', d.referencia);
         setv('inpDateTime', d.fecha_ingreso);
-        setv('inpEquip', d.equipo);
+        setv('inpEquipSelect', d.equipo);
+            var esOtro = d.equipo && !['Tablero','HMI','PLC','Servos','Tarjeta Electrónica','Sensores','Chillers','Teach Pencil'].includes(d.equipo);
+            if (esOtro) {
+                document.getElementById('inpEquipSelect').value = 'Otro';
+                document.getElementById('inpEquipOtroWrap').style.display = 'block';
+                document.getElementById('inpEquipOtro').value = d.equipo;
+            }
         setv('inpBrand', d.marca);
         setv('inpModel', d.modelo);
         setv('inpSerial', d.serie);
@@ -160,7 +167,7 @@ const TallerModule = (function() {
         setv('recibeIdentificacion', d.recibe_identificacion);
         setv('facturaNumero', d.factura_numero);
         setv('entregaObs', d.entrega_obs);
-        setv('recibidoPor', d.recibido_por);
+        setv('recibidoPorSelect', d.recibido_por);
         if (p.folio && document.getElementById('inpFolio')) document.getElementById('inpFolio').value = p.folio;
         if (Array.isArray(p.diagnosticoEnlaces)) diagnosticoEnlaces = p.diagnosticoEnlaces.slice();
         if (Array.isArray(p.diagnosticoInventario)) diagnosticoInventario = p.diagnosticoInventario.slice();
@@ -247,6 +254,39 @@ const TallerModule = (function() {
         history.replaceState({}, document.title, window.location.pathname);
     }
 
+    // ==================== CARGAR TÉCNICOS ====================
+    async function _cargarTecnicos() {
+        try {
+            const tecnicos = await authService.getUsersByRol(['taller', 'electronica', 'admin', 'superadmin']);
+            const select = document.getElementById('techSelect');
+            if (!select) return;
+            const valActual = select.value;
+            select.innerHTML = '<option value="">Seleccionar</option>' +
+                tecnicos.map(function(t) {
+                    return '<option value="' + (t.nombre || t.email) + '">' + (t.nombre || t.email) + '</option>';
+                }).join('');
+            if (valActual) select.value = valActual;
+        } catch (e) {
+            console.error('[Taller] Error cargando técnicos:', e);
+        }
+    }
+
+    async function _cargarVendedores() {
+        try {
+            const vendedores = await authService.getUsersByRol(['ventas', 'admin', 'superadmin']);
+            const select = document.getElementById('recibidoPorSelect');
+            if (!select) return;
+            const valActual = select.value;
+            select.innerHTML = '<option value="">Seleccionar</option>' +
+                vendedores.map(function(v) {
+                    return '<option value="' + (v.nombre || v.email) + '" data-id="' + v.id + '">' + (v.nombre || v.email) + '</option>';
+                }).join('');
+            if (valActual) select.value = valActual;
+        } catch (e) {
+            console.error('[Taller] Error cargando vendedores:', e);
+        }
+    }
+
     // ==================== INICIALIZACIÓN ====================
     async function init() {
         console.log('✅ [Taller] Conectado');
@@ -263,6 +303,33 @@ const TallerModule = (function() {
         _renderPrioritySupplierBarTaller();
         _initTallerAutosave();
         _tryResumeTallerDraft();
+        _initExportButton();
+        _cargarTecnicos();
+        _cargarVendedores();
+        console.log('✅ Módulo taller iniciado');
+    }
+
+    async function _initExportButton() {
+        try {
+            const profile = await authService.getCurrentProfile();
+            if (!isAdminExportAllowed(profile)) return;
+            createExportButton('exportCSVContainer', function() {
+                const headers = [
+                    { key: 'folio', label: 'Folio' },
+                    { key: 'estado', label: 'Estado' },
+                    { key: 'cliente_nombre', label: 'Cliente' },
+                    { key: 'equipo', label: 'Equipo' },
+                    { key: 'marca', label: 'Marca' },
+                    { key: 'modelo', label: 'Modelo' },
+                    { key: 'fecha_ingreso', label: 'Fecha Ingreso' },
+                    { key: 'fecha_entrega', label: 'Fecha Entrega' },
+                    { key: 'tecnico_responsable', label: 'Técnico' },
+                    { key: 'costo_total', label: 'Costo Total' },
+                    { key: 'rentabilidad_estado', label: 'Rentabilidad' }
+                ];
+                downloadCSV('ordenes_taller_' + new Date().toISOString().slice(0,10) + '.csv', orders, headers);
+            });
+        } catch (e) { console.warn('[Taller] Export CSV init:', e); }
     }
 
     async function _initUI() {
@@ -1085,12 +1152,12 @@ const TallerModule = (function() {
             const supabase = window.supabase;
             if (!supabase) return [];
 
-            // Buscar cotizaciones con origen='taller' o departamento='Taller Electrónica'
+            // Buscar cotizaciones con origen='taller' o departamento='Laboratorio de Electrónica'
             const { data, error } = await supabase
                 .from('cotizaciones')
                 .select('*')
                 .eq('estado', 'aprobada')
-                .in('departamento', ['Taller Electrónica', 'Electrónica'])
+                .in('departamento', ['Laboratorio de Electrónica', 'Electrónica'])
                 .is('orden_origen_id', null) // Que no haya generado orden aún
                 .order('fecha_creacion', { ascending: false })
                 .limit(10);
@@ -1207,7 +1274,7 @@ const TallerModule = (function() {
         }
 
         // Equipo/Descripción - usar nombre_producto del cerebro_registro (wizard) o descripcion/producto_servicio como fallback
-        const equipEl = document.getElementById('inpEquip');
+        const equipEl = document.getElementById('inpEquipSelect');
         if (equipEl) {
             const nombreProducto = cotizacion.cerebro_registro?.nombre_producto || cotizacion.cerebro_registro?.producto_servicio || cotizacion.descripcion || cotizacion.nombre_producto;
             if (nombreProducto) {
@@ -1342,7 +1409,7 @@ const TallerModule = (function() {
         document.getElementById('selClient').value = orden.cliente_nombre || '';
         document.getElementById('inpDateTime').value = _toDateLocalInput(orden.fecha_ingreso);
         document.getElementById('inpClientRef').value = orden.referencia || '';
-        document.getElementById('inpEquip').value = orden.equipo || '';
+        document.getElementById('inpEquipSelect').value = orden.equipo || '';
         document.getElementById('inpBrand').value = orden.marca || '';
         document.getElementById('inpModel').value = orden.modelo || '';
         document.getElementById('inpSerial').value = orden.serie || '';
@@ -1358,7 +1425,7 @@ const TallerModule = (function() {
         const resumenDiagEl = document.getElementById('reparacionResumenDiagnostico');
         if (resumenDiagEl) resumenDiagEl.value = orden.reparacion_resumen_diagnostico || orden.notas_internas || '';
         document.getElementById('horasEstimadas').value = orden.horas_estimadas || 0;
-        document.getElementById('recibidoPor').value = orden.recibido_por || '';
+        document.getElementById('recibidoPorSelect').value = orden.recibido_por || '';
         // Costos
         const kmEl = document.getElementById('tallerKmIda');
         if (kmEl) kmEl.value = orden.km_distancia || 0;
@@ -1750,7 +1817,7 @@ const TallerModule = (function() {
         switch(currentStep) {
             case 1:
                 if (!document.getElementById('selClient').value) { _showToast('Seleccione un cliente', 'warning'); return false; }
-                if (!document.getElementById('inpEquip').value) { _showToast('Ingrese el equipo', 'warning'); return false; }
+                if (!document.getElementById('inpEquipSelect').value) { _showToast('Ingrese el equipo', 'warning'); return false; }
                 break;
             case 2:
                 if (!document.getElementById('techSelect').value) { _showToast('Seleccione técnico responsable', 'warning'); return false; }
@@ -2166,8 +2233,8 @@ const TallerModule = (function() {
                     fechas_etapas: fechasEtapas
                 };
                 const fotoInput = document.getElementById('productImage');
-                if (fotoInput && fotoInput.files[0]) {
-                    nuevaOrden.foto_ingreso = await _subirFoto(fotoInput.files[0], 'taller/nueva');
+                if (fotoInput && fotoInput.files.length > 0) {
+                    nuevaOrden.fotos_ingreso = await _subirFotos(Array.from(fotoInput.files), 'taller/nueva');
                 }
                 const inserted = await ordenesService.insert(nuevaOrden, csrfToken);
                 ordenTallerId = inserted.id;
@@ -2219,6 +2286,25 @@ const TallerModule = (function() {
 
             const compraRef = await comprasService.insert(nuevaCompra, csrfToken);
 
+            // Insertar items en compras_items
+            try {
+                var itemsService = createDataService('compras_items');
+                for (var ii = 0; ii < itemsCompra.length; ii++) {
+                    var it = itemsCompra[ii];
+                    await itemsService.insert({
+                        compra_id: compraRef.id,
+                        sku: it.sku || '',
+                        descripcion: it.descripcion || '',
+                        cantidad: it.cantidad || 1,
+                        costo_unitario: 0,
+                        costo_total: 0,
+                        link_proveedor: it.link || ''
+                    }, csrfToken);
+                }
+            } catch (itemsErr) {
+                console.warn('[Taller] Error insertando items en compras_items:', itemsErr);
+            }
+
             await ordenesService.update(ordenTallerId, {
                 compra_vinculada: compraRef.id,
                 compra_folio: nuevaCompra.folio,
@@ -2246,6 +2332,42 @@ const TallerModule = (function() {
         } catch (error) {
             console.error(error);
             _showToast('Error: ' + error.message, 'error');
+        }
+    }
+
+    async function _actualizarCompraVinculada() {
+        if (!orderId || isNewOrder) return;
+        var orden = orders.find(function(o) { return String(o.id) === String(orderId); });
+        if (!orden || !orden.compra_vinculada) return;
+        var compraId = orden.compra_vinculada;
+        try {
+            var compraRes = await comprasService.getById(compraId);
+            var compra = compraRes.data;
+            if (!compra || compra.estado >= 3) return;
+            var itemsCompra = [
+                ...diagnosticoEnlaces.map(function(e) { return { sku: e.sku || '', descripcion: e.descripcion || '', cantidad: Number(e.cantidad) || 1, link: e.link || '' }; }),
+                ...diagnosticoInventario.map(function(i) { return { sku: i.sku || '', descripcion: i.descripcion || '', cantidad: Number(i.cantidad) || 1 }; })
+            ];
+            if (itemsCompra.length === 0) return;
+            // Reemplazar items existentes
+            var itemsService = createDataService('compras_items');
+            try { await itemsService.delete({ compra_id: compraId }); } catch(e) {}
+            for (var ii = 0; ii < itemsCompra.length; ii++) {
+                var it = itemsCompra[ii];
+                await itemsService.insert({
+                    compra_id: compraId,
+                    sku: it.sku || '',
+                    descripcion: it.descripcion || '',
+                    cantidad: it.cantidad || 1,
+                    costo_unitario: 0,
+                    costo_total: 0,
+                    link_proveedor: it.link || ''
+                });
+            }
+            await comprasService.update(compraId, { updated_at: new Date().toISOString() });
+            console.log('[Taller] Compra vinculada actualizada con', itemsCompra.length, 'items');
+        } catch (e) {
+            console.warn('[Taller] Error actualizando compra vinculada:', e);
         }
     }
 
@@ -2288,6 +2410,7 @@ const TallerModule = (function() {
                 await ordenesService.insert(data, csrfToken);
             } else {
                 await ordenesService.update(orderId, data, csrfToken);
+                await _actualizarCompraVinculada();
             }
 
             await notificacionesService.insert({
@@ -2344,8 +2467,8 @@ const TallerModule = (function() {
         if (!data.equipo) { if (!silencioso) _showToast('Ingrese el equipo', 'warning'); _irPaso(1); return; }
 
         const fotoInput = document.getElementById('productImage');
-        if (fotoInput && fotoInput.files[0]) {
-            data.foto_ingreso = await _subirFoto(fotoInput.files[0], 'taller/' + (orderId || 'nueva'));
+        if (fotoInput && fotoInput.files.length > 0) {
+            data.fotos_ingreso = await _subirFotos(Array.from(fotoInput.files), 'taller/' + (orderId || 'nueva'));
         }
 
         data.refacciones_enlaces = diagnosticoEnlaces;
@@ -2358,7 +2481,11 @@ const TallerModule = (function() {
         data.reparacion_resumen_diagnostico = resumenDiagVal ? resumenDiagVal.value : '';
         data.fecha_inicio = fechaInicioOrden;
         data.fechas_etapas = fechasEtapas;
-        data.recibido_por = document.getElementById('recibidoPor')?.value || '';
+        var vendedorSel = document.getElementById('recibidoPorSelect');
+        var vendedorOpt = vendedorSel ? vendedorSel.options[vendedorSel.selectedIndex] : null;
+        data.recibido_por = vendedorSel ? vendedorSel.value : '';
+        data.vendedor_id = vendedorOpt ? (vendedorOpt.dataset.id || null) : null;
+        data.vendedor_nombre = data.recibido_por;
 
         // Calcular costos vía CostosEngine (Laboratorio)
         try {
@@ -2418,6 +2545,24 @@ const TallerModule = (function() {
                 orderId = inserted.id;
                 isNewOrder = false;
                 if (!silencioso) _showToast('Orden guardada correctamente');
+                // Crear actividad Kanban automática
+                try {
+                    const actividadesService = createDataService('actividades_diarias');
+                    const perfilAct = await authService.getCurrentProfile();
+                    await actividadesService.insert({
+                        departamento: 'electronicos',
+                        orden_id: orderId,
+                        resumen: 'Orden ' + data.folio + ' - ' + data.cliente_nombre + ' - ' + data.equipo,
+                        estado: 'pendiente',
+                        tecnico: data.tecnico_responsable || 'Por asignar',
+                        fecha: new Date().toISOString().split('T')[0],
+                        notas: 'Generado automáticamente desde Laboratorio. Estado: ' + data.estado,
+                        user_id: perfilAct ? perfilAct.id : null,
+                        creado_por_usuario: { nombre: data.vendedor_nombre || 'Sistema' }
+                    }, csrfToken);
+                } catch (actErr) {
+                    console.warn('[Taller] Error creando actividad automática:', actErr);
+                }
                 // Registrar en historial unificado
                 if (window.SSEPIStateMachine) {
                     await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', orderId, 'creacion', `Orden ${data.folio} creada en Laboratorio de Electrónica`, csrfToken);
@@ -2510,11 +2655,13 @@ const TallerModule = (function() {
     function _recolectarDatos() {
         const nullIfEmpty = (v) => (v && v.trim()) ? v.trim() : null;
         const now = new Date().toISOString();
+        var vendedorSel2 = document.getElementById('recibidoPorSelect');
+        var vendedorOpt2 = vendedorSel2 ? vendedorSel2.options[vendedorSel2.selectedIndex] : null;
         return {
             cliente_nombre: document.getElementById('selClient').value,
             referencia: document.getElementById('inpClientRef').value,
             fecha_ingreso: nullIfEmpty(document.getElementById('inpDateTime').value) || now,
-            equipo: document.getElementById('inpEquip').value,
+            equipo: _obtenerEquipo(),
             marca: document.getElementById('inpBrand').value,
             modelo: document.getElementById('inpModel').value,
             serie: document.getElementById('inpSerial').value,
@@ -2531,7 +2678,9 @@ const TallerModule = (function() {
             recibe_identificacion: document.getElementById('recibeIdentificacion').value,
             factura_numero: document.getElementById('facturaNumero').value,
             entrega_obs: document.getElementById('entregaObs').value,
-            recibido_por: document.getElementById('recibidoPor')?.value || '',
+            recibido_por: vendedorSel2 ? vendedorSel2.value : '',
+            vendedor_id: vendedorOpt2 ? (vendedorOpt2.dataset.id || null) : null,
+            vendedor_nombre: vendedorSel2 ? vendedorSel2.value : '',
             // Campos costos
             km_distancia: parseFloat(document.getElementById('tallerKmIda')?.value) || 0,
             horas_viaje: parseFloat(document.getElementById('tallerHorasViaje')?.value) || 0,
@@ -2594,6 +2743,13 @@ const TallerModule = (function() {
         if (!supabase) return null;
         try {
             const fileName = `${Date.now()}_${file.name}`;
+            const isOffline = window.location.port === '3333' || window.location.port === '3443' || window.location.hostname.endsWith('.trycloudflare.com') || window.__SSEPI_NEXT_MODE__;
+            if (isOffline) {
+                const uploadName = `${carpeta}/${fileName}`;
+                const res = await fetch('/api/upload', { method: 'POST', headers: { 'X-Filename': uploadName }, body: file });
+                const json = await res.json();
+                return json.data.url;
+            }
             const { data, error } = await supabase.storage
                 .from('pdfs')
                 .upload(`${carpeta}/${fileName}`, file);
@@ -2604,6 +2760,16 @@ const TallerModule = (function() {
             console.error('Error subiendo foto:', error);
             return null;
         }
+    }
+
+    async function _subirFotos(files, carpeta) {
+        if (!files || files.length === 0) return [];
+        var urls = [];
+        for (var i = 0; i < files.length; i++) {
+            var url = await _subirFoto(files[i], carpeta);
+            if (url) urls.push(url);
+        }
+        return urls;
     }
 
     function _generarFolio() {
@@ -2630,7 +2796,7 @@ const TallerModule = (function() {
         document.getElementById('selClient').value = '';
         document.getElementById('inpDateTime').value = new Date().toISOString().slice(0,16);
         document.getElementById('inpClientRef').value = '';
-        document.getElementById('inpEquip').value = '';
+        document.getElementById('inpEquipSelect').value = '';
         document.getElementById('inpBrand').value = '';
         document.getElementById('inpModel').value = '';
         document.getElementById('inpSerial').value = '';
@@ -2650,7 +2816,7 @@ const TallerModule = (function() {
         document.getElementById('recibeIdentificacion').value = '';
         document.getElementById('facturaNumero').value = '';
         document.getElementById('entregaObs').value = '';
-        document.getElementById('recibidoPor').value = '';
+        document.getElementById('recibidoPorSelect').value = '';
         const kmEl2 = document.getElementById('tallerKmIda'); if (kmEl2) kmEl2.value = 0;
         const hvEl2 = document.getElementById('tallerHorasViaje'); if (hvEl2) hvEl2.value = 0;
         const deEl = document.getElementById('tallerDiasEntrega'); if (deEl) deEl.value = 0;
@@ -2685,15 +2851,20 @@ const TallerModule = (function() {
     function _previewImage() {
         const input = document.getElementById('productImage');
         const preview = document.getElementById('imagePreview');
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                preview.innerHTML = `<img src="${e.target.result}" style="max-width:100%; max-height:120px;">`;
-                preview.style.display = 'block';
-            };
-            reader.readAsDataURL(input.files[0]);
+        preview.innerHTML = '';
+        if (input.files && input.files.length > 0) {
+            Array.from(input.files).forEach(function(file) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var wrap = document.createElement('div');
+                    wrap.style.cssText = 'position:relative;width:120px;height:120px;border-radius:6px;overflow:hidden;border:1px solid var(--border);';
+                    wrap.innerHTML = '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;">';
+                    preview.appendChild(wrap);
+                };
+                reader.readAsDataURL(file);
+            });
+            preview.style.display = 'flex';
         } else {
-            preview.innerHTML = '';
             preview.style.display = 'none';
         }
     }
@@ -2742,6 +2913,17 @@ const TallerModule = (function() {
         setTimeout(() => alertDiv.remove(), 4000);
     }
 
+    function _obtenerEquipo() {
+        var sel = document.getElementById('inpEquipSelect');
+        if (!sel) return '';
+        var val = sel.value;
+        if (val === 'Otro') {
+            var otro = document.getElementById('inpEquipOtro');
+            return otro ? (otro.value.trim() || 'Otro') : 'Otro';
+        }
+        return val;
+    }
+
     function _formVal(id) {
         const el = document.getElementById(id);
         if (!el) return '';
@@ -2771,7 +2953,7 @@ const TallerModule = (function() {
         const folio = _formVal('inpFolio') || (currentOrder && currentOrder.folio) || 'BORRADOR';
         const cliente = _formVal('selClient') || (currentOrder && currentOrder.cliente_nombre) || '—';
         const ingreso = _formVal('inpDateTime') || '—';
-        const equipo = _formVal('inpEquip') || '—';
+        const equipo = _obtenerEquipo() || '—';
         const marca = _formVal('inpBrand') || '—';
         const modelo = _formVal('inpModel') || '—';
         const serie = _formVal('inpSerial') || '—';
@@ -2944,7 +3126,7 @@ ${printScript}
             direccion: orden.direccion || '',
             fecha: orden.fecha ? new Date(orden.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) : new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }),
             vendedor: orden.tecnico || '',
-            departamento: 'Taller Electrónica',
+            departamento: 'Laboratorio de Electrónica',
             items,
             subtotal,
             iva,
@@ -2966,7 +3148,7 @@ ${printScript}
         // Recopilar datos del formulario
         const folio = _formVal('inpFolio') || orden.folio || 'BORRADOR';
         const cliente = _formVal('selClient') || orden.cliente_nombre || '—';
-        const equipo = _formVal('inpEquip') || orden.equipo || '—';
+        const equipo = _obtenerEquipo() || orden.equipo || '—';
         const marca = _formVal('inpBrand') || orden.marca || '—';
         const modelo = _formVal('inpModel') || orden.modelo || '—';
         const serie = _formVal('inpSerial') || orden.serie || '—';

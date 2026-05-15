@@ -215,8 +215,11 @@ export class DataService {
       supabaseQuery = supabaseQuery.limit(options.limit);
     }
 
-    // Aplicar paginación con range
-    supabaseQuery = supabaseQuery.range(rangeStart, rangeEnd);
+    // Aplicar paginación con range (omitir en modo offline para evitar incompatibilidad con proxy local)
+    const isOffline = window.location.port === '3333' || window.location.port === '3443' || window.location.hostname.endsWith('.trycloudflare.com') || window.__SSEPI_NEXT_MODE__;
+    if (!isOffline) {
+      supabaseQuery = supabaseQuery.range(rangeStart, rangeEnd);
+    }
 
     const { data, error, count } = await supabaseQuery;
 

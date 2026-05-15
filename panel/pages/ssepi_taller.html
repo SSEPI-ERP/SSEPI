@@ -206,6 +206,7 @@
         <!-- Acciones -->
         <div class="actions-header">
             <h2 class="section-title"><i class="fas fa-clipboard-list"></i> Órdenes de Laboratorio</h2>
+            <div id="exportCSVContainer"></div>
             <button class="btn-ssepi btn-taller" id="newOrderBtn"><i class="fas fa-plus"></i> Nueva Orden</button>
         </div>
 
@@ -300,7 +301,7 @@
                         <!-- KM y horas viaje eliminados del apartado 1 -->
                         <div class="form-grid">
                             <div class="input-group"><label>Referencia cliente</label><input type="text" id="inpClientRef"></div>
-                            <div class="input-group required"><label>Equipo</label><input type="text" id="inpEquip"></div>
+                            <div class="input-group required"><label>Equipo</label><select id="inpEquipSelect" onchange="if(this.value==='Otro'){document.getElementById('inpEquipOtroWrap').style.display='block'}else{document.getElementById('inpEquipOtroWrap').style.display='none'}"><option value="">Seleccionar</option><option value="Tablero">Tablero</option><option value="HMI">HMI</option><option value="PLC">PLC</option><option value="Servos">Servos</option><option value="Tarjeta Electrónica">Tarjeta Electrónica</option><option value="Sensores">Sensores</option><option value="Chillers">Chillers</option><option value="Teach Pencil">Teach Pencil</option><option value="Otro">Otro</option></select><div id="inpEquipOtroWrap" style="display:none;margin-top:6px;"><input type="text" id="inpEquipOtro" placeholder="Especificar equipo"></div></div>
                         </div>
                         <div class="form-grid">
                             <div class="input-group"><label>Marca</label><input type="text" id="inpBrand"></div>
@@ -314,16 +315,16 @@
                             <div class="input-group"><label><input type="checkbox" id="inpUnderWarranty"> ¿Bajo garantía?</label></div>
                         </div>
                         <div class="input-group">
-                            <label>Fotografía del equipo (opcional)</label>
+                            <label>Fotografías del equipo (opcional)</label>
                             <div class="image-upload" onclick="document.getElementById('productImage').click()">
-                                <i class="fas fa-camera"></i> Haz clic para subir imagen
+                                <i class="fas fa-camera"></i> Haz clic para subir imágenes
                             </div>
-                            <input type="file" id="productImage" accept="image/*" style="display:none;">
-                            <div id="imagePreview" class="image-preview"></div>
+                            <input type="file" id="productImage" accept="image/*" multiple style="display:none;">
+                            <div id="imagePreview" class="image-preview" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
                         </div>
                         <div class="form-grid">
                             <div class="input-group"><label>Fecha de inicio</label><span id="fechaInicioDisplay"></span></div>
-                            <div class="input-group"><label>Recibido por (Vendedor)</label><input type="text" id="recibidoPor"></div>
+                            <div class="input-group"><label>Recibido por (Vendedor)</label><select id="recibidoPorSelect"><option value="">Seleccionar</option></select></div>
                         </div>
                         <div style="display:flex; justify-content:flex-end;">
                             <button class="btn-etapa" id="terminarEtapa1" data-etapa="1"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>

@@ -1,0 +1,105 @@
+================================================================================
+  SSEPI - GENERADOR DE COTIZACIONES CON MEMBRETES POR DEPARTAMENTO
+================================================================================
+
+Fecha de creacion: 2026-05-05
+Autor: Asistente Claude Code
+
+--------------------------------------------------------------------------------
+1. QUE ARCHIVO CORRO?
+--------------------------------------------------------------------------------
+
+Abre este archivo directamente en tu navegador (Chrome/Edge/Firefox):
+
+    ssepi_servicios_enterprise_v11.html
+
+NO necesitas servidor web. Solo haz doble clic o arrastra el archivo a una
+pestaña del navegador.
+
+--------------------------------------------------------------------------------
+2. ARCHIVOS QUE HACEN LA LLAMADA / FLUJO DE FUNCIONAMIENTO
+--------------------------------------------------------------------------------
+
+A) ssepi_servicios_enterprise_v11.html
+   -> Archivo principal. Contiene la funcion generarPDF() parcheada.
+   -> En la seccion <head> carga el script de membretes:
+      <script src="membretes_base64.js"></script>
+   -> Cuando presionas "Generar PDF", internamente hace:
+      1. Lee el departamento seleccionado del <select id="selDepto">
+      2. Busca el membrete correspondiente en window.MEMBRETES
+      3. Dibuja la imagen de fondo ocupando toda la hoja A4
+      4. Escribe encima los datos dinamicos (folio, cliente, fecha, etc.)
+      5. Agrega la tabla de productos y las politicas del departamento
+      6. Exporta el PDF
+
+B) membretes_base64.js
+   -> DICCIONARIO de imagenes PNG en Base64.
+   -> Generado automaticamente desde los PDFs de la carpeta ../formatos/
+   -> Contiene las claves:
+      - automatizacion   (Encabezado AutoM.pdf)
+      - electronicos     (Encabezado ELectronica.pdf)
+      - motores          (Encabezado motores.pdf)
+      - suministros      (Encabezado suministro.pdf)
+   -> DEBE estar en la MISMA CARPETA que el HTML porque se carga con ruta
+      relativa: src="membretes_base64.js"
+
+C) formatos/  (carpeta hermana en la raiz)
+   -> Contiene los PDFs originales de los encabezados institucionales.
+   -> Si algun dia cambias el diseno de algun encabezado, reemplaza el PDF
+      correspondiente aqui y ejecuta la herramienta de conversion.
+
+--------------------------------------------------------------------------------
+3. ARCHIVOS DE CONSTRUCCION / HERRAMIENTAS
+--------------------------------------------------------------------------------
+
+Ubicacion: v2_generador_membretes/herramientas/
+
+A) convert_membretes.py
+   -> Script Python. Convierte los PDFs de ../formatos/ a imagenes PNG
+      y genera el archivo membretes_base64.js.
+   -> Requiere: PyMuPDF (fitz)
+   -> USO: Si modificas algun PDF de encabezado, corre:
+      python herramientas/convert_membretes.py
+      (debes correrlo desde la carpeta RAIZ, no desde aqui)
+
+B) patch_membrete.py
+   -> Script Python que realizo la cirugia sobre el HTML original.
+   -> Reemplazo el bloque de portada generica por la logica dinamica de
+      membretes por departamento.
+   -> Conservado como referencia historica. Ya NO necesitas volver a correrlo.
+
+--------------------------------------------------------------------------------
+4. SEPARACION DE RESPONSABILIDADES
+--------------------------------------------------------------------------------
+
+CARPETA ACTUAL (v2_generador_membretes/)  -> LO QUE YA FUNCIONA
+  |-- ssepi_servicios_enterprise_v11.html   (abre este en el navegador)
+  |-- membretes_base64.js                    (datos de imagenes requeridos)
+  |-- LEEME.txt                              (este archivo)
+  |-- herramientas/
+        |-- convert_membretes.py              (para regenerar base64)
+        |-- patch_membrete.py                 (historico de parcheo)
+
+RAIZ (../)                                -> LO QUE NO ES PARTE DEL SISTEMA FINAL
+  |-- ssepi_servicios_enterprise_v11.html.backup   (original sin modificar)
+  |-- patch_ssepi_*.py, modify_ssepi.py, etc.    (scripts viejos de prueba)
+  |-- formatos/                                     (PDFs fuente de diseno)
+  |-- otros .html que no usan logica de membretes
+
+--------------------------------------------------------------------------------
+5. NOTAS IMPORTANTES
+--------------------------------------------------------------------------------
+
+- El HTML usa jsPDF y jspdf-autotable (cargados desde CDN), por eso funciona
+  offline solo si ya tienes cacheada la libreria.
+
+- Las coordenadas de texto (folio, cliente, vendedor) sobre el membrete
+  pueden necesitar ajuste fino. Busca en el codigo fuente del HTML:
+  "PAG 1 - MEMBRETE INSTITUCIONAL POR DEPARTAMENTO"
+  y modifica los valores de X e Y hasta que queden sobre los cuadros de
+  cada diseno de departamento.
+
+- El backup original se encuentra en la raiz:
+  ssepi_servicios_enterprise_v11.html.backup
+
+================================================================================

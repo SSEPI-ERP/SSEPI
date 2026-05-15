@@ -10,6 +10,7 @@ import { createDataService } from '../core/data-service.js';
 import { ContactosFormulas } from '../core/contactos-formulas.js';
 import { PRIORITY_SUPPLIERS_BASE, normalizeUrl } from '../core/ssepi-runtime/priority-suppliers-catalog.js';
 import { mergePriorityProvidersFirst } from '../core/ssepi-runtime/priority-suppliers-merge.js';
+import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
 
 const ContactosModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -102,6 +103,24 @@ const ContactosModule = (function() {
             console.error('[Contactos] init error:', e);
         }
         console.log('✅ Módulo contactos iniciado');
+        _initExportButton();
+    }
+
+    async function _initExportButton() {
+        try {
+            const profile = await authService.getCurrentProfile();
+            if (!isAdminExportAllowed(profile)) return;
+            createExportButton('exportCSVContainer', function() {
+                const headers = [
+                    { key: 'nombre', label: 'Nombre' },
+                    { key: 'empresa', label: 'Empresa' },
+                    { key: 'tipo', label: 'Tipo' },
+                    { key: 'email', label: 'Email' },
+                    { key: 'telefono', label: 'Teléfono' }
+                ];
+                downloadCSV('contactos_' + new Date().toISOString().slice(0,10) + '.csv', contactos, headers);
+            });
+        } catch (e) { console.warn('[Contactos] Export CSV init:', e); }
     }
 
     function _setVistaInicial() {
@@ -231,37 +250,65 @@ const ContactosModule = (function() {
 
     async function _loadContactos(opts) {
         const skipPriorityEnsure = opts && opts.skipPriorityEnsure;
+        let rawContactos = [];
+        let tabuladorClientes = [];
         try {
-            const rawContactos = await contactosService.select({}, { orderBy: 'nombre', ascending: true }) || [];
-
-            // Deduplicar por clave única (email, teléfono, nombre+empresa)
-            const vistos = new Set();
-            contactos = rawContactos.filter(c => {
-                const k = _claveDedupeContacto(c);
-                if (vistos.has(k)) return false;
-                vistos.add(k);
-                return true;
-            });
+            rawContactos = await contactosService.select({}, { orderBy: 'nombre', ascending: true }) || [];
         } catch (e) {
             console.warn('[Contactos] Error cargando contactos:', e?.message || e);
-            contactos = [];
         }
-        if (!skipPriorityEnsure && !_ensuringPrioritySuppliers) {
-            _ensuringPrioritySuppliers = true;
-            try {
-                await _ensurePrioritySuppliers();
-            } catch (e) {
-                console.warn('[Contactos] Proveedores prioridad:', e?.message || e);
-            } finally {
-                _ensuringPrioritySuppliers = false;
+        // Cargar clientes del tabulador
+        try {
+            const supabase = _supabase();
+            if (supabase) {
+                const { data, error } = await supabase
+                    .from('clientes_tabulador')
+                    .select('nombre_cliente, km, horas_viaje, activo')
+                    .eq('activo', true)
+                    .order('nombre_cliente');
+                if (!error && data) {
+                    tabuladorClientes = data.filter(c => c.activo !== false && c.nombre_cliente).map(c => ({
+                        id: 'tab-' + c.nombre_cliente.replace(/\s+/g, '-').toLowerCase(),
+                        nombre: c.nombre_cliente.toUpperCase(),
+                        empresa: '',
+                        email: '',
+                        telefono: '',
+                        rfc: '',
+                        tipo: 'client',
+                        avatar: c.nombre_cliente.charAt(0).toUpperCase(),
+                        color: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
+                        km: Number(c.km) || 0,
+                        horas_viaje: Number(c.horas_viaje) || 0,
+                        _fromTabulador: true,
+                        created_at: new Date().toISOString()
+                    }));
+                }
             }
+        } catch (e) {
+            console.warn('[Contactos] Error cargando clientes_tabulador:', e?.message || e);
         }
+
+        console.log('[Contactos] local_contactos devueltos:', rawContactos.length, 'tabuladorClientes:', tabuladorClientes.length);
+        // Deduplicar por clave única (email, teléfono, nombre+empresa)
+        const vistos = new Set();
+        contactos = [...rawContactos, ...tabuladorClientes].filter(c => {
+            const k = _claveDedupeContacto(c);
+            if (vistos.has(k)) return false;
+            vistos.add(k);
+            return true;
+        });
+        console.log('[Contactos] Total después de dedupe:', contactos.length);
+        // Proveedores de catálogo PRIORITY desactivados — solo contactos reales
+        // if (!skipPriorityEnsure && !_ensuringPrioritySuppliers) {
+        //     _ensuringPrioritySuppliers = true;
+        //     try { await _ensurePrioritySuppliers(); } catch (e) { console.warn('[Contactos] Proveedores prioridad:', e?.message || e); } finally { _ensuringPrioritySuppliers = false; }
+        // }
         _renderView();
         _updateKPIs();
     }
 
     async function _ensurePrioritySuppliers() {
-        const base = contactos.filter(c => c.tipo === 'provider' && c.sitio_web && !c._fromClientes);
+        const base = contactos.filter(c => (c.tipo === 'provider' || c.tipo === 'proveedor') && c.sitio_web && !c._fromClientes);
         const have = new Set(base.map(c => normalizeUrl(c.sitio_web)));
         const csrfToken = sessionStorage.getItem('csrfToken');
         let added = false;
@@ -301,6 +348,8 @@ const ContactosModule = (function() {
 
         if (filtroTipo === 'provider') {
             filtered = mergePriorityProvidersFirst(contactos, 'taller');
+        } else if (filtroTipo === 'client') {
+            filtered = filtered.filter(c => c.tipo === 'client' || c.tipo === 'cliente');
         } else if (filtroTipo !== 'all') {
             filtered = filtered.filter(c => c.tipo === filtroTipo);
         }
@@ -320,7 +369,7 @@ const ContactosModule = (function() {
             const now = new Date();
             filtered = filtered.filter(c => {
                 if (c._isCatalogPreset) return true;
-                if (!c.created_at) return filtroTipo === 'provider';
+                if (!c.created_at) return (c.tipo === 'provider' || c.tipo === 'proveedor');
                 const fecha = new Date(c.created_at);
                 if (periodo === 'month') return fecha.getMonth() === now.getMonth() && fecha.getFullYear() === now.getFullYear();
                 if (periodo === 'year') return fecha.getFullYear() === now.getFullYear();
@@ -352,8 +401,8 @@ const ContactosModule = (function() {
             const estiloAvatar = c.logo_url
                 ? `background-image: url('${c.logo_url}'); background-size: cover; background-position: center;`
                 : `background: linear-gradient(135deg, ${c.color || '#00a09d'}, ${c.color || '#008a87'});`;
-            const tipoClass = c.tipo === 'client' ? 'client' : 'provider';
-            const tipoText = c.tipo === 'client' ? 'CLIENTE' : 'PROVEEDOR';
+            const tipoClass = (c.tipo === 'client' || c.tipo === 'cliente') ? 'client' : 'provider';
+            const tipoText = (c.tipo === 'client' || c.tipo === 'cliente') ? 'CLIENTE' : 'PROVEEDOR';
             return `
                 <div class="contact-card" data-id="${c.id}" onclick="contactosModule.abrirDetalle('${c.id}')">
                     <div class="avatar-box" style="${estiloAvatar}">${c.logo_url ? '' : inicial}</div>
@@ -382,22 +431,29 @@ const ContactosModule = (function() {
             return;
         }
 
-        tbody.innerHTML = contacts.map(c => `
+        tbody.innerHTML = contacts.map(c => {
+            const tipoClass = (c.tipo === 'client' || c.tipo === 'cliente') ? 'client' : 'provider';
+            const tipoText = (c.tipo === 'client' || c.tipo === 'cliente') ? 'Cliente' : 'Proveedor';
+            const avatarHtml = c.logo_url
+                ? `<img src="${c.logo_url}" class="list-avatar-img" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px;">`
+                : `<span class="list-avatar-letter" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,${c.color || '#00a09d'},${c.color || '#008a87'});color:#fff;font-size:12px;font-weight:700;vertical-align:middle;margin-right:8px;">${(c.nombre || '?').charAt(0).toUpperCase()}</span>`;
+            return `
             <tr onclick="contactosModule.abrirDetalle('${c.id}')">
-                <td><strong>${c.nombre || ''}</strong></td>
+                <td>${avatarHtml}<strong>${c.nombre || ''}</strong></td>
                 <td>${c.empresa || ''}</td>
                 <td>${c.email || ''}</td>
                 <td>${c.telefono || ''}</td>
                 <td>${c.rfc || ''}</td>
-                <td><span class="badge ${c.tipo === 'client' ? 'client' : 'provider'}">${c.tipo === 'client' ? 'Cliente' : 'Proveedor'}</span></td>
+                <td><span class="badge ${tipoClass}">${tipoText}</span></td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
     }
 
     async function _updateKPIs() {
         const total = contactos.length;
-        const clientes = contactos.filter(c => c.tipo === 'client').length;
-        const proveedores = contactos.filter(c => c.tipo === 'provider').length;
+        const clientes = contactos.filter(c => c.tipo === 'client' || c.tipo === 'cliente').length;
+        const proveedores = contactos.filter(c => c.tipo === 'provider' || c.tipo === 'proveedor').length;
         let saldoTotal = 0;
         const supabase = _supabase();
         if (supabase) {
@@ -446,6 +502,36 @@ const ContactosModule = (function() {
         setVal('panelEtiquetas', contacto.etiquetas);
         setVal('panelDireccion', contacto.direccion);
         setVal('panelLogoUrl', contacto.logo_url);
+
+        // Mostrar personas de la empresa si es empresa
+        const existingRelated = document.getElementById('panelRelatedPeople');
+        if (existingRelated) existingRelated.remove();
+        if (contacto.categoria === 'empresa') {
+            const empresaBuscar = contacto.empresa || contacto.nombre;
+            const related = contactos.filter(c =>
+                c.id !== contacto.id &&
+                c.categoria !== 'empresa' &&
+                (c.empresa === empresaBuscar || c.empresa === contacto.nombre)
+            );
+            if (related.length > 0) {
+                const relatedHtml = related.map(r => {
+                    const avatar = r.logo_url
+                        ? `<img src="${r.logo_url}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px;">`
+                        : `<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,${r.color || '#00a09d'},${r.color || '#008a87'});color:#fff;font-size:11px;font-weight:700;vertical-align:middle;margin-right:6px;">${(r.nombre || '?').charAt(0).toUpperCase()}</span>`;
+                    return `<div style="padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.05);cursor:pointer;" onclick="contactosModule.abrirDetalle('${r.id}')">${avatar}<strong>${r.nombre}</strong> <span style="color:#888;font-size:12px;">${r.puesto || ''}</span></div>`;
+                }).join('');
+                const sectionHtml = `
+                    <div class="detail-section" id="panelRelatedPeople">
+                        <h4 style="color: var(--accent-primary); margin-bottom: 10px;"><i class="fas fa-users"></i> Personas en esta empresa (${related.length})</h4>
+                        <div style="max-height:160px;overflow-y:auto;">${relatedHtml}</div>
+                    </div>
+                `;
+                const timelineSection = document.getElementById('timelineContainer');
+                if (timelineSection && timelineSection.parentElement) {
+                    timelineSection.parentElement.insertAdjacentHTML('beforebegin', sectionHtml);
+                }
+            }
+        }
 
         if (contacto.tipo === 'client') {
             const km = ContactosFormulas.getKmPorCliente(contacto.nombre || contacto.empresa);
