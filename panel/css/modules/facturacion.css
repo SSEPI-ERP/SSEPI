@@ -109,6 +109,7 @@
 
 .badge.tipo-taller { background: #2e7d32; color: white; padding: 2px 6px; border-radius: 12px; font-size: 10px; }
 .badge.tipo-motor { background: #5d4037; color: white; padding: 2px 6px; border-radius: 12px; font-size: 10px; }
+.badge.tipo-proyecto { background: #5e35b1; color: white; padding: 2px 6px; border-radius: 12px; font-size: 10px; }
 
 .card-body {
     margin-bottom: 12px;
@@ -176,6 +177,7 @@
 }
 .tipo-taller { background: rgba(46,125,50,0.15); color: #2e7d32; }
 .tipo-motor { background: rgba(93,64,55,0.15); color: #5d4037; }
+.tipo-proyecto { background: rgba(94,53,177,0.18); color: #5e35b1; }
 .tipo-factura { background: rgba(0,82,204,0.15); color: var(--c-facturacion-dark); }
 
 .status-badge {

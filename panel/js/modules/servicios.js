@@ -14,6 +14,7 @@ import { getPrioritySuppliersForModule } from '../core/ssepi-runtime/priority-su
 import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
 import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
 import { purgeDraftRecordKeys } from '../core/ssepi-runtime/draft-purge-keys.js';
+import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
 
 const ServiciosModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -80,7 +81,30 @@ const ServiciosModule = (function() {
         _renderAutoPriorityChips();
         _initServiciosAutosave();
         _tryResumeServiciosDraft();
+        _initExportButton();
         console.log('✅ Módulo automatización iniciado');
+    }
+
+    async function _initExportButton() {
+        try {
+            const profile = await authService.getCurrentProfile();
+            if (!isAdminExportAllowed(profile)) return;
+            createExportButton('exportCSVContainer', function() {
+                const headers = [
+                    { key: 'folio', label: 'Folio' },
+                    { key: 'estado', label: 'Estado' },
+                    { key: 'cliente', label: 'Cliente' },
+                    { key: 'nombre', label: 'Proyecto' },
+                    { key: 'vendedor', label: 'Ingeniero' },
+                    { key: 'fecha', label: 'Fecha' },
+                    { key: 'etapa_actual', label: 'Etapa' },
+                    { key: 'avance', label: 'Avance %' },
+                    { key: 'costo_total', label: 'Costo Total' },
+                    { key: 'rentabilidad_estado', label: 'Rentabilidad' }
+                ];
+                downloadCSV('proyectos_automatizacion_' + new Date().toISOString().slice(0,10) + '.csv', projects, headers);
+            });
+        } catch (e) { console.warn('[Automatización] Export CSV init:', e); }
     }
 
     function _serviciosRecordKey() {
@@ -242,13 +266,13 @@ const ServiciosModule = (function() {
     }
 
     function _setFiltroMesActual() {
-        const now = new Date();
-        filtroFechaInicio = new Date(now.getFullYear(), now.getMonth(), 1);
-        filtroFechaFin = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        // Por defecto sin filtro de fecha (mostrar todos los proyectos)
+        filtroFechaInicio = null;
+        filtroFechaFin = null;
         const filtroInicio = document.getElementById('filtroFechaInicio');
         const filtroFin = document.getElementById('filtroFechaFin');
-        if (filtroInicio) filtroInicio.valueAsDate = filtroFechaInicio;
-        if (filtroFin) filtroFin.valueAsDate = filtroFechaFin;
+        if (filtroInicio) filtroInicio.value = '';
+        if (filtroFin) filtroFin.value = '';
     }
 
     function _getEtapaLabel(etapaNum) {
@@ -510,13 +534,26 @@ const ServiciosModule = (function() {
         subscriptions.push(subHistorial);
     }
 
+    /** Normaliza variantes de BD (mayúsculas, "En progreso", Activo…) a pendiente | progreso | completado. */
+    function _normEstadoProyecto(estado) {
+        const s = String(estado == null ? '' : estado).trim().toLowerCase();
+        if (!s) return 'pendiente';
+        if (['pendiente', 'borrador', 'nuevo', 'planificacion', 'planificación'].includes(s)) return 'pendiente';
+        if (['progreso', 'en progreso', 'activo', 'ejecucion', 'ejecución', 'en ejecucion', 'en ejecución'].includes(s)) return 'progreso';
+        if (['completado', 'cerrado', 'entregado', 'facturado', 'finalizado'].includes(s)) return 'completado';
+        return s;
+    }
+
     // ==================== FILTROS Y VISTAS ====================
     function _applyFilters() {
         let filtered = projects;
 
         if (filtroFechaInicio && filtroFechaFin) {
             filtered = filtered.filter(p => {
-                const f = new Date(p.fecha);
+                const raw = p.fecha || p.created_at || p.updated_at;
+                if (!raw) return true;
+                const f = new Date(raw);
+                if (Number.isNaN(f.getTime())) return true;
                 return f >= filtroFechaInicio && f <= filtroFechaFin;
             });
         }
@@ -524,7 +561,7 @@ const ServiciosModule = (function() {
             filtered = filtered.filter(p => p.vendedor === filtroIngeniero);
         }
         if (filtroEstado !== 'todos') {
-            filtered = filtered.filter(p => p.estado === filtroEstado);
+            filtered = filtered.filter(p => _normEstadoProyecto(p.estado) === filtroEstado);
         }
         if (filtroBuscar) {
             const term = filtroBuscar.toLowerCase();
@@ -647,7 +684,7 @@ const ServiciosModule = (function() {
                 <td><span class="avance-pct">${avance}%</span></td>
                 <td>${proceso}</td>
                 <td><small>${linea}</small></td>
-                <td><span class="status-badge" style="background:${p.estado==='pendiente'?'#ff9800':(p.estado==='progreso'?'#2196f3':'#4caf50')}; color:white;">${p.estado}</span> · ${proceso}</td>
+                <td><span class="status-badge" style="background:${_normEstadoProyecto(p.estado)==='pendiente'?'#ff9800':(_normEstadoProyecto(p.estado)==='progreso'?'#2196f3':'#4caf50')}; color:white;">${p.estado}</span> · ${proceso}</td>
                 <td>${p.rentabilidad_estado === 'rojo' ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(p.adeudo_generado||0).toFixed(0)}</span>` : (p.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—')}</td>
             </tr>`;
         });
@@ -663,7 +700,7 @@ const ServiciosModule = (function() {
         if (chartInstance) chartInstance.destroy();
         const estados = ['pendiente', 'progreso', 'completado'];
         const labels = ['Pendientes', 'En Progreso', 'Completados'];
-        const counts = estados.map(e => proyectos.filter(p => p.estado === e).length);
+        const counts = estados.map(e => proyectos.filter(p => _normEstadoProyecto(p.estado) === e).length);
         chartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -680,9 +717,9 @@ const ServiciosModule = (function() {
         const kpiProgreso = document.getElementById('kpiProgreso');
         const kpiCompletado = document.getElementById('kpiCompletado');
         if (kpiTotal) kpiTotal.innerText = proyectos.length;
-        if (kpiPendiente) kpiPendiente.innerText = proyectos.filter(p => p.estado === 'pendiente').length;
-        if (kpiProgreso) kpiProgreso.innerText = proyectos.filter(p => p.estado === 'progreso').length;
-        if (kpiCompletado) kpiCompletado.innerText = proyectos.filter(p => p.estado === 'completado').length;
+        if (kpiPendiente) kpiPendiente.innerText = proyectos.filter(p => _normEstadoProyecto(p.estado) === 'pendiente').length;
+        if (kpiProgreso) kpiProgreso.innerText = proyectos.filter(p => _normEstadoProyecto(p.estado) === 'progreso').length;
+        if (kpiCompletado) kpiCompletado.innerText = proyectos.filter(p => _normEstadoProyecto(p.estado) === 'completado').length;
     }
 
     // ==================== FUNCIONES DEL MODAL ====================

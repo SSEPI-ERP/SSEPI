@@ -6,8 +6,8 @@ echo   SSEPI ERP - VPS LOCAL V12
 echo   %date% %time%
 echo   Esta PC es la VPS de conexion de modulos
 echo =========================================
+echo.
 
-:: Mostrar IPs locales para acceso desde red
 for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr "IPv4" ^| findstr /V "169.254"') do (
     for /f "tokens=*" %%b in ("%%a") do (
         echo.
@@ -20,7 +20,7 @@ echo.
 echo [1] Matando procesos Node y limpiando puerto 3333...
 taskkill /F /IM node.exe 2>nul
 timeout /t 2 /nobreak >nul
-netstat -ano | findstr ":3333" | findstr "LISTENING" >nul
+netstat -ano ^| findstr ":3333" ^| findstr "LISTENING" >nul
 if %errorlevel%==0 (
     echo      AUN hay algo en 3333. Matando por PID...
     for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":3333" ^| findstr "LISTENING"') do (
@@ -35,7 +35,17 @@ echo [2] Limpiando cache local...
 if exist "%~dp0ssepinext\data\ssepi-local.db-journal" del /q "%~dp0ssepinext\data\ssepi-local.db-journal" 2>nul
 echo      OK.
 
-:: [2a] Seed: usuarios offline (si no existen)
+:: [2b] Limpiar contactos inventados (solo reales de imagenes)
+echo [2b] Limpiando contactos y clientes_tabulador inventados...
+cd /d "%~dp0ssepinext"
+node limpiar-contactos-db.mjs 2>nul
+if %errorlevel%==0 (
+    echo      OK - Contactos inventados eliminados.
+) else (
+    echo      (No se pudo limpiar contactos - continuando)
+)
+
+:: [2a] Seed: usuarios offline
 echo [2a] Verificando usuarios offline...
 cd /d "%~dp0ssepinext"
 node seed-usuarios.mjs 2>nul
@@ -45,14 +55,13 @@ if %errorlevel%==0 (
     echo      (Error en usuarios - continuando)
 )
 
-:: [2b] Seed: contactos reales
-echo [2b] Contactos reales (32 clientes + 10 proveedores)...
-cd /d "%~dp0ssepinext"
+:: [2c] Seed: contactos reales (ahora seed-limpiar-contactos no inserta inventados)
+echo [2c] Seed limpiar-contactos (idempotente)...
 node seed-limpiar-contactos.mjs 2>nul
 if %errorlevel%==0 (
-    echo      OK - Contactos insertados.
+    echo      OK - Seed contactos idempotente.
 ) else (
-    echo      (Error en contactos - continuando)
+    echo      (Error en seed contactos - continuando)
 )
 
 :: [3] Seed: ordenes demo para PDFs
@@ -145,7 +154,25 @@ if %errorlevel%==0 (
     echo      (Error en actividades - continuando)
 )
 
-:: [4] Iniciar servidor VPS (esta PC es la VPS)
+:: [3i] Seed: calculadoras, costos, tabulador, BOM auto, servicios
+echo [3i] Calculadoras / costos / tabulador / BOM auto / servicios...
+node seed-calculadoras.mjs 2>nul
+if %errorlevel%==0 (
+    echo      OK - Calculadoras y tabulador listos.
+) else (
+    echo      (Error en calculadoras - continuando)
+)
+
+:: [3j] Seed: contactos desde imagenes (escaneados)
+echo [3j] Contactos desde imagenes (~80 clientes + proveedores)...
+node seed-contactos-imagenes.mjs 2>nul
+if %errorlevel%==0 (
+    echo      OK - Contactos desde imagenes insertados.
+) else (
+    echo      (Error en contactos-imagenes - continuando)
+)
+
+:: [4] Iniciar servidor VPS
 echo [4] Arrancando servidor VPS SSEPI NEXT...
 start "SSEPI VPS SERVER" cmd /k "node offline-server.mjs"
 
@@ -163,79 +190,22 @@ if %errorlevel%==0 (
     echo      Puede tardar unos segundos mas en arrancar.
 )
 
-:: [7] Abrir navegador via Cloudflare Tunnel (URL publica)
-echo [7] Abriendo tunel Cloudflare y navegador...
+:: [7] Abrir Chrome NUEVO (perfil temporal)
+echo [7] Abriendo Chrome con perfil LIMPIO...
+set "SSEPI_PROFILE=%TEMP%\ssepi-chrome-%RANDOM%"
+mkdir "%SSEPI_PROFILE%" 2>nul
+start "SSEPI Chrome" chrome --user-data-dir="%SSEPI_PROFILE%" --no-first-run --no-default-browser-check --disable-popup-blocking --app="http://localhost:3333/panel/login.html"
+
+:: [8] Iniciar tunel Cloudflare
+echo [8] Iniciando tunel Cloudflare (segundo plano)...
+start "Cloudflare Tunnel SSEPI" /D "%~dp0ssepinext" cmd /k iniciar-tunel-cloudflare.bat
 
 echo.
 echo =========================================
-echo   SSEPI VPS LOCAL - LISTO
+echo   SSEPI LOCAL + CHROME NUEVO - LISTO
 echo.
-echo   Esta PC es la VPS de conexion.
-echo   Todos los modulos corren localmente.
-echo.
-echo   SERVIDOR:
-echo     URL local: http://localhost:3333
-echo     Login:    http://localhost:3333/panel/login.html
-for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr "IPv4" ^| findstr /V "169.254"') do (
-    for /f "tokens=*" %%b in ("%%a") do (
-        echo     URL red:  http://%%~nb:3333/panel/panel.html
-    )
-)
-echo     Health:   http://localhost:3333/api/health
-echo     BOM:      http://localhost:3333/api/bom-search
-echo     Inventario: http://localhost:3333/api/inventory-search
-echo.
-echo   USUARIOS OFFLINE:
-echo     norbertomoro4@gmail.com  /  Ssepi2025!
-echo     ventas1@ssepi.org       /  Ssepi2025!
-echo     laboratorio1@ssepi.org  /  Ssepi2025!
-echo     motores1@ssepi.org      /  Ssepi2025!
-echo     automatizacion1         /  Ssepi2025!
-echo     ivang.ssepi@gmail.com   /  Ssepi2025!
-echo.
-echo   MODULOS V12:
-echo     - Laboratorio   (cotizacion + reporte + PDF)
-echo     - Motores        (cotizacion + reporte + PDF)
-echo     - Automatizacion (cotizacion + reporte + cronograma + PDF)
-echo     - Ventas          (cotizacion + wizard 4 pasos + PDF)
-echo     - Compras        (Kanban 6 estados + vinculacion)
-echo     - Suministros    (catalogo BOM + inventario + cotizacion SP-S)
-echo     - Facturacion    (CFDI 4.0 + timbrado)
-echo     - Inventario     (CRUD + Excel + movimientos)
-echo     - Contactos      (32 clientes + 10 proveedores)
-echo.
-echo   INVENTARIO TOTAL:
-echo     Electronica:  97 items, 383 pzas, $19,585
-echo     Consumibles:  14 items, 69 pzas, $7,920
-echo     BOM Auto:     292 articulos, 48 proveedores, $2,174,920
-echo     TOTAL:        403 items, 452+ piezas
-echo.
-echo   ORDENES DEMO PDF:
-echo     Laboratorio: SP-E2605001 (ABB ACS580), SP-E2605002 (AB L33ER)
-echo     Auto:    SP-A2605/1 (Linea Ensamble C3), SP-A2605/2 (Extrusora PID)
-echo.
-echo   PIPELINE (cotizacion ^> venta ^> compra ^> factura):
-echo     Laboratorio 1: COT-2605-001 ^> V-2605-001 ^> CMP-SP-E2605001 ^> FAC-2605-001
-echo     Laboratorio 2: COT-2605-002 ^> V-2605-002 ^> CMP-SP-E2605002 ^> FAC-2605-002
-echo     Auto 1:   COT-2605-A01 ^> V-2605-A01 ^> CMP-SP-A2605-1 ^> FAC-2605-A01
-echo     Auto 2:   COT-2605-A02 ^> V-2605-A02 ^> CMP-SP-A2605-2 ^> FAC-2605-A02
-echo.
-echo   COSTOS ENGINE:
-echo     Laboratorio BODYCOTE:    $16,282.93
-echo     Laboratorio NISHIKAWA:   $23,173.29
-echo     Auto    BOLSAS ALTOS:    $345,318.95
-echo     Auto    CONDUMEX:        $161,211.07
-echo =========================================
-:: [8] Iniciar tunel Cloudflare automaticamente (URL publica)
-echo [8] Iniciando tunel Cloudflare...
-start "Cloudflare Tunnel SSEPI" /D "%~dp0ssepinext" cmd /k iniciar-tunel-cloudflare.bat
-echo.
-echo =========================================
-echo   SSEPI LOCAL + TUNEL PUBLICO - LISTO
-echo.
-echo   Tunel Cloudflare iniciando...
-echo   Chrome se abrira solo con la URL publica.
-echo   Espera ~15 segundos.
+echo   Chrome se abrio con perfil temporal.
+echo   Tunel Cloudflare corriendo en segundo plano.
 echo =========================================
 echo.
 pause

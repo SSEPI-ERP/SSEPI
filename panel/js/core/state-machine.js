@@ -37,21 +37,50 @@
     }
 
     function obtenerPasoUnificado(tabla, estadoNativo) {
-        const val = String(estadoNativo || '');
+        const val = String(estadoNativo || '').trim();
         const r = window.__ESTADO_MAPA__?.[tabla]?.[val];
         if (r) return r;
         // Fallback local si no hay Supabase
-        const fallback = PIPELINE_PASOS;
         const map = {
-            'ordenes_taller': { 'Nuevo':1,'Confirmado':1,'Diagnóstico':2,'En Espera':3,'En reparación':6,'Reparado':7,'Entregado':8,'Facturado':8,'Cancelado':0 },
+            'ordenes_taller': { 'Nuevo':1,'Confirmado':1,'Diagnóstico':2,'En Espera':3,'En reparación':6,'En reparacion':6,'Reparado':7,'Entregado':8,'Facturado':8,'Cancelado':0 },
             'ordenes_motores': { 'Nuevo':1,'Diagnóstico':2,'En Espera':3,'Reparado':7,'Entregado':8 },
-            'proyectos_automatizacion': { 'pendiente':1,'progreso':6,'completado':8,'cancelado':0 },
+            'proyectos_automatizacion': {
+                'pendiente':1,'progreso':6,'completado':8,'cancelado':0,
+                'Pendiente':1,'Activo':6,'activo':6,'En progreso':6,'en progreso':6,'Completado':8,'Cerrado':8,'cerrado':8
+            },
             'cotizaciones': { 'borrador':1,'pendiente_autorizacion_ventas':3,'Pendiente':3,'aprobada':4,'cancelada':0 },
             'compras': { '0':3,'1':5,'2':5,'3':5,'4':6,'5':6 },
             'ventas': { 'Pendiente':7,'Pagado':8 }
         };
-        const paso = map[tabla]?.[val];
-        return paso ? { paso, etiqueta: obtenerEtiquetaPaso(paso) } : null;
+        const tbl = map[tabla];
+        if (!tbl) return null;
+        let paso = tbl[val];
+        if (paso == null && val) {
+            const low = val.toLowerCase();
+            for (const k of Object.keys(tbl)) {
+                if (k.toLowerCase() === low) { paso = tbl[k]; break; }
+            }
+        }
+        return paso != null ? { paso, etiqueta: obtenerEtiquetaPaso(paso) } : null;
+    }
+
+    /** Para pipeline Ventas: deriva id de paso (recepcion, diagnostico, …) desde estado nativo de cada tabla. */
+    function derivarEstatusActualDesdeNativo(tabla, item) {
+        if (!item) return null;
+        if (item.estatus_actual) return item.estatus_actual;
+        const raw = item.estado != null ? item.estado : item.estatus;
+        if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+        const candidates = [];
+        const s = String(raw).trim();
+        candidates.push(s, s.toLowerCase(), s.charAt(0).toUpperCase() + s.slice(1).toLowerCase());
+        for (const key of candidates) {
+            const r = obtenerPasoUnificado(tabla, key);
+            if (r && r.paso != null) {
+                const id = obtenerEtiquetaPaso(r.paso);
+                return id === 'cancelado' ? 'cancelado' : id;
+            }
+        }
+        return null;
     }
 
     function obtenerEtiquetaPaso(pasoOrden) {
@@ -234,6 +263,7 @@
     window.SSEPIStateMachine = {
         PIPELINE_PASOS,
         obtenerPasoUnificado,
+        derivarEstatusActualDesdeNativo,
         obtenerEtiquetaPaso,
         obtenerInfoPaso,
         renderTimelineHTML,

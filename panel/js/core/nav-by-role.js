@@ -18,14 +18,14 @@
     var ROLE_MODULES = {
         admin: null,              // null = ve todo (incluye análisis general)
         superadmin: null,         // null = ve todo
-        ventas:              ['ventas', 'inventario', 'contactos', 'vacaciones'],
-        administracion:      ['compras', 'facturas', 'contabilidad', 'pagos_nomina', 'inventario', 'contactos', 'vacaciones'],
+        ventas:              ['ventas', 'inventario', 'contactos', 'vacaciones', 'suministros', 'proyectos_automatizacion'],
+        administracion:      ['compras', 'facturas', 'contabilidad', 'pagos_nomina', 'inventario', 'contactos', 'vacaciones', 'suministros'],
         taller:              ['ordenes_taller', 'inventario', 'vacaciones'],
         motores:             ['ordenes_motores', 'inventario', 'vacaciones'],
-        automatizacion:      ['proyectos_automatizacion', 'inventario', 'vacaciones', 'configuracion', 'actividades_automatizacion'],
-        ventas_sin_compras:  ['ventas', 'inventario', 'contactos', 'vacaciones'],
+        automatizacion:      ['proyectos_automatizacion', 'suministros', 'vacaciones', 'configuracion', 'actividades_automatizacion'],
+        ventas_sin_compras:  ['ordenes_taller', 'inventario', 'vacaciones', 'actividades_automatizacion'],
         compras:             ['compras', 'inventario', 'vacaciones'],
-        facturacion:         ['ventas', 'compras', 'facturas', 'vacaciones'],
+        facturacion:         ['ventas', 'compras', 'facturas', 'vacaciones', 'suministros'],
         contabilidad:        null,  // null = ve todo (incluye análisis)
         electronica:         ['ordenes_taller', 'inventario', 'vacaciones', 'configuracion'],
         configuracion:       null
@@ -107,6 +107,11 @@
         if (moduleName === 'analisis_general') {
             // Solo admin, superadmin y contabilidad ven análisis general
             if (rol === 'admin' || rol === 'superadmin' || rol === 'contabilidad') return true;
+            return false;
+        }
+        if (moduleName === 'pdfs_politicas') {
+            // Solo admin y superadmin ven PDFs y Políticas
+            if (rol === 'admin' || rol === 'superadmin') return true;
             return false;
         }
         return true;
@@ -381,6 +386,20 @@
             document.head.appendChild(s);
         } catch (e) {}
     }
+
+    (function bindToggleMenu(){
+        var btn = document.getElementById('toggleMenu');
+        if (btn) btn.addEventListener('click', function(){
+            document.body.classList.toggle('sidebar-closed');
+            try {
+                var closed = document.body.classList.contains('sidebar-closed');
+                localStorage.setItem('ssepi_sidebar_closed', closed ? '1' : '0');
+            } catch(e) {}
+        });
+        try {
+            if (localStorage.getItem('ssepi_sidebar_closed') === '1') document.body.classList.add('sidebar-closed');
+        } catch(e) {}
+    })();
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () { runWhenReady(); loadNavActivityBootstrap(); });

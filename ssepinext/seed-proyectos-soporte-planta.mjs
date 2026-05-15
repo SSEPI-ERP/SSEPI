@@ -23,8 +23,8 @@ async function seedProyectosSoportePlanta() {
     nombre: 'Soporte Técnico Mensual Línea de Tejido',
     vendedor: 'Ing. Iván García',
     ingeniero: 'Ing. Iván García',
-    fecha_creacion: '2026-03-01',
-    fecha: '2026-03-01',
+    fecha_creacion: '2026-05-01',
+    fecha: '2026-05-01',
     notas_generales: 'Contrato de soporte técnico mensual para línea de tejido automático. Incluye mantenimiento preventivo de PLC, sensores, variadores y HMI. Se realizan visitas quincenales con reporte de estado. Respuesta de emergencia en 4 horas.',
     notas_internas: 'Se realizaron 6 visitas de mantenimiento preventivo. Se calibraron sensores de tensión de hilo. Se actualizó firmware de variadores ABB ACS355. Se limpió y ajustó encoder de posicionamiento. Se respaldó programa PLC y se entregó copia al cliente.',
     materiales: [
@@ -33,7 +33,7 @@ async function seedProyectosSoportePlanta() {
       { nombre: 'Encoder incremental 1024ppr', sku: 'ENC-1024-HTL', cantidad: 1, costo: 4200 }
     ],
     actividades: [
-      { area: 'Mantenimiento', servicio: 'Mantenimiento preventivo PLC y sensores', nombre: 'Mantenimiento preventivo quincenal', horas: 8, tipo: 'Planta', inicio: '2026-03-05', fin: '2026-03-05' },
+      { area: 'Mantenimiento', servicio: 'Mantenimiento preventivo PLC y sensores', nombre: 'Mantenimiento preventivo quincenal', horas: 8, tipo: 'Planta', inicio: '2026-05-05', fin: '2026-05-05' },
       { area: 'Calibración', servicio: 'Calibración sensores de tensión', nombre: 'Calibración sensores', horas: 4, tipo: 'Planta', inicio: '2026-03-12', fin: '2026-03-12' },
       { area: 'Actualización', servicio: 'Actualización firmware variadores', nombre: 'Update firmware ABB', horas: 3, tipo: 'Planta', inicio: '2026-03-19', fin: '2026-03-19' }
     ],
@@ -42,7 +42,7 @@ async function seedProyectosSoportePlanta() {
       { titulo: 'Calibración y Ajuste', tareas: [{ nombre: 'Calibrar sensores tensión' }, { nombre: 'Ajustar parámetros variadores' }] },
       { titulo: 'Documentación', tareas: [{ nombre: 'Reporte de estado' }, { nombre: 'Respaldo programa PLC' }] }
     ],
-    fecha_entrega: '2026-03-31',
+    fecha_entrega: '2026-05-31',
     costo_mano_obra: 45000,
     costo_materiales: 25900,
     costo_total: 70900
@@ -70,8 +70,8 @@ async function seedProyectosSoportePlanta() {
     nombre: 'Diagnóstico y Reparación Línea de Llenado',
     vendedor: 'Ing. Iván García',
     ingeniero: 'Ing. Iván García',
-    fecha_creacion: '2026-04-08',
-    fecha: '2026-04-08',
+    fecha_creacion: '2026-05-08',
+    fecha: '2026-05-08',
     notas_generales: 'Servicio de emergencia por paro total de línea de llenado. Falla en sistema de visión artificial que causaba rechazo masivo de botellas. Se diagnosticó y reparó en 48 horas incluyendo viaje a planta.',
     notas_internas: 'Diagnóstico: Cámara Cognex IS7802 con lente contaminado por vapor de agua. Se reemplazó lente protegido con anillo de aire anti-vaho. Se recalibró sistema de visión con nuevo patrón de referencia. Se ajustó velocidad de disparo a 120fps para línea a 360 botellas/minuto.',
     materiales: [
@@ -89,7 +89,7 @@ async function seedProyectosSoportePlanta() {
       { titulo: 'Reparación', tareas: [{ nombre: 'Reemplazar cámara y lente' }, { nombre: 'Instalar anillo de aire' }, { nombre: 'Recalibrar sistema' }] },
       { titulo: 'Pruebas', tareas: [{ nombre: 'Prueba a 360 botellas/min' }, { nombre: 'Verificar rechazo falsos' }, { nombre: 'Entregar reporte' }] }
     ],
-    fecha_entrega: '2026-04-11',
+    fecha_entrega: '2026-05-11',
     costo_mano_obra: 28000,
     costo_materiales: 34500,
     costo_total: 62500

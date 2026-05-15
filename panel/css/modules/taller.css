@@ -567,12 +567,15 @@ main {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 8px;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
 .folio {
     font-weight: 700;
     font-size: 13px;
     color: var(--c-taller);
+    white-space: nowrap;
 }
 
 .badge-warning {

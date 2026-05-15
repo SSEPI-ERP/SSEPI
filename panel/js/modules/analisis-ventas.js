@@ -191,14 +191,13 @@ const AnalisisVentas = (function() {
         const pre = document.getElementById('reportePreview');
         if (pre && !pre.classList.contains('hidden')) {
             const content = document.getElementById('reportePreviewContent');
-            const ventana = window.open('', '_blank');
-            ventana.document.write('<html><head><title>Reporte Análisis Ventas</title><link rel="stylesheet" href="/panel/css/main.css"></head><body style="padding:20px;">');
-            ventana.document.write('<h2>Reporte Análisis Ventas</h2><p>Generado: ' + new Date().toLocaleString('es') + '</p>');
-            if (content) ventana.document.write(content.innerHTML);
-            ventana.document.write('</body></html>');
-            ventana.document.close();
-            ventana.print();
-            ventana.close();
+            const html = '<html><head><title>Reporte Análisis Ventas</title><link rel="stylesheet" href="/panel/css/main.css"></head><body style="padding:20px;"><h2>Reporte Análisis Ventas</h2><p>Generado: ' + new Date().toLocaleString('es') + '</p>' + (content ? content.innerHTML : '') + '</body></html>';
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.rel = 'noopener';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
         } else {
             showPreviewTabla();
             setTimeout(() => imprimirReporte(), 300);

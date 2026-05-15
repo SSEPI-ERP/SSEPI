@@ -265,6 +265,8 @@ async function seedActividades() {
 
   for (let i = 0; i < actividades.length; i++) {
     const a = actividades[i];
+    // Asegurar asignado_a para filtro por técnico en Kanban
+    if (!a.asignado_a && a.creado_por) a.asignado_a = a.creado_por;
     const existingId = await existeActividad(stmtAct, a.fecha, a.resumen);
     let actId;
     if (!existingId) {

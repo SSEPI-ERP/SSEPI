@@ -219,13 +219,13 @@ const AnalisisTaller = (function() {
     }
 
     function imprimirReporte() {
-        const ventana = window.open('', '_blank');
-        ventana.document.write('<html><head><title>Reporte Análisis Laboratorio</title><link rel="stylesheet" href="/panel/css/main.css"></head><body style="padding:20px;">');
-        ventana.document.write(getReporteHtml());
-        ventana.document.write('</body></html>');
-        ventana.document.close();
-        ventana.print();
-        ventana.close();
+        const html = '<html><head><title>Reporte Análisis Laboratorio</title><link rel="stylesheet" href="/panel/css/main.css"></head><body style="padding:20px;">' + getReporteHtml() + '</body></html>';
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.target = '_blank'; a.rel = 'noopener';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
     }
 
     function downloadReport() {

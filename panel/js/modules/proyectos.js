@@ -7,6 +7,7 @@
 
 import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
+import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
 
 const ProyectosModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -57,6 +58,25 @@ const ProyectosModule = (function() {
             console.warn('[Proyectos] Realtime:', e);
         }
         console.log('✅ Módulo soporte iniciado');
+        _initExportButton();
+    }
+
+    async function _initExportButton() {
+        try {
+            const profile = await authService.getCurrentProfile();
+            if (!isAdminExportAllowed(profile)) return;
+            createExportButton('exportCSVContainer', function() {
+                const headers = [
+                    { key: 'folio', label: 'Folio' },
+                    { key: 'estado', label: 'Estado' },
+                    { key: 'cliente', label: 'Cliente' },
+                    { key: 'equipo', label: 'Equipo' },
+                    { key: 'tecnico', label: 'Técnico' },
+                    { key: 'fecha', label: 'Fecha' }
+                ];
+                downloadCSV('soporte_visitas_' + new Date().toISOString().slice(0,10) + '.csv', visits, headers);
+            });
+        } catch (e) { console.warn('[Proyectos] Export CSV init:', e); }
     }
 
     function _setVistaInicial() {
@@ -91,13 +111,13 @@ const ProyectosModule = (function() {
     }
 
     function _setFiltroMesActual() {
-        const now = new Date();
-        filtroFechaInicio = new Date(now.getFullYear(), now.getMonth(), 1);
-        filtroFechaFin = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        // Sin filtro por defecto (mostrar todos)
+        filtroFechaInicio = null;
+        filtroFechaFin = null;
         const filtroInicio = document.getElementById('filtroFechaInicio');
         const filtroFin = document.getElementById('filtroFechaFin');
-        if (filtroInicio) filtroInicio.valueAsDate = filtroFechaInicio;
-        if (filtroFin) filtroFin.valueAsDate = filtroFechaFin;
+        if (filtroInicio) filtroInicio.value = '';
+        if (filtroFin) filtroFin.value = '';
     }
 
     function _startClock() {
@@ -120,12 +140,37 @@ const ProyectosModule = (function() {
     }
 
     async function _loadVisits() {
+        let visitas = [];
+        let proyectos = [];
         try {
-            visits = await visitasService.select({}, { orderBy: 'fecha', ascending: false }) || [];
+            visitas = await visitasService.select({}, { orderBy: 'fecha', ascending: false }) || [];
         } catch (e) {
-            console.warn('[Proyectos] _loadVisits:', e);
-            visits = [];
+            console.warn('[Proyectos] _loadVisits visitas:', e);
         }
+        try {
+            proyectos = await proyectosService.select({}, { orderBy: 'fecha_creacion', ascending: false }) || [];
+        } catch (e) {
+            console.warn('[Proyectos] _loadVisits proyectos:', e);
+        }
+        // Normalizar proyectos de automatización como visitas de soporte
+        const proyectosNormalizados = proyectos.map(function(p) {
+            return {
+                id: p.id,
+                folio: p.folio,
+                cliente: p.cliente_nombre || p.cliente || '',
+                equipo: p.nombre || '',
+                tecnico: p.ingeniero || p.vendedor || '',
+                fecha: p.fecha_creacion || p.fecha || '',
+                estado: 'proyecto',
+                _esProyecto: true,
+                area: '',
+                ubicacion: p.direccion || '',
+                departamento: 'Automatizacion',
+                descripcion_actividades: p.notas_generales || '',
+                recomendaciones: p.notas_internas || ''
+            };
+        });
+        visits = proyectosNormalizados.concat(visitas);
         _applyFilters();
     }
 
@@ -300,6 +345,10 @@ const ProyectosModule = (function() {
     async function _editarVisita(id) {
         var visita = visits.find(function (v) { return v.id === id; });
         if (!visita) return;
+        if (visita._esProyecto) {
+            window.location.hash = '#proyectos_automatizacion';
+            return;
+        }
         currentVisit = visita;
         visitId = id;
         isNewVisit = false;

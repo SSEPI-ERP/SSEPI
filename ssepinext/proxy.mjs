@@ -13,53 +13,108 @@ export const TABLE_MAP = {
   'contactos': 'local_contactos',
   'orden_historial': 'local_orden_historial',
   'coi_sync_queue': 'local_coi_sync_queue',
-  'usuarios': 'local_usuarios'
+  'usuarios': 'local_usuarios',
+  'users': 'local_usuarios',
+  'profiles': 'local_usuarios',
+  'role_permissions': 'local_role_permissions',
+  'users_ver_costos': 'local_users_ver_costos',
+  'auth_logs': 'local_auth_logs',
+  'audit_logs': 'local_audit_logs',
+  'parametros_costos': 'local_parametros_costos',
+  'clientes_tabulador': 'local_clientes_tabulador',
+  'estado_pipeline_unificado': 'local_estado_pipeline_unificado',
+  'eventos_contables_coi': 'local_eventos_contables_coi',
+  'n8n_heartbeat': 'local_n8n_heartbeat',
+  'n8n_insights': 'local_n8n_insights',
+  'politicas_modulos': 'local_politicas_modulos',
+  'inbound_emails': 'local_inbound_emails',
+  'security_alerts': 'local_security_alerts',
+  'user_module_permissions': 'local_user_module_permissions',
+  'movimientos_inventario': 'local_movimientos_inventario',
+  'bom_automatizacion': 'local_bom_automatizacion',
+  'calculadoras': 'local_calculadoras',
+  'calculadora_costos': 'local_calculadora_costos',
+  'calculadora_clientes': 'local_calculadora_clientes',
+  'calculadora_hoja_filas': 'local_calculadora_hoja_filas',
+  'servicios_automatizacion': 'local_servicios_automatizacion',
+  'actividades_diarias': 'local_actividades_diarias',
+  'actividades_historial': 'local_actividades_historial',
+  'actividades_subtareas': 'local_actividades_subtareas',
+  'clientes_adeudos': 'local_clientes_adeudos',
+  'notificaciones': 'local_notificaciones',
+  'suministros_items': 'local_suministros_items',
+  'soporte_visitas': 'local_soporte_visitas',
+  'ingresos_contabilidad': 'local_ingresos_contabilidad',
+  'pagos_nomina': 'local_pagos_nomina'
 };
 
 function parsePostgrestQuery(query) {
-  const result = { select: '*', filters: [], order: null, limit: 1000, offset: 0, single: false };
+  const result = { select: '*', filters: [], orderCol: 'updated_at', orderDir: 'DESC', limit: 1000, offset: 0, single: false };
   for (const [key, val] of Object.entries(query)) {
-    if (key === 'select') result.select = val;
-    else if (key === 'order') result.order = val;
-    else if (key === 'limit') result.limit = parseInt(val, 10) || 1000;
-    else if (key === 'offset') result.offset = parseInt(val, 10) || 0;
-    else if (key === 'single') result.single = val === 'true';
-    else {
-      const opMatch = key.match(/^(.+)\.(eq|neq|gt|gte|lt|lte|like|ilike|in|is)$/);
-      if (opMatch) {
-        const col = opMatch[1], op = opMatch[2];
-        let value = val;
-        if (op === 'in') value = val.replace(/[()]/g, '').split(',').map(s => s.trim());
-        result.filters.push({ col, op, value });
+    if (key === 'select') { result.select = val; continue; }
+    if (key === 'order') {
+      if (typeof val === 'string') {
+        const m = val.match(/^(.+)\.(asc|desc)$/i);
+        if (m) { result.orderCol = m[1]; result.orderDir = m[2].toUpperCase(); }
+        else { result.orderCol = val; result.orderDir = 'ASC'; }
+      }
+      continue;
+    }
+    if (key === 'limit') { result.limit = parseInt(val, 10) || 1000; continue; }
+    if (key === 'offset') { result.offset = parseInt(val, 10) || 0; continue; }
+    if (key === 'single') { result.single = val === 'true'; continue; }
+    if (key === 'or' || key === 'and') continue;
+    const rawVal = Array.isArray(val) ? val[0] : val;
+    if (typeof rawVal !== 'string') continue;
+
+    const opMatchKey = key.match(/^(.+)\.(eq|neq|gt|gte|lt|lte|like|ilike|in|is)$/);
+    if (opMatchKey) {
+      const col = opMatchKey[1], op = opMatchKey[2];
+      let value = rawVal;
+      if (op === 'in') value = rawVal.replace(/[()]/g, '').split(',').map(s => s.trim());
+      result.filters.push({ col, op, value });
+    } else {
+      const opMatchVal = rawVal.match(/^(eq|neq|gt|gte|lt|lte|like|ilike|in|is)\.(.*)$/);
+      if (opMatchVal) {
+        const op = opMatchVal[1];
+        let value = opMatchVal[2];
+        if (op === 'in') value = value.replace(/[()]/g, '').split(',').map(s => s.trim());
+        if (op === 'is' && value === 'null') value = 'null';
+        result.filters.push({ col: key, op, value });
       } else {
-        result.filters.push({ col: key, op: 'eq', value: val });
+        result.filters.push({ col: key, op: 'eq', value: rawVal });
       }
     }
   }
   return result;
 }
 
+function colRef(col) {
+  return col === 'id' ? 'id' : `json_extract(data, '$.${col}')`;
+}
+
 function buildSqliteWhere(filters) {
   const clauses = [], params = [];
   for (const f of filters) {
+    const ref = colRef(f.col);
     switch (f.op) {
-      case 'eq': clauses.push(`json_extract(data, '$.${f.col}') = ?`); params.push(f.value); break;
-      case 'neq': clauses.push(`json_extract(data, '$.${f.col}') != ?`); params.push(f.value); break;
-      case 'gt': clauses.push(`json_extract(data, '$.${f.col}') > ?`); params.push(f.value); break;
-      case 'gte': clauses.push(`json_extract(data, '$.${f.col}') >= ?`); params.push(f.value); break;
-      case 'lt': clauses.push(`json_extract(data, '$.${f.col}') < ?`); params.push(f.value); break;
-      case 'lte': clauses.push(`json_extract(data, '$.${f.col}') <= ?`); params.push(f.value); break;
-      case 'like': clauses.push(`json_extract(data, '$.${f.col}') LIKE ?`); params.push(f.value); break;
-      case 'ilike': clauses.push(`LOWER(json_extract(data, '$.${f.col}')) LIKE LOWER(?)`); params.push(f.value); break;
+      case 'eq': clauses.push(`${ref} = ?`); params.push(f.value); break;
+      case 'neq': clauses.push(`${ref} != ?`); params.push(f.value); break;
+      case 'gt': clauses.push(`${ref} > ?`); params.push(f.value); break;
+      case 'gte': clauses.push(`${ref} >= ?`); params.push(f.value); break;
+      case 'lt': clauses.push(`${ref} < ?`); params.push(f.value); break;
+      case 'lte': clauses.push(`${ref} <= ?`); params.push(f.value); break;
+      case 'like': clauses.push(`${ref} LIKE ?`); params.push(f.value); break;
+      case 'ilike': clauses.push(`LOWER(${ref}) LIKE LOWER(?)`); params.push(f.value); break;
       case 'in': {
         const ph = f.value.map(() => '?').join(',');
-        clauses.push(`json_extract(data, '$.${f.col}') IN (${ph})`);
+        clauses.push(`${ref} IN (${ph})`);
         params.push(...f.value);
         break;
       }
       case 'is':
-        if (f.value === 'null') clauses.push(`json_extract(data, '$.${f.col}') IS NULL`);
-        else { clauses.push(`json_extract(data, '$.${f.col}') = ?`); params.push(f.value); }
+        if (f.value === 'null') clauses.push(`${ref} IS NULL`);
+        else { clauses.push(`${ref} = ?`); params.push(f.value); }
         break;
     }
   }
@@ -170,7 +225,7 @@ export function createProxyRouter(db, supabaseConfig) {
 
     const parsed = parsePostgrestQuery(req.query);
     const { where, params } = buildSqliteWhere(parsed.filters);
-    const orderBy = parsed.order || 'updated_at DESC';
+    const orderBy = `${parsed.orderCol} ${parsed.orderDir}`;
     const stmt = await prepareStatement(db, localTable);
 
     try {

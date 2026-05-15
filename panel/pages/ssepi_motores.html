@@ -176,6 +176,7 @@
         <!-- Acciones -->
         <div class="actions-header">
             <h2 class="section-title"><i class="fas fa-clipboard-list"></i> Órdenes de Motores</h2>
+            <div id="exportCSVContainer"></div>
             <button class="btn-ssepi btn-motores" id="newOrderBtn"><i class="fas fa-plus"></i> Nueva Orden</button>
         </div>
 
@@ -252,7 +253,7 @@
                         </div>
                         <div class="form-grid">
                             <div class="input-group"><label>Referencia cliente</label><input type="text" id="inpClientRef"></div>
-                            <div class="input-group required"><label>Motor/Tipo</label><input type="text" id="inpMotor"></div>
+                            <div class="input-group required"><label>Motor/Tipo</label><select id="inpMotorSelect" onchange="if(this.value==='Otro'){document.getElementById('inpMotorOtroWrap').style.display='block'}else{document.getElementById('inpMotorOtroWrap').style.display='none'}"<option value="">Seleccionar</option><option value="Motores eléctricos">Motores eléctricos</option><option value="Rebobinadores">Rebobinadores</option><option value="Otro">Otro</option></select><div id="inpMotorOtroWrap" style="display:none;margin-top:6px;"><input type="text" id="inpMotorOtro" placeholder="Especificar motor/tipo"></div></div>
                         </div>
                         <div class="form-grid">
                             <div class="input-group"><label>Marca</label><input type="text" id="inpBrand"></div>

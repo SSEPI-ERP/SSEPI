@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/panel/assets/logo-ssepi.png">
+    <link rel="shortcut icon" type="image/png" href="/panel/assets/logo-ssepi.png">
+    <title>SSEPI · Suministros</title>
+    <link rel="stylesheet" href="/panel/css/main.css">
+    <link rel="stylesheet" href="/panel/css/modules/suministros.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/panel/assets/bom/bom-images-index.js"></script>
+    <script type="module" src="/panel/js/core/supabase-config.js?v=2"></script>
+    <script type="module" src="/panel/js/core/security-middleware.js?v=2"></script>
+    <script type="module" src="/panel/js/core/auth-service.js?v=2"></script>
+    <script type="module" src="/panel/js/core/data-service.js?v=2"></script>
+    <script type="module" src="/panel/js/core/costos-engine.js?v=2"></script>
+    <script src="/panel/js/core/theme-clock.js?v=2"></script>
+    <script src="/panel/js/core/user-menu.js?v=2"></script>
+    <script src="/panel/js/core/nav-by-role.js?v=2"></script>
+    <script src="/panel/js/core/folio-formats.js?v=2"></script>
+    <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
+    <script type="module" src="/panel/js/modules/suministros.js?v=2"></script>
+</head>
+<body class="page-suministros nav-loading">
+    <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
+    <header>
+        <div class="header-left">
+            <button class="toggle-btn" id="toggleMenu"><i class="fas fa-bars"></i></button>
+            <div class="brand-container">
+                <img src="/assets/logo-ssepi.png" alt="SSEPI" class="brand-logo">
+                <div>
+                    <div class="brand-text">SUMINISTROS</div>
+                    <div class="brand-sub">Catálogo BOM · Cotización · Pipeline</div>
+                </div>
+            </div>
+            <a href="/panel/panel.html" class="home-link"><i class="fas fa-house"></i> Panel Principal</a>
+        </div>
+        <div class="header-right">
+            <div class="notification-badge">
+                <i class="fas fa-bell" style="font-size: 18px; color: var(--text-muted);"></i>
+                <span class="badge-count" id="notificacionesBadge">0</span>
+            </div>
+            <div class="live-clock" id="clock">00:00:00</div>
+            <button class="theme-btn" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <div class="user-pill" id="userMenu">
+                <div class="avatar-circle" id="userAvatar">A</div>
+                <span id="userName">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sidebar-left" id="sidebar">
+        <div class="menu-category">OPERACIONES</div>
+        <a href="/panel/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
+        <a href="/panel/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
+        <a href="/panel/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/panel/pages/ssepi_actividades.html" class="nav-item" data-module="actividades_automatizacion"><span class="icon-box"><i class="fas fa-calendar-week"></i></span> Actividades</a>
+        <div class="menu-category">COMERCIAL</div>
+        <a href="/panel/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
+        <a href="/panel/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
+        <a href="/panel/pages/ssepi_suministros.html" class="nav-item active" data-module="suministros"><span class="icon-box"><i class="fas fa-boxes-stacked"></i></span> Suministros</a>
+        <div class="menu-category">ADMINISTRACIÓN</div>
+        <a href="/panel/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
+        <a href="/panel/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/panel/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
+        <a href="/panel/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
+        <a href="/panel/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <a href="/panel/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <a href="/panel/pdfs-politicas.html" class="nav-item" data-module="pdfs_politicas"><span class="icon-box"><i class="fas fa-file-pdf"></i></span> PDFs y Políticas</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/panel/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
+    </nav>
+
+    <main>
+        <!-- KPIs -->
+        <div class="kpi-bar" id="kpiRow">
+            <div class="kpi-chip"><i class="fas fa-boxes-stacked kpi-chip-icon"></i><span class="kpi-chip-val" id="kpiTotalItems">0</span><span class="kpi-chip-lbl">Artículos</span></div>
+            <div class="kpi-chip"><i class="fas fa-cart-plus kpi-chip-icon"></i><span class="kpi-chip-val" id="kpiCarritoItems">0</span><span class="kpi-chip-lbl">En Carrito</span></div>
+            <div class="kpi-chip"><i class="fas fa-dollar-sign kpi-chip-icon"></i><span class="kpi-chip-val" id="kpiCarritoTotal">$0</span><span class="kpi-chip-lbl">Total Carrito</span></div>
+            <div class="kpi-chip"><i class="fas fa-file-invoice kpi-chip-icon"></i><span class="kpi-chip-val" id="kpiCotizaciones">0</span><span class="kpi-chip-lbl">Cotizaciones</span></div>
+        </div>
+
+        <!-- CATÁLOGO -->
+        <section class="suministros-section" id="catalogoSection">
+            <div class="section-header">
+                <h2><i class="fas fa-search"></i> Catálogo de Suministros</h2>
+                <div class="vista-toggle">
+                    <button class="vista-btn active" id="btnVistaGrid" title="Vista tarjetas"><i class="fas fa-th-large"></i></button>
+                    <button class="vista-btn" id="btnVistaLista" title="Vista tabla"><i class="fas fa-list"></i></button>
+                </div>
+            </div>
+            <div class="catalogo-filtros-bar">
+                <div class="filtro-search-wrap">
+                    <i class="fas fa-search filtro-search-icon"></i>
+                    <input type="text" id="catalogoBusqueda" placeholder="Buscar por nombre, código, categoría..." class="filtro-search-input">
+                </div>
+                <div class="filtro-chips" id="filtroFuenteChips">
+                    <button class="fuente-chip active" data-fuente="">Todo</button>
+                    <button class="fuente-chip fuente-chip-bom" data-fuente="BOM"><i class="fas fa-robot"></i> BOM</button>
+                    <button class="fuente-chip fuente-chip-stock" data-fuente="STOCK"><i class="fas fa-microchip"></i> Stock</button>
+                    <button class="fuente-chip fuente-chip-consumible" data-fuente="CONSUMIBLE"><i class="fas fa-flask"></i> Consumible</button>
+                </div>
+                <select id="catalogoCategoria" class="filtro-categoria-select"><option value="">Todas las categorías</option></select>
+                <span class="filtro-result-count" id="filtroResultCount">0 artículos</span>
+            </div>
+            <div id="catalogoContainer" class="sum-grid"></div>
+            <div class="pagination" id="catalogoPaginacion"></div>
+        </section>
+
+        <!-- CARRITO -->
+        <section class="suministros-section" id="carritoSection">
+            <div class="section-header">
+                <h2><i class="fas fa-cart-shopping"></i> Carrito de Suministros</h2>
+                <button class="btn btn-sm btn-secondary" id="btnVaciarCarrito"><i class="fas fa-trash"></i> Vaciar</button>
+            </div>
+            <table class="data-table" id="carritoTabla">
+                <thead><tr><th>Fuente</th><th>Artículo</th><th>Cant.</th><th>Precio Unit.</th><th>Subtotal</th><th>Link</th><th></th></tr></thead>
+                <tbody id="carritoBody"></tbody>
+                <tfoot><tr class="total-row"><td colspan="3"><strong>Total</strong></td><td id="carritoTotalItems">0</td><td colspan="2"></td><td id="carritoTotalPrecio">$0.00</td></tr></tfoot>
+            </table>
+        </section>
+
+        <!-- COTIZACIÓN -->
+        <section class="suministros-section" id="cotizacionSection">
+            <div class="section-header">
+                <h2><i class="fas fa-file-invoice-dollar"></i> Cotización de Suministro</h2>
+            </div>
+            <div class="cotizacion-form">
+                <div class="form-row">
+                    <div class="form-group"><label>Cliente</label><select id="cotCliente" class="form-control"></select></div>
+                    <div class="form-group"><label>Folio</label><input type="text" id="cotFolio" class="form-control" readonly placeholder="Se genera al guardar"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Días de gestión</label><input type="number" id="cotDias" class="form-control" value="1" min="1"></div>
+                    <div class="form-group"><label>Km recorrido</label><input type="number" id="cotKm" class="form-control" value="0" min="0"></div>
+                    <div class="form-group"><label>Utilidad (%)</label><input type="number" id="cotUtilidad" class="form-control" value="40" min="0" max="200"></div>
+                </div>
+                <div class="costos-desglose" id="costosDesglose">
+                    <div class="costo-linea"><span>Costo suministros</span><span id="costoProveedor">$0.00</span></div>
+                    <div class="costo-linea"><span>Gasolina</span><span id="costoGasolina">$0.00</span></div>
+                    <div class="costo-linea"><span>Gastos generales</span><span id="costoGastos">$0.00</span></div>
+                    <div class="costo-linea"><span>Utilidad (<span id="utilidadPct">40</span>%)</span><span id="costoUtilidad">$0.00</span></div>
+                    <div class="costo-linea"><span>Crédito (3%)</span><span id="costoCredito">$0.00</span></div>
+                    <div class="costo-linea total"><span>IVA (16%)</span><span id="costoIva">$0.00</span></div>
+                    <div class="costo-linea gran-total"><strong>GRAN TOTAL</strong><strong id="costoGranTotal">$0.00</strong></div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" id="btnGuardarCot"><i class="fas fa-save"></i> Guardar Cotización</button>
+                    <button class="btn btn-secondary" id="btnEnviarCompras"><i class="fas fa-paper-plane"></i> Enviar a Compras</button>
+                    <button class="btn btn-outline" id="btnLimpiarCot"><i class="fas fa-eraser"></i> Limpiar</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- COTIZACIONES EXISTENTES -->
+        <section class="suministros-section" id="cotizacionesListSection">
+            <div class="section-header">
+                <h2><i class="fas fa-list"></i> Historial de Cotizaciones</h2>
+            </div>
+            <table class="data-table" id="cotizacionesTabla">
+                <thead><tr><th>Folio</th><th>Cliente</th><th>Items</th><th>Total</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
+                <tbody id="cotizacionesBody"></tbody>
+            </table>
+        </section>
+
+        <!-- MODAL DETALLE -->
+        <div class="modal-overlay" id="modalDetalleBom">
+            <div class="modal-content">
+                <div class="modal-header"><h3 id="modalDetalleTitulo"></h3><button class="modal-close" onclick="document.getElementById('modalDetalleBom').classList.remove('active')">&times;</button></div>
+                <div class="modal-body" id="modalDetalleBody"></div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

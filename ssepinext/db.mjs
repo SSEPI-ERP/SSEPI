@@ -1,8 +1,10 @@
 import initSqlJs from 'sql.js';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-const DB_DIR = path.join(process.cwd(), 'data');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DB_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
 
 export const DB_PATH = path.join(DB_DIR, 'ssepi-local.db');
@@ -19,7 +21,37 @@ export const TABLES = [
   { name: 'local_contactos', indexCols: ['nombre','tipo','email'] },
   { name: 'local_orden_historial', indexCols: ['orden_id','tabla_origen','evento'] },
   { name: 'local_coi_sync_queue', indexCols: ['tabla_origen','registro_id','estatus'] },
-  { name: 'local_usuarios', indexCols: ['email','rol','activo'] }
+  { name: 'local_usuarios', indexCols: ['email','rol','activo'] },
+  { name: 'local_role_permissions', indexCols: ['rol','module','action'] },
+  { name: 'local_users_ver_costos', indexCols: ['auth_user_id'] },
+  { name: 'local_auth_logs', indexCols: ['email_hash','timestamp'] },
+  { name: 'local_audit_logs', indexCols: ['usuario_id','accion','created_at'] },
+  { name: 'local_parametros_costos', indexCols: ['clave'] },
+  { name: 'local_clientes_tabulador', indexCols: ['nombre','tipo_servicio'] },
+  { name: 'local_estado_pipeline_unificado', indexCols: ['tabla_origen','estado_actual'] },
+  { name: 'local_eventos_contables_coi', indexCols: ['tabla_origen','estatus'] },
+  { name: 'local_n8n_heartbeat', indexCols: [] },
+  { name: 'local_n8n_insights', indexCols: ['dismissed'] },
+  { name: 'local_politicas_modulos', indexCols: ['modulo'] },
+  { name: 'local_inbound_emails', indexCols: ['leido'] },
+  { name: 'local_security_alerts', indexCols: ['estado'] },
+  { name: 'local_user_module_permissions', indexCols: ['user_id','module'] },
+  { name: 'local_movimientos_inventario', indexCols: ['producto_id','tipo_movimiento'] },
+  { name: 'local_bom_automatizacion', indexCols: ['proyecto_id','tipo'] },
+  { name: 'local_calculadoras', indexCols: ['nombre','departamento'] },
+  { name: 'local_calculadora_costos', indexCols: ['calculadora_id','concepto'] },
+  { name: 'local_calculadora_clientes', indexCols: ['calculadora_id','cliente_nombre'] },
+  { name: 'local_calculadora_hoja_filas', indexCols: ['calculadora_id','fila_orden'] },
+  { name: 'local_servicios_automatizacion', indexCols: ['nombre','categoria'] },
+  { name: 'local_ingresos_contabilidad', indexCols: ['estatus','monto_total'] },
+  { name: 'local_notificaciones', indexCols: ['para','leido','tipo'] },
+  { name: 'local_suministros_items', indexCols: ['suministro_id','source','sku'] },
+  { name: 'local_soporte_visitas', indexCols: ['folio','estado','cliente','origen'] },
+  { name: 'local_actividades_diarias', indexCols: ['fecha','estado','user_id'] },
+  { name: 'local_actividades_historial', indexCols: ['actividad_id','evento'] },
+  { name: 'local_actividades_subtareas', indexCols: ['actividad_id','done','orden'] },
+  { name: 'local_clientes_adeudos', indexCols: ['cliente_id','recuperado'] },
+  { name: 'local_pagos_nomina', indexCols: ['empleado_nombre','fecha_pago','estado'] }
 ];
 
 let _sql = null;
@@ -30,7 +62,7 @@ async function getSQL() {
   return _sql;
 }
 
-function persistDb() {
+export function persistDb() {
   if (!_db) return;
   const data = _db.export();
   fs.writeFileSync(DB_PATH, Buffer.from(data));
@@ -86,7 +118,25 @@ export async function getDb() {
       prefix TEXT PRIMARY KEY,
       last_number INTEGER DEFAULT 0
     );
+
+    CREATE TABLE IF NOT EXISTS offline_usuarios (
+      id TEXT PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      nombre TEXT NOT NULL,
+      rol TEXT NOT NULL DEFAULT 'ventas',
+      departamento TEXT,
+      activo INTEGER DEFAULT 1,
+      auth_user_id TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
   `);
+
+  // Migracion segura: asegurar auth_user_id en tablas existentes
+  try {
+    _db.exec(`ALTER TABLE offline_usuarios ADD COLUMN auth_user_id TEXT`);
+  } catch(e) { /* ya existe */ }
 
   persistDb();
   return _db;
@@ -95,20 +145,22 @@ export async function getDb() {
 export async function prepareStatement(_db, tableName) {
   function run(sql, params) {
     const stmt = _db.prepare(sql);
-    const info = stmt.run(...params);
+    const info = stmt.run(params);
     stmt.free();
     return info;
   }
 
   function get(sql, params) {
     const stmt = _db.prepare(sql);
-    const row = stmt.get(...params);
+    stmt.bind(params);
+    const row = stmt.step() ? stmt.getAsObject() : null;
     stmt.free();
-    return row || null;
+    return row;
   }
 
   function all(sql, params) {
     const stmt = _db.prepare(sql);
+    stmt.bind(params);
     const rows = [];
     while (stmt.step()) rows.push(stmt.getAsObject());
     stmt.free();
@@ -117,16 +169,20 @@ export async function prepareStatement(_db, tableName) {
 
   async function insert(cloudId, dataObj) {
     const data = JSON.stringify(dataObj);
-    const info = run(
+    run(
       `INSERT INTO ${tableName} (cloud_id, data, sync_status, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
       [cloudId || null, data, cloudId ? 'synced' : 'pending_push']
     );
+    const idRes = _db.exec("SELECT last_insert_rowid()")[0];
+    const id = idRes.values[0][0];
+    const dataWithId = JSON.stringify({ ...dataObj, id });
+    run(`UPDATE ${tableName} SET data = ? WHERE id = ?`, [dataWithId, id]);
     persistDb();
-    return { id: info.lastInsertRowid, ...dataObj };
+    return { id, ...dataObj };
   }
 
   async function update(localId, dataObj) {
-    const data = JSON.stringify(dataObj);
+    const data = JSON.stringify({ ...dataObj, id: localId });
     run(
       `UPDATE ${tableName} SET data = ?, sync_status = CASE WHEN cloud_id IS NULL THEN 'pending_push' ELSE 'pending_push' END, updated_at = datetime('now') WHERE id = ?`,
       [data, localId]
@@ -153,22 +209,31 @@ export async function prepareStatement(_db, tableName) {
   async function getById(localId) {
     const row = get(`SELECT * FROM ${tableName} WHERE id = ?`, [localId]);
     if (!row) return null;
-    try { return { local_id: row.id, cloud_id: row.cloud_id, sync_status: row.sync_status, ...JSON.parse(row.data) }; }
+    try { return { id: row.id, local_id: row.id, cloud_id: row.cloud_id, sync_status: row.sync_status, ...JSON.parse(row.data) }; }
     catch { return null; }
   }
 
   async function getByCloudId(cloudId) {
     const row = get(`SELECT * FROM ${tableName} WHERE cloud_id = ?`, [cloudId]);
     if (!row) return null;
-    try { return { local_id: row.id, cloud_id: row.cloud_id, sync_status: row.sync_status, ...JSON.parse(row.data) }; }
+    try { return { id: row.id, local_id: row.id, cloud_id: row.cloud_id, sync_status: row.sync_status, ...JSON.parse(row.data) }; }
     catch { return null; }
   }
 
+  function normalizeOrderBy(orderByStr) {
+    const REAL_COLS = new Set(['id','cloud_id','sync_status','synced_at','created_at','updated_at']);
+    return orderByStr.replace(/([a-zA-Z_][a-zA-Z0-9_]*)\s+(ASC|DESC)/gi, (_match, col, dir) => {
+      if (REAL_COLS.has(col)) return `${col} ${dir}`;
+      return `json_extract(data, '$.${col}') ${dir}`;
+    });
+  }
+
   async function query(whereClause = '', params = [], orderBy = 'updated_at DESC', limit = 1000) {
-    const sql = `SELECT * FROM ${tableName} ${whereClause ? 'WHERE ' + whereClause : ''} ORDER BY ${orderBy} LIMIT ${limit}`;
+    const normalizedOrder = normalizeOrderBy(orderBy);
+    const sql = `SELECT * FROM ${tableName} ${whereClause ? 'WHERE ' + whereClause : ''} ORDER BY ${normalizedOrder} LIMIT ${limit}`;
     const rows = all(sql, params);
     return rows.map(r => {
-      try { return { local_id: r.id, cloud_id: r.cloud_id, sync_status: r.sync_status, ...JSON.parse(r.data) }; }
+      try { return { id: r.id, local_id: r.id, cloud_id: r.cloud_id, sync_status: r.sync_status, ...JSON.parse(r.data) }; }
       catch { return null; }
     }).filter(Boolean);
   }
@@ -211,14 +276,14 @@ export async function setSyncState(_db, updates) {
   if (keys.length === 0) return;
   const cols = keys.map(k => `${k} = ?`).join(', ');
   const stmt = _db.prepare(`UPDATE sync_state SET ${cols} WHERE id = 1`);
-  stmt.run(...keys.map(k => updates[k]));
+  stmt.run(keys.map(k => updates[k]));
   stmt.free();
   persistDb();
 }
 
 export async function queueOperation(_db, tableName, operation, cloudId, payload) {
   const stmt = _db.prepare(`INSERT INTO pending_ops (table_name, operation, cloud_id, payload) VALUES (?, ?, ?, ?)`);
-  stmt.run(tableName, operation, cloudId || null, JSON.stringify(payload || {}));
+  stmt.run([tableName, operation, cloudId || null, JSON.stringify(payload || {})]);
   stmt.free();
   persistDb();
 }

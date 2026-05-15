@@ -59,7 +59,7 @@
         var tbody = document.getElementById('tablaEmpleadosBody');
         if (!tbody) return;
         var rolLabel = function(r) {
-            var map = { ventas: 'Ventas', automatizacion: 'Automatización', taller: 'Taller', administracion: 'Administración', contabilidad: 'Contabilidad', admin: 'Admin', motores: 'Motores' };
+            var map = { ventas: 'Ventas', automatizacion: 'Automatización', taller: 'Laboratorio de Electrónica', administracion: 'Administración', contabilidad: 'Contabilidad', admin: 'Admin', motores: 'Motores' };
             return map[r] || r;
         };
         tbody.innerHTML = (empleados || []).length === 0

@@ -15,6 +15,7 @@ import { syncFolioAfterCotizacionInsert } from '../core/folio-operativo-service.
 import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
 import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
 import { purgeDraftRecordKeys } from '../core/ssepi-runtime/draft-purge-keys.js';
+import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
 
 const VentasModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -25,6 +26,8 @@ const VentasModule = (function() {
     let proyectos = [];
     let taller = [];
     let motores = [];
+    /** Pestaña panel órdenes operativas (Laboratorio / Motores / Auto) en Ventas */
+    let operativasTabVentas = 'taller';
     let solicitudesTaller = [];
     let solicitudesFacturacion = [];
 
@@ -40,6 +43,7 @@ const VentasModule = (function() {
 
     // Wizard de cotización (4 pasos)
     let wizardPaso = 1;
+    let fechasEtapas = {};
     /** Registro paso 1 (falla, prioridad, departamento, orden) — se guarda en cotización.cerebro_registro */
     let ventasWizardCerebro = null;
     let lastGastosGenerales = 0;
@@ -101,10 +105,12 @@ const VentasModule = (function() {
         const el = document.getElementById('wizardFolioAyuda');
         if (!el) return;
         const map = {
-            'Taller Electrónica': 'Al continuar se crea la orden con folio SP-E…',
+            'Laboratorio de Electrónica': 'Al continuar se crea la orden con folio SP-E…',
             'Taller Motores': 'Al continuar se crea la orden con folio SP-M…',
             'Automatización': 'Al continuar se crea el registro con folio SP-A…',
             'Proyectos': 'Al continuar se crea el registro con folio SP-A…',
+            'Soporte en planta': 'Se crea visita de soporte y se envía a Automatización…',
+            'Suministro': 'Se redirige al catálogo de Suministros…',
             'Administración': 'Sin orden de área; la cotización queda directa.'
         };
         el.textContent = map[dept] || 'Elige departamento.';
@@ -134,6 +140,7 @@ const VentasModule = (function() {
         return {
             v: 1,
             wizardPaso: wizardPaso,
+            fechasEtapas: fechasEtapas,
             calculadoraClienteActual: calculadoraClienteActual ? { ...calculadoraClienteActual } : null,
             calculadoraComponentes: calculadoraComponentes.slice(),
             compraActual: compraActual ? { ...compraActual } : null,
@@ -198,6 +205,7 @@ const VentasModule = (function() {
         if (p.lastIva !== undefined) lastIva = p.lastIva;
         if (p.lastTotal !== undefined) lastTotal = p.lastTotal;
         if (Array.isArray(p.actividadesDiarias)) actividadesDiarias = p.actividadesDiarias.slice();
+        if (p.fechasEtapas && typeof p.fechasEtapas === 'object') fechasEtapas = { ...p.fechasEtapas };
 
         // Abrir modal y renderizar paso guardado
         const modal = document.getElementById('calculadoraModal');
@@ -307,24 +315,64 @@ const VentasModule = (function() {
                 // Actualizar calculadoraClienteActual: buscar KM/horas en clientes_tabulador
                 if (opt && opt.value) {
                     const contactoId = opt.value;
-                    const contacto = contactos.find(c => String(c.id) === String(contactoId));
-                    const nombreCliente = (contacto?.nombre || contacto?.empresa || contacto?.email || 'Cliente').trim() || 'Cliente';
+                    let contacto = null;
+                    let nombreCliente = '';
+                    let km = 0;
+                    let horas = 0;
+                    let email = '';
+                    let telefono = '';
+                    let rfc = '';
 
-                    // Buscar en clientes_tabulador (tabuladorTaller.clientes ya cargó desde BD)
-                    const tabCliente = tabuladorTaller.clientes.find(
-                        tc => tc.nombre && nombreCliente && tc.nombre.toLowerCase().trim() === nombreCliente.toLowerCase().trim()
-                    );
+                    if (String(contactoId).startsWith('tab-')) {
+                        // Cliente del tabulador (no está en contactos)
+                        nombreCliente = decodeURIComponent(contactoId.replace('tab-', ''));
+                        const tabCliente = tabuladorTaller.clientes.find(
+                            tc => tc.nombre && tc.nombre.toLowerCase().trim() === nombreCliente.toLowerCase().trim()
+                        );
+                        km = tabCliente?.km || Number(opt.dataset.km) || 0;
+                        horas = tabCliente?.horas || Number(opt.dataset.horas) || 0;
+                    } else {
+                        contacto = contactos.find(c => String(c.id) === String(contactoId));
+                        nombreCliente = (contacto?.nombre || contacto?.empresa || contacto?.email || 'Cliente').trim() || 'Cliente';
+                        email = contacto?.email || '';
+                        telefono = contacto?.telefono || '';
+                        rfc = contacto?.rfc || '';
+                        // Buscar en clientes_tabulador (tabuladorTaller.clientes ya cargó desde BD)
+                        const tabCliente = tabuladorTaller.clientes.find(
+                            tc => tc.nombre && nombreCliente && tc.nombre.toLowerCase().trim() === nombreCliente.toLowerCase().trim()
+                        );
+                        km = tabCliente?.km || Number(opt.dataset.km) || 0;
+                        horas = tabCliente?.horas || Number(opt.dataset.horas) || 0;
+                    }
 
                     calculadoraClienteActual = {
                         contactoId,
                         nombre: nombreCliente,
-                        km: tabCliente?.km || Number(opt.dataset.km) || 0,
-                        horas: tabCliente?.horas || Number(opt.dataset.horas) || 0,
-                        email: contacto?.email || '',
-                        telefono: contacto?.telefono || '',
-                        rfc: contacto?.rfc || '',
+                        km,
+                        horas,
+                        email,
+                        telefono,
+                        rfc,
                         producto: ''
                     };
+
+                    // Consultar adeudo y mostrar banner
+                    (async () => {
+                        const adeudo = await _consultarAdeudoCliente(contactoId);
+                        const banner = document.getElementById('wizardAdeudoBanner');
+                        if (banner) {
+                            if (adeudo > 0) {
+                                banner.innerHTML = `<div class="alert-adeudo" style="padding:10px 14px; background:#fff7ed; border:1px solid #fdba74; border-radius:8px; color:#9a3412; font-size:13px;">
+                                    <i class="fas fa-exclamation-triangle" style="margin-right:6px;"></i>
+                                    Este cliente tiene un adeudo acumulado de <strong>$${adeudo.toLocaleString()}</strong>.
+                                    Se recuperará automáticamente en esta cotización.
+                                </div>`;
+                                banner.style.display = 'block';
+                            } else {
+                                banner.style.display = 'none';
+                            }
+                        }
+                    })();
                 }
             });
         }
@@ -406,7 +454,7 @@ const VentasModule = (function() {
         const notasAlta = [prioLine, 'Alta desde Ventas (cerebro).'].join('\n');
 
         try {
-            if (dept === 'Taller Electrónica') {
+            if (dept === 'Laboratorio de Electrónica') {
                 const folioFn = window.folioFormats && window.folioFormats.getNextFolioLaboratorio;
                 let folio;
                 try {
@@ -500,11 +548,11 @@ const VentasModule = (function() {
                                 inserted = await tallerService.insert(row, csrfToken);
                             } catch (err2) {
                                 console.error('[Ventas] Falló reintento de insert:', err2);
-                                throw new Error('No se pudo crear la orden de Taller: ' + (err2.message || err2));
+                                throw new Error('No se pudo crear la orden de Laboratorio: ' + (err2.message || err2));
                             }
                         }
                     }
-                    if (!inserted) throw new Error('No se recibió confirmación del servidor al crear la orden de Taller.');
+                    if (!inserted) throw new Error('No se recibió confirmación del servidor al crear la orden de Laboratorio.');
                 }
 
                 if (inserted && taller && !taller.some((o) => o.id === inserted.id)) taller.unshift(inserted);
@@ -691,6 +739,76 @@ const VentasModule = (function() {
                 return { folio: inserted.folio || folio, ordenId: inserted.id, tipo: 'proyecto' };
             }
 
+            if (dept === 'Soporte en planta') {
+                // Crear visita de soporte y proyecto de automatización vinculado
+                const profile = await authService.getCurrentProfile();
+                const userName = profile?.nombre || 'Ventas';
+                const now = new Date();
+                const folioVisita = 'SP-SOP' + now.getFullYear().toString().slice(-2) + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0') + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+                const visitaData = {
+                    folio: folioVisita,
+                    fecha: now.toISOString().split('T')[0],
+                    cliente: clienteNombre,
+                    equipo: nombreProducto || falla.substring(0, 80),
+                    tecnico: userName,
+                    departamento: 'Automatización',
+                    objetivo: falla,
+                    estado: 'confirmacion',
+                    origen: 'ventas'
+                };
+                let visitaInserted;
+                try {
+                    const soporteService = createDataService('soporte_visitas');
+                    visitaInserted = await soporteService.insert(visitaData, csrfToken);
+                } catch (err) {
+                    console.warn('[Ventas] Error creando visita soporte:', err);
+                }
+
+                // También crear proyecto en automatización para que aparezca en ese módulo
+                const folioFn = window.folioFormats && window.folioFormats.getNextFolioAutomatizacion;
+                let folioProy;
+                try {
+                    folioProy = folioFn ? await folioFn() : 'SP-A' + Date.now().toString(36).toUpperCase();
+                } catch (e) {
+                    folioProy = 'SP-A' + Date.now().toString(36).toUpperCase();
+                }
+                const proyectoData = {
+                    folio: folioProy,
+                    nombre: 'Soporte: ' + (nombreProducto || clienteNombre),
+                    cliente: clienteNombre,
+                    fecha: now.toISOString().split('T')[0],
+                    vendedor: userName,
+                    origen: 'soporte',
+                    visita_id: visitaInserted?.id || null,
+                    notas_generales: 'Visita de soporte generada desde Ventas\n\nObjetivo: ' + falla + '\n\nVisita: ' + folioVisita,
+                    estado: 'pendiente',
+                    avance: 0,
+                    actividades: [],
+                    materiales: [],
+                    epicas: []
+                };
+                let proyectoInserted;
+                try {
+                    proyectoInserted = await proyectosService.insert(proyectoData, csrfToken);
+                } catch (err) {
+                    console.warn('[Ventas] Error creando proyecto desde soporte:', err);
+                }
+
+                if (proyectoInserted && proyectos && !proyectos.some((p) => p.id === proyectoInserted.id)) proyectos.unshift(proyectoInserted);
+                compraActual = {
+                    id: proyectoInserted?.id || visitaInserted?.id,
+                    vinculacion: { id: proyectoInserted?.id || visitaInserted?.id, nombre: clienteNombre, tipo: 'proyecto' },
+                    _origen: 'soporte'
+                };
+                return { folio: folioVisita, ordenId: proyectoInserted?.id || visitaInserted?.id, tipo: 'soporte', redirectTo: '/panel/pages/ssepi_proyectos.html' };
+            }
+
+            if (dept === 'Suministro') {
+                // Suministro: cotización directa, sin orden operativa
+                // Redirigir al módulo de Suministros
+                return { folio: 'SP-S', ordenId: null, tipo: 'suministro', redirectTo: '/panel/pages/ssepi_suministros.html' };
+            }
+
             throw new Error('Departamento no soportado para alta de orden');
         } catch (error) {
             // Re-lanzar con información clasificada para UI
@@ -866,12 +984,12 @@ const VentasModule = (function() {
 
     /**
      * Genera el siguiente folio según el tipo de departamento
-     * @param {string} departamento - 'Automatización' | 'Taller Electrónica' | 'Taller Motores' | 'Proyectos' | 'Suministro'
+     * @param {string} departamento - 'Automatización' | 'Laboratorio de Electrónica' | 'Taller Motores' | 'Proyectos' | 'Suministro'
      * @returns {Promise<string>} Folio generado
      */
     async function generarFolioPorTipo(departamento) {
         const tipoMap = {
-            'Taller Electrónica': 'SP-E',
+            'Laboratorio de Electrónica': 'SP-E',
             'Taller Motores': 'SP-M',
             'Automatización': 'SP-A',
             'Proyectos': 'SP-P',
@@ -902,7 +1020,7 @@ const VentasModule = (function() {
             }, { onConflict: 'tipo' });
 
         switch (departamento) {
-            case 'Taller Electrónica':
+            case 'Laboratorio de Electrónica':
                 // SP-E: Consecutivo simple de 4 dígitos (ej: 0742, 0843)
                 return 'SP-E' + String(nuevoFolio).padStart(4, '0');
 
@@ -961,6 +1079,7 @@ const VentasModule = (function() {
             cotizaciones = cotizaciones || [];
             _applyFilters();
         }
+        _bindOperativasVentasPanel();
         _startClock();
         try {
             _setupRealtime();
@@ -982,6 +1101,26 @@ const VentasModule = (function() {
         _exportFunctions();
 
         console.log('✅ Módulo ventas iniciado');
+        _initExportButton();
+    }
+
+    async function _initExportButton() {
+        try {
+            const profile = await authService.getCurrentProfile();
+            if (!isAdminExportAllowed(profile)) return;
+            createExportButton('exportCSVContainer', function() {
+                const headers = [
+                    { key: 'folio', label: 'Folio' },
+                    { key: 'cliente_nombre', label: 'Cliente' },
+                    { key: 'proyecto', label: 'Proyecto' },
+                    { key: 'vendedor', label: 'Vendedor' },
+                    { key: 'fecha', label: 'Fecha' },
+                    { key: 'total', label: 'Total' },
+                    { key: 'estado', label: 'Estado' }
+                ];
+                downloadCSV('ventas_' + new Date().toISOString().slice(0,10) + '.csv', ventas, headers);
+            });
+        } catch (e) { console.warn('[Ventas] Export CSV init:', e); }
     }
 
     function _setVistaInicial() {
@@ -1095,6 +1234,7 @@ const VentasModule = (function() {
         ])
             .then(() => {
                 _renderPipelineCards();
+                _renderOperativasVentasList();
             })
             .catch((e) => console.warn('[Ventas] carga secundaria:', e));
     }
@@ -1155,9 +1295,36 @@ const VentasModule = (function() {
     }
 
     async function _loadContactos() {
+        let rawContactos = [];
+        let tabuladorClientes = [];
         try {
-            contactos = await contactosService.select({ tipo: 'client' }, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 2000 }) || [];
-        } catch (e) { console.warn('[Ventas] contactos:', e); contactos = []; }
+            const allContactos = await contactosService.select({}, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 2000 }) || [];
+            rawContactos = allContactos.filter(c => c.tipo === 'client' || c.tipo === 'cliente');
+        } catch (e) { console.warn('[Ventas] contactos:', e); }
+        // Cargar clientes del tabulador
+        try {
+            const { data, error } = await window.supabase
+                .from('clientes_tabulador')
+                .select('nombre_cliente, km, horas_viaje, activo')
+                .eq('activo', true)
+                .order('nombre_cliente');
+            if (!error && data) {
+                tabuladorClientes = data.filter(c => c.activo !== false && c.nombre_cliente).map(c => ({
+                    id: 'tab-' + c.nombre_cliente.replace(/\s+/g, '-').toLowerCase(),
+                    nombre: c.nombre_cliente.toUpperCase(),
+                    empresa: '',
+                    email: '',
+                    telefono: '',
+                    rfc: '',
+                    km: Number(c.km) || 0,
+                    horas_viaje: Number(c.horas_viaje) || 0,
+                    _fromTabulador: true
+                }));
+            }
+        } catch (e) { console.warn('[Ventas] clientes_tabulador:', e); }
+        // Merge sin duplicados por nombre
+        const vistos = new Set(rawContactos.map(c => (c.nombre || '').toString().toLowerCase().trim()));
+        contactos = [...rawContactos, ...tabuladorClientes.filter(c => !vistos.has((c.nombre || '').toString().toLowerCase().trim()))];
     }
 
     async function _loadProyectos() {
@@ -1470,7 +1637,7 @@ const VentasModule = (function() {
     function _exportFunctions() {
         window.folioFormats = window.folioFormats || {};
         window.folioFormats.generarFolioPorTipo = generarFolioPorTipo;
-        window.folioFormats.getNextFolioLaboratorio = () => generarFolioPorTipo('Taller Electrónica');
+        window.folioFormats.getNextFolioLaboratorio = () => generarFolioPorTipo('Laboratorio de Electrónica');
         window.folioFormats.getNextFolioMotores = () => generarFolioPorTipo('Taller Motores');
         window.folioFormats.getNextFolioAutomatizacion = () => generarFolioPorTipo('Automatización');
 
@@ -1840,7 +2007,7 @@ const VentasModule = (function() {
             }
 
             // Intentar en proyectos_automatizacion
-            if (cotizacion.origen === 'automatizacion' || cotizacion.origen === 'proyecto' || cotizacion.origen === 'proyectos') {
+            if (cotizacion.origen === 'automatizacion' || cotizacion.origen === 'proyecto' || cotizacion.origen === 'proyectos' || cotizacion.origen === 'soporte') {
                 const { data } = await window.supabase
                     .from('proyectos_automatizacion')
                     .select('folio')
@@ -2101,13 +2268,28 @@ const VentasModule = (function() {
         if (elTicket) elTicket.innerHTML = countVentasCerradas ? '$' + ticketPromedio.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '$0';
     }
 
+    function _pipelineRowForVentas(row, tabla, tipoUi) {
+        const sm = window.SSEPIStateMachine;
+        let estatus_actual = row.estatus_actual;
+        if (!estatus_actual && sm && typeof sm.derivarEstatusActualDesdeNativo === 'function') {
+            estatus_actual = sm.derivarEstatusActualDesdeNativo(tabla, row);
+        }
+        return { ...row, tipo: row.tipo || tipoUi, estatus_actual: estatus_actual || null };
+    }
+
     // ==================== PIPELINE CARDS (reemplaza solicitudes pendientes) ====================
     function _renderPipelineCards() {
         const container = document.getElementById('pipelineCardsContainer');
         if (!container) return;
-        // Render de órdenes con estatus_actual desde todas las tablas
-        const ordenes = [...ventas, ...cotizaciones, ...taller, ...motores, ...proyectos]
-            .filter(o => o.estatus_actual && o.estatus_actual !== 'entrega')
+        const merged = [
+            ...ventas.map((v) => _pipelineRowForVentas(v, 'ventas', 'venta')),
+            ...cotizaciones.map((c) => _pipelineRowForVentas({ ...c, tipo: 'cotizacion' }, 'cotizaciones', 'cotizacion')),
+            ...taller.map((o) => _pipelineRowForVentas(o, 'ordenes_taller', 'taller')),
+            ...motores.map((o) => _pipelineRowForVentas(o, 'ordenes_motores', 'motor')),
+            ...proyectos.map((p) => _pipelineRowForVentas(p, 'proyectos_automatizacion', 'proyecto'))
+        ];
+        const ordenes = merged
+            .filter((o) => o.estatus_actual && o.estatus_actual !== 'entrega' && o.estatus_actual !== 'cancelado')
             .sort((a, b) => new Date(b.created_at || b.creado_en || 0) - new Date(a.created_at || a.creado_en || 0))
             .slice(0, 20);
         if (ordenes.length === 0) {
@@ -2128,6 +2310,65 @@ const VentasModule = (function() {
                     <span>$${(o.total || 0).toFixed(2)}</span>
                 </div>
             </div>`;
+        }).join('');
+    }
+
+    function _operativaVigenteVentas(row) {
+        const s = String(row.estado || '').toLowerCase();
+        return !s.includes('cancel');
+    }
+
+    function _bindOperativasVentasPanel() {
+        const host = document.getElementById('operativasTabsVentas');
+        if (!host) return;
+        host.querySelectorAll('button[data-op-tab]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                operativasTabVentas = btn.getAttribute('data-op-tab') || 'taller';
+                host.querySelectorAll('button[data-op-tab]').forEach(function (b) {
+                    b.classList.toggle('active', b.getAttribute('data-op-tab') === operativasTabVentas);
+                });
+                _renderOperativasVentasList();
+            });
+        });
+    }
+
+    function _renderOperativasVentasList() {
+        const list = document.getElementById('operativasListVentas');
+        if (!list) return;
+        const nt = (taller || []).filter(_operativaVigenteVentas).length;
+        const nm = (motores || []).filter(_operativaVigenteVentas).length;
+        const np = (proyectos || []).filter(_operativaVigenteVentas).length;
+        const c1 = document.getElementById('opVCountTaller');
+        const c2 = document.getElementById('opVCountMotor');
+        const c3 = document.getElementById('opVCountAuto');
+        if (c1) c1.textContent = '(' + nt + ')';
+        if (c2) c2.textContent = '(' + nm + ')';
+        if (c3) c3.textContent = '(' + np + ')';
+        let rows = operativasTabVentas === 'motor' ? motores : (operativasTabVentas === 'auto' ? proyectos : taller);
+        rows = (rows || []).filter(_operativaVigenteVentas).slice(0, 50);
+        function esc(s) {
+            const d = document.createElement('div');
+            d.textContent = s == null ? '' : String(s);
+            return d.innerHTML;
+        }
+        if (!rows.length) {
+            list.innerHTML = '<div class="op-empty">Sin registros en esta área o aún cargando.</div>';
+            return;
+        }
+        const tipoVinc = operativasTabVentas === 'motor' ? 'motor' : (operativasTabVentas === 'auto' ? 'automatizacion' : 'taller');
+        const modUrl = operativasTabVentas === 'motor' ? '/panel/pages/ssepi_motores.html' : (operativasTabVentas === 'auto' ? '/panel/pages/ssepi_servicios.html' : '/panel/pages/ssepi_taller.html');
+        list.innerHTML = rows.map(function (r) {
+            const folio = r.folio || (r.id && String(r.id).slice(-8)) || '—';
+            const cliente = r.cliente_nombre || r.cliente || r.nombre || '—';
+            const st = r.estado || '—';
+            const id = encodeURIComponent(r.id);
+            const hrefCompras = '/panel/pages/ssepi_compras.html?vincTipo=' + encodeURIComponent(tipoVinc) + '&vincId=' + id;
+            return '<div class="op-row">' +
+                '<div><strong>' + esc(folio) + '</strong> · ' + esc(cliente) + '<br><span class="op-meta">' + esc(st) + '</span></div>' +
+                '<div class="op-actions">' +
+                '<a class="btn-ssepi btn-ventas op-link" style="font-size:12px;padding:6px 12px;text-decoration:none;display:inline-block;" href="' + esc(modUrl) + '">Abrir módulo</a> ' +
+                '<a class="btn-ssepi btn-ventas op-link" style="font-size:12px;padding:6px 12px;text-decoration:none;display:inline-block;" href="' + hrefCompras + '">Compras vinculadas</a>' +
+                '</div></div>';
         }).join('');
     }
 
@@ -2246,12 +2487,21 @@ const VentasModule = (function() {
         };
 
         calculadoraComponentes = [];
+        fechasEtapas = {};
         wizardPaso = 2;
 
         const modal = document.getElementById('calculadoraModal');
         await _renderWizardPaso(2);
         modal.classList.add('active');
         _bindWizardEvents();
+    }
+
+    function _calcularCostosGuardado() {
+        const km = Number(calculadoraClienteActual?.km) || 0;
+        const horas = Number(calculadoraClienteActual?.horas) || 0;
+        const gasolina = CostosEngine.calcularCostoGasolina(km);
+        const traslado = CostosEngine.calcularCostoTrasladoTecnico(horas);
+        return { gasolina, traslado };
     }
 
     function _generarHTMLCalculadora(compra, horasEstimadas) {
@@ -2431,7 +2681,7 @@ const VentasModule = (function() {
 
             <div class="calculadora-section" style="margin-top: 20px;">
                 <div class="calculadora-titulo" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white;">
-                    <i class="fas fa-wrench"></i> Taller y Gastos
+                    <i class="fas fa-wrench"></i> Laboratorio y Gastos
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
                     <div>
@@ -2587,7 +2837,7 @@ const VentasModule = (function() {
                             <div>
                                 <label>Kilómetros (KM)</label>
                                 <input type="number" id="modalKmInput" min="0" step="0.1" value="0" style="width:100%; padding:10px; font-size:16px;">
-                                <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Distancia desde taller hasta el cliente.</p>
+                                <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Distancia desde Laboratorio hasta el cliente.</p>
                             </div>
                             <div>
                                 <label>Horas de Viaje</label>
@@ -2743,14 +2993,15 @@ const VentasModule = (function() {
         try {
             const { data, error } = await window.supabase
                 .from('clientes_tabulador')
-                .select('cliente_nombre, km_ida, horas_invertidas, activo')
-                .order('cliente_nombre');
+                .select('nombre_cliente, km, horas_viaje, activo')
+                .order('nombre_cliente');
             if (error) { console.error('[Ventas] Error Supabase clientes_tabulador:', error); return []; }
             if (!data) { console.warn('[Ventas] clientes_tabulador: sin datos'); return []; }
-            const filtrados = data.filter(c => c.activo !== false).map(c => ({
-                nombre: c.cliente_nombre,
-                km: Number(c.km_ida) || 0,
-                horas: Number(c.horas_invertidas) || 0
+            console.log('[Ventas] clientes_tabulador raw:', data.length, data.slice(0,3));
+            const filtrados = data.filter(c => c.activo !== false && c.nombre_cliente).map(c => ({
+                nombre: c.nombre_cliente,
+                km: Number(c.km) || 0,
+                horas: Number(c.horas_viaje) || 0
             }));
             console.log('[Ventas] clientes_tabulador cargados:', filtrados.length, filtrados.slice(0,3));
             return filtrados;
@@ -3184,7 +3435,7 @@ const VentasModule = (function() {
             const origen = cotizacion?.origen || cotizacion?.cerebro_registro?.origen_cotizacion;
             const ordenId = cotizacion?.orden_origen_id || cotizacion?.cerebro_registro?.orden_id;
             const departamentoReal = cotizacion?.departamento || ventasWizardCerebro?.departamento ||
-                (origen === 'taller' ? 'Taller Electrónica' : origen === 'motores' ? 'Taller Motores' : origen === 'automatizacion' ? 'Automatización' : 'Proyectos');
+                (origen === 'taller' ? 'Laboratorio de Electrónica' : origen === 'motores' ? 'Taller Motores' : origen === 'automatizacion' ? 'Automatización' : 'Proyectos');
             if (ordenId) {
                 try {
                     if (origen === 'taller') {
@@ -3213,7 +3464,7 @@ const VentasModule = (function() {
                         };
                         const compraRef = await comprasService.insert(nuevaCompra, csrfToken);
                         await motoresService.update(ordenId, { compra_vinculada: compraRef?.id, estado: 'En Espera' }, csrfToken);
-                    } else if (origen === 'automatizacion' || origen === 'proyecto') {
+                    } else if (origen === 'automatizacion' || origen === 'proyecto' || origen === 'soporte') {
                         await proyectosService.update(ordenId, { estado: 'progreso' }, csrfToken);
                     }
                 } catch (linkErr) {
@@ -3463,6 +3714,7 @@ const VentasModule = (function() {
         };
         compraActual = null;
         ventasWizardCerebro = item.cerebro_registro || null;
+        fechasEtapas = item.fechas_etapas || {};
 
         // Reconstruir componentes desde items
         calculadoraComponentes = (item.items || []).map(i => ({
@@ -3541,7 +3793,7 @@ const VentasModule = (function() {
                     let ordenTable = null;
                     if (ordenOrigen === 'taller' || ordenOrigen === 'laboratorio') ordenTable = 'ordenes_taller';
                     else if (ordenOrigen === 'motor' || ordenOrigen === 'motores') ordenTable = 'ordenes_motores';
-                    else if (ordenOrigen === 'proyecto' || ordenOrigen === 'automatizacion') ordenTable = 'proyectos_automatizacion';
+                    else if (ordenOrigen === 'proyecto' || ordenOrigen === 'automatizacion' || ordenOrigen === 'soporte') ordenTable = 'proyectos_automatizacion';
 
                     if (ordenTable) {
                         const ordenService = createDataService(ordenTable);
@@ -3700,6 +3952,7 @@ const VentasModule = (function() {
         calculadoraClienteActual = null;
         compraActual = null;
         ventasWizardCerebro = null;
+        fechasEtapas = {};
         wizardPaso = 1;
         ventasDraftSessionKey = null;
         var modal = document.getElementById('calculadoraModal');
@@ -3722,6 +3975,35 @@ const VentasModule = (function() {
         };
     }
 
+    function _renderRegistroTiemposVentas() {
+        const panel = document.getElementById('registroTiemposPanel');
+        if (!panel) return;
+        const labels = ['Registro','Espera','Cotización','Seguimiento'];
+        let html = '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
+        for (let i = 1; i <= labels.length; i++) {
+            const ini = fechasEtapas[`etapa${i}_inicio`];
+            const fin = fechasEtapas[`etapa${i}_fin`];
+            let badge = '';
+            if (ini && fin) {
+                const d = new Date(fin) - new Date(ini);
+                const mins = Math.round(d / 60000);
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                const dur = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                badge = `<span style="color:#059669;font-weight:600;">${dur}</span>`;
+            } else if (ini) {
+                badge = `<span style="color:#d97706;font-weight:600;">En curso</span>`;
+            } else {
+                badge = `<span style="color:#94a3b8;">—</span>`;
+            }
+            const iniStr = ini ? new Date(ini).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+            const finStr = fin ? new Date(fin).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+            html += `<div style="min-width:140px;"><strong style="color:#334155;">Paso ${i}:</strong> ${labels[i-1]}<br><span style="color:#64748b;">${iniStr} → ${finStr}</span> · ${badge}</div>`;
+        }
+        html += '</div>';
+        panel.innerHTML = html;
+    }
+
     async function _renderWizardPaso(paso) {
         wizardPaso = paso;
         var titles = _getWizardTitles();
@@ -3729,6 +4011,11 @@ const VentasModule = (function() {
         var indicatorEl = document.getElementById('wizardStepIndicator');
         if (titleEl) titleEl.textContent = 'Paso ' + paso + ': ' + (titles[paso] || '');
         if (indicatorEl) indicatorEl.textContent = 'Paso ' + paso + ' de 4';
+        const campoInicio = `etapa${paso}_inicio`;
+        if (!fechasEtapas[campoInicio]) {
+            fechasEtapas[campoInicio] = new Date().toISOString();
+        }
+        _renderRegistroTiemposVentas();
 
         var body = document.getElementById('calculadoraBody');
         if (!body) return;
@@ -3739,7 +4026,7 @@ const VentasModule = (function() {
                     const { data } = await window.supabase
                         .from('contactos')
                         .select('*')
-                        .eq('tipo', 'client')
+                        .in('tipo', ['client', 'cliente'])
                         .order('nombre');
                     if (data) contactos = data;
                 } catch (e) { console.warn('[Ventas] Error recargando contactos:', e); }
@@ -3793,6 +4080,8 @@ const VentasModule = (function() {
         }
         var descargarPDFWizard = footer.querySelector('#descargarPDFWizardBtn');
         if (descargarPDFWizard) descargarPDFWizard.style.display = paso === 4 ? 'inline-block' : 'none';
+        var vistaPreviaPDFWizard = footer.querySelector('#vistaPreviaPDFWizardBtn');
+        if (vistaPreviaPDFWizard) vistaPreviaPDFWizard.style.display = paso === 4 ? 'inline-block' : 'none';
         var generarBtn = footer.querySelector('#generarCotizacionBtn');
         if (generarBtn) generarBtn.style.display = 'none';
         var enviarBtn = footer.querySelector('#enviarCotizacionBtn');
@@ -3803,8 +4092,18 @@ const VentasModule = (function() {
         var contactosList = contactos || [];
         var clientesOptions = contactosList.map(function (c) {
             var sel = (ventasWizardCerebro && String(ventasWizardCerebro.cliente_id || calculadoraClienteActual?.id) === String(c.id)) ? ' selected' : '';
-            return '<option value="' + c.id + '"' + sel + ' data-nombre="' + (c.nombre || c.empresa || '') + '" data-km="' + (c.km || 0) + '" data-email="' + (c.email || '') + '" data-telefono="' + (c.telefono || '') + '" data-rfc="' + (c.rfc || '') + '">' + (c.nombre || c.empresa || c.email || 'Sin nombre') + '</option>';
+            return '<option value="' + c.id + '"' + sel + ' data-nombre="' + (c.nombre || c.empresa || '') + '" data-km="' + (c.km || 0) + '" data-horas="' + (c.horas_viaje || 0) + '" data-email="' + (c.email || '') + '" data-telefono="' + (c.telefono || '') + '" data-rfc="' + (c.rfc || '') + '">' + (c.nombre || c.empresa || c.email || 'Sin nombre') + '</option>';
         }).join('');
+        // Incluir clientes del tabulador que no estén ya en contactos
+        var nombresContactos = new Set(contactosList.map(function(c){ return (c.nombre || c.empresa || '').toLowerCase().trim(); }));
+        var tabClientesOpts = (tabuladorTaller.clientes || []).filter(function(tc) {
+            return !nombresContactos.has((tc.nombre || '').toLowerCase().trim());
+        }).map(function(tc) {
+            var val = 'tab-' + encodeURIComponent(tc.nombre);
+            var sel = (calculadoraClienteActual && calculadoraClienteActual.nombre && calculadoraClienteActual.nombre.toLowerCase().trim() === (tc.nombre || '').toLowerCase().trim()) ? ' selected' : '';
+            return '<option value="' + val + '"' + sel + ' data-nombre="' + (tc.nombre || '') + '" data-km="' + (tc.km || 0) + '" data-horas="' + (tc.horas || 0) + '">' + (tc.nombre || 'Cliente') + '</option>';
+        }).join('');
+        clientesOptions += tabClientesOpts;
         const hoy = new Date().toISOString().split('T')[0];
         const cerebro = ventasWizardCerebro || {};
         const preCliente = cerebro.cliente_id || calculadoraClienteActual?.id || '';
@@ -3836,10 +4135,12 @@ const VentasModule = (function() {
                         <label>Departamento que recibe el caso <span style="color:#c62828;">*</span></label>
                         <select id="wizardDepartamentoSelect" style="width:100%; padding:10px;" onchange="window.__onDeptChangeVentas && window.__onDeptChangeVentas()">
                             <option value=""${preDepto===''?' selected':''}>-- Seleccionar departamento --</option>
-                            <option value="Taller Electrónica"${preDepto==='Taller Electrónica'?' selected':''}>Taller Electrónica</option>
+                            <option value="Laboratorio de Electrónica"${preDepto==='Laboratorio de Electrónica'?' selected':''}>Laboratorio de Electrónica</option>
                             <option value="Taller Motores"${preDepto==='Taller Motores'?' selected':''}>Taller Motores</option>
                             <option value="Automatización"${preDepto==='Automatización'?' selected':''}>Automatización</option>
                             <option value="Proyectos"${preDepto==='Proyectos'?' selected':''}>Proyectos</option>
+                            <option value="Soporte en planta"${preDepto==='Soporte en planta'?' selected':''}>Soporte en planta</option>
+                            <option value="Suministro"${preDepto==='Suministro'?' selected':''}>Suministro</option>
                             <option value="Administración"${preDepto==='Administración'?' selected':''}>Administración (Sin orden)</option>
                         </select>
                     </div>
@@ -3851,6 +4152,9 @@ const VentasModule = (function() {
                         </select>
                     </div>
                 </div>
+
+                <!-- Banner de adeudo (dinámico) -->
+                <div id="wizardAdeudoBanner" style="display:none; margin-top:12px;"></div>
 
                 <!-- SERVICIO AUTOMATIZACIÓN (solo visible para Automatización/Proyectos) -->
                 <div class="editor-item" id="wizardServicioAutoWrap" style="margin-top:14px; display:${(preDepto==='Automatización'||preDepto==='Proyectos')?'block':'none'};">
@@ -3966,7 +4270,7 @@ const VentasModule = (function() {
                     <div style="display: flex; justify-content: space-between; margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px;">
                         <div>
                             <p><strong>Cliente:</strong> ${cliente}</p>
-                            <p><strong>Origen:</strong> ${compraActual ? (compraActual._origen === 'proyecto' ? 'Soporte en planta' : compraActual._origen === 'automatizacion' ? 'Automatización' : compraActual.vinculacion ? 'Taller' : 'Motores') : 'Directo'}</p>
+                            <p><strong>Origen:</strong> ${compraActual ? (compraActual._origen === 'soporte' ? 'Soporte en planta' : compraActual._origen === 'proyecto' ? 'Soporte en planta' : compraActual._origen === 'automatizacion' ? 'Automatización' : compraActual._origen === 'suministro' ? 'Suministro' : compraActual.vinculacion ? 'Laboratorio de Electrónica' : 'Motores') : 'Directo'}</p>
                         </div>
                         <div style="text-align: right;">
                             <p><strong>Folio:</strong> ${folio}</p>
@@ -4043,10 +4347,12 @@ const VentasModule = (function() {
             }
 
             let origenCot = 'directo';
-            if (dept === 'Taller Electrónica') origenCot = 'taller';
+            if (dept === 'Laboratorio de Electrónica') origenCot = 'taller';
             else if (dept === 'Taller Motores') origenCot = 'motores';
             else if (dept === 'Automatización') origenCot = 'automatizacion';
             else if (dept === 'Proyectos') origenCot = 'proyecto';
+            else if (dept === 'Soporte en planta') origenCot = 'soporte';
+            else if (dept === 'Suministro') origenCot = 'suministro';
 
             const csrfToken = sessionStorage.getItem('csrfToken');
             const nextBtn = document.getElementById('wizardNextBtn');
@@ -4090,6 +4396,11 @@ const VentasModule = (function() {
             }
 
             const servicioAuto = document.getElementById('wizardServicioAutoSelect')?.value || '';
+            // Redirigir a módulo correspondiente si el departamento lo requiere
+            if (creado && creado.redirectTo) {
+                window.location.href = creado.redirectTo;
+                return;
+            }
             ventasWizardCerebro = {
                 fecha_ingreso: fechaIn.value,
                 falla_reportada: falla,
@@ -4181,7 +4492,9 @@ const VentasModule = (function() {
         var guardarWizard = document.getElementById('guardarCotizacionWizardBtn');
         if (guardarWizard) guardarWizard.onclick = _guardarCotizacionDesdeWizard;
         var descargarWizard = document.getElementById('descargarPDFWizardBtn');
-        if (descargarWizard) descargarWizard.onclick = _descargarPDFDesdeWizard;
+        if (descargarWizard) descargarWizard.onclick = () => _descargarPDFDesdeWizard(false);
+        var vistaPreviaWizard = document.getElementById('vistaPreviaPDFWizardBtn');
+        if (vistaPreviaWizard) vistaPreviaWizard.onclick = () => _descargarPDFDesdeWizard(true);
         var enviarWizard = document.getElementById('enviarCotizacionBtn');
         if (enviarWizard) enviarWizard.onclick = _enviarCotizacionDesdeWizard;
 
@@ -4193,15 +4506,15 @@ const VentasModule = (function() {
             const fallaInput = document.getElementById('wizardFallaReportada');
 
             if (wrap) {
-                wrap.style.display = (dept === 'Automatización' || dept === 'Proyectos') ? 'block' : 'none';
+                wrap.style.display = (dept === 'Automatización' || dept === 'Proyectos' || dept === 'Soporte en planta') ? 'block' : 'none';
             }
 
             // Cambiar label de falla según departamento
             if (fallaLabel) {
-                if (dept === 'Taller Electrónica' || dept === 'Taller Motores') {
+                if (dept === 'Laboratorio de Electrónica' || dept === 'Taller Motores') {
                     fallaLabel.innerHTML = 'Falla reportada / Descripción del equipo <span style="color:#c62828;">*</span>';
                     if (fallaInput) fallaInput.placeholder = 'Describe la falla, modelo del equipo, número de serie, voltaje, etc.';
-                } else if (dept === 'Automatización' || dept === 'Proyectos') {
+                } else if (dept === 'Automatización' || dept === 'Proyectos' || dept === 'Soporte en planta') {
                     fallaLabel.innerHTML = 'Alcance y requerimientos <span style="color:#c62828;">*</span>';
                     if (fallaInput) fallaInput.placeholder = 'Describe el alcance del proyecto, objetivos, entregables y condiciones especiales...';
                 } else {
@@ -4212,6 +4525,22 @@ const VentasModule = (function() {
 
             _wizardActualizarAyudaFolio();
         };
+    }
+
+    async function _consultarAdeudoCliente(clienteId) {
+        if (!clienteId || !window.supabase) return 0;
+        try {
+            const { data, error } = await window.supabase
+                .from('contactos')
+                .select('adeudo_acumulado')
+                .eq('id', clienteId)
+                .single();
+            if (error) throw error;
+            return Number(data?.adeudo_acumulado) || 0;
+        } catch (e) {
+            console.warn('[Ventas] Error consultando adeudo:', e);
+            return 0;
+        }
     }
 
     function _nombreClienteWizardResuelto() {
@@ -4229,7 +4558,7 @@ const VentasModule = (function() {
         return '';
     }
 
-    function _descargarPDFDesdeWizard() {
+    function _descargarPDFDesdeWizard(preview = false) {
         const cliente = _nombreClienteWizardResuelto();
         const totalStr = document.getElementById('resTotal')?.innerText || '$0';
         const total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
@@ -4243,8 +4572,8 @@ const VentasModule = (function() {
         (async () => {
             try {
                 const { data: { user } } = await window.supabase.auth.getUser();
-                await pdfGenerator.generateCotizacion({ folio, cliente, rfc, items, subtotal, iva, total, departamento }, user);
-                _addToFeed('🧾', `PDF generado: ${folio}`);
+                await pdfGenerator.generateCotizacion({ folio, cliente, rfc, items, subtotal, iva, total, departamento }, user, preview);
+                if (!preview) _addToFeed('🧾', `PDF generado: ${folio}`);
             } catch (error) {
                 console.error(error);
                 _showToast('Error al generar PDF: ' + error.message, 'error');
@@ -4284,10 +4613,12 @@ const VentasModule = (function() {
             }
 
             let origenCot = 'directo';
-            if (dept === 'Taller Electrónica') origenCot = 'taller';
+            if (dept === 'Laboratorio de Electrónica') origenCot = 'taller';
             else if (dept === 'Taller Motores') origenCot = 'motores';
             else if (dept === 'Automatización') origenCot = 'automatizacion';
             else if (dept === 'Proyectos') origenCot = 'proyecto';
+            else if (dept === 'Soporte en planta') origenCot = 'soporte';
+            else if (dept === 'Suministro') origenCot = 'suministro';
 
             const csrfToken = sessionStorage.getItem('csrfToken');
             let creado = { folio: null, ordenId: null, tipo: null };
@@ -4335,12 +4666,14 @@ const VentasModule = (function() {
                         total: 0,
                         km_distancia: contacto?.km || 0,
                         horas_viaje: contacto?.horas_viaje || 0,
-                        costo_gasolina: 0,
+                        costo_gasolina: _calcularCostosGuardado().gasolina || 0,
+                        costo_traslado: _calcularCostosGuardado().traslado || 0,
                         estado: 'borrador',
                         origen: origenCot,
                         departamento: dept,
                         orden_origen_id: creado.ordenId || null,
                         cerebro_registro: ventasWizardCerebro || {},
+                        fechas_etapas: fechasEtapas,
                         items: [],
                         email: contacto?.email || '',
                         telefono: contacto?.telefono || '',
@@ -4350,6 +4683,13 @@ const VentasModule = (function() {
                     if (insertedCot?.id) {
                         editingCotizacionId = insertedCot.id;
                         _showToast('Cotización provisional creada: ' + folioCot, 'success');
+                    }
+                    // Guardar fechas_etapas en la orden operativa vinculada
+                    if (creado?.ordenId && creado?.tipo) {
+                        try {
+                            const svc = creado.tipo === 'taller' ? tallerService : creado.tipo === 'motores' ? motoresService : proyectosService;
+                            await svc.update(creado.ordenId, { fechas_etapas: fechasEtapas }, csrfToken);
+                        } catch (e) { console.warn('[Ventas] update fechas_etapas orden:', e); }
                     }
                 } catch (e) {
                     console.warn('[Ventas] Error creando cotización provisional (no crítico):', e);
@@ -4404,9 +4744,9 @@ const VentasModule = (function() {
             // Recargar vistas para mostrar la orden creada
             try {
                 await Promise.all([
-                    dept === 'Taller Electrónica' ? _loadTaller() : Promise.resolve(),
+                    dept === 'Laboratorio de Electrónica' ? _loadTaller() : Promise.resolve(),
                     dept === 'Taller Motores' ? _loadMotores() : Promise.resolve(),
-                    (dept === 'Automatización' || dept === 'Proyectos') ? _loadProyectos() : Promise.resolve()
+                    (dept === 'Automatización' || dept === 'Proyectos' || dept === 'Soporte en planta') ? _loadProyectos() : Promise.resolve()
                 ]);
                 await _loadCotizaciones();
                 _applyFilters();
@@ -4450,7 +4790,24 @@ const VentasModule = (function() {
             total = lastTotal || parseFloat((document.getElementById('resTotal')?.innerText || document.getElementById('previewTotal')?.innerText || '0').replace(/[$,]/g, '')) || 0;
             if (total <= 0) { _showToast('El total debe ser mayor a 0. Agrega materiales o servicios en el Paso 2.', 'info'); return; }
         }
-        const finalTotal = total;
+        // Recuperación de adeudo
+        let adeudoRecuperado = 0;
+        let notasAdeudo = '';
+        const clienteIdAdeudo = calculadoraClienteActual?.contactoId || null;
+        if (clienteIdAdeudo) {
+            try {
+                const { data: adeudoData } = await window.supabase
+                    .from('contactos')
+                    .select('adeudo_acumulado')
+                    .eq('id', clienteIdAdeudo)
+                    .single();
+                if (adeudoData?.adeudo_acumulado > 0) {
+                    adeudoRecuperado = Number(adeudoData.adeudo_acumulado) || 0;
+                    notasAdeudo = `Recuperado $${adeudoRecuperado.toLocaleString()} de adeudo acumulado del cliente.`;
+                }
+            } catch (e) { console.warn('[Ventas] Error consultando adeudo:', e); }
+        }
+        const finalTotal = total + adeudoRecuperado;
 
         const items = calculadoraComponentes.map(c => ({
             descripcion: c.nombre,
@@ -4473,16 +4830,20 @@ const VentasModule = (function() {
             total: finalTotal,
             km_distancia: calculadoraClienteActual?.km || 0,
             horas_viaje: calculadoraClienteActual?.horas || 0,
-            costo_gasolina: 0,
+            costo_gasolina: _calcularCostosGuardado().gasolina || 0,
+            costo_traslado: _calcularCostosGuardado().traslado || 0,
             estado: 'Pendiente',
             origen: (ventasWizardCerebro && ventasWizardCerebro.origen_cotizacion) || (compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo'),
             departamento: ventasWizardCerebro?.departamento || null,
             orden_origen_id: compraActual?.vinculacion?.id || compraActual?.id || null,
             cerebro_registro: _cerebroRegistroPayload() || {},
+            fechas_etapas: fechasEtapas,
             items: items || [],
             email: calculadoraClienteActual?.email || '',
             telefono: calculadoraClienteActual?.telefono || '',
-            rfc: calculadoraClienteActual?.rfc || ''
+            rfc: calculadoraClienteActual?.rfc || '',
+            adeudo_recuperado: adeudoRecuperado,
+            notas_adeudo: notasAdeudo
         };
 
         const csrfToken = sessionStorage.getItem('csrfToken');
@@ -4496,12 +4857,17 @@ const VentasModule = (function() {
                     subtotal: items.reduce((s, i) => s + i.importe, 0),
                     iva: finalTotal * 0.16 / 1.16,
                     total: finalTotal,
+                    km_distancia: calculadoraClienteActual?.km || 0,
+                    horas_viaje: calculadoraClienteActual?.horas || 0,
+                    costo_gasolina: _calcularCostosGuardado().gasolina || 0,
+                    costo_traslado: _calcularCostosGuardado().traslado || 0,
                     estado: 'Pendiente',
                     items: items || [],
                     email: calculadoraClienteActual?.email || '',
                     telefono: calculadoraClienteActual?.telefono || '',
                     rfc: calculadoraClienteActual?.rfc || '',
                     cerebro_registro: _cerebroRegistroPayload() || {},
+                    fechas_etapas: fechasEtapas,
                     departamento: ventasWizardCerebro?.departamento || null,
                     vendedor: vendedorNombre
                 }, csrfToken);
@@ -4530,6 +4896,16 @@ const VentasModule = (function() {
                 }
             }
 
+            // Si se recuperó adeudo, actualizar contacto y marcar adeudos
+            if (adeudoRecuperado > 0 && clienteIdAdeudo) {
+                try {
+                    await window.supabase.from('contactos').update({ adeudo_acumulado: 0 }).eq('id', clienteIdAdeudo);
+                    await window.supabase.from('clientes_adeudos').update({ recuperado: true, monto_recuperado: adeudoRecuperado }).eq('cliente_id', clienteIdAdeudo).eq('recuperado', false);
+                    await _insertarEventoHistorial('cotizacion', inserted.id, 'adeudo_recuperado', notasAdeudo, csrfToken);
+                    _showToast(`Adeudo de $${adeudoRecuperado.toLocaleString()} recuperado en esta cotización.`, 'info');
+                } catch (e) { console.warn('[Ventas] Error actualizando adeudo:', e); }
+            }
+
             _showToast('✅ Cotización guardada. Folio: ' + folio, 'success');
             _addToFeed('💾', `Cotización ${folio} guardada`);
             _afterVentasPersistOk();
@@ -4556,7 +4932,28 @@ const VentasModule = (function() {
             precio_unitario: c.costo_unitario,
             importe: c.subtotal
         }));
-        const total = lastTotal || parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
+        let total = lastTotal || parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
+
+        // Recuperación de adeudo
+        let adeudoRecuperado = 0;
+        let notasAdeudo = '';
+        const clienteIdAdeudo = calculadoraClienteActual?.contactoId || null;
+        if (clienteIdAdeudo) {
+            try {
+                const { data: adeudoData } = await window.supabase
+                    .from('contactos')
+                    .select('adeudo_acumulado')
+                    .eq('id', clienteIdAdeudo)
+                    .single();
+                if (adeudoData?.adeudo_acumulado > 0) {
+                    adeudoRecuperado = Number(adeudoData.adeudo_acumulado) || 0;
+                    notasAdeudo = `Recuperado $${adeudoRecuperado.toLocaleString()} de adeudo acumulado del cliente.`;
+                }
+            } catch (e) { console.warn('[Ventas] Error consultando adeudo:', e); }
+        }
+        total = total + adeudoRecuperado;
+        const totalStrFinal = '$' + total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
         const folio = await generarFolioCotizacion();
         const subtotal = items.reduce((s, i) => s + i.importe, 0);
         const iva = total * 0.16 / 1.16;
@@ -4576,13 +4973,16 @@ const VentasModule = (function() {
             total,
             km_distancia: calculadoraClienteActual?.km || 0,
             horas_viaje: calculadoraClienteActual?.horas || 0,
-            costo_gasolina: 0,
+            costo_gasolina: _calcularCostosGuardado().gasolina || 0,
+            costo_traslado: _calcularCostosGuardado().traslado || 0,
             estado: 'Pendiente',
             origen: (ventasWizardCerebro && ventasWizardCerebro.origen_cotizacion) || (compraActual ? (compraActual._origen || (compraActual.vinculacion ? 'taller' : 'motores')) : 'directo'),
             departamento: ventasWizardCerebro?.departamento || null,
             orden_origen_id: compraActual?.vinculacion?.id || compraActual?.id || null,
             cerebro_registro: _cerebroRegistroPayload() || {},
-            vendedor: vendedorNombre
+            vendedor: vendedorNombre,
+            adeudo_recuperado: adeudoRecuperado,
+            notas_adeudo: notasAdeudo
         };
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
@@ -4591,7 +4991,7 @@ const VentasModule = (function() {
             if (window.emailService) {
                 const profile = await authService.getCurrentProfile();
                 const fromVendedor = profile && profile.email ? (profile.nombre || 'Ventas') + ' <' + profile.email + '>' : undefined;
-                const html = '<p>Hola ' + cliente + ',</p><p>Adjuntamos la cotización <strong>' + folio + '</strong> por un total de <strong>' + totalStr + '</strong>.</p><p>Quedamos atentos.</p><p>— SSEPI Ventas</p>';
+                const html = '<p>Hola ' + cliente + ',</p><p>Adjuntamos la cotización <strong>' + folio + '</strong> por un total de <strong>' + totalStrFinal + '</strong>.</p><p>Quedamos atentos.</p><p>— SSEPI Ventas</p>';
                 window.emailService.send(email.trim(), 'Cotización SSEPI - ' + folio, html, undefined, fromVendedor).then(r => { if (r.error) console.warn('Correo:', r.error); });
             }
 
@@ -4605,6 +5005,16 @@ const VentasModule = (function() {
                     const folioOperativo = ventasWizardCerebro?.folio_operativo || 'N/A';
                     await _insertarEventoHistorial('cotizacion', inserted.id, 'compra_vinculada', `Vinculada con orden de ${tipoOrden}: ${folioOperativo}`, csrfToken);
                 }
+            }
+
+            // Si se recuperó adeudo, actualizar contacto y marcar adeudos
+            if (adeudoRecuperado > 0 && clienteIdAdeudo) {
+                try {
+                    await window.supabase.from('contactos').update({ adeudo_acumulado: 0 }).eq('id', clienteIdAdeudo);
+                    await window.supabase.from('clientes_adeudos').update({ recuperado: true, monto_recuperado: adeudoRecuperado }).eq('cliente_id', clienteIdAdeudo).eq('recuperado', false);
+                    await _insertarEventoHistorial('cotizacion', inserted.id, 'adeudo_recuperado', notasAdeudo, csrfToken);
+                    _showToast(`Adeudo de $${adeudoRecuperado.toLocaleString()} recuperado en esta cotización.`, 'info');
+                } catch (e) { console.warn('[Ventas] Error actualizando adeudo:', e); }
             }
 
             _showToast('✅ Cotización guardada y enviada. Folio: ' + folio, 'success');
@@ -4701,18 +5111,21 @@ const VentasModule = (function() {
             tbody.appendChild(tr);
         });
         var descargarPDF = document.getElementById('descargarPDFBtn');
-        if (descargarPDF) descargarPDF.addEventListener('click', _generarPDF);
+        if (descargarPDF) descargarPDF.addEventListener('click', () => _generarPDF(false));
+        var vistaPreviaPDF = document.getElementById('vistaPreviaPDFBtn');
+        if (vistaPreviaPDF) vistaPreviaPDF.addEventListener('click', () => _generarPDF(true));
 
         var imprimirPreview = document.getElementById('imprimirVistaPreviaBtn');
         if (imprimirPreview) imprimirPreview.addEventListener('click', function () {
             var el = document.getElementById('vistaPreviaImprimible');
             if (!el) return;
-            var ventana = window.open('', '_blank');
-            ventana.document.write('<!DOCTYPE html><html><head><title>Vista previa - Cotización</title><style>body{font-family:Inter,sans-serif;padding:20px;}</style></head><body>' + el.innerHTML + '</body></html>');
-            ventana.document.close();
-            ventana.focus();
-            ventana.onload = function () { ventana.print(); ventana.close(); };
-            setTimeout(function () { ventana.print(); ventana.close(); }, 300);
+            var html = '<!DOCTYPE html><html><head><title>Vista previa - Cotización</title><style>body{font-family:Inter,sans-serif;padding:20px;}</style></head><body>' + el.innerHTML + '</body></html>';
+            var blob = new Blob([html], { type: 'text/html' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.rel = 'noopener';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
         });
 
         var aplicarFiltros = document.getElementById('aplicarFiltrosBtn');
@@ -4994,7 +5407,7 @@ const VentasModule = (function() {
         }
     }
 
-    function _generarPDF() {
+    function _generarPDF(preview = false) {
         const cliente = (document.getElementById('editCliente')?.value || document.getElementById('previewCliente')?.innerText || '').trim();
         const rfc = (document.getElementById('editRFC')?.value || '').trim();
         const total = parseFloat(document.getElementById('editTotal')?.value || '') || 0;
@@ -5044,8 +5457,8 @@ const VentasModule = (function() {
         (async () => {
             try {
                 const { data: { user } } = await window.supabase.auth.getUser();
-                await pdfGenerator.generate({ departamento, datos: pdfData, tipo: 'cotizacion' }, user);
-                _addToFeed('🧾', `PDF generado: ${folio}`);
+                await pdfGenerator.generate({ departamento, datos: pdfData, tipo: 'cotizacion', preview }, user);
+                if (!preview) _addToFeed('🧾', `PDF generado: ${folio}`);
             } catch (error) {
                 console.error(error);
                 _showToast('Error al generar PDF: ' + error.message, 'error');

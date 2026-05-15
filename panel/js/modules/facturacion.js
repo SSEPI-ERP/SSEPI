@@ -11,11 +11,13 @@ import { CostosEngine } from '../core/costos-engine.js';
 import { ContactosFormulas } from '../core/contactos-formulas.js';
 import { notifyVentaIfEligible } from '../core/coi-sync-engine.js';
 import { enqueueCoiJob } from '../core/coi-queue.js';
+import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
 
 const FacturacionModule = (function() {
     // ==================== ESTADO PRIVADO ====================
     let ordenesTaller = [];           // órdenes de taller en estado 'Reparado'
     let ordenesMotores = [];          // órdenes de motores en estado 'Reparado'
+    let ordenesProyectos = [];        // proyectos automatización listos para facturar
     let ventas = [];                  // ventas pagadas (para consultar clientes)
     let contactos = [];               // contactos (para datos fiscales)
     let facturas = [];                // facturas emitidas
@@ -34,6 +36,7 @@ const FacturacionModule = (function() {
     // Servicios de datos
     const tallerService = createDataService('ordenes_taller');
     const motoresService = createDataService('ordenes_motores');
+    const proyectosService = createDataService('proyectos_automatizacion');
     const ventasService = createDataService('ventas');
     const cotizacionesService = createDataService('cotizaciones');
     const contactosService = createDataService('contactos');
@@ -54,6 +57,7 @@ const FacturacionModule = (function() {
         _startListeners();
         _startClock();
         console.log('✅ Módulo facturación iniciado');
+        _initExportButton();
     }
 
     async function _initUI() {
@@ -67,6 +71,23 @@ const FacturacionModule = (function() {
         }
         _setFiltroMesActual();
         _applyUrlQueryFilters();
+    }
+
+    async function _initExportButton() {
+        try {
+            const profile = await authService.getCurrentProfile();
+            if (!isAdminExportAllowed(profile)) return;
+            createExportButton('exportCSVContainer', function() {
+                const headers = [
+                    { key: 'folio', label: 'Folio' },
+                    { key: 'cliente_nombre', label: 'Cliente' },
+                    { key: 'fecha_emision', label: 'Fecha Emisión' },
+                    { key: 'total', label: 'Total' },
+                    { key: 'estado', label: 'Estado' }
+                ];
+                downloadCSV('facturas_' + new Date().toISOString().slice(0,10) + '.csv', facturas, headers);
+            });
+        } catch (e) { console.warn('[Facturación] Export CSV init:', e); }
     }
 
     function _setFiltroMesActual() {
@@ -89,8 +110,9 @@ const FacturacionModule = (function() {
     function _departamentoToFiltroArea(dep) {
         if (!dep) return 'todos';
         const d = String(dep).trim();
-        if (d === 'Taller Electrónica') return 'taller_electronica';
+        if (d === 'Laboratorio de Electrónica') return 'taller_electronica';
         if (d === 'Taller Motores') return 'taller_motores';
+        if (d === 'Automatización' || d === 'Proyectos') return 'automatizacion';
         return 'todos';
     }
 
@@ -203,6 +225,7 @@ const FacturacionModule = (function() {
                 _addToFeed('🔔', payload.new?.mensaje || 'Nueva notificación');
                 _loadTaller();
                 _loadMotores();
+                _loadProyectosFacturacion();
             })
             .subscribe();
         subscriptions.push(subNotif);
@@ -213,23 +236,75 @@ const FacturacionModule = (function() {
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orden_historial' }, payload => {
                 const ev = payload.new;
                 if (ev.evento === 'cambio_estado' || ev.evento === 'actualizacion') {
-                    // Refrescar listas sin F5 cuando el estado de una orden cambia
                     _loadTaller();
                     _loadMotores();
+                    _loadProyectosFacturacion();
                 }
             })
             .subscribe();
         subscriptions.push(subHistorial);
 
+        const subProyectos = sb
+            .channel('facturacion_proyectos')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'proyectos_automatizacion' }, () => {
+                _loadProyectosFacturacion();
+            })
+            .subscribe();
+        subscriptions.push(subProyectos);
+
         // Carga inicial
         _loadTaller();
         _loadMotores();
+        _loadProyectosFacturacion();
         _loadVentas();
         _loadContactos();
         _loadFacturas();
     }
 
+    function _proyectoListoParaFacturar(p) {
+        const s = String(p.estado || '').trim().toLowerCase();
+        if (!s || s.includes('cancel')) return false;
+        if (s.includes('factur')) return false;
+        if (p.por_facturar === true) return true;
+        return ['completado', 'entregado', 'cerrado', 'finalizado'].some((x) => s === x || s.includes(x));
+    }
+
+    function _enrichProyectosClientes() {
+        if (!ordenesProyectos.length) return;
+        ordenesProyectos = ordenesProyectos.map((p) => {
+            let nom = p.cliente_nombre;
+            if ((!nom || nom === 'Cliente') && p.cliente_id) {
+                const c = contactos.find((x) => x.id === p.cliente_id);
+                if (c) nom = c.nombre || c.empresa || nom;
+            }
+            if (!nom || nom === 'Cliente') {
+                nom = p.cliente || p.nombre_proyecto || p.nombre || 'Cliente';
+            }
+            return nom === p.cliente_nombre ? p : { ...p, cliente_nombre: nom };
+        });
+    }
+
+    function _contactoParaOrden(orden) {
+        const n = orden.cliente_nombre;
+        const cCliente = orden.cliente;
+        return contactos.find((c) =>
+            (n && (c.nombre === n || c.empresa === n)) ||
+            (cCliente && (c.nombre === cCliente || c.empresa === cCliente)) ||
+            (orden.cliente_id && c.id === orden.cliente_id)
+        );
+    }
+
+    function _ivaDesdeTotalBruto(totalBruto) {
+        const t = Number(totalBruto) || 0;
+        if (t <= 0) return { total: 0, precioAntesIVA: 0, iva: 0 };
+        const precioAntesIVA = t / 1.16;
+        const iva = t - precioAntesIVA;
+        return { total: t, precioAntesIVA, iva };
+    }
+
     async function _loadTaller() {
+        const supabase = _supabase();
+        if (!supabase) return;
         const { data, error } = await supabase
             .from('ordenes_taller')
             .select('*')
@@ -243,6 +318,8 @@ const FacturacionModule = (function() {
     }
 
     async function _loadMotores() {
+        const supabase = _supabase();
+        if (!supabase) return;
         const { data, error } = await supabase
             .from('ordenes_motores')
             .select('*')
@@ -253,6 +330,31 @@ const FacturacionModule = (function() {
             ordenesMotores = data.map(d => ({ ...d, tipoOrigen: 'motor' }));
             _actualizarTodo();
         }
+    }
+
+    async function _loadProyectosFacturacion() {
+        const supabase = _supabase();
+        if (!supabase) return;
+        try {
+            const { data, error } = await supabase
+                .from('proyectos_automatizacion')
+                .select('*')
+                .order('updated_at', { ascending: false })
+                .limit(300);
+            if (error) throw error;
+            ordenesProyectos = (data || []).filter(_proyectoListoParaFacturar).map(p => ({
+                ...p,
+                tipoOrigen: 'proyecto',
+                cliente_nombre: p.cliente || p.cliente_nombre || p.nombre || p.nombre_proyecto || 'Cliente',
+                fecha_reparacion: p.fecha_entrega || p.updated_at || p.fecha || p.fecha_inicio,
+                orden_tipo: 'proyecto'
+            }));
+            _enrichProyectosClientes();
+        } catch (e) {
+            console.warn('[Facturación] proyectos listo facturar:', e);
+            ordenesProyectos = [];
+        }
+        _actualizarTodo();
     }
 
     async function _loadVentas() {
@@ -269,7 +371,11 @@ const FacturacionModule = (function() {
         if (supabase) {
             const { data, error } = await supabase.from('contactos').select('*');
             if (error) console.error(error);
-            else contactos = data;
+            else {
+                contactos = data;
+                _enrichProyectosClientes();
+                _actualizarTodo();
+            }
         }
     }
 
@@ -294,9 +400,11 @@ const FacturacionModule = (function() {
     function _aplicarFiltros() {
         let tOrd = [...ordenesTaller];
         let mOrd = [...ordenesMotores];
-        if (filtroArea === 'taller_electronica') mOrd = [];
-        else if (filtroArea === 'taller_motores') tOrd = [];
-        let pendientes = [...tOrd, ...mOrd];
+        let pOrd = [...ordenesProyectos];
+        if (filtroArea === 'taller_electronica') { mOrd = []; pOrd = []; }
+        else if (filtroArea === 'taller_motores') { tOrd = []; pOrd = []; }
+        else if (filtroArea === 'automatizacion') { tOrd = []; mOrd = []; }
+        let pendientes = [...tOrd, ...mOrd, ...pOrd];
         let emitidas = facturas;
 
         // Filtrar por fecha
@@ -320,9 +428,11 @@ const FacturacionModule = (function() {
         // Filtrar por búsqueda
         if (filtroBuscar) {
             const term = filtroBuscar.toLowerCase();
-            pendientes = pendientes.filter(o => 
+            pendientes = pendientes.filter(o =>
                 (o.cliente_nombre && o.cliente_nombre.toLowerCase().includes(term)) ||
-                (o.folio && o.folio.toLowerCase().includes(term))
+                (o.folio && o.folio.toLowerCase().includes(term)) ||
+                (o.nombre_proyecto && o.nombre_proyecto.toLowerCase().includes(term)) ||
+                (o.nombre && String(o.nombre).toLowerCase().includes(term))
             );
             emitidas = emitidas.filter(f => 
                 (f.cliente && f.cliente.toLowerCase().includes(term)) ||
@@ -368,18 +478,20 @@ const FacturacionModule = (function() {
         const fecha = orden.fecha_reparacion ? new Date(orden.fecha_reparacion).toLocaleDateString() : '';
         const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(orden);
         const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
+        const tipoLabel = orden.tipoOrigen === 'taller' ? '🔧 Laboratorio' : (orden.tipoOrigen === 'motor' ? '⚙️ Motor' : '🤖 Auto');
+        const fechaLabel = orden.tipoOrigen === 'proyecto' ? 'Cierre' : 'Reparación';
         return `
             <div class="kanban-card ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${orden.id}" data-tipo="${orden.tipoOrigen}">
                 <div class="card-header">
                     <span class="folio">${orden.folio || orden.id.slice(-6)}</span>
-                    <span class="badge tipo-${orden.tipoOrigen}">${orden.tipoOrigen === 'taller' ? '🔧 Taller' : '⚙️ Motor'}</span>
+                    <span class="badge tipo-${orden.tipoOrigen}">${tipoLabel}</span>
                     ${badgeCuarentena}
                 </div>
                 <div class="card-body">
                     <div class="cliente">${orden.cliente_nombre || 'Cliente'}</div>
                 </div>
                 <div class="card-footer">
-                    <small>Reparación: ${fecha}</small>
+                    <small>${fechaLabel}: ${fecha}</small>
                 </div>
             </div>
         `;
@@ -411,7 +523,7 @@ const FacturacionModule = (function() {
             const fecha = o.fecha_reparacion ? new Date(o.fecha_reparacion).toLocaleDateString() : '—';
             const folio = o.folio || o.id.slice(-6);
             const cliente = o.cliente_nombre || 'N/A';
-            const tipo = o.tipoOrigen === 'taller' ? 'Taller' : 'Motor';
+            const tipo = o.tipoOrigen === 'taller' ? 'Laboratorio' : (o.tipoOrigen === 'motor' ? 'Motor' : 'Automatización');
             const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(o);
             const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
             html += `
@@ -499,9 +611,11 @@ const FacturacionModule = (function() {
     function _pendientesCountForKpis() {
         let t = ordenesTaller.length;
         let m = ordenesMotores.length;
-        if (filtroArea === 'taller_electronica') m = 0;
-        else if (filtroArea === 'taller_motores') t = 0;
-        return t + m;
+        let p = ordenesProyectos.length;
+        if (filtroArea === 'taller_electronica') { m = 0; p = 0; }
+        else if (filtroArea === 'taller_motores') { t = 0; p = 0; }
+        else if (filtroArea === 'automatizacion') { t = 0; m = 0; }
+        return t + m + p;
     }
 
     function _updateKPIs() {
@@ -535,13 +649,14 @@ const FacturacionModule = (function() {
         let orden = null;
         if (tipo === 'taller') orden = ordenesTaller.find(o => o.id === id);
         else if (tipo === 'motor') orden = ordenesMotores.find(o => o.id === id);
+        else if (tipo === 'proyecto') orden = ordenesProyectos.find(o => o.id === id);
         else if (tipo === 'factura') return _verPDF(id);
         if (!orden) return;
 
         ordenSeleccionada = { ...orden, tipo };
 
         // Obtener datos del cliente desde contactos
-        const contacto = contactos.find(c => c.nombre === orden.cliente_nombre || c.empresa === orden.cliente_nombre);
+        const contacto = _contactoParaOrden(orden);
 
         // Calcular costos usando el motor
         const resultadoCalculo = await _calcularCostosOrden(orden, contacto);
@@ -554,31 +669,74 @@ const FacturacionModule = (function() {
     }
 
     async function _calcularCostosOrden(orden, contacto) {
-        const ordenId = orden.id;
-        const ordenTipo = orden.orden_tipo || 'taller';
+        const sb = _supabase();
+        const vacio = { compras: 0, refacciones: 0, mano_obra: 0, viaticos: 0, gastos_fijos: 0, total: 0, precioAntesIVA: 0, iva: 0, desdeBD: false };
+        if (!sb) return vacio;
 
-        // Obtener costos reales desde la vista costos_por_orden
-        const { data: costos, error } = await window.supabase
-            .from('costos_por_orden')
-            .select('*')
-            .eq('orden_id', ordenId)
-            .eq('orden_tipo', ordenTipo)
-            .maybeSingle();
-
-        if (costos && costos.costo_total > 0) {
-            // Usar costos reales desde la base de datos
+        const _packBd = (costos) => {
+            const totalBruto = Number(costos.costo_total) || 0;
+            const iv = _ivaDesdeTotalBruto(totalBruto);
             return {
                 compras: costos.compras_total || 0,
                 refacciones: costos.refacciones_total || 0,
                 mano_obra: costos.mano_obra_total || 0,
                 viaticos: costos.viaticos_total || 0,
                 gastos_fijos: costos.gastos_fijos_total || 0,
-                total: costos.costo_total || 0,
+                total: iv.total,
+                precioAntesIVA: iv.precioAntesIVA,
+                iva: iv.iva,
                 desdeBD: true
+            };
+        };
+
+        if (orden.tipoOrigen === 'proyecto') {
+            const sub = Number(orden.subtotal) || 0;
+            const ivStored = Number(orden.iva) || 0;
+            const totStored = Number(orden.total) || 0;
+            if (sub > 0 || ivStored > 0 || totStored > 0) {
+                const total = totStored > 0 ? totStored : (sub + ivStored);
+                const precioAntesIVA = sub > 0 ? sub : (ivStored > 0 ? (total - ivStored) : _ivaDesdeTotalBruto(total).precioAntesIVA);
+                const iva = ivStored > 0 ? ivStored : (total - precioAntesIVA);
+                return { compras: 0, refacciones: 0, mano_obra: 0, viaticos: 0, gastos_fijos: 0, total, precioAntesIVA, iva, desdeBD: totStored > 0 && sub > 0 };
+            }
+            const tipos = [orden.orden_tipo || 'proyecto', 'proyecto', 'automatizacion'];
+            for (let i = 0; i < tipos.length; i++) {
+                const ot = tipos[i];
+                const { data: costos } = await sb.from('costos_por_orden').select('*').eq('orden_id', orden.id).eq('orden_tipo', ot).maybeSingle();
+                if (costos && Number(costos.costo_total) > 0) return _packBd(costos);
+            }
+            const raw = Number(orden.costo_total) || Number(orden.costo_presupuestado) || 0;
+            if (raw > 0) {
+                const iv = _ivaDesdeTotalBruto(raw);
+                return { compras: 0, refacciones: 0, mano_obra: 0, viaticos: 0, gastos_fijos: 0, total: iv.total, precioAntesIVA: iv.precioAntesIVA, iva: iv.iva, desdeBD: false };
+            }
+            const km = contacto ? ContactosFormulas.getKmPorCliente(contacto.nombre || contacto.empresa) : 0;
+            const ce = CostosEngine.calcularPrecioFinal({ km, horasViaje: km > 0 ? Math.ceil(km / 50) : 0, horasTaller: 0, costoRefacciones: 0 });
+            return {
+                compras: 0,
+                refacciones: ce.refacciones || 0,
+                mano_obra: ce.manoObra || 0,
+                viaticos: ce.gasolinaMasTraslado || 0,
+                gastos_fijos: ce.gastosFijos || 0,
+                total: ce.total,
+                precioAntesIVA: ce.precioAntesIVA,
+                iva: ce.iva,
+                desdeBD: false
             };
         }
 
-        // Fallback: calcular con CostosEngine si no hay datos en BD
+        const ordenTipo = orden.orden_tipo || (orden.tipoOrigen === 'motor' ? 'motor' : 'taller');
+        const { data: costos, error } = await sb
+            .from('costos_por_orden')
+            .select('*')
+            .eq('orden_id', orden.id)
+            .eq('orden_tipo', ordenTipo)
+            .maybeSingle();
+
+        if (!error && costos && Number(costos.costo_total) > 0) {
+            return _packBd(costos);
+        }
+
         const km = contacto ? ContactosFormulas.getKmPorCliente(contacto.nombre || contacto.empresa) : 0;
         const horasViaje = km > 0 ? Math.ceil(km / 50) : 0;
         const horasTaller = orden.horas_estimadas || 0;
@@ -595,13 +753,25 @@ const FacturacionModule = (function() {
             });
         }
 
-        return CostosEngine.calcularPrecioFinal({ km, horasViaje, horasTaller, costoRefacciones });
+        const ce = CostosEngine.calcularPrecioFinal({ km, horasViaje, horasTaller, costoRefacciones });
+        return {
+            compras: 0,
+            refacciones: ce.refacciones || 0,
+            mano_obra: ce.manoObra || 0,
+            viaticos: ce.gasolinaMasTraslado || 0,
+            gastos_fijos: ce.gastosFijos || 0,
+            total: ce.total,
+            precioAntesIVA: ce.precioAntesIVA,
+            iva: ce.iva,
+            desdeBD: false
+        };
     }
 
     function _renderDetalleHTML(orden, contacto, calculo) {
         const container = document.getElementById('detalleContenido');
         const fechaReparacion = orden.fecha_reparacion ? new Date(orden.fecha_reparacion).toLocaleString() : '—';
         const rfc = contacto?.rfc || 'XAXX010101000';
+        const fechaLabel = orden.tipoOrigen === 'proyecto' ? 'Fecha cierre / actualización' : 'Fecha reparación';
 
         let html = `
             <div style="background:var(--bg-body); padding:20px; border-radius:12px; margin-bottom:20px;">
@@ -610,7 +780,7 @@ const FacturacionModule = (function() {
                     <div><strong>Folio:</strong> ${orden.folio || orden.id.slice(-6)}</div>
                     <div><strong>Cliente:</strong> ${orden.cliente_nombre || 'N/A'}</div>
                     <div><strong>RFC:</strong> ${rfc}</div>
-                    <div><strong>Fecha Reparación:</strong> ${fechaReparacion}</div>
+                    <div><strong>${fechaLabel}:</strong> ${fechaReparacion}</div>
                 </div>
             </div>
         `;
@@ -660,9 +830,10 @@ const FacturacionModule = (function() {
         let orden = null;
         if (tipo === 'taller') orden = ordenesTaller.find(o => o.id === id);
         else if (tipo === 'motor') orden = ordenesMotores.find(o => o.id === id);
+        else if (tipo === 'proyecto') orden = ordenesProyectos.find(o => o.id === id);
         if (!orden) return;
 
-        const contacto = contactos.find(c => c.nombre === orden.cliente_nombre || c.empresa === orden.cliente_nombre);
+        const contacto = _contactoParaOrden(orden);
         const calculo = await _calcularCostosOrden(orden, contacto);
 
         const folioFactura = `F-${Date.now().toString().slice(-8)}`;
@@ -671,6 +842,10 @@ const FacturacionModule = (function() {
         const rfc = contacto?.rfc || 'XAXX010101000';
         const total = calculo.total;
         const uuid = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+
+        const descLine = orden.tipoOrigen === 'proyecto'
+            ? `Servicio de automatización (${orden.folio || orden.id.slice(-6)})`
+            : `Servicio de reparación (${orden.folio || orden.id.slice(-6)})`;
 
         const preview = document.getElementById('facturaPreview');
         preview.innerHTML = `
@@ -710,7 +885,7 @@ const FacturacionModule = (function() {
                     <tbody>
                         <tr>
                             <td style="padding:8px; border-bottom:1px solid #ddd;">1</td>
-                            <td style="padding:8px; border-bottom:1px solid #ddd;">Servicio de reparación (${orden.folio})</td>
+                            <td style="padding:8px; border-bottom:1px solid #ddd;">${descLine}</td>
                             <td style="padding:8px; text-align:right; border-bottom:1px solid #ddd;">$${(calculo.precioAntesIVA).toFixed(2)}</td>
                             <td style="padding:8px; text-align:right; border-bottom:1px solid #ddd;">$${(calculo.precioAntesIVA).toFixed(2)}</td>
                         </tr>
@@ -735,11 +910,64 @@ const FacturacionModule = (function() {
         document.getElementById('timbrarFacturaBtn').onclick = () => _timbrarFactura(orden, folioFactura, uuid, calculo, contacto);
     }
 
-    async function _timbrarFactura(orden, folioFactura, uuid, calculo, contacto) {
+    async function _timbrarFactura(orden, folioFactura, uuidPrevio, calculo, contacto) {
         // REGLA 2: validar cuarentena antes de timbrar
         if (window.SSEPIStateMachine && window.SSEPIStateMachine.estaEnCuarentena(orden)) {
             alert('La orden está en cuarentena contable. No se puede facturar hasta desbloquearla.');
             return;
+        }
+
+        const isLocal = window.location.port === '3333' || window.location.port === '3443' || window.location.hostname.endsWith('.trycloudflare.com') || window.__SSEPI_NEXT_MODE__;
+        let uuid = uuidPrevio;
+        let xmlTimbrado = '';
+        let finkokOk = true;
+
+        // Si estamos en modo SSEPI-NEXT local, timbrar con Finkok real
+        if (isLocal) {
+            const descLine = orden.tipoOrigen === 'proyecto'
+                ? `Servicio de automatizacion (${orden.folio || String(orden.id).slice(-6)})`
+                : `Servicio de reparacion (${orden.folio || String(orden.id).slice(-6)})`;
+            const payload = {
+                receptor: {
+                    rfc: (contacto?.rfc || 'XAXX010101000').trim(),
+                    nombre: (contacto?.nombre || orden.cliente_nombre || 'PUBLICO EN GENERAL').trim(),
+                    domicilio_fiscal: String(contacto?.codigo_postal || contacto?.cp || '00000').trim(),
+                    regimen_fiscal: String(contacto?.regimen_fiscal || '616').trim(),
+                    uso_cfdi: String(contacto?.uso_cfdi || 'S01').trim()
+                },
+                conceptos: [{
+                    descripcion: descLine,
+                    cantidad: 1,
+                    valor_unitario: parseFloat(calculo.precioAntesIVA) || 0,
+                    clave_prod_serv: '84111506',
+                    unidad: 'Servicio',
+                    clave_unidad: 'E48'
+                }],
+                folio: folioFactura
+            };
+            try {
+                const r = await fetch('/api/facturar/timbrar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await r.json();
+                if (data.exito && data.uuid) {
+                    uuid = data.uuid;
+                    xmlTimbrado = data.xml_timbrado || '';
+                    _addToFeed('✅', `Finkok: UUID ${uuid} recibido`, 'ok');
+                } else {
+                    finkokOk = false;
+                    const errMsg = data.error || 'Finkok no timbro la factura';
+                    console.error('[Facturacion] Finkok error:', errMsg, data);
+                    alert('Error timbrando con Finkok:\n' + errMsg + '\n\nLa factura se guardara como borrador.');
+                    // Guardar como borrador sin UUID real
+                }
+            } catch (e) {
+                finkokOk = false;
+                console.error('[Facturacion] Error llamando endpoint Finkok:', e);
+                alert('Error de conexion con el timbrador local:\n' + e.message + '\n\nLa factura se guardara como borrador.');
+            }
         }
 
         const csrfToken = sessionStorage.getItem('csrfToken');
@@ -760,7 +988,7 @@ const FacturacionModule = (function() {
                 orden_taller_id: orden.tipoOrigen === 'taller' ? orden.id : null,
                 orden_motor_id: orden.tipoOrigen === 'motor' ? orden.id : null,
                 venta_id: ventaVinculada?.id || null,
-                cliente: orden.cliente_nombre,
+                cliente: orden.cliente_nombre || 'Cliente',
                 rfc: contacto?.rfc || 'XAXX010101000',
                 fecha_emision: new Date().toISOString(),
                 subtotal: calculo.precioAntesIVA,
@@ -769,7 +997,7 @@ const FacturacionModule = (function() {
                 uuid_cfdi: uuid,
                 estatus: 'activa',
                 pdf_url: '',
-                xml_url: '',
+                xml_url: xmlTimbrado ? `/facturas_timbradas/${uuid}.xml` : '',
                 created_at: new Date().toISOString()
             };
             const facturaRef = await facturasService.insert(facturaData, csrfToken);
@@ -784,19 +1012,26 @@ const FacturacionModule = (function() {
                 if (!r.ok) console.warn('[COI queue] Factura no encolada:', r.error?.message || r.error || r);
             });
 
-            // Actualizar la orden de taller/motor a "Facturado"
+            // Actualizar la orden de taller/motor/proyecto a "Facturado"
             const updateData = { estado: 'Facturado', factura_id: facturaRef.id, folio_factura: folioFactura, fecha_factura: new Date().toISOString() };
-            const tipoOrden = orden.tipoOrigen === 'taller' ? 'taller' : 'motor';
+            const sbMeta = window.supabase || _supabase();
+            const tipoOrdenSm = orden.tipoOrigen === 'taller' ? 'taller' : (orden.tipoOrigen === 'motor' ? 'motor' : 'proyecto');
             if (orden.tipoOrigen === 'taller') {
                 await tallerService.update(orden.id, updateData, csrfToken);
-            } else {
+            } else if (orden.tipoOrigen === 'motor') {
                 await motoresService.update(orden.id, updateData, csrfToken);
+            } else if (orden.tipoOrigen === 'proyecto') {
+                const notaFact = `\nFactura ${folioFactura} (${new Date().toISOString().slice(0, 10)})`;
+                await proyectosService.update(orden.id, {
+                    estado: 'Facturado',
+                    notas: ((orden.notas || '') + notaFact).trim()
+                }, csrfToken);
             }
 
             // Registrar evento en historial unificado
-            if (window.SSEPIStateMachine) {
+            if (window.SSEPIStateMachine && sbMeta) {
                 await window.SSEPIStateMachine.actualizarEstadoOrden(
-                    window.supabase, tipoOrden, orden.id,
+                    sbMeta, tipoOrdenSm, orden.id,
                     'facturacion', `Factura ${folioFactura} emitida. Orden pasó a Facturado.`,
                     csrfToken, { folio_factura: folioFactura, uuid_cfdi: uuid }
                 );
@@ -821,9 +1056,9 @@ const FacturacionModule = (function() {
                 monto_total: calculo.total,
                 iva: calculo.iva,
                 subtotal: calculo.precioAntesIVA,
-                cliente: orden.cliente_nombre,
+                cliente: orden.cliente_nombre || 'Cliente',
                 fecha_pago: new Date().toISOString().split('T')[0],
-                tipo_servicio: 'reparacion',
+                tipo_servicio: orden.tipoOrigen === 'proyecto' ? 'automatizacion' : 'reparacion',
                 orden_taller_id: orden.tipoOrigen === 'taller' ? orden.id : null,
                 orden_motor_id: orden.tipoOrigen === 'motor' ? orden.id : null,
                 uuid_cfdi: uuid,
@@ -835,17 +1070,20 @@ const FacturacionModule = (function() {
                 para: 'ventas',
                 tipo: 'factura_generada',
                 orden_id: orden.id,
-                factura_id: facturaRef.id,
                 folio: folioFactura,
-                cliente: orden.cliente_nombre,
-                mensaje: `Factura ${folioFactura} generada - Lista para entrega`,
+                cliente: orden.cliente_nombre || 'Cliente',
+                mensaje: `Factura ${folioFactura} generada — lista para entrega`,
                 leido: false,
                 fecha: new Date().toISOString()
             }, csrfToken);
 
             alert('✅ Factura timbrada y registrada correctamente');
             document.getElementById('facturaModal').classList.remove('active');
-            _addToFeed('✅', `Factura ${folioFactura} generada para ${orden.cliente_nombre}`);
+            _addToFeed('✅', `Factura ${folioFactura} generada para ${orden.cliente_nombre || 'Cliente'}`);
+            _loadFacturas();
+            _loadTaller();
+            _loadMotores();
+            _loadProyectosFacturacion();
         } catch (error) {
             console.error(error);
             alert('Error al timbrar factura: ' + error.message);
