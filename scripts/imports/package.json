@@ -8,7 +8,11 @@
     "dry:contacts": "node import.mjs contacts --dry-run",
     "dry:orders": "node import.mjs orders --dry-run",
     "dry:inventario": "node import.mjs inventario --dry-run",
-    "dry:bom": "node import.mjs bom --dry-run"
+    "dry:bom": "node import.mjs bom --dry-run",
+    "build:maestro": "node build-erp-maestro.mjs",
+    "dry:erp-maestro": "node import.mjs erp-maestro --dry-run",
+    "scan:lab": "node scan-lab-reportes.mjs --dry-run",
+    "dry:lab-ordenes": "node import-lab-ordenes.mjs --dry-run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

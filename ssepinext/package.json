@@ -11,7 +11,8 @@
     "local": "node server-local.mjs",
     "dev": "node server-local.mjs",
     "offline": "node offline-server.mjs",
-    "seed": "node offline-seed.mjs"
+    "seed": "node offline-seed.mjs",
+    "normalize-lab-folios": "node normalize-lab-folios-local.mjs"
   },
   "author": "SSEPI",
   "license": "UNLICENSED",

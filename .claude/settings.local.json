@@ -167,7 +167,24 @@
       "Bash(findstr /I \"\\\\.jpg \\\\.jpeg \\\\.png \\\\.svg \\\\.webp \\\\.gif\")",
       "PowerShell(Get-ChildItem *)",
       "Bash(Select-Object -Last 50)",
-      "PowerShell(\\(Get-Content 'E:\\\\SSEPI\\\\panel\\\\js\\\\modules\\\\ventas.js' | Select-Object -Last 50\\) -join \"`n\")"
+      "PowerShell(\\(Get-Content 'E:\\\\SSEPI\\\\panel\\\\js\\\\modules\\\\ventas.js' | Select-Object -Last 50\\) -join \"`n\")",
+      "PowerShell(\\(Get-Content 'E:\\\\SSEPI\\\\panel\\\\css\\\\modules\\\\motores.css' | Measure-Object -Line\\).Lines)",
+      "PowerShell(node --check \"E:\\\\SSEPI\\\\panel\\\\js\\\\modules\\\\suministros.js\" 2>&1)",
+      "Bash(Get-ChildItem -Path \"E:\\\\SSEPI\\\\simulaciones\" -Recurse)",
+      "Bash(Select-Object FullName, Length)",
+      "Bash(Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"E:\\\\SSEPI\\\\simulaciones\\\\escaner de imagenes\\\\reportes\" -Recurse | Where-Object { !$_.PSIsContainer } | Select-Object FullName, Length | Format-Table -AutoSize)",
+      "Bash(findstr node *)",
+      "Bash(Select-Object -Last 1)",
+      "Bash(findstr 44568)",
+      "PowerShell(\\(Get-Content \"E:\\\\SSEPI\\\\panel\\\\js\\\\core\\\\membretes_base64.js\" -TotalCount 10\\) | Select-String -Pattern \"\\(automatizacion|electronicos|motores|suministros|soporte\\):\" | ForEach-Object { $_.Matches.Groups[1].Value })",
+      "PowerShell($json = Get-Content \"E:\\\\SSEPI\\\\simulaciones\\\\lector_reportes_odoo_erp\\\\datos_reportes_ocr.json\" -Raw -Encoding UTF8 | ConvertFrom-Json; Write-Host \\(\"Total records: \" + $json.Count\\); if \\($json.Count -gt 0\\) { $first = $json[0]; Write-Host \"Keys: $\\($first | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name\\)\"; $first | ConvertTo-Json -Depth 2 | Write-Host })",
+      "PowerShell($json = Get-Content \"E:\\\\SSEPI\\\\simulaciones\\\\lector_reportes_odoo_erp\\\\datos_reportes_ocr.json\" -Raw -Encoding UTF8 | ConvertFrom-Json; 1..10 | ForEach-Object { $r = $json[$_]; Write-Host \\(\"{0} | {1} | tipo={2} | estado={3} | equipo={4}\" -f $r.referencia_reparacion, $r.cliente, $r.tipo_orden, $r.estado_actual, $r.equipo\\) })",
+      "PowerShell(curl *)",
+      "PowerShell(node -c \"E:\\\\SSEPI\\\\panel\\\\js\\\\modules\\\\contactos.js\" 2>&1)",
+      "PowerShell(cd \"E:\\\\SSEPI\\\\ssepinext\"; $env:PORT=\"3333\"; Start-Process -WindowStyle Hidden -FilePath \"node\" -ArgumentList \"offline-server.mjs\")",
+      "Bash(pkill -f \"node.*offline-server\")",
+      "Bash(echo \"EXIT CODE: $?\")"
     ]
   }
 }

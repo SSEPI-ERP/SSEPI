@@ -55,8 +55,40 @@ const ServiciosModule = (function() {
 
     // Servicios de datos
     const proyectosService = createDataService('proyectos_automatizacion');
+const notificacionesService = createDataService('notificaciones');
     const inventarioService = createDataService('inventario');
     const comprasService = createDataService('compras');
+
+    // ===== Mapeo de estados del flujo comercial =====
+    function _estadoToPaso(estado) {
+        const mapa = {
+            'Nuevo': 1, 'Registrado': 1, 'pendiente': 1,
+            'Diagnóstico': 2, 'Garantía': 2, 'progreso': 2,
+            'Esperando Cotización': 3,
+            'Esperando Confirmación Cliente': 3,
+            'Confirmado': 4, 'En ejecución': 4, 'Reparado / Listo': 4,
+            'completado': 5, 'Completado': 5, 'Entregado': 5, 'Facturado': 5,
+            'Cancelado': 0
+        };
+        return mapa[estado] || 1;
+    }
+
+    function _pasoToEstado(paso) {
+        const mapa = { 1: 'Registrado', 2: 'Diagnóstico', 3: 'Esperando Cotización', 4: 'En ejecución', 5: 'Completado' };
+        return mapa[paso] || 'Registrado';
+    }
+
+    function _estadoPrioridad(estado) {
+        const mapa = {
+            'Nuevo': 1, 'Registrado': 1, 'pendiente': 1,
+            'Diagnóstico': 2, 'Garantía': 2, 'progreso': 2,
+            'Esperando Cotización': 3, 'Esperando Confirmación Cliente': 3,
+            'Confirmado': 4, 'En ejecución': 4, 'Reparado / Listo': 4,
+            'Completado': 5, 'completado': 5, 'Entregado': 5, 'Facturado': 5,
+            'Cancelado': 0
+        };
+        return mapa[estado] || 1;
+    }
 
     function _supabase() { return window.supabase; }
 
@@ -64,15 +96,21 @@ const ServiciosModule = (function() {
     let subscriptions = [];
     let serviciosAutosaveCtrl = null;
     let serviciosDraftSessionKey = null;
+    let perfilUsuario = null;
 
     // ==================== INICIALIZACIÓN ====================
     async function init() {
         console.log('✅ [Automatización] Conectado');
+        try { perfilUsuario = await authService.getCurrentProfile(); } catch(e) {}
         _bindEvents();
         _setVistaInicial();
         try {
             await _initUI();
             await _loadInitialData();
+            try {
+                var openId = new URLSearchParams(window.location.search).get('open');
+                if (openId) { setTimeout(function () { _abrirProyecto(openId); }, 400); }
+            } catch (e) {}
             _startClock();
             _setupRealtime();
         } catch (e) {
@@ -281,7 +319,7 @@ const ServiciosModule = (function() {
     }
 
     function _getAvanceYProceso(proyecto) {
-        const etapa = proyecto.etapa_actual != null ? proyecto.etapa_actual : (proyecto.estado === 'completado' ? 5 : proyecto.estado === 'progreso' ? 3 : 1);
+        const etapa = _estadoToPaso(proyecto.estado) || proyecto.etapa_actual || 1;
         const avance = proyecto.avance != null ? proyecto.avance : Math.round((etapa / 5) * 100);
         return { avance, etapa, proceso: _getEtapaLabel(etapa) };
     }
@@ -515,7 +553,17 @@ const ServiciosModule = (function() {
         const subNotif = supabase
             .channel('automatizacion_notificaciones')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: 'para=eq.automatizacion' }, payload => {
-                _addToFeed('🔔', payload.new?.mensaje || 'Nueva notificación');
+                const notif = payload.new || {};
+                _addToFeed('🔔', notif.mensaje || 'Nueva notificación');
+                // Si es confirmación de cliente para el proyecto actual, actualizar estado local
+                if (notif.tipo === 'cliente_confirmo' && currentProject && currentProject.id === notif.orden_id) {
+                    currentProject.estado = 'Confirmado';
+                    _showToast('✅ Cliente confirmó la cotización. Puede avanzar a Desarrollo.', 'success');
+                }
+                // Si es garantía activada, recargar para mostrar nueva orden
+                if (notif.tipo === 'garantia_activada') {
+                    _showToast('🔔 ' + (notif.mensaje || 'Garantía activada'), 'info');
+                }
                 _loadProjects();
             })
             .subscribe();
@@ -534,13 +582,19 @@ const ServiciosModule = (function() {
         subscriptions.push(subHistorial);
     }
 
-    /** Normaliza variantes de BD (mayúsculas, "En progreso", Activo…) a pendiente | progreso | completado. */
+    /** Normaliza variantes de BD a los estados del flujo comercial. */
     function _normEstadoProyecto(estado) {
         const s = String(estado == null ? '' : estado).trim().toLowerCase();
         if (!s) return 'pendiente';
-        if (['pendiente', 'borrador', 'nuevo', 'planificacion', 'planificación'].includes(s)) return 'pendiente';
-        if (['progreso', 'en progreso', 'activo', 'ejecucion', 'ejecución', 'en ejecucion', 'en ejecución'].includes(s)) return 'progreso';
+        if (['registrado', 'pendiente', 'borrador', 'nuevo', 'planificacion', 'planificación'].includes(s)) return 'pendiente';
+        if (['diagnostico', 'diagnóstico', 'levantamiento'].includes(s)) return 'pendiente';
+        if (['esperando cotizacion', 'esperando cotización', 'espera cotizacion', 'cotizacion pendiente'].includes(s)) return 'esperando_cotizacion';
+        if (['esperando confirmacion cliente', 'esperando confirmación cliente', 'confirmacion pendiente'].includes(s)) return 'esperando_confirmacion';
+        if (['confirmado', 'progreso', 'en progreso', 'activo', 'ejecucion', 'ejecución', 'en ejecucion', 'en ejecución', 'en ejecucion', 'desarrollo'].includes(s)) return 'progreso';
+        if (['reparado', 'reparado / listo', 'listo', 'puesta en marcha'].includes(s)) return 'progreso';
         if (['completado', 'cerrado', 'entregado', 'facturado', 'finalizado'].includes(s)) return 'completado';
+        if (['cancelado', 'cancelada'].includes(s)) return 'cancelado';
+        if (['garantia', 'garantía'].includes(s)) return 'garantia';
         return s;
     }
 
@@ -583,18 +637,17 @@ const ServiciosModule = (function() {
         const container = document.getElementById('kanbanContainer');
         if (!container) return;
         const etapas = [
-            { id: 1, label: 'Levantamiento', color: '#ff9800' },
-            { id: 2, label: 'Ingeniería', color: '#2196f3' },
-            { id: 3, label: 'Materiales', color: '#9c27b0' },
-            { id: 4, label: 'Desarrollo', color: '#f57c00' },
-            { id: 5, label: 'Entrega', color: '#4caf50' }
+            { label: 'Registrado', match: s => s === 'Nuevo' || s === 'Registrado' || s === 'pendiente' },
+            { label: 'Diagnóstico', match: s => s === 'Diagnóstico' || s === 'Garantía' },
+            { label: 'Esperando Cotización', match: s => s === 'Esperando Cotización' || s === 'En Espera' },
+            { label: 'Esperando Confirmación', match: s => s === 'Esperando Confirmación Cliente' },
+            { label: 'En ejecución', match: s => s === 'Confirmado' || s === 'En ejecución' },
+            { label: 'Completado', match: s => s === 'Completado' || s === 'completado' || s === 'Entregado' || s === 'Facturado' || s === 'Reparado / Listo' },
+            { label: 'Cancelado', match: s => s === 'Cancelado' || s === 'Cancelada' },
         ];
         let html = '';
         etapas.forEach(etapa => {
-            const filtrados = proyectos.filter(p => {
-                const etapaActual = p.estado === 'completado' ? 5 : (p.etapa_actual || 1);
-                return etapaActual === etapa.id;
-            });
+            const filtrados = proyectos.filter(p => etapa.match(p.estado));
             html += `
                 <div class="kanban-column">
                     <div class="kanban-header" style="border-bottom-color: ${etapa.color};">
@@ -684,7 +737,7 @@ const ServiciosModule = (function() {
                 <td><span class="avance-pct">${avance}%</span></td>
                 <td>${proceso}</td>
                 <td><small>${linea}</small></td>
-                <td><span class="status-badge" style="background:${_normEstadoProyecto(p.estado)==='pendiente'?'#ff9800':(_normEstadoProyecto(p.estado)==='progreso'?'#2196f3':'#4caf50')}; color:white;">${p.estado}</span> · ${proceso}</td>
+                <td><span class="status-badge" style="background:${(function(){ const s=_normEstadoProyecto(p.estado); if(s==='pendiente') return '#ff9800'; if(s==='esperando_cotizacion'||s==='esperando_confirmacion') return '#9c27b0'; if(s==='progreso'||s==='garantia') return '#2196f3'; if(s==='cancelado') return '#f44336'; return '#4caf50'; })()}; color:white;">${p.estado}</span> · ${proceso}</td>
                 <td>${p.rentabilidad_estado === 'rojo' ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(p.adeudo_generado||0).toFixed(0)}</span>` : (p.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—')}</td>
             </tr>`;
         });
@@ -698,9 +751,13 @@ const ServiciosModule = (function() {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
         if (chartInstance) chartInstance.destroy();
-        const estados = ['pendiente', 'progreso', 'completado'];
+        const norm = e => _normEstadoProyecto(e);
         const labels = ['Pendientes', 'En Progreso', 'Completados'];
-        const counts = estados.map(e => proyectos.filter(p => _normEstadoProyecto(p.estado) === e).length);
+        const counts = [
+            proyectos.filter(p => ['pendiente','esperando_cotizacion','esperando_confirmacion'].includes(norm(p.estado))).length,
+            proyectos.filter(p => ['progreso','garantia'].includes(norm(p.estado))).length,
+            proyectos.filter(p => norm(p.estado) === 'completado').length
+        ];
         chartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -716,10 +773,11 @@ const ServiciosModule = (function() {
         const kpiPendiente = document.getElementById('kpiPendiente');
         const kpiProgreso = document.getElementById('kpiProgreso');
         const kpiCompletado = document.getElementById('kpiCompletado');
+        const norm = e => _normEstadoProyecto(e);
         if (kpiTotal) kpiTotal.innerText = proyectos.length;
-        if (kpiPendiente) kpiPendiente.innerText = proyectos.filter(p => _normEstadoProyecto(p.estado) === 'pendiente').length;
-        if (kpiProgreso) kpiProgreso.innerText = proyectos.filter(p => _normEstadoProyecto(p.estado) === 'progreso').length;
-        if (kpiCompletado) kpiCompletado.innerText = proyectos.filter(p => _normEstadoProyecto(p.estado) === 'completado').length;
+        if (kpiPendiente) kpiPendiente.innerText = proyectos.filter(p => ['pendiente','esperando_cotizacion','esperando_confirmacion'].includes(norm(p.estado))).length;
+        if (kpiProgreso) kpiProgreso.innerText = proyectos.filter(p => ['progreso','garantia'].includes(norm(p.estado))).length;
+        if (kpiCompletado) kpiCompletado.innerText = proyectos.filter(p => norm(p.estado) === 'completado').length;
     }
 
     // ==================== FUNCIONES DEL MODAL ====================
@@ -729,10 +787,15 @@ const ServiciosModule = (function() {
         currentProject = proyecto;
         projectId = id;
         isNewProject = false;
+        currentStep = _estadoToPaso(proyecto.estado);
         if (proyecto.etapa_actual != null && proyecto.etapa_actual >= 1 && proyecto.etapa_actual <= 5) {
-            currentStep = proyecto.etapa_actual;
+            // Mantener compatibilidad: si el estado no mapea bien, usar etapa_actual
+            if (_estadoToPaso(proyecto.estado) === 1 && proyecto.etapa_actual > 1) {
+                currentStep = proyecto.etapa_actual;
+            }
         }
         _cargarDatosEnModal(proyecto);
+        _initWsChatterUI(proyecto);
         const modal = document.getElementById('wsModal');
         if (modal) modal.classList.add('active');
         _irPaso(currentStep);
@@ -930,6 +993,7 @@ const ServiciosModule = (function() {
         _renderEpicas();
         _renderApartados();
         _renderPanelRentabilidad();
+        _initWsChatterUI(currentProject || proyecto);
     }
 
     function _getEtapaLabels() {
@@ -1028,6 +1092,14 @@ const ServiciosModule = (function() {
 
     function _irPaso(paso) {
         if (paso < 1 || paso > 5) return;
+        // Bloqueo comercial: no avanzar a Desarrollo (paso 4) si aún esperamos confirmación del cliente
+        if (paso === 4 && currentProject) {
+            const est = String(currentProject.estado || '').trim();
+            if (est === 'Esperando Cotización' || est === 'Esperando Confirmación Cliente' || est === 'esperando_cotizacion' || est === 'esperando_confirmacion_cliente') {
+                _showToast('⏳ Esperando confirmación del cliente. Ventas presentará cotización y notificará cuando el cliente confirme.', 'warning');
+                return;
+            }
+        }
         currentStep = paso;
         document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
         const stepEl = document.getElementById(`step-${paso}`);
@@ -1048,6 +1120,8 @@ const ServiciosModule = (function() {
         const prevBtn = document.getElementById('prevStepBtn');
         const nextBtn = document.getElementById('nextStepBtn');
         const saveBtn = document.getElementById('saveProjectBtn');
+        const btnNotificar = document.getElementById('btnNotificarVentasCompletado');
+        const btnClienteConfirmado = document.getElementById('btnClienteConfirmadoAuto');
         if (!prevBtn && !nextBtn && !saveBtn) return;
         if (currentStep === 1) {
             if (prevBtn) prevBtn.style.display = 'none';
@@ -1061,6 +1135,15 @@ const ServiciosModule = (function() {
             if (prevBtn) prevBtn.style.display = 'inline-flex';
             if (nextBtn) nextBtn.style.display = 'inline-flex';
             if (saveBtn) saveBtn.style.display = 'inline-flex';
+        }
+        if (btnNotificar) btnNotificar.style.display = currentStep === 5 ? 'inline-flex' : 'none';
+        // Mostrar botón de "Cliente confirmó" solo en paso 3 cuando se espera confirmación
+        if (btnClienteConfirmado && currentStep === 3 && currentProject) {
+            const est = String(currentProject.estado || '').trim();
+            const esperando = est === 'Esperando Cotización' || est === 'Esperando Confirmación Cliente' || est === 'esperando_cotizacion' || est === 'esperando_confirmacion_cliente';
+            btnClienteConfirmado.style.display = esperando ? 'inline-flex' : 'none';
+        } else if (btnClienteConfirmado) {
+            btnClienteConfirmado.style.display = 'none';
         }
     }
 
@@ -1274,7 +1357,7 @@ const ServiciosModule = (function() {
             repHallazgos: p.notas_internas || '',
             repRefacciones: materialesTexto || '',
             repRecomendaciones: epicasTexto || '',
-            imagenes: []
+            imagenes: (p.reporte_imagenes || []).map(img => img.dataUrl || img.src).filter(Boolean)
         };
         try {
             await pdfGenerator.generateReport(pdfData, user, preview);
@@ -1331,7 +1414,7 @@ const ServiciosModule = (function() {
         const tbody = document.getElementById('materialesBody');
         if (!tbody) return;
         if (materiales.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No hay materiales</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No hay materiales</td></tr>';
             return;
         }
         tbody.innerHTML = materiales.map((mat, idx) => {
@@ -1344,6 +1427,7 @@ const ServiciosModule = (function() {
                 <td><input type="text" value="${mat.descripcion}" onchange="serviciosModule._actualizarMaterial(${idx}, 'descripcion', this.value)"></td>
                 <td><input type="number" value="${mat.cantidad}" min="1" onchange="serviciosModule._actualizarMaterial(${idx}, 'cantidad', this.value)"></td>
                 <td><input type="text" value="${mat.sku}" onchange="serviciosModule._actualizarMaterial(${idx}, 'sku', this.value)"></td>
+                <td><input type="text" placeholder="Distribuidor" value="${mat.proveedor || ''}" onchange="serviciosModule._actualizarMaterial(${idx}, 'proveedor', this.value)"></td>
                 <td><input type="number" step="0.01" min="0" value="${cu}" onchange="serviciosModule._actualizarMaterial(${idx}, 'costo_unitario', this.value)"></td>
                 <td style="text-align:right;font-weight:600;">$${sub}</td>
                 <td><button class="btn-remove" onclick="serviciosModule._eliminarMaterial(${idx})">✖</button></td>
@@ -1619,7 +1703,16 @@ const ServiciosModule = (function() {
             materiales: materiales,
             epicas: epicas,
             apartados: apartados,
-            estado: currentStep === 5 ? 'completado' : (currentStep >= 2 ? 'progreso' : 'pendiente'),
+            // Flujo comercial: avanzar estado, nunca retroceder
+            estado: (function() {
+                const pasoEstado = _pasoToEstado(currentStep);
+                if (!isNewProject && currentProject && currentProject.estado) {
+                    const prioridadActual = _estadoPrioridad(currentProject.estado);
+                    const prioridadNueva = _estadoPrioridad(pasoEstado);
+                    if (prioridadNueva <= prioridadActual) return currentProject.estado;
+                }
+                return pasoEstado;
+            })(),
             etapa_actual: currentStep,
             avance: Math.round((currentStep / 5) * 100),
             fecha_inicio: currentProject?.fecha_inicio || fechaInicio || new Date().toISOString(),
@@ -1640,6 +1733,7 @@ const ServiciosModule = (function() {
         }
 
         const csrfToken = sessionStorage.getItem('csrfToken');
+        const fueNuevo = isNewProject;
         try {
             if (isNewProject) {
                 var yy = new Date().getFullYear().toString().slice(-2);
@@ -1668,8 +1762,59 @@ const ServiciosModule = (function() {
                     );
                 }
             }
+            // Notificar a Ventas si el proyecto está completado
+            if (data.estado === 'Completado' && (!currentProject || currentProject.estado !== 'Completado')) {
+                try {
+                    await notificacionesService.insert({
+                        para: 'ventas',
+                        tipo: 'trabajo_terminado',
+                        orden_id: projectId,
+                        folio: data.folio,
+                        cliente: data.cliente,
+                        mensaje: `Proyecto ${data.folio} completado en Automatización. Listo para facturación y entrega.`,
+                        leido: false,
+                        fecha: new Date().toISOString()
+                    }, csrfToken);
+                } catch (notifErr) { console.warn('[Auto] Error notificando a Ventas:', notifErr); }
+            }
             _afterServiciosPersistOk();
             _addToFeed('💾', `Proyecto ${data.folio} guardado`);
+
+            // E8: Registrar en orden_historial
+            try {
+                const historialService = createDataService('orden_historial');
+                await historialService.insert({
+                    proyecto_id: projectId,
+                    evento: fueNuevo ? 'creacion' : 'actualizacion',
+                    descripcion: `Proyecto ${data.folio} ${fueNuevo ? 'creado' : 'guardado'} — estado: ${data.estado}`,
+                    usuario: perfilUsuario?.nombre || 'Sistema',
+                    fecha: new Date().toISOString()
+                }, csrfToken);
+            } catch (histErr) { console.warn('[Automatización] Error historial:', histErr); }
+
+            // Crear actividad Kanban automática
+            try {
+                const actividadesService = createDataService('actividades_diarias');
+                const perfilAct = await authService.getCurrentProfile();
+                const ahora = new Date();
+                const horaStr = ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+                const apartado = data.estado || 'pendiente';
+                await actividadesService.insert({
+                    departamento: 'automatizacion',
+                    orden_origen_id: projectId,
+                    orden_origen_tipo: 'proyectos_automatizacion',
+                    resumen: 'Proyecto ' + data.folio + ' - ' + data.cliente,
+                    estado: 'pendiente',
+                    tecnico: data.vendedor || 'Por asignar',
+                    fecha: ahora.toISOString().split('T')[0],
+                    notas: `Generado automáticamente desde Automatización. Estado: ${data.estado}. Hora: ${horaStr}. Apartado: ${apartado}.`,
+                    user_id: perfilAct ? perfilAct.id : null,
+                    creado_por: perfilAct ? perfilAct.id : null
+                }, csrfToken);
+            } catch (actErr) {
+                console.warn('[Automatización] Error creando actividad automática:', actErr);
+            }
+
             _cerrarModal();
 
             // Generar adeudo si el proyecto salió en números rojos
@@ -1818,7 +1963,7 @@ const ServiciosModule = (function() {
             materiales,
             epicas,
             apartados,
-            estado: currentStep === 5 ? 'completado' : (currentStep >= 2 ? 'progreso' : 'pendiente'),
+            estado: _pasoToEstado(currentStep),
             updated_at: new Date().toISOString(),
             fecha_creacion: new Date().toISOString()
         };
@@ -1828,6 +1973,20 @@ const ServiciosModule = (function() {
         projectId = inserted.id;
         isNewProject = false;
         document.getElementById('inpFolio').value = inserted.folio || data.folio;
+        if (data.estado === 'Completado') {
+            try {
+                await notificacionesService.insert({
+                    para: 'ventas',
+                    tipo: 'trabajo_terminado',
+                    orden_id: projectId,
+                    folio: data.folio,
+                    cliente: data.cliente,
+                    mensaje: `Proyecto ${data.folio} completado en Automatización. Listo para facturación y entrega.`,
+                    leido: false,
+                    fecha: new Date().toISOString()
+                }, csrfToken);
+            } catch (notifErr) { console.warn('[Auto] Error notificando a Ventas:', notifErr); }
+        }
         _afterServiciosPersistOk();
         _addToFeed('💾', `Proyecto ${data.folio} guardado (auto)`);
         return projectId;
@@ -1847,33 +2006,239 @@ const ServiciosModule = (function() {
             const folioProyecto = document.getElementById('inpFolio').value;
             const cliente = document.getElementById('paso1_cliente').value;
             const nombreProyecto = document.getElementById('paso1_nombre').value;
+            const vendedor = document.getElementById('paso1_vendedor').value;
 
-            const items = materiales
-                .filter(m => (m.nombre || m.descripcion || m.sku) && (parseInt(m.cantidad) || 0) > 0)
-                .map(m => ({
+            // Buscar info completa del cliente (RFC, dirección, etc.)
+            let clienteInfo = { nombre: cliente, rfc: '', direccion: '', telefono: '' };
+            let gasolinaCosto = 0;
+            try {
+                if (window.supabase) {
+                    const { data: cData } = await window.supabase.from('contactos').select('*').eq('nombre', cliente).limit(1).single();
+                    if (cData) {
+                        clienteInfo = {
+                            nombre: cData.nombre || cliente,
+                            rfc: cData.rfc || '',
+                            direccion: cData.direccion || '',
+                            telefono: cData.telefono || '',
+                            nombre_comercial: cData.nombre_comercial || ''
+                        };
+                    }
+                    // Buscar km en tabulador para calcular gasolina
+                    const { data: tabData } = await window.supabase.from('clientes_tabulador').select('km').ilike('nombre_cliente', '%' + cliente + '%').limit(1).single();
+                    const km = tabData ? (tabData.km || 0) : 0;
+                    if (km > 0 && window.CostosEngine) {
+                        gasolinaCosto = window.CostosEngine.calcularCostoGasolina(km);
+                    }
+                }
+            } catch (cErr) { console.warn('[Automatización] Error buscando info cliente:', cErr); }
+
+            // Agrupar materiales por proveedor
+            const grupos = {};
+            materiales.forEach(m => {
+                const prov = (m.proveedor || 'PENDIENTE').trim();
+                if (!grupos[prov]) grupos[prov] = [];
+                grupos[prov].push({
                     sku: m.sku || '',
                     nombre: m.nombre || '',
                     descripcion: m.descripcion || '',
                     cantidad: parseInt(m.cantidad) || 1
-                }));
+                });
+            });
 
-            const compra = {
-                folio: `REQ-AUT-${Date.now().toString().slice(-6)}`,
-                proveedor: 'PENDIENTE',
-                departamento: 'Automatización',
-                vinculacion: { tipo: 'proyecto', id, folio: folioProyecto, cliente, nombre: nombreProyecto },
-                items,
-                total: 0,
-                estado: 1,
-                updated_at: new Date().toISOString()
-            };
+            const proveedores = Object.keys(grupos);
+            const foliosGenerados = [];
 
-            await comprasService.insert(compra, csrfToken);
-            _showSuccessAlert('✅ Requerimiento generado y enviado a Compras');
-            _addToFeed('🧾', `Requerimiento generado (${compra.folio})`);
+            for (let i = 0; i < proveedores.length; i++) {
+                const prov = proveedores[i];
+                const items = grupos[prov];
+                // Si hay varios proveedores, se usa el mismo folio base sin sufijo (permitido por schema local)
+                // En cloud, si folio es único, el primero usa folioProyecto, los demás folioProyecto-i
+                const folioCompra = (i === 0) ? folioProyecto : folioProyecto + '-' + (i + 1);
+
+                const compra = {
+                    folio: folioCompra,
+                    proveedor: prov,
+                    departamento: 'Automatización',
+                    fecha: new Date().toISOString(),
+                    vinculacion: { tipo: 'proyecto', id, folio: folioProyecto, cliente, nombre: nombreProyecto, proveedor: prov },
+                    items,
+                    total: 0,
+                    estado: 1,
+                    observaciones: 'Generado desde Automatización. Cliente: ' + clienteInfo.nombre + (clienteInfo.rfc ? ' · RFC: ' + clienteInfo.rfc : '') + (gasolinaCosto > 0 ? ' · Gasolina incluida: $' + gasolinaCosto.toFixed(2) : ''),
+                    pasos: [{ paso: 1, fecha: new Date().toISOString(), accion: 'Requerimiento generado desde Automatización', usuario: vendedor || 'Sistema' }],
+                    data: { cliente_info: clienteInfo, gasolina: gasolinaCosto, origen: 'automatizacion' },
+                    updated_at: new Date().toISOString()
+                };
+
+                try {
+                    const compraRef = await comprasService.insert(compra, csrfToken);
+                    foliosGenerados.push(compraRef.folio || folioCompra);
+                    // Insertar items en compras_items
+                    try {
+                        const itemsService = createDataService('compras_items');
+                        for (let ii = 0; ii < items.length; ii++) {
+                            const it = items[ii];
+                            await itemsService.insert({
+                                compra_id: compraRef.id,
+                                sku: it.sku || '',
+                                descripcion: it.descripcion || '',
+                                cantidad: it.cantidad || 1,
+                                costo_unitario: 0,
+                                costo_total: 0,
+                                link_proveedor: ''
+                            }, csrfToken);
+                        }
+                    } catch (itemsErr) {
+                        console.warn('[Automatización] Error insertando items:', itemsErr);
+                    }
+                } catch (folioErr) {
+                    // Si falla por folio duplicado (único en cloud), intentar con sufijo
+                    if (String(folioErr?.message || '').toLowerCase().includes('duplicate') || String(folioErr?.code || '').includes('23505')) {
+                        compra.folio = folioProyecto + '-' + (i + 1);
+                        const compraRef = await comprasService.insert(compra, csrfToken);
+                        foliosGenerados.push(compraRef.folio || compra.folio);
+                        try {
+                            const itemsService = createDataService('compras_items');
+                            for (let ii = 0; ii < items.length; ii++) {
+                                const it = items[ii];
+                                await itemsService.insert({
+                                    compra_id: compraRef.id,
+                                    sku: it.sku || '',
+                                    descripcion: it.descripcion || '',
+                                    cantidad: it.cantidad || 1,
+                                    costo_unitario: 0,
+                                    costo_total: 0,
+                                    link_proveedor: ''
+                                }, csrfToken);
+                            }
+                        } catch (itemsErr2) { console.warn('[Automatización] Error insertando items (retry):', itemsErr2); }
+                    } else {
+                        throw folioErr;
+                    }
+                }
+            }
+
+            _showSuccessAlert('✅ ' + foliosGenerados.length + ' requerimiento(s) generado(s) y enviado(s) a Compras: ' + foliosGenerados.join(', '));
+            _addToFeed('🧾', `Requerimientos generados (${foliosGenerados.join(', ')})`);
         } catch (error) {
             console.error(error);
             alert('Error al generar requerimiento: ' + error.message);
+        }
+    }
+
+    async function _enviarListaMaterialesACompras() {
+        console.log('[Auto] Enviando lista de materiales a Compras');
+        if (!materiales || materiales.length === 0) {
+            alert('Agrega materiales antes de enviar la lista a Compras.');
+            return;
+        }
+        await _guardarProyecto();
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            const id = projectId || await _ensureProjectSavedForLinkage();
+            const folioProyecto = document.getElementById('inpFolio').value;
+            const cliente = document.getElementById('paso1_cliente').value;
+
+            const itemsCompra = materiales.map(m => ({
+                sku: m.sku || '', nombre: m.nombre || '', descripcion: m.descripcion || '', cantidad: parseInt(m.cantidad) || 1
+            }));
+
+            // Buscar preregistro de compra desde Ventas
+            let compraExistente = null;
+            try {
+                const { data: ex } = await window.supabase.from('compras').select('*').eq('vinculacion->>tipo', 'proyecto').eq('vinculacion->>id', id).limit(1).single();
+                compraExistente = ex;
+            } catch (e) { /* no existe */ }
+
+            let compraRef;
+            let compraFolio;
+            if (compraExistente) {
+                compraFolio = compraExistente.folio || `PO-${folioProyecto}`;
+                await comprasService.update(compraExistente.id, {
+                    items: itemsCompra, estado: 1, estado_interno: 'esperando_cotizacion',
+                    observaciones: 'Solicitud de cotización desde Automatización. Esperando precios de proveedores.',
+                    updated_at: new Date().toISOString()
+                }, csrfToken);
+                compraRef = { id: compraExistente.id };
+                try { await window.supabase.from('compras_items').delete().eq('compra_id', compraExistente.id); } catch (de) {}
+            } else {
+                compraFolio = `PO-${folioProyecto}`;
+                const nuevaCompra = {
+                    folio: compraFolio, proveedor: 'Por asignar', departamento: 'Automatización',
+                    fecha: new Date().toISOString(),
+                    vinculacion: { tipo: 'proyecto', id, folio: folioProyecto, cliente },
+                    items: itemsCompra, estado: 1, estado_interno: 'esperando_cotizacion',
+                    observaciones: 'Solicitud de cotización desde Automatización. Esperando precios de proveedores.',
+                    created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+                };
+                compraRef = await comprasService.insert(nuevaCompra, csrfToken);
+            }
+
+            // Insertar items
+            try {
+                const itemsService = createDataService('compras_items');
+                for (const it of itemsCompra) {
+                    await itemsService.insert({ compra_id: compraRef.id, sku: it.sku || '', descripcion: it.descripcion || '', cantidad: it.cantidad || 1, costo_unitario: 0, costo_total: 0 }, csrfToken);
+                }
+            } catch (itemsErr) { console.warn('[Auto] Error insertando items:', itemsErr); }
+
+            await proyectosService.update(id, { compra_vinculada: compraRef.id, compra_folio: compraFolio, estado: 'Esperando Cotización' }, csrfToken);
+
+            await notificacionesService.insert({
+                para: 'compras', tipo: 'solicitud_cotizacion', orden_id: id, compra_id: compraRef.id,
+                folio: compraFolio, cliente,
+                mensaje: `Automatización envió lista de materiales para cotización: ${compraFolio}. Cotice con proveedores y envíe precios a Ventas.`,
+                leido: false, fecha: new Date().toISOString()
+            }, csrfToken);
+
+            await notificacionesService.insert({
+                para: 'ventas', tipo: 'diagnostico_completado', orden_id: id, folio: folioProyecto, cliente,
+                mensaje: `Automatización completó diagnóstico para ${folioProyecto}. Lista de materiales enviada a Compras para cotización. Esperando precios de proveedores.`,
+                leido: false, fecha: new Date().toISOString()
+            }, csrfToken);
+
+            _showSuccessAlert('✅ Lista de materiales enviada a Compras para cotización.');
+            _addToFeed('📤', `Lista de materiales enviada a Compras: ${folioProyecto}`);
+        } catch (error) {
+            console.error(error);
+            alert('Error al enviar lista a Compras: ' + error.message);
+        }
+    }
+
+    async function _marcarClienteConfirmado() {
+        console.log('[Auto] Marcando cliente confirmado y avanzando a Desarrollo');
+        if (!projectId) { alert('Primero guarde el proyecto'); return; }
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            await proyectosService.update(projectId, { estado: 'Confirmado', updated_at: new Date().toISOString() }, csrfToken);
+            if (currentProject) currentProject.estado = 'Confirmado';
+            _showToast('✅ Cliente confirmó. Avanzando a Desarrollo.', 'success');
+            _irPaso(4);
+        } catch (error) {
+            console.error(error);
+            alert('Error al marcar confirmación: ' + error.message);
+        }
+    }
+
+    async function _notificarVentasCompletado() {
+        console.log('[Auto] Notificando a Ventas que proyecto está completado');
+        if (!projectId) { alert('Primero guarde el proyecto'); return; }
+        await _guardarProyecto();
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            const folio = document.getElementById('inpFolio').value;
+            const cliente = document.getElementById('paso1_cliente').value;
+            await proyectosService.update(projectId, { estado: 'Completado' }, csrfToken);
+            await notificacionesService.insert({
+                para: 'ventas', tipo: 'trabajo_terminado', orden_id: projectId, folio, cliente,
+                mensaje: `Proyecto ${folio} completado en Automatización. Listo para facturación y entrega.`,
+                leido: false, fecha: new Date().toISOString()
+            }, csrfToken);
+            _showSuccessAlert('✅ Proyecto completado. Ventas ha sido notificado.');
+            _addToFeed('✅', `Proyecto completado. Notificado a Ventas: ${folio}`);
+        } catch (error) {
+            console.error(error);
+            alert('Error al notificar a Ventas: ' + error.message);
         }
     }
 
@@ -1896,6 +2261,8 @@ const ServiciosModule = (function() {
         if (byId('saveProjectBtn')) byId('saveProjectBtn').addEventListener('click', _guardarProyecto);
         if (byId('completarEntregaBtn')) byId('completarEntregaBtn').addEventListener('click', _completarEntrega);
 
+        const btnClienteConfirmado = byId('btnClienteConfirmadoAuto');
+        if (btnClienteConfirmado) btnClienteConfirmado.addEventListener('click', _marcarClienteConfirmado);
         if (byId('guardarPaso1')) byId('guardarPaso1').addEventListener('click', _guardarProyecto);
         if (byId('agregarActividad')) byId('agregarActividad').addEventListener('click', _agregarActividad);
         if (byId('generarCronograma')) byId('generarCronograma').addEventListener('click', _generarCronograma);
@@ -1913,7 +2280,8 @@ const ServiciosModule = (function() {
             if (el) el.addEventListener('input', _recalcCostosServicios);
         });
         const reqBtn = byId('generarRequerimientoCompraBtn');
-        if (reqBtn) reqBtn.addEventListener('click', _generarRequerimientoCompra);
+        if (reqBtn) reqBtn.addEventListener('click', _enviarListaMaterialesACompras);
+        if (byId('btnNotificarVentasCompletado')) byId('btnNotificarVentasCompletado').addEventListener('click', _notificarVentasCompletado);
         if (byId('crearEpica')) byId('crearEpica').addEventListener('click', _crearEpica);
         if (byId('crearNuevoApartado')) byId('crearNuevoApartado').addEventListener('click', _crearNuevoApartado);
 
@@ -1987,6 +2355,172 @@ const ServiciosModule = (function() {
             localStorage.setItem('theme', 'dark');
             if (btn) btn.innerHTML = '<i class="fas fa-sun"></i>';
         }
+    }
+
+    // ==================== WS-CHATTER ====================
+    function _escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s == null ? '' : String(s);
+        return d.innerHTML;
+    }
+
+    function _initWsChatterUI(proyecto) {
+        const folio = proyecto?.folio || '';
+        const folioEl = document.getElementById('wsChatterFolio');
+        if (folioEl) folioEl.textContent = folio ? `Proyecto ${folio}` : '—';
+        _bindWsChatterTabs();
+        _renderWsNotesFromOrden(proyecto);
+        _loadWsActividad(proyecto).catch(() => {});
+    }
+
+    function _bindWsChatterTabs() {
+        const tabs = document.querySelectorAll('.ws-chatter-tab');
+        if (!tabs || !tabs.length) return;
+        tabs.forEach(btn => {
+            btn.onclick = () => {
+                tabs.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const tab = btn.dataset.tab;
+                document.querySelectorAll('.ws-chatter-pane').forEach(p => p.classList.remove('active'));
+                const pane = document.querySelector(`.ws-chatter-pane[data-pane="${tab}"]`);
+                if (pane) pane.classList.add('active');
+            };
+        });
+        const addBtn = document.getElementById('wsAddNoteBtn');
+        if (addBtn && !addBtn.dataset.bound) {
+            addBtn.dataset.bound = '1';
+            addBtn.addEventListener('click', _wsAddNote);
+        }
+    }
+
+    function _splitNotes(text) {
+        const raw = String(text || '').trim();
+        if (!raw) return [];
+        return raw.split(/\n-{3,}\n/).map(s => s.trim()).filter(Boolean);
+    }
+
+    function _renderWsNotesFromOrden(proyecto) {
+        const list = document.getElementById('wsNotesList');
+        if (!list) return;
+        const chunks = _splitNotes(proyecto?.notas_internas || '');
+        if (!chunks.length) {
+            list.innerHTML = `<div class="ws-activity-item"><div class="ws-activity-body">Sin notas internas.</div></div>`;
+            return;
+        }
+        list.innerHTML = chunks.map((c) => {
+            const m = c.match(/^\[(.+?)\]\s*(.+?):\s*([\s\S]*)$/);
+            const when = m ? m[1] : '';
+            const who = m ? m[2] : 'Usuario';
+            const body = m ? m[3] : c;
+            return `
+              <div class="ws-note-item">
+                <div class="ws-note-meta"><span>${_escapeHtml(who)}</span><span>${_escapeHtml(when)}</span></div>
+                <div class="ws-note-body">${_escapeHtml(body)}</div>
+              </div>
+            `;
+        }).join('');
+    }
+
+    async function _wsAddNote() {
+        if (!projectId || !currentProject) return;
+        const ta = document.getElementById('wsNoteText');
+        const txt = String(ta?.value || '').trim();
+        if (!txt) return;
+        const profile = await authService.getCurrentProfile();
+        const who = profile?.nombre || profile?.email || 'Usuario';
+        const when = new Date().toLocaleString('es-MX');
+        const block = `[${when}] ${who}: ${txt}`;
+        const next = (String(currentProject.notas_internas || '').trim() ? (String(currentProject.notas_internas).trim() + `\n---\n`) : '') + block;
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            await proyectosService.update(projectId, { notas_internas: next }, csrfToken);
+            currentProject.notas_internas = next;
+            if (ta) ta.value = '';
+            _renderWsNotesFromOrden(currentProject);
+            _addToFeed('📝', `Nota registrada en ${currentProject.folio || 'proyecto'}`);
+        } catch (e) {
+            console.error(e);
+            _showToast('No se pudo registrar la nota', 'error');
+        }
+    }
+
+    async function _loadWsActividad(proyecto) {
+        const list = document.getElementById('wsActivityList');
+        if (!list) return;
+        list.innerHTML = `<div class="ws-activity-item"><div class="ws-activity-body">Cargando actividad…</div></div>`;
+        const supabase = _supabase();
+        const items = [];
+        const fe = proyecto?.fechas_etapas || {};
+        const push = (title, iso, body) => {
+            if (!iso) return;
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) return;
+            items.push({ when: d.toLocaleString('es-MX'), title, body: body || '' });
+        };
+        push('Levantamiento', fe['etapa1_inicio'], 'Levantamiento iniciado');
+        push('Ingeniería', fe['etapa2_inicio'], 'Ingeniería en curso');
+        push('Materiales', fe['etapa3_inicio'], 'Materiales en curso');
+        push('Desarrollo', fe['etapa4_inicio'], 'Desarrollo en curso');
+        push('Entrega', fe['etapa5_inicio'], 'Entrega registrada');
+        if (supabase && proyecto?.id) {
+            try {
+                let rows = [];
+                const q1 = await supabase
+                    .from('audit_logs')
+                    .select('timestamp,action,table_name')
+                    .eq('table_name', 'proyectos_automatizacion')
+                    .eq('record_id', proyecto.id)
+                    .order('timestamp', { ascending: false })
+                    .limit(30);
+                if (!q1.error && q1.data) {
+                    rows = q1.data;
+                } else if (q1.error && String(q1.error.message || '').includes('table_name')) {
+                    const q2 = await supabase
+                        .from('audit_logs')
+                        .select('timestamp,action,metadata')
+                        .eq('record_id', proyecto.id)
+                        .order('timestamp', { ascending: false })
+                        .limit(40);
+                    if (!q2.error && q2.data) {
+                        rows = (q2.data || []).filter((l) => {
+                            const t = (l.metadata && l.metadata.table) || '';
+                            return !t || t === 'proyectos_automatizacion';
+                        }).slice(0, 30);
+                    }
+                }
+                if (rows.length) {
+                    rows.forEach(l => {
+                        const d = l.timestamp ? new Date(l.timestamp) : null;
+                        items.push({ when: d ? d.toLocaleString('es-MX') : '—', title: String(l.action || 'EVENTO'), body: 'proyectos_automatizacion' });
+                    });
+                }
+            } catch (e) { /* audit_logs opcional */ }
+            try {
+                const { data: histRows } = await supabase
+                    .from('orden_historial')
+                    .select('fecha,evento,descripcion,usuario')
+                    .eq('proyecto_id', proyecto.id)
+                    .order('fecha', { ascending: false })
+                    .limit(30);
+                if (histRows && histRows.length) {
+                    histRows.forEach(h => {
+                        const d = h.fecha ? new Date(h.fecha) : null;
+                        items.push({ when: d ? d.toLocaleString('es-MX') : '—', title: String(h.evento || 'EVENTO').toUpperCase(), body: String(h.descripcion || '') + (h.usuario ? ` — ${h.usuario}` : '') });
+                    });
+                }
+            } catch (e) { /* orden_historial opcional */ }
+        }
+        if (!items.length) {
+            list.innerHTML = `<div class="ws-activity-item"><div class="ws-activity-body">Sin actividad.</div></div>`;
+            return;
+        }
+        items.sort((a, b) => String(b.when).localeCompare(String(a.when)));
+        list.innerHTML = items.map(it => `
+          <div class="ws-activity-item">
+            <div class="ws-activity-meta"><span>${_escapeHtml(it.title)}</span><span>${_escapeHtml(it.when)}</span></div>
+            <div class="ws-activity-body">${_escapeHtml(it.body)}</div>
+          </div>
+        `).join('');
     }
 
     // ==================== LIMPIEZA ====================

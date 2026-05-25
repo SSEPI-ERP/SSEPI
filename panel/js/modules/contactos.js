@@ -251,47 +251,16 @@ const ContactosModule = (function() {
     async function _loadContactos(opts) {
         const skipPriorityEnsure = opts && opts.skipPriorityEnsure;
         let rawContactos = [];
-        let tabuladorClientes = [];
         try {
             rawContactos = await contactosService.select({}, { orderBy: 'nombre', ascending: true }) || [];
         } catch (e) {
             console.warn('[Contactos] Error cargando contactos:', e?.message || e);
         }
-        // Cargar clientes del tabulador
-        try {
-            const supabase = _supabase();
-            if (supabase) {
-                const { data, error } = await supabase
-                    .from('clientes_tabulador')
-                    .select('nombre_cliente, km, horas_viaje, activo')
-                    .eq('activo', true)
-                    .order('nombre_cliente');
-                if (!error && data) {
-                    tabuladorClientes = data.filter(c => c.activo !== false && c.nombre_cliente).map(c => ({
-                        id: 'tab-' + c.nombre_cliente.replace(/\s+/g, '-').toLowerCase(),
-                        nombre: c.nombre_cliente.toUpperCase(),
-                        empresa: '',
-                        email: '',
-                        telefono: '',
-                        rfc: '',
-                        tipo: 'client',
-                        avatar: c.nombre_cliente.charAt(0).toUpperCase(),
-                        color: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
-                        km: Number(c.km) || 0,
-                        horas_viaje: Number(c.horas_viaje) || 0,
-                        _fromTabulador: true,
-                        created_at: new Date().toISOString()
-                    }));
-                }
-            }
-        } catch (e) {
-            console.warn('[Contactos] Error cargando clientes_tabulador:', e?.message || e);
-        }
 
-        console.log('[Contactos] local_contactos devueltos:', rawContactos.length, 'tabuladorClientes:', tabuladorClientes.length);
-        // Deduplicar por clave única (email, teléfono, nombre+empresa)
+        console.log('[Contactos] local_contactos devueltos:', rawContactos.length);
+        // Solo contactos reales en BD — tabulador es tabla aparte (calculadoras/taller)
         const vistos = new Set();
-        contactos = [...rawContactos, ...tabuladorClientes].filter(c => {
+        contactos = rawContactos.filter(c => {
             const k = _claveDedupeContacto(c);
             if (vistos.has(k)) return false;
             vistos.add(k);
@@ -403,6 +372,8 @@ const ContactosModule = (function() {
                 : `background: linear-gradient(135deg, ${c.color || '#00a09d'}, ${c.color || '#008a87'});`;
             const tipoClass = (c.tipo === 'client' || c.tipo === 'cliente') ? 'client' : 'provider';
             const tipoText = (c.tipo === 'client' || c.tipo === 'cliente') ? 'CLIENTE' : 'PROVEEDOR';
+            const catClass = (c.categoria === 'empresa') ? 'empresa' : 'persona';
+            const catText = (c.categoria === 'empresa') ? 'EMPRESA' : 'PERSONA';
             return `
                 <div class="contact-card" data-id="${c.id}" onclick="contactosModule.abrirDetalle('${c.id}')">
                     <div class="avatar-box" style="${estiloAvatar}">${c.logo_url ? '' : inicial}</div>
@@ -411,7 +382,7 @@ const ContactosModule = (function() {
                         <p><i class="fas fa-envelope"></i> ${c.email || '—'}</p>
                         <p><i class="fas fa-phone-alt"></i> ${c.telefono || '—'}</p>
                         <p><i class="fas fa-building"></i> ${c.empresa || '—'}</p>
-                        <span class="badge ${tipoClass}">${tipoText}</span>
+                        <span class="badge ${catClass}">${catText}</span> <span class="badge ${tipoClass}">${tipoText}</span>
                     </div>
                 </div>
             `;
@@ -434,16 +405,19 @@ const ContactosModule = (function() {
         tbody.innerHTML = contacts.map(c => {
             const tipoClass = (c.tipo === 'client' || c.tipo === 'cliente') ? 'client' : 'provider';
             const tipoText = (c.tipo === 'client' || c.tipo === 'cliente') ? 'Cliente' : 'Proveedor';
+            const catClass = (c.categoria === 'empresa') ? 'empresa' : 'persona';
+            const catText = (c.categoria === 'empresa') ? 'Empresa' : 'Persona';
             const avatarHtml = c.logo_url
                 ? `<img src="${c.logo_url}" class="list-avatar-img" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px;">`
                 : `<span class="list-avatar-letter" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,${c.color || '#00a09d'},${c.color || '#008a87'});color:#fff;font-size:12px;font-weight:700;vertical-align:middle;margin-right:8px;">${(c.nombre || '?').charAt(0).toUpperCase()}</span>`;
             return `
             <tr onclick="contactosModule.abrirDetalle('${c.id}')">
                 <td>${avatarHtml}<strong>${c.nombre || ''}</strong></td>
-                <td>${c.empresa || ''}</td>
+                <td>${c.empresa_tabulador ? '<span title="Tabulador">' + c.empresa_tabulador + '</span>' : (c.empresa || '')}</td>
                 <td>${c.email || ''}</td>
                 <td>${c.telefono || ''}</td>
                 <td>${c.rfc || ''}</td>
+                <td><span class="badge ${catClass}">${catText}</span></td>
                 <td><span class="badge ${tipoClass}">${tipoText}</span></td>
             </tr>
         `;
@@ -498,21 +472,54 @@ const ContactosModule = (function() {
         setVal('panelEmail', contacto.email);
         setVal('panelRfc', contacto.rfc);
         setVal('panelSitio', contacto.sitio_web);
+        setVal('panelCategoria', contacto.categoria || 'persona');
         setVal('panelTipo', contacto.tipo || 'client');
         setVal('panelEtiquetas', contacto.etiquetas);
         setVal('panelDireccion', contacto.direccion);
         setVal('panelLogoUrl', contacto.logo_url);
 
+        const existingErp = document.getElementById('panelErpMaestro');
+        if (existingErp) existingErp.remove();
+        const existingAdeudo = document.getElementById('panelAdeudoLink');
+        if (existingAdeudo) existingAdeudo.remove();
+
+        if (contacto.empresa_tabulador || contacto.tipo_ficha) {
+            const tab = contacto.empresa_tabulador || '—';
+            const tipo = contacto.tipo_ficha || '—';
+            let adeudoHtml = '';
+            const adeudo = Number(contacto.adeudo_acumulado) || 0;
+            if (adeudo > 0) {
+                adeudoHtml = `<div id="panelAdeudoLink" class="detail-section" style="margin-top:10px;padding:10px;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;">
+                    <strong style="color:#9a3412;"><i class="fas fa-exclamation-triangle"></i> Adeudo acumulado: $${adeudo.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</strong>
+                    <p style="font-size:12px;color:#7c2d12;margin:6px 0 0;">Ver detalle en módulo Ventas / Contabilidad.</p>
+                </div>`;
+            }
+            const erpSection = `
+                <div class="detail-section" id="panelErpMaestro">
+                    <h4 style="color: var(--accent-primary); margin-bottom: 8px;"><i class="fas fa-link"></i> Empresa tabulador (ERP)</h4>
+                    <p style="margin:0;font-size:14px;"><strong>${tab}</strong> <span class="badge empresa" style="margin-left:6px;">${tipo}</span></p>
+                    ${contacto.match_score ? '<p style="font-size:12px;color:#666;margin:4px 0 0;">Confianza cruce: ' + contacto.match_score + '%</p>' : ''}
+                </div>${adeudoHtml}`;
+            const timelineSection = document.getElementById('timelineContainer');
+            if (timelineSection && timelineSection.parentElement) {
+                timelineSection.parentElement.insertAdjacentHTML('beforebegin', erpSection);
+            }
+        }
+
         // Mostrar personas de la empresa si es empresa
         const existingRelated = document.getElementById('panelRelatedPeople');
         if (existingRelated) existingRelated.remove();
-        if (contacto.categoria === 'empresa') {
-            const empresaBuscar = contacto.empresa || contacto.nombre;
+        const empresaBuscar = contacto.empresa_tabulador || contacto.empresa || contacto.nombre;
+        if (contacto.categoria === 'empresa' || contacto.tipo_ficha === 'empresa' || contacto.empresa_tabulador) {
             const related = contactos.filter(c =>
                 c.id !== contacto.id &&
-                c.categoria !== 'empresa' &&
-                (c.empresa === empresaBuscar || c.empresa === contacto.nombre)
-            );
+                (c.empresa_padre_id === contacto.id ||
+                    c.tipo_ficha === 'contacto_empresa' && (
+                        (c.empresa_tabulador || c.empresa || '').toLowerCase().trim() === String(empresaBuscar).toLowerCase().trim()
+                    ) ||
+                    (c.categoria !== 'empresa' && (c.empresa === empresaBuscar || c.empresa === contacto.nombre))
+                ))
+            ;
             if (related.length > 0) {
                 const relatedHtml = related.map(r => {
                     const avatar = r.logo_url
@@ -587,6 +594,7 @@ const ContactosModule = (function() {
             email: document.getElementById('panelEmail').value.trim() || '',
             rfc: document.getElementById('panelRfc').value.trim() || '',
             sitio_web: document.getElementById('panelSitio').value.trim() || '',
+            categoria: document.getElementById('panelCategoria').value || 'persona',
             tipo: document.getElementById('panelTipo').value || 'client',
             etiquetas: document.getElementById('panelEtiquetas').value.trim() || '',
             direccion: document.getElementById('panelDireccion').value.trim() || '',
@@ -696,6 +704,7 @@ const ContactosModule = (function() {
             direccion: document.getElementById('inputDireccion')?.value?.trim() || '',
             rfc: document.getElementById('inputRfc')?.value?.trim() || '',
             sitio_web: document.getElementById('inputSitio')?.value?.trim() || '',
+            categoria: document.getElementById('inputCategoria')?.value || 'persona',
             tipo: document.getElementById('inputTipo')?.value || 'client',
             etiquetas: document.getElementById('inputEtiquetas')?.value?.trim() || '',
             avatar: nombre.charAt(0).toUpperCase(),

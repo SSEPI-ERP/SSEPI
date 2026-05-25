@@ -59,12 +59,15 @@ const TallerModule = (function() {
     const LIST_COL_STORAGE = 'ssepi_taller_list_cols';
 
     const KANBAN_STAGES = [
-        { label: 'Nuevo', match: s => s === 'Nuevo' },
-        { label: 'Confirmado / Diagnóstico', match: s => ['Confirmado', 'Diagnóstico'].includes(s) },
-        { label: 'En espera / En reparación', match: s => s === 'En Espera' || s === 'En reparación' },
-        { label: 'Reparado', match: s => s === 'Reparado' },
+        { label: 'Registrado', match: s => s === 'Nuevo' || s === 'Registrado' },
+        { label: 'Diagnóstico', match: s => s === 'Diagnóstico' },
+        { label: 'Esperando Cotización', match: s => s === 'Esperando Cotización' || s === 'En Espera' },
+        { label: 'Esperando Confirmación', match: s => s === 'Esperando Confirmación Cliente' },
+        { label: 'En reparación', match: s => s === 'Confirmado' || s === 'En reparación' },
+        { label: 'Reparado / Listo', match: s => s === 'Reparado' || s === 'Reparado / Listo' },
         { label: 'Entregado / Facturado', match: s => s === 'Entregado' || s === 'Facturado' },
         { label: 'Cancelado', match: s => s === 'Cancelado' || s === 'Cancelada' },
+        { label: 'Garantía', match: s => s === 'Garantía' },
     ];
 
     function _kanbanStageLabel(estado) {
@@ -97,6 +100,17 @@ const TallerModule = (function() {
         if (folio) return 'new:' + folio;
         if (!tallerDraftSessionKey) tallerDraftSessionKey = 'tmp:' + Date.now();
         return tallerDraftSessionKey;
+    }
+
+    function _ensureSelectOption(selectEl, value, text) {
+        if (!selectEl || !value) return;
+        for (let i = 0; i < selectEl.options.length; i++) {
+            if (selectEl.options[i].value === value) return;
+        }
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = text || value;
+        selectEl.appendChild(opt);
     }
 
     function _tallerDraftKeysToPurge() {
@@ -208,6 +222,7 @@ const TallerModule = (function() {
 
     function _appendEnlaceProveedor(url, nombre) {
         diagnosticoEnlaces.push({
+            nombre: nombre || '',
             descripcion: (nombre || 'Proveedor') + ' (catálogo)',
             sku: '',
             cantidad: 1,
@@ -258,7 +273,10 @@ const TallerModule = (function() {
     // ==================== CARGAR TÉCNICOS ====================
     async function _cargarTecnicos() {
         try {
-            const tecnicos = await authService.getUsersByRol(['taller', 'electronica', 'admin', 'superadmin']);
+            const tecnicos = (await authService.getUsersByRol(['taller', 'electronica', 'admin', 'superadmin']))
+                .filter(t => {
+                    return t.departamento === 'Laboratorio de Electronica' || t.rol === 'superadmin';
+                });
             const select = document.getElementById('techSelect');
             if (!select) return;
             const valActual = select.value;
@@ -274,7 +292,10 @@ const TallerModule = (function() {
 
     async function _cargarVendedores() {
         try {
-            const vendedores = await authService.getUsersByRol(['ventas', 'admin', 'superadmin']);
+            const vendedores = (await authService.getUsersByRol(['ventas', 'admin', 'superadmin']))
+                .filter(v => {
+                    return v.departamento === 'Ventas' || v.rol === 'superadmin';
+                });
             const select = document.getElementById('recibidoPorSelect');
             if (!select) return;
             const valActual = select.value;
@@ -299,6 +320,10 @@ const TallerModule = (function() {
         } catch (e) {
             console.warn('[Taller] Carga inicial falló (datos en vacío):', e);
         }
+        try {
+            var openId = new URLSearchParams(window.location.search).get('open');
+            if (openId) { setTimeout(function () { _abrirOrden(openId); }, 400); }
+        } catch (e) {}
         _startClock();
         _setupRealtime();
         _cargarNotificaciones();
@@ -664,7 +689,17 @@ const TallerModule = (function() {
         const subNotificaciones = supabase
             .channel('taller_notificaciones')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: 'para=eq.taller' }, payload => {
-                _mostrarNotificacion(payload.new);
+                const notif = payload.new || {};
+                _mostrarNotificacion(notif);
+                // Si es confirmación de cliente para la orden actual, actualizar estado local
+                if (notif.tipo === 'cliente_confirmo' && currentOrder && currentOrder.id === notif.orden_id) {
+                    currentOrder.estado = 'Confirmado';
+                    _showToast('✅ Cliente confirmó la cotización. Puede avanzar a Reparación.', 'success');
+                }
+                // Si es garantía activada, recargar para mostrar nueva orden
+                if (notif.tipo === 'garantia_activada') {
+                    _showToast('🔔 ' + (notif.mensaje || 'Garantía activada'), 'info');
+                }
             })
             .subscribe();
         subscriptions.push(subNotificaciones);
@@ -907,7 +942,7 @@ const TallerModule = (function() {
         }
         const ctx = document.getElementById('graficaCanvas').getContext('2d');
         if (chartInstance) chartInstance.destroy();
-        const estados = ['Nuevo', 'Confirmado', 'Diagnóstico', 'En Espera', 'En reparación', 'Reparado', 'Entregado', 'Facturado', 'Cancelado'];
+        const estados = ['Registrado', 'Diagnóstico', 'Esperando Cotización', 'Esperando Confirmación Cliente', 'Confirmado', 'En reparación', 'Reparado / Listo', 'Entregado', 'Facturado', 'Cancelado', 'Garantía'];
         const counts = estados.map(e => ordenes.filter(o => (o.estado || 'Nuevo') === e).length);
         const colors = ['#1976d2', '#5c6bc0', '#ff9800', '#9c27b0', '#7e57c2', '#4caf50', '#607d8b', '#00838f', '#e53935'];
         chartInstance = new Chart(ctx, {
@@ -1009,10 +1044,10 @@ const TallerModule = (function() {
     }
 
     function _updateKPIs(ordenes) {
-        const nuevo = ordenes.filter(o => (o.estado || 'Nuevo') === 'Nuevo').length;
-        const diagnostico = ordenes.filter(o => o.estado === 'Diagnóstico' || o.estado === 'Confirmado').length;
-        const espera = ordenes.filter(o => o.estado === 'En Espera' || o.estado === 'En reparación').length;
-        const reparado = ordenes.filter(o => o.estado === 'Reparado').length;
+        const nuevo = ordenes.filter(o => (o.estado || 'Nuevo') === 'Nuevo' || o.estado === 'Registrado').length;
+        const diagnostico = ordenes.filter(o => o.estado === 'Diagnóstico' || o.estado === 'Garantía').length;
+        const espera = ordenes.filter(o => o.estado === 'Esperando Cotización' || o.estado === 'En Espera' || o.estado === 'Esperando Confirmación Cliente').length;
+        const reparado = ordenes.filter(o => o.estado === 'Confirmado' || o.estado === 'En reparación' || o.estado === 'Reparado' || o.estado === 'Reparado / Listo').length;
         const entregado = ordenes.filter(o => o.estado === 'Entregado' || o.estado === 'Facturado').length;
         const cancelado = ordenes.filter(o => o.estado === 'Cancelado' || o.estado === 'Cancelada').length;
         const conCompra = Object.keys(comprasVinculadas).filter(id => {
@@ -1300,6 +1335,13 @@ const TallerModule = (function() {
             _setWsGnrlText(cotizacion.notas);
         }
 
+        // Vendedor que generó la cotización
+        const recibidoPorEl = document.getElementById('recibidoPorSelect');
+        if (recibidoPorEl && cotizacion.vendedor) {
+            _ensureSelectOption(recibidoPorEl, cotizacion.vendedor, cotizacion.vendedor);
+            recibidoPorEl.value = cotizacion.vendedor;
+        }
+
         // Guardar referencia a la cotización original
         window._cotizacionOrigenId = cotizacion.id;
 
@@ -1311,31 +1353,39 @@ const TallerModule = (function() {
         _showToast('Orden cargada desde cotización ' + cotizacion.folio, 'success');
     }
 
+    // Estados del flujo comercial:
+    // Registrado → Diagnóstico → Esperando Cotización → Esperando Confirmación Cliente → Confirmado → En reparación → Reparado → Entregado → Facturado
     function _estadoToPaso(estado) {
         const mapa = {
             'Nuevo': 1,
-            'Confirmado': 2,
+            'Registrado': 1,
             'Diagnóstico': 2,
+            'Esperando Cotización': 3,
             'En Espera': 3,
-            'En reparación': 3,
+            'Esperando Confirmación Cliente': 3,
+            'Confirmado': 4,
+            'En reparación': 4,
             'Reparado': 4,
+            'Reparado / Listo': 4,
             'Entregado': 5,
             'Facturado': 5,
             'Cancelado': 1,
+            'Garantía': 2,
         };
         return mapa[estado] || 1;
     }
 
     function _pasoToEstado(paso) {
-        const mapa = { 1: 'Nuevo', 2: 'Diagnóstico', 3: 'En Espera', 4: 'Reparado', 5: 'Entregado' };
-        return mapa[paso] || 'Nuevo';
+        const mapa = { 1: 'Registrado', 2: 'Diagnóstico', 3: 'Esperando Cotización', 4: 'En reparación', 5: 'Entregado' };
+        return mapa[paso] || 'Registrado';
     }
 
     function _estadoPrioridad(estado) {
         const mapa = {
-            'Nuevo': 1, 'Confirmado': 2, 'Diagnóstico': 2,
-            'En Espera': 3, 'En reparación': 3, 'Reparado': 4,
-            'Entregado': 5, 'Facturado': 5, 'Cancelado': 0
+            'Nuevo': 1, 'Registrado': 1, 'Diagnóstico': 2,
+            'Esperando Cotización': 3, 'En Espera': 3, 'Esperando Confirmación Cliente': 3,
+            'Confirmado': 4, 'En reparación': 4, 'Reparado': 4, 'Reparado / Listo': 4,
+            'Entregado': 5, 'Facturado': 5, 'Cancelado': 0, 'Garantía': 2
         };
         return mapa[estado] || 1;
     }
@@ -1363,11 +1413,11 @@ const TallerModule = (function() {
         const container = document.getElementById('tallerTimeline');
         if (!container) return;
         const steps = [
-            { label: 'Nuevo', key: 'Nuevo', icon: '1' },
+            { label: 'Registrado', key: 'Nuevo', icon: '1' },
             { label: 'Diagnóstico', key: 'Diagnóstico', icon: '2' },
-            { label: 'En Espera / Reparación', key: 'En Espera', icon: '3' },
-            { label: 'Reparado', key: 'Reparado', icon: '4' },
-            { label: 'Entregado', key: 'Entregado', icon: '5' }
+            { label: 'Esperando Cotización / Confirmación', key: 'En Espera', icon: '3' },
+            { label: 'Reparación / Reparado', key: 'Reparado', icon: '4' },
+            { label: 'Entregado / Facturado', key: 'Entregado', icon: '5' }
         ];
         let historial = [];
         try {
@@ -1385,8 +1435,8 @@ const TallerModule = (function() {
             const evt = h.evento;
             if (evt === 'creacion' || desc.includes('creada')) fechasPorEstado['Nuevo'] = h.creado_en;
             if (desc.includes('diagnóstico') || evt === 'diagnostico') fechasPorEstado['Diagnóstico'] = h.creado_en;
-            if (desc.includes('espera') || desc.includes('reparación') || evt === 'cambio_estado' && desc.includes('espera')) fechasPorEstado['En Espera'] = h.creado_en;
-            if (desc.includes('reparado') || evt === 'reparado') fechasPorEstado['Reparado'] = h.creado_en;
+            if (desc.includes('esperando cotización') || desc.includes('esperando confirmación') || desc.includes('en espera') || desc.includes('reparación') || evt === 'cambio_estado' && desc.includes('espera')) fechasPorEstado['En Espera'] = h.creado_en;
+            if (desc.includes('confirmado') || desc.includes('en reparación') || desc.includes('reparado') || evt === 'reparado') fechasPorEstado['Reparado'] = h.creado_en;
             if (desc.includes('entregado') || desc.includes('facturado') || evt === 'entrega') fechasPorEstado['Entregado'] = h.creado_en;
         });
 
@@ -1407,7 +1457,8 @@ const TallerModule = (function() {
     }
 
     function _cargarDatosEnModal(orden) {
-        document.getElementById('inpFolio').value = orden.folio || '';
+        const folioNorm = _normalizarFolioLab(orden.folio || '');
+        document.getElementById('inpFolio').value = folioNorm;
         document.getElementById('selClient').value = orden.cliente_nombre || '';
         document.getElementById('inpDateTime').value = _toDateLocalInput(orden.fecha_ingreso);
         document.getElementById('inpClientRef').value = orden.referencia || '';
@@ -1427,7 +1478,13 @@ const TallerModule = (function() {
         const resumenDiagEl = document.getElementById('reparacionResumenDiagnostico');
         if (resumenDiagEl) resumenDiagEl.value = orden.reparacion_resumen_diagnostico || orden.notas_internas || '';
         document.getElementById('horasEstimadas').value = orden.horas_estimadas || 0;
-        document.getElementById('recibidoPorSelect').value = orden.recibido_por || '';
+        const recibidoPorEl = document.getElementById('recibidoPorSelect');
+        if (recibidoPorEl && orden.recibido_por) {
+            _ensureSelectOption(recibidoPorEl, orden.recibido_por, orden.recibido_por);
+            recibidoPorEl.value = orden.recibido_por;
+        } else if (recibidoPorEl) {
+            recibidoPorEl.value = '';
+        }
         // Costos
         const kmEl = document.getElementById('tallerKmIda');
         if (kmEl) kmEl.value = orden.km_distancia || 0;
@@ -1769,9 +1826,11 @@ const TallerModule = (function() {
         if (paso < 1 || paso > 5) return;
         currentStep = paso;
         document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
-        document.getElementById(`step-${paso}`).classList.add('active');
+        const stepEl = document.getElementById(`step-${paso}`);
+        if (stepEl) stepEl.classList.add('active');
         document.querySelectorAll('.ws-step-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`.ws-step-btn[data-step="${paso}"]`).classList.add('active');
+        const wsBtn = document.querySelector(`.ws-step-btn[data-step="${paso}"]`);
+        if (wsBtn) wsBtn.classList.add('active');
         _actualizarBotonesPaso();
         _syncWsGnrlVisibility();
         // Registrar inicio de etapa automáticamente (solo la primera vez)
@@ -1803,6 +1862,7 @@ const TallerModule = (function() {
         const vistaPreviaBtn = document.getElementById('btnVistaPreviaOrdenTaller');
         const imprimirBtn = document.getElementById('btnImprimirOrdenTaller');
         const reportePdfBtn = document.getElementById('btnReportePDFTaller');
+        const reporteParcialBtn = document.getElementById('btnReporteParcialTaller');
         const vistaPreviaReporteBtn = document.getElementById('btnVistaPreviaReporteTaller');
         const isPaso5 = currentStep === 5;
         const isEntregadoFacturado = currentOrder && (currentOrder.estado === 'Entregado' || currentOrder.estado === 'Facturado');
@@ -1810,7 +1870,12 @@ const TallerModule = (function() {
         if (vistaPreviaBtn) vistaPreviaBtn.classList.toggle('hidden', !mostrarPdf);
         if (imprimirBtn) imprimirBtn.classList.toggle('hidden', !mostrarPdf);
         if (reportePdfBtn) reportePdfBtn.classList.toggle('hidden', !mostrarPdf);
+        if (reporteParcialBtn) reporteParcialBtn.classList.toggle('hidden', !mostrarPdf);
         if (vistaPreviaReporteBtn) vistaPreviaReporteBtn.classList.toggle('hidden', !mostrarPdf);
+
+        // Botones del flujo comercial
+        const btnNotificarReparado = document.getElementById('btnNotificarVentasReparado');
+        const btnClienteConfirmado = document.getElementById('btnClienteConfirmadoTaller');
 
         if (currentStep === 1) {
             prevBtn.style.display = 'none';
@@ -1818,18 +1883,36 @@ const TallerModule = (function() {
             saveBtn.style.display = 'inline-flex';
             completeBtn.style.display = 'none';
             sinReparacionBtn.style.display = 'none';
+            if (btnNotificarReparado) btnNotificarReparado.style.display = 'none';
+        } else if (currentStep === 4) {
+            prevBtn.style.display = 'flex';
+            nextBtn.style.display = 'flex';
+            saveBtn.style.display = 'inline-flex';
+            completeBtn.style.display = 'none';
+            sinReparacionBtn.style.display = 'none';
+            if (btnNotificarReparado) btnNotificarReparado.style.display = 'inline-flex';
         } else if (currentStep === 5) {
             prevBtn.style.display = 'flex';
             nextBtn.style.display = 'none';
             saveBtn.style.display = 'none';
             completeBtn.style.display = 'flex';
             sinReparacionBtn.style.display = 'none';
+            if (btnNotificarReparado) btnNotificarReparado.style.display = 'none';
         } else {
             prevBtn.style.display = 'flex';
             nextBtn.style.display = 'flex';
             saveBtn.style.display = 'inline-flex';
             completeBtn.style.display = 'none';
             sinReparacionBtn.style.display = currentStep === 2 ? 'flex' : 'none';
+            if (btnNotificarReparado) btnNotificarReparado.style.display = 'none';
+        }
+        // Mostrar botón "Cliente confirmó" en paso 3 cuando la orden esté confirmada
+        if (btnClienteConfirmado && currentStep === 3) {
+            const est = currentOrder ? String(currentOrder.estado || '').trim() : '';
+            const confirmado = est === 'Confirmado' || est === 'confirmado';
+            btnClienteConfirmado.style.display = confirmado ? 'inline-flex' : 'none';
+        } else if (btnClienteConfirmado) {
+            btnClienteConfirmado.style.display = 'none';
         }
     }
 
@@ -1860,12 +1943,13 @@ const TallerModule = (function() {
         if (!tbody) return;
         tbody.innerHTML = '';
         if (diagnosticoEnlaces.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">No hay refacciones con enlace</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">No hay refacciones con enlace</td></tr>';
             return;
         }
         diagnosticoEnlaces.forEach((item, idx) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
+                <td><input type="text" value="${item.nombre || ''}" placeholder="Nombre" data-index="${idx}" onchange="tallerModule._actualizarEnlace(${idx}, 'nombre', this.value)"></td>
                 <td><input type="text" value="${item.descripcion || ''}" placeholder="Descripción" data-index="${idx}" onchange="tallerModule._actualizarEnlace(${idx}, 'descripcion', this.value)"></td>
                 <td><input type="text" value="${item.sku || ''}" placeholder="SKU" data-index="${idx}" onchange="tallerModule._actualizarEnlace(${idx}, 'sku', this.value)"></td>
                 <td><input type="number" value="${item.cantidad || 1}" min="1" data-index="${idx}" onchange="tallerModule._actualizarEnlace(${idx}, 'cantidad', this.value)"></td>
@@ -1881,13 +1965,14 @@ const TallerModule = (function() {
         if (!tbody) return;
         tbody.innerHTML = '';
         if (diagnosticoInventario.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">No hay productos de inventario</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">No hay productos de inventario</td></tr>';
             return;
         }
         diagnosticoInventario.forEach((item, idx) => {
             const producto = inventory.find(p => p.sku === item.sku);
             const stock = producto ? producto.stock : 0;
-            const desc = producto ? producto.nombre : item.descripcion || '';
+            const nombre = producto ? producto.nombre : item.nombre || '';
+            const desc = producto ? producto.descripcion || '' : item.descripcion || '';
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>
@@ -1896,7 +1981,8 @@ const TallerModule = (function() {
                         ${inventory.map(p => `<option value="${p.sku}" ${p.sku === item.sku ? 'selected' : ''}>${p.sku} - ${p.nombre}</option>`).join('')}
                     </select>
                 </td>
-                <td><input type="text" value="${desc}" placeholder="Descripción" readonly></td>
+                <td><input type="text" value="${nombre}" placeholder="Nombre" data-index="${idx}" onchange="tallerModule._actualizarInventario(${idx}, 'nombre', this.value)"></td>
+                <td><input type="text" value="${desc}" placeholder="Descripción" data-index="${idx}" onchange="tallerModule._actualizarInventario(${idx}, 'descripcion', this.value)"></td>
                 <td>${stock}</td>
                 <td><input type="number" value="${item.cantidad || 1}" min="1" max="${stock}" data-index="${idx}" onchange="tallerModule._actualizarInventarioCantidad(${idx}, this.value)"></td>
                 <td><button class="btn-remove" onclick="tallerModule._eliminarInventario(${idx})">✖</button></td>
@@ -2000,18 +2086,20 @@ const TallerModule = (function() {
             const existente = componentesInventario.find(c => c.sku === solicitado.sku);
             return {
                 sku: solicitado.sku,
+                nombre: solicitado.nombre || '',
                 descripcion: solicitado.descripcion,
                 cantidad_solicitada: solicitado.cantidad,
                 cantidad_usada: existente ? existente.cantidad_usada : solicitado.cantidad
             };
         });
         if (items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay componentes de inventario</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay componentes de inventario</td></tr>';
             return;
         }
         tbody.innerHTML = items.map((item, idx) => `
             <tr>
                 <td>${item.sku}</td>
+                <td>${item.nombre || ''}</td>
                 <td>${item.descripcion}</td>
                 <td>${item.cantidad_solicitada}</td>
                 <td><input type="number" value="${item.cantidad_usada}" min="0" data-index="${idx}" onchange="tallerModule._actualizarComponenteInventario(${idx}, this.value)"></td>
@@ -2029,6 +2117,7 @@ const TallerModule = (function() {
             if (compra.items && compra.items.length > 0) {
                 tbody.innerHTML = compra.items.map((item, idx) => `
                     <tr>
+                        <td>${item.nombre || ''}</td>
                         <td>${item.desc || 'Producto'}</td>
                         <td>${item.sku || '—'}</td>
                         <td>${item.qty || 0}</td>
@@ -2037,10 +2126,10 @@ const TallerModule = (function() {
                     </tr>
                 `).join('');
             } else {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Compra sin items registrados</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Compra sin items registrados</td></tr>';
             }
         } else {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay compra vinculada a esta orden</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay compra vinculada a esta orden</td></tr>';
         }
     }
 
@@ -2049,11 +2138,12 @@ const TallerModule = (function() {
         if (!tbody) return;
         tbody.innerHTML = '';
         if (componentesExtras.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay componentes extras</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay componentes extras</td></tr>';
         } else {
             componentesExtras.forEach((item, idx) => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
+                    <td>${item.nombre || ''}</td>
                     <td>${item.descripcion || ''}</td>
                     <td>${item.cantidad || 0}</td>
                     <td>$${(item.costo_unitario || 0).toFixed(2)}</td>
@@ -2069,18 +2159,21 @@ const TallerModule = (function() {
     }
 
     function _agregarComponenteExtra() {
+        const nombreEl = document.getElementById('extraNombreInput');
         const descEl = document.getElementById('extraDescInput');
         const cantEl = document.getElementById('extraCantInput');
         const costoEl = document.getElementById('extraCostoInput');
+        const nombre = (nombreEl?.value || '').trim();
         const desc = (descEl?.value || '').trim();
         const cant = parseFloat(cantEl?.value) || 0;
         const costo = parseFloat(costoEl?.value) || 0;
-        if (!desc) { _showToast('Ingresa la descripción del componente extra', 'warning'); return; }
+        if (!nombre) { _showToast('Ingresa el nombre del componente extra', 'warning'); return; }
         if (cant <= 0) { _showToast('La cantidad debe ser mayor a 0', 'warning'); return; }
         if (costo < 0) { _showToast('El costo no puede ser negativo', 'warning'); return; }
-        componentesExtras.push({ descripcion: desc, cantidad: cant, costo_unitario: costo, subtotal: cant * costo });
+        componentesExtras.push({ nombre, descripcion: desc, cantidad: cant, costo_unitario: costo, subtotal: cant * costo });
         _renderComponentesExtras();
         _renderPanelRentabilidad();
+        if (nombreEl) nombreEl.value = '';
         if (descEl) descEl.value = '';
         if (cantEl) cantEl.value = '1';
         if (costoEl) costoEl.value = '';
@@ -2136,10 +2229,14 @@ const TallerModule = (function() {
         const producto = inventory.find(p => p.sku === sku);
         diagnosticoInventario[idx] = {
             sku: sku,
-            descripcion: producto ? producto.nombre : '',
+            nombre: producto ? producto.nombre : (diagnosticoInventario[idx]?.nombre || ''),
+            descripcion: producto ? (producto.descripcion || '') : (diagnosticoInventario[idx]?.descripcion || ''),
             cantidad: diagnosticoInventario[idx]?.cantidad || 1
         };
         _renderDiagnosticoInventario();
+    }
+    function _actualizarInventarioCampo(idx, campo, valor) {
+        if (diagnosticoInventario[idx]) diagnosticoInventario[idx][campo] = valor;
     }
     function _actualizarInventarioCantidad(idx, cantidad) {
         diagnosticoInventario[idx].cantidad = parseInt(cantidad) || 1;
@@ -2197,7 +2294,9 @@ const TallerModule = (function() {
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
             if (isNewOrder) {
-                data.folio = document.getElementById('inpFolio').value;
+                const folioElSr = document.getElementById('inpFolio');
+                data.folio = _normalizarFolioLab(folioElSr ? folioElSr.value : '');
+                if (folioElSr) folioElSr.value = data.folio;
                 data.fecha_ingreso = new Date().toISOString();
                 await ordenesService.insert(data, csrfToken);
             } else {
@@ -2224,8 +2323,9 @@ const TallerModule = (function() {
         }
     }
 
-    async function _generarSolicitudCompra() {
-        console.log('[Taller] Click en Generar Solicitud de Compra');
+    // ==================== FLUJO COMERCIAL: ENVIAR LISTA DE REFACCIONES A COMPRAS ====================
+    async function _enviarListaRefaccionesACompras() {
+        console.log('[Taller] Enviando lista de refacciones a Compras');
         if (!orderId && !isNewOrder) {
             _showToast('Primero guarde la orden de taller', 'warning');
             return;
@@ -2247,41 +2347,56 @@ const TallerModule = (function() {
             let folioTaller = data.folio;
 
             if (isNewOrder) {
-                folioTaller = document.getElementById('inpFolio').value;
+                const folioElRef = document.getElementById('inpFolio');
+                folioTaller = _normalizarFolioLab(folioElRef ? folioElRef.value : '');
+                if (folioElRef) folioElRef.value = folioTaller;
                 const nuevaOrden = {
                     ...data,
                     folio: folioTaller,
-                    estado: 'En Espera',
+                    estado: 'Esperando Cotización',
                     fecha_ingreso: new Date().toISOString(),
                     fecha_inicio: fechaInicioOrden,
                     fechas_etapas: fechasEtapas
                 };
                 const fotoInput = document.getElementById('productImage');
                 if (fotoInput && fotoInput.files.length > 0) {
-                    nuevaOrden.fotos_ingreso = await _subirFotos(Array.from(fotoInput.files), 'taller/nueva');
+                    nuevaOrden.fotos_ingreso = await _subirFotos(Array.from(fotoInput.files), 'uploads/taller/nueva/imagenes');
                 }
                 const inserted = await ordenesService.insert(nuevaOrden, csrfToken);
                 ordenTallerId = inserted.id;
                 orderId = ordenTallerId;
                 isNewOrder = false;
                 if (window.SSEPIStateMachine) {
-                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', ordenTallerId, 'creacion', `Orden ${folioTaller} creada y enviada a compras`, csrfToken);
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', ordenTallerId, 'cambio_estado', `Diagnóstico completado. Lista de refacciones enviada a Compras para cotización.`, csrfToken);
                 }
             } else {
-                data.estado = 'En Espera';
+                data.estado = 'Esperando Cotización';
                 data.fecha_envio_compra = new Date().toISOString();
                 await ordenesService.update(orderId, data, csrfToken);
                 if (window.SSEPIStateMachine) {
-                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', orderId, 'cambio_estado', `Estado cambiado a En Espera (solicitud de compra generada)`, csrfToken);
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', orderId, 'cambio_estado', `Lista de refacciones enviada a Compras para cotización`, csrfToken);
                 }
             }
 
             const itemsCompra = [
-                ...diagnosticoEnlaces.map(e => ({ sku: e.sku || '', descripcion: e.descripcion || '', cantidad: Number(e.cantidad) || 1, link: e.link || '' })),
-                ...diagnosticoInventario.map(i => ({ sku: i.sku || '', descripcion: i.descripcion || '', cantidad: Number(i.cantidad) || 1 }))
+                ...diagnosticoEnlaces.map(e => ({ nombre: e.nombre || '', sku: e.sku || '', descripcion: e.descripcion || '', cantidad: Number(e.cantidad) || 1, link: e.link || '' })),
+                ...diagnosticoInventario.map(i => ({ nombre: i.nombre || '', sku: i.sku || '', descripcion: i.descripcion || '', cantidad: Number(i.cantidad) || 1 }))
             ];
 
-            // 1. Intentar reservar material disponible
+            // 0. Buscar si ya existe preregistro de esta orden (CMP- desde Ventas)
+            let compraExistente = null;
+            try {
+                const { data: ex } = await window.supabase
+                    .from('compras')
+                    .select('*')
+                    .eq('vinculacion->>tipo', 'taller')
+                    .eq('vinculacion->>id', ordenTallerId)
+                    .limit(1)
+                    .single();
+                compraExistente = ex;
+            } catch (e) { /* no existe */ }
+
+            // 1. Intentar reservar material disponible (ignorar error en local)
             try {
                 const { error } = await window.supabase.rpc('reservar_material', {
                     p_orden_id: ordenTallerId,
@@ -2291,24 +2406,49 @@ const TallerModule = (function() {
                 if (error) throw error;
                 console.log('[Taller] Material reservado exitosamente');
             } catch (error) {
-                console.warn('[Taller] No se pudo reservar material:', error.message);
-                // Continuar sin reserva - se generará compra
+                const msg = (error?.message || String(error)).substring(0, 120);
+                if (!msg.includes('Cannot POST') && !msg.includes('404') && !msg.includes('not found') && !msg.includes('function')) {
+                    console.warn('[Taller] No se pudo reservar material:', msg);
+                }
             }
 
-            // 2. Crear compra con items vacíos (se llenarán en compras.js)
-            const nuevaCompra = {
-                folio: `PO-${folioTaller}`,
-                proveedor: 'Por asignar',
-                departamento: 'Laboratorio de Electrónica',
-                fecha: new Date().toISOString(),
-                vinculacion: { tipo: 'taller', id: ordenTallerId, nombre: data.cliente_nombre, folio_taller: folioTaller },
-                items: itemsCompra,  // Se migrarán a compras_items
-                estado: 1,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            };
-
-            const compraRef = await comprasService.insert(nuevaCompra, csrfToken);
+            // 2. Crear o actualizar compra vinculada como SOLICITUD DE COTIZACIÓN (estado 1)
+            let compraRef;
+            let compraFolio = `PO-${folioTaller}`;
+            if (compraExistente) {
+                compraFolio = compraExistente.folio || compraFolio;
+                // Actualizar preregistro existente con items
+                await comprasService.update(compraExistente.id, {
+                    proveedor: 'Por asignar',
+                    departamento: 'Laboratorio de Electrónica',
+                    fecha: new Date().toISOString(),
+                    items: itemsCompra,
+                    estado: 1,
+                    estado_interno: 'esperando_cotizacion',
+                    observaciones: 'Solicitud de cotización desde Laboratorio. Esperando precios de proveedores.',
+                    updated_at: new Date().toISOString()
+                }, csrfToken);
+                compraRef = { id: compraExistente.id };
+                // Limpiar items anteriores e insertar nuevos
+                try {
+                    await window.supabase.from('compras_items').delete().eq('compra_id', compraExistente.id);
+                } catch (delErr) { console.warn('[Taller] Error limpiando items previos:', delErr); }
+            } else {
+                const nuevaCompra = {
+                    folio: compraFolio,
+                    proveedor: 'Por asignar',
+                    departamento: 'Laboratorio de Electrónica',
+                    fecha: new Date().toISOString(),
+                    vinculacion: { tipo: 'taller', id: ordenTallerId, nombre: data.cliente_nombre, folio_taller: folioTaller },
+                    items: itemsCompra,
+                    estado: 1,
+                    estado_interno: 'esperando_cotizacion',
+                    observaciones: 'Solicitud de cotización desde Laboratorio. Esperando precios de proveedores.',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                compraRef = await comprasService.insert(nuevaCompra, csrfToken);
+            }
 
             // Insertar items en compras_items
             try {
@@ -2331,32 +2471,108 @@ const TallerModule = (function() {
 
             await ordenesService.update(ordenTallerId, {
                 compra_vinculada: compraRef.id,
-                compra_folio: nuevaCompra.folio,
-                estado: 'En Espera',
+                compra_folio: compraFolio,
+                estado: 'Esperando Cotización',
                 fecha_envio_compra: new Date().toISOString()
             }, csrfToken);
 
+            // Notificar a Compras que debe cotizar
             await notificacionesService.insert({
                 para: 'compras',
-                tipo: 'nueva_solicitud',
+                tipo: 'solicitud_cotizacion',
                 orden_id: ordenTallerId,
                 compra_id: compraRef.id,
-                folio: nuevaCompra.folio,
+                folio: compraFolio,
                 cliente: data.cliente_nombre,
-                mensaje: `Nueva solicitud de compra ${nuevaCompra.folio} desde Laboratorio`,
+                mensaje: `Laboratorio envió lista de refacciones para cotización: ${compraFolio}. Cotice con proveedores y envíe precios a Ventas.`,
                 leido: false,
                 fecha: new Date().toISOString()
             }, csrfToken);
 
-            _showSuccessAlert('✅ Solicitud de compra generada. La orden pasó a estado "En Espera".');
-            _addToFeed('🛒', `Solicitud de compra creada para ${folioTaller}`);
+            // Notificar a Ventas que diagnóstico está completo y se envió a Compras
+            await notificacionesService.insert({
+                para: 'ventas',
+                tipo: 'diagnostico_completado',
+                orden_id: ordenTallerId,
+                folio: folioTaller,
+                cliente: data.cliente_nombre,
+                mensaje: `Laboratorio completó diagnóstico para ${folioTaller}. Lista de refacciones enviada a Compras para cotización. Esperando precios de proveedores.`,
+                leido: false,
+                fecha: new Date().toISOString()
+            }, csrfToken);
+
+            _showSuccessAlert('✅ Lista de refacciones enviada a Compras para cotización. La orden queda en "Esperando Cotización".');
+            _addToFeed('📤', `Lista de refacciones enviada a Compras: ${folioTaller}`);
             _afterTallerPersistOk();
-            _cerrarModal();
 
         } catch (error) {
             console.error(error);
             _showToast('Error: ' + error.message, 'error');
         }
+    }
+
+    // ==================== FLUJO COMERCIAL: NOTIFICAR A VENTAS QUE EQUIPO ESTA REPARADO ====================
+    async function _notificarVentasReparado() {
+        console.log('[Taller] Notificando a Ventas que equipo está reparado');
+        if (!orderId) {
+            _showToast('Primero guarde la orden de taller', 'warning');
+            return;
+        }
+
+        await _guardarOrden(true);
+
+        const data = _recolectarDatos();
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            data.estado = 'Reparado / Listo';
+            data.fecha_reparado = new Date().toISOString();
+            await ordenesService.update(orderId, data, csrfToken);
+
+            if (window.SSEPIStateMachine) {
+                await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', orderId, 'cambio_estado', `Equipo reparado y probado. Notificado a Ventas para facturación y entrega.`, csrfToken);
+            }
+
+            await notificacionesService.insert({
+                para: 'ventas',
+                tipo: 'trabajo_terminado',
+                orden_id: orderId,
+                folio: data.folio,
+                cliente: data.cliente_nombre,
+                mensaje: `Laboratorio completó la reparación de ${data.folio}. Equipo listo para entrega. Coordine facturación y entrega al cliente.`,
+                leido: false,
+                fecha: new Date().toISOString()
+            }, csrfToken);
+
+            _showSuccessAlert('✅ Equipo reparado. Ventas ha sido notificado para coordinar facturación y entrega.');
+            _addToFeed('✅', `Equipo reparado. Notificado a Ventas: ${data.folio}`);
+            _afterTallerPersistOk();
+
+        } catch (error) {
+            console.error(error);
+            _showToast('Error: ' + error.message, 'error');
+        }
+    }
+
+    async function _marcarClienteConfirmado() {
+        console.log('[Taller] Cliente confirmó. Avanzando a reparación.');
+        if (!orderId) { _showToast('Primero guarde la orden de taller', 'warning'); return; }
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            const data = _recolectarDatos();
+            data.estado = 'Confirmado';
+            await ordenesService.update(orderId, data, csrfToken);
+            if (currentOrder) currentOrder.estado = 'Confirmado';
+            _showToast('✅ Cliente confirmó. Avanzando a Reparación.', 'success');
+            _irPaso(4);
+        } catch (error) {
+            console.error(error);
+            _showToast('Error: ' + error.message, 'error');
+        }
+    }
+
+    // Legacy: mantener nombre para compatibilidad, pero ahora apunta al flujo comercial
+    async function _generarSolicitudCompra() {
+        return _enviarListaRefaccionesACompras();
     }
 
     async function _actualizarCompraVinculada() {
@@ -2369,8 +2585,8 @@ const TallerModule = (function() {
             var compra = compraRes.data;
             if (!compra || compra.estado >= 3) return;
             var itemsCompra = [
-                ...diagnosticoEnlaces.map(function(e) { return { sku: e.sku || '', descripcion: e.descripcion || '', cantidad: Number(e.cantidad) || 1, link: e.link || '' }; }),
-                ...diagnosticoInventario.map(function(i) { return { sku: i.sku || '', descripcion: i.descripcion || '', cantidad: Number(i.cantidad) || 1 }; })
+                ...diagnosticoEnlaces.map(function(e) { return { nombre: e.nombre || '', sku: e.sku || '', descripcion: e.descripcion || '', cantidad: Number(e.cantidad) || 1, link: e.link || '' }; }),
+                ...diagnosticoInventario.map(function(i) { return { nombre: i.nombre || '', sku: i.sku || '', descripcion: i.descripcion || '', cantidad: Number(i.cantidad) || 1 }; })
             ];
             if (itemsCompra.length === 0) return;
             // Reemplazar items existentes
@@ -2380,6 +2596,7 @@ const TallerModule = (function() {
                 var it = itemsCompra[ii];
                 await itemsService.insert({
                     compra_id: compraId,
+                    nombre: it.nombre || '',
                     sku: it.sku || '',
                     descripcion: it.descripcion || '',
                     cantidad: it.cantidad || 1,
@@ -2429,7 +2646,9 @@ const TallerModule = (function() {
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
             if (isNewOrder) {
-                data.folio = document.getElementById('inpFolio').value;
+                const folioElFin = document.getElementById('inpFolio');
+                data.folio = _normalizarFolioLab(folioElFin ? folioElFin.value : '');
+                if (folioElFin) folioElFin.value = data.folio;
                 data.fecha_ingreso = new Date().toISOString();
                 await ordenesService.insert(data, csrfToken);
             } else {
@@ -2492,7 +2711,7 @@ const TallerModule = (function() {
 
         const fotoInput = document.getElementById('productImage');
         if (fotoInput && fotoInput.files.length > 0) {
-            data.fotos_ingreso = await _subirFotos(Array.from(fotoInput.files), 'taller/' + (orderId || 'nueva'));
+            data.fotos_ingreso = await _subirFotos(Array.from(fotoInput.files), 'uploads/taller/' + (orderId || 'nueva') + '/imagenes');
         }
 
         data.refacciones_enlaces = diagnosticoEnlaces;
@@ -2562,7 +2781,9 @@ const TallerModule = (function() {
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
             if (isNewOrder) {
-                data.folio = document.getElementById('inpFolio').value;
+                const folioEl = document.getElementById('inpFolio');
+                data.folio = _normalizarFolioLab(folioEl ? folioEl.value : '');
+                if (folioEl) folioEl.value = data.folio;
                 data.estado = 'Nuevo';
                 data.fecha_ingreso = new Date().toISOString();
                 const inserted = await ordenesService.insert(data, csrfToken);
@@ -2573,19 +2794,54 @@ const TallerModule = (function() {
                 try {
                     const actividadesService = createDataService('actividades_diarias');
                     const perfilAct = await authService.getCurrentProfile();
+                    const ahora = new Date();
+                    const horaStr = ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+                    const apartado = data.estado || 'Nuevo';
                     await actividadesService.insert({
                         departamento: 'electronicos',
-                        orden_id: orderId,
+                        orden_origen_id: orderId,
+                        orden_origen_tipo: 'ordenes_taller',
                         resumen: 'Orden ' + data.folio + ' - ' + data.cliente_nombre + ' - ' + data.equipo,
                         estado: 'pendiente',
                         tecnico: data.tecnico_responsable || 'Por asignar',
-                        fecha: new Date().toISOString().split('T')[0],
-                        notas: 'Generado automáticamente desde Laboratorio. Estado: ' + data.estado,
+                        fecha: ahora.toISOString().split('T')[0],
+                        notas: `Generado automáticamente desde Laboratorio. Estado: ${data.estado}. Hora: ${horaStr}. Apartado: ${apartado}.`,
                         user_id: perfilAct ? perfilAct.id : null,
-                        creado_por_usuario: { nombre: data.vendedor_nombre || 'Sistema' }
+                        creado_por: perfilAct ? perfilAct.id : null
                     }, csrfToken);
                 } catch (actErr) {
                     console.warn('[Taller] Error creando actividad automática:', actErr);
+                }
+                // AdminLab: Crear preregistro en Compras automáticamente
+                try {
+                    const { data: existente } = await window.supabase
+                        .from('compras')
+                        .select('id')
+                        .eq('vinculacion->>tipo', 'taller')
+                        .eq('vinculacion->>id', orderId)
+                        .limit(1)
+                        .single();
+                    if (!existente) {
+                        const compraPre = {
+                            folio: `PO-${data.folio}`,
+                            proveedor: 'Por asignar',
+                            departamento: 'Laboratorio de Electrónica',
+                            fecha: new Date().toISOString(),
+                            vinculacion: { tipo: 'taller', id: orderId, nombre: data.cliente_nombre, folio_taller: data.folio },
+                            items: [],
+                            total: 0,
+                            estado: 1,
+                            observaciones: 'Preregistro generado automáticamente desde Laboratorio. Pendiente de asignar proveedor y materiales.',
+                            pasos: [{ paso: 1, fecha: new Date().toISOString(), accion: 'Preregistro generado desde Laboratorio', usuario: perfilUsuario?.nombre || 'Sistema' }],
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        };
+                        const compraRef = await comprasService.insert(compraPre, csrfToken);
+                        await ordenesService.update(orderId, { compra_vinculada: compraRef.id, compra_folio: compraPre.folio }, csrfToken);
+                        _addToFeed('🧾', `Preregistro ${compraPre.folio} creado en Compras`);
+                    }
+                } catch (preErr) {
+                    console.warn('[Taller] Error creando preregistro compras:', preErr);
                 }
                 // Registrar en historial unificado
                 if (window.SSEPIStateMachine) {
@@ -2690,6 +2946,13 @@ const TallerModule = (function() {
         }
     }
 
+    function _normalizarFolioLab(folio) {
+        if (window.folioFormats && window.folioFormats.normalizeFolioLaboratorio) {
+            return window.folioFormats.normalizeFolioLaboratorio(folio);
+        }
+        return (folio || '').trim();
+    }
+
     function _recolectarDatos() {
         const nullIfEmpty = (v) => (v && v.trim()) ? v.trim() : null;
         const now = new Date().toISOString();
@@ -2742,13 +3005,15 @@ const TallerModule = (function() {
 
         const fotoInput = document.getElementById('fotoEntrega');
         if (fotoInput && fotoInput.files[0]) {
-            data.foto_entrega = await _subirFoto(fotoInput.files[0], 'taller/' + (orderId || 'nueva'));
+            data.foto_entrega = await _subirFoto(fotoInput.files[0], 'uploads/taller/' + (orderId || 'nueva') + '/imagenes');
         }
 
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
             if (isNewOrder) {
-                data.folio = document.getElementById('inpFolio').value;
+                const folioElEnt = document.getElementById('inpFolio');
+                data.folio = _normalizarFolioLab(folioElEnt ? folioElEnt.value : '');
+                if (folioElEnt) folioElEnt.value = data.folio;
                 data.fecha_ingreso = new Date().toISOString();
                 await ordenesService.insert(data, csrfToken);
             } else {
@@ -3014,23 +3279,25 @@ const TallerModule = (function() {
 
         const esc = _escapeHtmlReport;
 
-        const tblEnlaces = '<table class="tbl"><thead><tr><th>Refacción (enlace)</th><th>SKU</th><th>Cant.</th><th>Link</th></tr></thead><tbody>' +
-            _tableRowsFromList(diagnosticoEnlaces, ['descripcion', 'sku', 'cantidad', 'link']) + '</tbody></table>';
-        const tblInv = '<table class="tbl"><thead><tr><th>SKU</th><th>Descripción</th><th>Cant.</th></tr></thead><tbody>' +
-            _tableRowsFromList(diagnosticoInventario, ['sku', 'descripcion', 'cantidad']) + '</tbody></table>';
+        const tblEnlaces = '<table class="tbl"><thead><tr><th>Nombre</th><th>Descripción</th><th>SKU</th><th>Cant.</th><th>Link</th></tr></thead><tbody>' +
+            _tableRowsFromList(diagnosticoEnlaces, ['nombre', 'descripcion', 'sku', 'cantidad', 'link']) + '</tbody></table>';
+        const tblInv = '<table class="tbl"><thead><tr><th>SKU</th><th>Nombre</th><th>Descripción</th><th>Cant.</th></tr></thead><tbody>' +
+            _tableRowsFromList(diagnosticoInventario, ['sku', 'nombre', 'descripcion', 'cantidad']) + '</tbody></table>';
         const compInvRows = diagnosticoInventario.map((solicitado) => {
             const existente = componentesInventario.find((c) => c.sku === solicitado.sku);
             return {
                 sku: solicitado.sku,
+                nombre: solicitado.nombre || '',
                 descripcion: solicitado.descripcion,
                 cantidad_usada: existente ? existente.cantidad_usada : solicitado.cantidad,
             };
         });
-        const tblCompI = '<table class="tbl"><thead><tr><th>SKU</th><th>Descripción</th><th>Usado</th></tr></thead><tbody>' +
-            _tableRowsFromList(compInvRows, ['sku', 'descripcion', 'cantidad_usada']) + '</tbody></table>';
+        const tblCompI = '<table class="tbl"><thead><tr><th>SKU</th><th>Nombre</th><th>Descripción</th><th>Usado</th></tr></thead><tbody>' +
+            _tableRowsFromList(compInvRows, ['sku', 'nombre', 'descripcion', 'cantidad_usada']) + '</tbody></table>';
         let compCompraRows = [];
         if (orderId && comprasVinculadas[orderId] && comprasVinculadas[orderId].items) {
             compCompraRows = comprasVinculadas[orderId].items.map((item, idx) => ({
+                nombre: item.nombre || '',
                 descripcion: item.desc || '',
                 sku: item.sku || '',
                 cantidad_usada:
@@ -3039,10 +3306,10 @@ const TallerModule = (function() {
                         : item.qty || 0,
             }));
         }
-        const tblCompC = '<table class="tbl"><thead><tr><th>Descripción</th><th>SKU</th><th>Usado</th></tr></thead><tbody>' +
-            _tableRowsFromList(compCompraRows, ['descripcion', 'sku', 'cantidad_usada']) + '</tbody></table>';
-        const tblCons = '<table class="tbl"><thead><tr><th>SKU</th><th>Descripción</th><th>Cant.</th></tr></thead><tbody>' +
-            _tableRowsFromList(consumiblesUsados, ['sku', 'descripcion', 'cantidad']) + '</tbody></table>';
+        const tblCompC = '<table class="tbl"><thead><tr><th>Nombre</th><th>Descripción</th><th>SKU</th><th>Usado</th></tr></thead><tbody>' +
+            _tableRowsFromList(compCompraRows, ['nombre', 'descripcion', 'sku', 'cantidad_usada']) + '</tbody></table>';
+        const tblCons = '<table class="tbl"><thead><tr><th>SKU</th><th>Nombre</th><th>Descripción</th><th>Cant.</th></tr></thead><tbody>' +
+            _tableRowsFromList(consumiblesUsados, ['sku', 'nombre', 'descripcion', 'cantidad']) + '</tbody></table>';
 
         const toolbar = !autoPrint
             ? `<div class="no-print" style="position:sticky;top:0;background:#0d47a1;color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;z-index:9;font-family:system-ui,sans-serif;">
@@ -3178,7 +3445,7 @@ ${printScript}
         }
     }
 
-    async function _generarReporteTaller(preview = false) {
+    async function _generarReporteTaller(preview = false, options = {}) {
         if (!currentOrder) { _showToast('No hay orden activa', 'warning'); return; }
         const orden = currentOrder;
         const user = await authService.getCurrentProfile();
@@ -3253,7 +3520,9 @@ ${printScript}
             repHallazgos: hallazgos,
             repRefacciones: refacciones,
             repRecomendaciones: recomendaciones,
-            imagenes: imgs
+            imagenes: imgs,
+            sinPortada: options.sinPortada === true,
+            partirSecciones: options.partirSecciones === true
         };
 
         pdfGenerator.generateReport(pdfData, user, preview)
@@ -3298,7 +3567,9 @@ ${printScript}
         const prevOrdenBtn = document.getElementById('btnVistaPreviaOrdenTaller');
         if (prevOrdenBtn) prevOrdenBtn.addEventListener('click', () => _vistaPreviaOrdenReparacion());
         const reportePdfBtn = document.getElementById('btnReportePDFTaller');
-        if (reportePdfBtn) reportePdfBtn.addEventListener('click', () => _generarReporteTaller(false));
+        if (reportePdfBtn) reportePdfBtn.addEventListener('click', () => _generarReporteTaller(false, { sinPortada: true, partirSecciones: true }));
+        const reporteParcialBtn = document.getElementById('btnReporteParcialTaller');
+        if (reporteParcialBtn) reporteParcialBtn.addEventListener('click', () => _generarReporteTaller(false, { sinPortada: false, partirSecciones: false }));
         const prevReporteBtn = document.getElementById('btnVistaPreviaReporteTaller');
         if (prevReporteBtn) prevReporteBtn.addEventListener('click', () => _generarReporteTaller(true));
         const cotPdfBtn = document.getElementById('btnCotizacionPDFTaller');
@@ -3311,7 +3582,13 @@ ${printScript}
         document.getElementById('saveOrderBtn').addEventListener('click', () => _guardarOrden(false));
         document.getElementById('completeOrderBtn').addEventListener('click', _completarEntrega);
         document.getElementById('sinReparacionBtn').addEventListener('click', _sinReparacion);
-        document.getElementById('generarCompraBtn').addEventListener('click', _generarSolicitudCompra);
+        document.getElementById('generarCompraBtn').addEventListener('click', _enviarListaRefaccionesACompras);
+
+        // Botones del flujo comercial
+        const btnNotificarReparado = document.getElementById('btnNotificarVentasReparado');
+        if (btnNotificarReparado) btnNotificarReparado.addEventListener('click', _notificarVentasReparado);
+        const btnClienteConfirmado = document.getElementById('btnClienteConfirmadoTaller');
+        if (btnClienteConfirmado) btnClienteConfirmado.addEventListener('click', _marcarClienteConfirmado);
 
         for (let i = 1; i <= 5; i++) {
             const btn = document.getElementById(`terminarEtapa${i}`);
@@ -3320,15 +3597,15 @@ ${printScript}
 
         document.getElementById('terminarReparacionBtn').addEventListener('click', _terminarReparacion);
         document.getElementById('addEnlaceBtn').addEventListener('click', () => {
-            diagnosticoEnlaces.push({ descripcion: '', sku: '', cantidad: 1, link: '' });
+            diagnosticoEnlaces.push({ nombre: '', descripcion: '', sku: '', cantidad: 1, link: '' });
             _renderDiagnosticoEnlaces();
         });
         document.getElementById('addInventarioBtn').addEventListener('click', () => {
-            diagnosticoInventario.push({ sku: '', descripcion: '', cantidad: 1 });
+            diagnosticoInventario.push({ sku: '', nombre: '', descripcion: '', cantidad: 1 });
             _renderDiagnosticoInventario();
         });
         document.getElementById('addConsumibleBtn').addEventListener('click', () => {
-            consumiblesUsados.push({ sku: '', descripcion: '', cantidad: 1 });
+            consumiblesUsados.push({ sku: '', nombre: '', descripcion: '', cantidad: 1 });
             _renderConsumibles();
         });
         const addExtraBtn = document.getElementById('addComponenteExtraBtn');

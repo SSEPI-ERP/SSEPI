@@ -49,6 +49,20 @@ Coloca el libro en `fuente/` con un nombre que contenga `formula`. Crea o actual
 1. SQL: `calculadoras-modulo.sql` y `calculadoras-rls-acceso-equipo.sql`.
 2. `node import.mjs formulas --apply` (mismas variables Supabase que contactos).
 
+## Paquete ERP (simulaciones/)
+
+Ver guía completa: [`docs/IMPORT-PAQUETE-ERP.md`](../../docs/IMPORT-PAQUETE-ERP.md)
+
+```bash
+# 1) Migración SQL en Supabase: scripts/migrations/erp-maestro-contactos-vinculos.sql
+node build-erp-maestro.mjs
+node import.mjs erp-maestro --dry-run
+node import.mjs erp-maestro --apply
+node import.mjs erp-maestro --link-adeudos --apply
+node scan-lab-reportes.mjs --write
+node import-lab-ordenes.mjs --apply --only-imported
+```
+
 ## 5. Carga directa a Supabase (`--apply`)
 
 **No subas la service role key al repositorio.** En PowerShell:

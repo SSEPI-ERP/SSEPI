@@ -1,211 +1,398 @@
 @echo off
+
 chcp 65001 >nul
+
 cls
+
 echo =========================================
-echo   SSEPI ERP - VPS LOCAL V12
+
+echo   SSEPI ERP - VPS LOCAL V14
+
 echo   %date% %time%
-echo   Esta PC es la VPS de conexion de modulos
+
+echo   Offline completo + tunel Cloudflare (aprobacion remota)
+
+echo   Importa: contactos, tabulador, calculadoras, inventario,
+
+echo   BOM, ordenes lab (paquete ERP), ERP maestro, pipeline
+
 echo =========================================
+
 echo.
+
+
+
+set "LOGDIR=%~dp0ssepinext\logs"
+
+if not exist "%LOGDIR%" mkdir "%LOGDIR%"
+
+set "LOGFILE=%LOGDIR%\import-%date:~-4%%date:~3,2%%date:~0,2%-%time:~0,2%%time:~3,2%%time:~6,2%.log"
+
+set "LOGFILE=%LOGFILE: =0%"
+
+
 
 for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr "IPv4" ^| findstr /V "169.254"') do (
+
     for /f "tokens=*" %%b in ("%%a") do (
+
         echo.
+
         echo   ACCESO RED LAN: http://%%~nb:3333/panel/panel.html
+
     )
+
 )
+
 echo.
+
+
 
 :: [1] Matar procesos Node y liberar puerto
-echo [1] Matando procesos Node y limpiando puerto 3333...
-taskkill /F /IM node.exe 2>nul
-timeout /t 2 /nobreak >nul
-netstat -ano ^| findstr ":3333" ^| findstr "LISTENING" >nul
-if %errorlevel%==0 (
-    echo      AUN hay algo en 3333. Matando por PID...
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":3333" ^| findstr "LISTENING"') do (
-        taskkill /F /PID %%a 2>nul
-    )
-    timeout /t 2 /nobreak >nul
-)
-echo      Puerto 3333 libre.
 
-:: [2] Limpiar cache y journal de SQLite (NO borrar la base)
-echo [2] Limpiando cache local...
-if exist "%~dp0ssepinext\data\ssepi-local.db-journal" del /q "%~dp0ssepinext\data\ssepi-local.db-journal" 2>nul
-echo      OK.
+echo [1] Matando procesos Node y limpiando puertos 3333 y 3443...
+
+taskkill /F /IM node.exe 2>nul
+
+timeout /t 2 /nobreak >nul
+
+for %%P in (3333 3443) do (
+
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%%P" ^| findstr "LISTENING"') do taskkill /F /PID %%a 2>nul
+
+)
+
+echo      Puertos 3333/3443 libres.
+
+
+
+:: [2] Integridad BD local (evitar ssepi-local.db en 0 bytes)
+
+echo [2] Verificando base de datos local...
+
+cd /d "%~dp0ssepinext"
+
+if exist "data\ssepi-local.db" (
+
+    for %%F in ("data\ssepi-local.db") do if %%~zF LSS 16 (
+
+        echo      AVISO: BD corrupta/vacia — se elimina para recrear.
+
+        del /q "data\ssepi-local.db" 2>nul
+
+        del /q "data\ssepi-local.db-journal" 2>nul
+
+    ) else (
+
+        echo      OK - ssepi-local.db %%~zF bytes.
+
+    )
+
+) else (
+
+    echo      Sin BD previa — se creara en los seeds.
+
+)
+
+if exist "data\ssepi-local.db-journal" del /q "data\ssepi-local.db-journal" 2>nul
+
+
 
 :: [2b] Limpiar contactos inventados (solo reales de imagenes)
-echo [2b] Limpiando contactos y clientes_tabulador inventados...
+
+echo [2b] Limpiando contactos inventados...
+
+node limpiar-contactos-db.mjs
+
+if %errorlevel% neq 0 echo      (Aviso limpiar-contactos)
+
+
+
+:: [2a] Usuarios offline
+
+echo [2a] Usuarios offline...
+
+node seed-usuarios.mjs
+
+if %errorlevel% neq 0 echo      (Aviso seed-usuarios)
+
+
+
+:: [2c] Seed contactos idempotente
+
+echo [2c] Seed contactos base...
+
+node seed-limpiar-contactos.mjs
+
+if %errorlevel% neq 0 echo      (Aviso seed-limpiar-contactos)
+
+
+
+:: [3a] Generar datos_comparador si falta (ERP maestro)
+
+echo [3a] ERP Maestro JSON (datos_comparador)...
+
+set "COMPARADOR=%~dp0simulaciones\escaner de imagenes\info\datos_comparador.json"
+
+if not exist "%COMPARADOR%" (
+
+    echo      Generando datos_comparador.json ...
+
+    cd /d "%~dp0scripts\imports"
+
+    node build-erp-maestro.mjs
+
+    cd /d "%~dp0ssepinext"
+
+) else (
+
+    echo      OK - datos_comparador.json existe.
+
+)
+
+
+
+:: [3d] Inventario
+
+echo [3d] Inventario electronica...
+
+node seed-inventario.mjs
+
+if %errorlevel% neq 0 echo      (Error inventario)
+
+
+
+:: [3e] Consumibles taller
+
+echo [3e] Consumibles taller...
+
+node seed-consumibles.mjs
+
+if %errorlevel% neq 0 echo      (Error consumibles)
+
+
+
+:: [3f] BOM automatizacion
+
+echo [3f] BOM automatizacion...
+
+node seed-bom.mjs
+
+if %errorlevel% neq 0 echo      (Error BOM)
+
+
+
+:: [3i] Calculadoras y tabulador
+
+echo [3i] Calculadoras / tabulador / hoja Excel...
+
+node seed-calculadoras.mjs
+
+if %errorlevel% neq 0 echo      (Error calculadoras - revisa consola)
+
+
+
+:: [3j] Contactos desde paquete simulaciones (datos_comparador.json — NO clintes/)
+
+echo [3j] Contactos ERP maestro (capturas Odoo + tabulador)...
+
+node seed-erp-maestro-local.mjs --replace-contactos
+
+if %errorlevel% neq 0 echo      (Error contactos ERP — ejecuta build-erp-maestro.mjs)
+
+
+
+:: [3k-pre] OCR limpio para reportes
+
+echo [3k-pre] scan-lab-reportes --write...
+
+cd /d "%~dp0scripts\imports"
+
+node scan-lab-reportes.mjs --write
+
 cd /d "%~dp0ssepinext"
-node limpiar-contactos-db.mjs 2>nul
+
+
+
+:: [3k] Importar 179 ordenes + imagenes/PDFs (puede tardar varios minutos)
+
+echo [3k] Importando reportes escaneados (ordenes taller/motores/auto)...
+
+echo      Log: %LOGFILE%
+
+node importar-reportes-a-bd.mjs 1>>"%LOGFILE%" 2>&1
+
 if %errorlevel%==0 (
-    echo      OK - Contactos inventados eliminados.
+
+    echo      OK - Reportes importados. Ver resumen al final del log.
+
 ) else (
-    echo      (No se pudo limpiar contactos - continuando)
+
+    echo      ERROR en importacion - abre %LOGFILE%
+
 )
 
-:: [2a] Seed: usuarios offline
-echo [2a] Verificando usuarios offline...
-cd /d "%~dp0ssepinext"
-node seed-usuarios.mjs 2>nul
-if %errorlevel%==0 (
-    echo      OK - Usuarios offline verificados.
+
+
+:: [3k-fix] SP-E/SP-M/SP-A al modulo correcto (taller/motores/auto)
+
+echo [3k-fix] Corrigiendo clasificacion de folios...
+
+node corregir-ordenes-modulo.mjs
+
+if %errorlevel% neq 0 echo      (Aviso corregir-ordenes-modulo)
+
+
+
+:: [3m] ERP Maestro — enriquecer tabulador / vinculos (idempotente)
+
+echo [3m] ERP Maestro local (refuerzo tabulador)...
+
+node seed-erp-maestro-local.mjs
+
+if %errorlevel% neq 0 echo      (Error ERP maestro local)
+
+
+
+:: [3l] Pipeline comercial
+
+echo [3l] Pipeline comercial...
+
+node seed-pipeline.mjs
+
+if %errorlevel% neq 0 echo      (Aviso pipeline)
+
+
+
+:: [3n] Actividades diarias
+
+echo [3n] Actividades diarias...
+
+node seed-actividades.mjs
+
+if %errorlevel% neq 0 echo      (Aviso actividades)
+
+
+
+:: [3o] Proyectos automatizacion (si no hay del import)
+
+echo [3o] Proyectos automatizacion ejemplo...
+
+node seed-proyectos-automatizacion.mjs
+
+if %errorlevel% neq 0 echo      (Aviso proyectos auto)
+
+
+
+:: [3z] Rellenar tablas vacias
+
+echo [3z] Verificacion seeds (tablas vacias)...
+
+node seed-all-check.mjs
+
+if %errorlevel% neq 0 echo      (Aviso seed-all-check)
+
+
+
+:: [3y] Resumen conteos
+
+echo [3y] Verificacion final de datos...
+
+node verificar-importacion.mjs
+
+if %errorlevel% neq 0 (
+
+    echo.
+
+    echo   *** FALTAN DATOS — revisa errores arriba o el log ***
+
+    echo.
+
 ) else (
-    echo      (Error en usuarios - continuando)
+
+    echo      OK - Tablas criticas con datos.
+
 )
 
-:: [2c] Seed: contactos reales (ahora seed-limpiar-contactos no inserta inventados)
-echo [2c] Seed limpiar-contactos (idempotente)...
-node seed-limpiar-contactos.mjs 2>nul
-if %errorlevel%==0 (
-    echo      OK - Seed contactos idempotente.
-) else (
-    echo      (Error en seed contactos - continuando)
-)
 
-:: [3] Seed: ordenes demo para PDFs
-echo [3] Ordenes demo (reportes PDF)...
-node seed-ordenes-terminadas.mjs 2>nul
-if %errorlevel%==0 (
-    echo      OK - Ordenes demo insertadas.
-) else (
-    echo      (Si ya existen se omiten duplicados)
-)
 
-:: [3a] Seed: ordenes de motores demo
-echo [3a] Ordenes de motores demo...
-node seed-ordenes-motores.mjs 2>nul
-if %errorlevel%==0 (
-    echo      OK - Ordenes motores insertadas.
-) else (
-    echo      (Error en motores - continuando)
-)
+:: [4] Servidor offline
 
-:: [3a2] Seed: proyectos soporte en planta demo
-echo [3a2] Proyectos soporte en planta demo...
-node seed-proyectos-soporte-planta.mjs 2>nul
-if %errorlevel%==0 (
-    echo      OK - Soporte en planta insertados.
-) else (
-    echo      (Error en soporte planta - continuando)
-)
+echo [4] Arrancando servidor VPS SSEPI NEXT (offline)...
 
-:: [3b] Seed: pipeline conectado
-echo [3b] Pipeline (cotizaciones, ventas, compras, facturas)...
-node seed-pipeline.mjs 2>nul
-if %errorlevel%==0 (
-    echo      OK - Pipeline conectado.
-) else (
-    echo      (Si ya existen se omiten duplicados)
-)
+start "SSEPI VPS SERVER" cmd /k "cd /d %~dp0ssepinext && node offline-server.mjs"
 
-:: [3c] Recalcular costos con CostosEngine
-echo [3c] CostosEngine - recalculando costos...
-node seed-costos-ventas.mjs 2>nul
-if %errorlevel%==0 (
-    echo      OK - Costos calculados y ventas actualizadas.
-) else (
-    echo      (Error en recalculo de costos)
-)
 
-:: [3d] Seed: inventario electronica (97 componentes)
-echo [3d] Inventario electronica (97 items, 383 pzas)...
-node seed-inventario.mjs 2>nul
-if %errorlevel%==0 (
-    echo      OK - Electronica importada.
-) else (
-    echo      (Error en inventario electronica)
-)
 
-:: [3e] Seed: consumibles de taller (14 items)
-echo [3e] Consumibles de taller (14 items, 69 pzas)...
-node seed-consumibles.mjs 2>nul
-if %errorlevel%==0 (
-    echo      OK - Consumibles importados.
-) else (
-    echo      (Error en consumibles)
-)
+:: [5] Esperar servidor
 
-:: [3f] Seed: BOM automatizacion (292 articulos)
-echo [3f] BOM automatizacion (292 articulos, 48 proveedores)...
-node seed-bom.mjs 2>nul
-if %errorlevel%==0 (
-    echo      OK - BOM automatizacion importado.
-) else (
-    echo      (Error en BOM automatizacion)
-)
+echo [5] Esperando servidor (6s)...
 
-:: [3g] Seed: cotizacion de suministro demo
-echo [3g] Cotizacion de suministro demo...
-node seed-suministro-demo.mjs 2>nul
-if %errorlevel%==0 (
-    echo      OK - Cotizacion suministro SP-S2605001.
-) else (
-    echo      (Si ya existe se omite)
-)
+timeout /t 6 /nobreak >nul
 
-:: [3h] Seed: actividades Kanban demo (6 actividades + 18 subtareas)
-echo [3h] Actividades Kanban demo...
-node seed-actividades.mjs 2>nul
-if %errorlevel%==0 (
-    echo      OK - Actividades Kanban insertadas.
-) else (
-    echo      (Error en actividades - continuando)
-)
 
-:: [3i] Seed: calculadoras, costos, tabulador, BOM auto, servicios
-echo [3i] Calculadoras / costos / tabulador / BOM auto / servicios...
-node seed-calculadoras.mjs 2>nul
-if %errorlevel%==0 (
-    echo      OK - Calculadoras y tabulador listos.
-) else (
-    echo      (Error en calculadoras - continuando)
-)
 
-:: [3j] Seed: contactos desde imagenes (escaneados)
-echo [3j] Contactos desde imagenes (~80 clientes + proveedores)...
-node seed-contactos-imagenes.mjs 2>nul
-if %errorlevel%==0 (
-    echo      OK - Contactos desde imagenes insertados.
-) else (
-    echo      (Error en contactos-imagenes - continuando)
-)
+:: [6] Health check
 
-:: [4] Iniciar servidor VPS
-echo [4] Arrancando servidor VPS SSEPI NEXT...
-start "SSEPI VPS SERVER" cmd /k "node offline-server.mjs"
-
-:: [5] Esperar a que levante
-echo [5] Esperando servidor (4s)...
-timeout /t 4 /nobreak >nul
-
-:: [6] Verificar que el servidor respondio
 echo [6] Verificando servidor...
+
 curl -s http://localhost:3333/api/health >nul 2>nul
+
 if %errorlevel%==0 (
-    echo      OK - Servidor VPS activo.
+
+    echo      OK - Servidor activo en http://localhost:3333
+
 ) else (
-    echo      AVISO: No se recibio respuesta del servidor.
-    echo      Puede tardar unos segundos mas en arrancar.
+
+    echo      AVISO: Sin respuesta aun — espera y recarga el panel.
+
 )
 
-:: [7] Abrir Chrome NUEVO (perfil temporal)
-echo [7] Abriendo Chrome con perfil LIMPIO...
-set "SSEPI_PROFILE=%TEMP%\ssepi-chrome-%RANDOM%"
-mkdir "%SSEPI_PROFILE%" 2>nul
-start "SSEPI Chrome" chrome --user-data-dir="%SSEPI_PROFILE%" --no-first-run --no-default-browser-check --disable-popup-blocking --app="http://localhost:3333/panel/login.html"
 
-:: [8] Iniciar tunel Cloudflare
-echo [8] Iniciando tunel Cloudflare (segundo plano)...
+
+:: [7] Chrome local
+
+echo [7] Abriendo Chrome (perfil temporal, localhost)...
+
+set "SSEPI_PROFILE=%TEMP%\ssepi-chrome-%RANDOM%"
+
+mkdir "%SSEPI_PROFILE%" 2>nul
+
+start "SSEPI Chrome Local" chrome --user-data-dir="%SSEPI_PROFILE%" --no-first-run --no-default-browser-check --disable-popup-blocking --new-tab "http://localhost:3333/panel/login.html"
+
+
+
+:: [8] Tunel Cloudflare (URL publica temporal para aprobar desde otro dispositivo)
+
+echo [8] Iniciando tunel Cloudflare...
+
+echo      Se abrira otra ventana con la URL trycloudflare.com
+
 start "Cloudflare Tunnel SSEPI" /D "%~dp0ssepinext" cmd /k iniciar-tunel-cloudflare.bat
 
+
+
 echo.
+
 echo =========================================
-echo   SSEPI LOCAL + CHROME NUEVO - LISTO
+
+echo   SSEPI LOCAL + TUNEL - LISTO
+
 echo.
-echo   Chrome se abrio con perfil temporal.
-echo   Tunel Cloudflare corriendo en segundo plano.
+
+echo   Local:  http://localhost:3333/panel/login.html
+
+echo   Tunel:  ventana "Cloudflare Tunnel SSEPI" muestra URL publica
+
+echo   Log:    %LOGFILE%
+
+echo.
+
+echo   Usuarios offline: ver seed-usuarios.mjs / login local
+
 echo =========================================
+
 echo.
+
 pause
+

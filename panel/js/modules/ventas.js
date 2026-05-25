@@ -26,6 +26,11 @@ const VentasModule = (function() {
     let proyectos = [];
     let taller = [];
     let motores = [];
+    let suministrosVentas = [];
+    /** Catálogo BOM para wizard Suministro (solo bom_automatizacion) */
+    let bomCatalogoVentas = [];
+    let bomVentasLoaded = false;
+    const bomServiceVentas = createDataService('bom_automatizacion');
     /** Pestaña panel órdenes operativas (Laboratorio / Motores / Auto) en Ventas */
     let operativasTabVentas = 'taller';
     let solicitudesTaller = [];
@@ -110,10 +115,186 @@ const VentasModule = (function() {
             'Automatización': 'Al continuar se crea el registro con folio SP-A…',
             'Proyectos': 'Al continuar se crea el registro con folio SP-A…',
             'Soporte en planta': 'Se crea visita de soporte y se envía a Automatización…',
-            'Suministro': 'Se redirige al catálogo de Suministros…',
+            'Suministro': 'Selecciona materiales del catálogo BOM (lista completa) y agrega componentes manuales si hace falta.',
             'Administración': 'Sin orden de área; la cotización queda directa.'
         };
         el.textContent = map[dept] || 'Elige departamento.';
+    }
+
+    async function _loadBomCatalogoVentas() {
+        if (bomVentasLoaded && bomCatalogoVentas.length) return bomCatalogoVentas;
+        try {
+            const data = await bomServiceVentas.select({}, { orderBy: 'numero_item', ascending: true, page: 0, pageSize: 2000 });
+            bomCatalogoVentas = (data || []).map((b) => ({
+                id: b.id || b.numero_item,
+                codigo: b.part_number || b.numero_parte || '',
+                descripcion: b.descripcion || b.description || b.part_number || '—',
+                categoria: b.categoria_original || b.categoria || '',
+                precio: Number(b.mejor_precio) || 0,
+                numero_item: b.numero_item || b.item || ''
+            }));
+            bomVentasLoaded = true;
+        } catch (e) {
+            console.warn('[Ventas] Error cargando BOM:', e);
+            bomCatalogoVentas = [];
+        }
+        return bomCatalogoVentas;
+    }
+
+    function _renderWizardBomSeleccionados() {
+        const tbody = document.getElementById('wizardBomSeleccionadosBody');
+        if (!tbody) return;
+        if (!calculadoraComponentes.length) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#64748b;">Sin materiales — agrega desde el BOM o manualmente</td></tr>';
+            return;
+        }
+        tbody.innerHTML = calculadoraComponentes.map((c, idx) => `
+            <tr>
+                <td>${(c.codigo || '—')}</td>
+                <td>${c.nombre}</td>
+                <td>${c.cantidad}</td>
+                <td><button type="button" class="btn-remove" onclick="ventasModule._eliminarComponente(${idx})">✖</button></td>
+            </tr>
+        `).join('');
+    }
+
+    function _renderWizardBomLista(filtro) {
+        const tbody = document.getElementById('wizardBomListaBody');
+        if (!tbody) return;
+        const term = _normStr(filtro || '');
+        let items = bomCatalogoVentas;
+        if (term) {
+            items = items.filter((i) =>
+                _normStr(i.descripcion).includes(term) ||
+                _normStr(i.codigo).includes(term) ||
+                _normStr(String(i.numero_item)).includes(term)
+            );
+        }
+        const max = 120;
+        const slice = items.slice(0, max);
+        if (!slice.length) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Sin resultados en BOM</td></tr>';
+            return;
+        }
+        tbody.innerHTML = slice.map((i) => `
+            <tr>
+                <td style="font-size:11px;">${i.numero_item || '—'}</td>
+                <td>${i.descripcion}</td>
+                <td>${i.codigo || '—'}</td>
+                <td><button type="button" class="btn btn-sm btn-primary" data-bom-id="${String(i.id).replace(/"/g, '&quot;')}">+</button></td>
+            </tr>
+        `).join('');
+        tbody.querySelectorAll('button[data-bom-id]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-bom-id');
+                const item = bomCatalogoVentas.find((x) => String(x.id) === String(id));
+                if (item) _agregarBomItemVentas(item);
+            });
+        });
+        if (items.length > max) {
+            tbody.innerHTML += `<tr><td colspan="4" style="text-align:center;font-size:11px;color:#64748b;">Mostrando ${max} de ${items.length}. Refina la búsqueda.</td></tr>`;
+        }
+    }
+
+    function _agregarBomItemVentas(item) {
+        const precio = Number(item.precio) || 0;
+        const existente = calculadoraComponentes.find((c) => c.bom_id && String(c.bom_id) === String(item.id));
+        if (existente) {
+            existente.cantidad = (Number(existente.cantidad) || 0) + 1;
+            existente.subtotal = existente.cantidad * (Number(existente.costo_unitario) || 0);
+        } else {
+            calculadoraComponentes.push({
+                bom_id: item.id,
+                codigo: item.codigo,
+                nombre: item.descripcion,
+                cantidad: 1,
+                costo_unitario: precio,
+                costo_compra: precio,
+                subtotal: precio,
+                source: 'BOM'
+            });
+        }
+        _renderWizardBomSeleccionados();
+        if (ventasAutosaveCtrl) ventasAutosaveCtrl.schedule();
+        _showToast('Material agregado: ' + item.descripcion, 'success');
+    }
+
+    function _agregarManualSuministroVentas() {
+        const nombre = (document.getElementById('wizardBomManualNombre') || {}).value || '').trim();
+        const cantidad = parseFloat((document.getElementById('wizardBomManualCant') || {}).value) || 1;
+        const precio = parseFloat((document.getElementById('wizardBomManualPrecio') || {}).value) || 0;
+        if (!nombre) { _showToast('Escribe el nombre del componente', 'warning'); return; }
+        calculadoraComponentes.push({
+            nombre,
+            codigo: '',
+            cantidad,
+            costo_unitario: precio,
+            costo_compra: precio,
+            subtotal: cantidad * precio,
+            source: 'manual'
+        });
+        document.getElementById('wizardBomManualNombre').value = '';
+        document.getElementById('wizardBomManualCant').value = '1';
+        document.getElementById('wizardBomManualPrecio').value = '';
+        _renderWizardBomSeleccionados();
+        if (ventasAutosaveCtrl) ventasAutosaveCtrl.schedule();
+    }
+
+    async function _toggleWizardDeptFields() {
+        const dept = document.getElementById('wizardDepartamentoSelect')?.value || '';
+        const esSuministro = dept === 'Suministro';
+        const wrapBom = document.getElementById('wizardSuministroWrap');
+        const wrapProducto = document.getElementById('wizardNombreProductoWrap');
+        const lblProd = wrapProducto?.querySelector('label');
+        if (wrapBom) wrapBom.style.display = esSuministro ? 'block' : 'none';
+        if (wrapProducto) wrapProducto.style.display = esSuministro ? 'none' : 'block';
+        if (lblProd && !esSuministro) {
+            lblProd.innerHTML = 'Nombre del producto / Equipo <span style="color:#c62828;">*</span>';
+        }
+        const fallaEl = document.getElementById('wizardFallaReportada');
+        if (fallaEl && esSuministro && !fallaEl.value.trim()) {
+            fallaEl.placeholder = 'Notas de la solicitud (opcional si ya describiste los materiales arriba)';
+        }
+        if (esSuministro) {
+            await _loadBomCatalogoVentas();
+            _renderWizardBomLista((document.getElementById('wizardBomBusqueda') || {}).value || '');
+            _renderWizardBomSeleccionados();
+        }
+        _wizardActualizarAyudaFolio();
+    }
+
+    async function _persistirOrdenTrasConfirmacionCliente(cot) {
+        if (!cot?.orden_origen_id || !window.supabase) return;
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        const origen = (cot.origen || cot.cerebro_registro?.origen_cotizacion || '').toLowerCase();
+        const patch = {
+            estado: 'Confirmado',
+            fecha_confirmacion_cliente: new Date().toISOString(),
+            espera_confirmacion_cliente: false
+        };
+        try {
+            if (origen === 'motor' || origen === 'motores') {
+                await window.supabase.from('ordenes_motores').update(patch).eq('id', cot.orden_origen_id);
+            } else if (origen === 'proyecto' || origen === 'automatizacion') {
+                await window.supabase.from('proyectos_automatizacion').update({
+                    estado: 'Confirmado',
+                    fecha_confirmacion_cliente: patch.fecha_confirmacion_cliente
+                }).eq('id', cot.orden_origen_id);
+            } else if (origen === 'soporte') {
+                await window.supabase.from('soporte_visitas').update({ estado: 'Confirmado' }).eq('id', cot.orden_origen_id);
+            } else {
+                await window.supabase.from('ordenes_taller').update(patch).eq('id', cot.orden_origen_id);
+            }
+            if (window.SSEPIStateMachine) {
+                const tipoSm = origen === 'motor' || origen === 'motores' ? 'motor' : (origen === 'proyecto' || origen === 'automatizacion' ? 'proyecto' : 'taller');
+                await SSEPIStateMachine.actualizarEstadoOrden(
+                    window.supabase, tipoSm, cot.orden_origen_id, 'cliente_confirmo',
+                    'Cliente confirmó cotización ' + (cot.folio || ''), csrfToken
+                );
+            }
+        } catch (e) {
+            console.warn('[Ventas] Error actualizando orden tras confirmación:', e);
+        }
     }
 
     // ==================== AUTOSAVE VENTAS ====================
@@ -295,7 +476,7 @@ const VentasModule = (function() {
             deptEl._ssepiBound = true;
             deptEl.addEventListener('change', () => {
                 _wizardSetPaso1Error('');
-                _wizardActualizarAyudaFolio();
+                _toggleWizardDeptFields();
             });
         }
 
@@ -333,16 +514,28 @@ const VentasModule = (function() {
                         horas = tabCliente?.horas || Number(opt.dataset.horas) || 0;
                     } else {
                         contacto = contactos.find(c => String(c.id) === String(contactoId));
-                        nombreCliente = (contacto?.nombre || contacto?.empresa || contacto?.email || 'Cliente').trim() || 'Cliente';
+                        const empresaTab = (contacto?.empresa_tabulador || opt?.dataset?.empresaTabulador || contacto?.empresa || '').trim();
+                        nombreCliente = empresaTab || (contacto?.nombre || contacto?.empresa || contacto?.email || 'Cliente').trim() || 'Cliente';
                         email = contacto?.email || '';
                         telefono = contacto?.telefono || '';
                         rfc = contacto?.rfc || '';
-                        // Buscar en clientes_tabulador (tabuladorTaller.clientes ya cargó desde BD)
                         const tabCliente = tabuladorTaller.clientes.find(
+                            tc => tc.nombre && empresaTab && tc.nombre.toLowerCase().trim() === empresaTab.toLowerCase().trim()
+                        ) || tabuladorTaller.clientes.find(
                             tc => tc.nombre && nombreCliente && tc.nombre.toLowerCase().trim() === nombreCliente.toLowerCase().trim()
                         );
                         km = tabCliente?.km || Number(opt.dataset.km) || 0;
                         horas = tabCliente?.horas || Number(opt.dataset.horas) || 0;
+                        const vendEl = document.getElementById('wizardVendedorAsociado');
+                        if (vendEl && empresaTab) {
+                            const vendedores = contactos.filter(c =>
+                                c.tipo_ficha === 'contacto_empresa' &&
+                                (c.empresa_tabulador || c.empresa || '').toLowerCase().trim() === empresaTab.toLowerCase().trim()
+                            );
+                            vendEl.value = vendedores.length
+                                ? vendedores.map(v => (v.nombre || '') + (v.puesto ? ' (' + v.puesto + ')' : '')).join('; ')
+                                : '';
+                        }
                     }
 
                     calculadoraClienteActual = {
@@ -395,6 +588,21 @@ const VentasModule = (function() {
                     })();
                 }
             });
+        }
+
+        const bomSearch = document.getElementById('wizardBomBusqueda');
+        if (bomSearch && !bomSearch._ssepiBound) {
+            bomSearch._ssepiBound = true;
+            let bomT;
+            bomSearch.addEventListener('input', () => {
+                clearTimeout(bomT);
+                bomT = setTimeout(() => _renderWizardBomLista(bomSearch.value), 280);
+            });
+        }
+        const bomManualBtn = document.getElementById('wizardBomManualBtn');
+        if (bomManualBtn && !bomManualBtn._ssepiBound) {
+            bomManualBtn._ssepiBound = true;
+            bomManualBtn.addEventListener('click', _agregarManualSuministroVentas);
         }
 
         _wizardActualizarAyudaFolio();
@@ -824,9 +1032,13 @@ const VentasModule = (function() {
             }
 
             if (dept === 'Suministro') {
-                // Suministro: cotización directa, sin orden operativa
-                // Redirigir al módulo de Suministros
-                return { folio: 'SP-S', ordenId: null, tipo: 'suministro', redirectTo: '/panel/pages/ssepi_suministros.html' };
+                let folioS = 'SP-S';
+                try {
+                    const folioFn = window.folioFormats && window.folioFormats.getNextFolioSuministro;
+                    if (folioFn) folioS = await folioFn();
+                } catch (e) { /* fallback */ }
+                compraActual = { id: null, vinculacion: null, _origen: 'suministro', folio_preliminar: folioS };
+                return { folio: folioS, ordenId: null, tipo: 'suministro' };
             }
 
             throw new Error('Departamento no soportado para alta de orden');
@@ -872,11 +1084,15 @@ const VentasModule = (function() {
                 subtotal: 0,
                 iva: 0,
                 total: 0,
+                estado: 0,
                 estatus_pago: 'Solicitud',
-                notas: 'Solicitud generada automáticamente desde Ventas para orden ' + (ordenFolio || '') + ' (' + ordenTipo + ')'
+                notas: 'Preregistro desde Ventas para orden ' + (ordenFolio || '') + ' (' + ordenTipo + '). Esperando diagnóstico técnico.',
+                vinculacion_tipo: ordenTipo,
+                vinculacion_id: ordenId,
+                estado_interno: 'esperando_diagnostico'
             };
             await comprasService.insert(compraRow, csrfToken);
-            _addToFeed('🛒', 'Solicitud de compra creada: ' + compraFolio);
+            _addToFeed('🛒', 'Compra preregistrada (borrador): ' + compraFolio);
         } catch (e) {
             console.warn('[Ventas] Error creando compra vinculada (no crítico):', e);
         }
@@ -889,12 +1105,13 @@ const VentasModule = (function() {
                 folio_factura: factFolio,
                 cliente: clienteNombre || 'Cliente',
                 total: total || 0,
-                estatus: 'pendiente',
+                estatus: 'borrador',
+                estado: 'borrador',
                 fecha_emision: new Date().toISOString()
             };
             if (cotizacionId) payload.venta_id = cotizacionId;
             await window.supabase.from('facturas').insert(payload);
-            _addToFeed('🧾', 'Factura pre-registrada: ' + factFolio);
+            _addToFeed('🧾', 'Factura preregistrada (borrador): ' + factFolio);
         } catch (e) {
             console.warn('[Ventas] Error creando factura vinculada (no crítico):', e);
         }
@@ -1250,7 +1467,8 @@ const VentasModule = (function() {
             _loadProyectos(),
             _loadTaller(),
             _loadMotores(),
-            _loadCompras()
+            _loadCompras(),
+            _loadSuministrosVentas()
         ])
             .then(() => {
                 _renderPipelineCards();
@@ -1808,6 +2026,26 @@ const VentasModule = (function() {
             })
             .subscribe();
         subscriptions.push(subHistorial);
+
+        // Realtime para notificaciones (avisos de técnicos y compras)
+        const subNotif = supabase
+            .channel('notificaciones_ventas')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: 'para=eq.ventas' }, payload => {
+                const notif = payload.new || {};
+                _addToFeed('🔔', notif.mensaje || 'Nueva notificación');
+                if (notif.tipo === 'trabajo_terminado') {
+                    _showToast('✅ ' + (notif.mensaje || 'Trabajo terminado. Proceda a facturar/entregar.'), 'success');
+                } else if (notif.tipo === 'diagnostico_completado') {
+                    _showToast('🔧 ' + (notif.mensaje || 'Diagnóstico completado. Calcule cotización.'), 'info');
+                } else if (notif.tipo === 'esperando_cotizacion_compras') {
+                    _showToast('📋 Compras envió cotización de refacciones. Revísela.', 'info');
+                }
+                _loadCotizaciones();
+                _renderPipelineCards();
+                _applyFilters();
+            })
+            .subscribe();
+        subscriptions.push(subNotif);
     }
 
     // ==================== FILTROS Y VISTAS ====================
@@ -1834,6 +2072,9 @@ const VentasModule = (function() {
     function _applyFilters() {
         let filtered = _mergeVentasCotizaciones();
 
+        // Excluir registros de Suministros del pipeline general (tienen su propia pestaña)
+        filtered = filtered.filter(item => item.departamento !== 'Suministro');
+
         // Filtrar canceladas por defecto (solo mostrar si mostrarCanceladas === true)
         if (!mostrarCanceladas) {
             filtered = filtered.filter(item => {
@@ -1858,6 +2099,10 @@ const VentasModule = (function() {
                 filtered = filtered.filter(item => item.estado === 'diagnostico' || item.estado === 'en_diagnostico');
             } else if (filtroEstado === 'cotizacion') {
                 filtered = filtered.filter(item => item.estado === 'cotizacion' || item.estado === 'pendiente_autorizacion_ventas');
+            } else if (filtroEstado === 'esperando_confirmacion') {
+                filtered = filtered.filter(item => item.estado === 'esperando_confirmacion' || item.estado === 'esperando_confirmacion_cliente' || item.estado === 'pendiente_confirmacion');
+            } else if (filtroEstado === 'confirmado') {
+                filtered = filtered.filter(item => item.estado === 'confirmado' || item.estado === 'confirmada_por_cliente');
             } else if (filtroEstado === 'autorizado') {
                 filtered = filtered.filter(item => item.estado === 'autorizado' || item.estado === 'autorizada_por_ventas');
             } else if (filtroEstado === 'compra') {
@@ -1891,10 +2136,8 @@ const VentasModule = (function() {
         } else if (vistaActual === 'lista') _renderLista(filtered);
         else if (vistaActual === 'grafica') _renderGrafica(filtered);
 
-        // Renderizar Historia Comercial si hay cotizaciones cargadas (independiente de la vista)
-        if (cotizaciones && cotizaciones.length > 0) {
-            _renderHistoriaComercial();
-        }
+        // Renderizar Historia Comercial (unificada con todos los módulos)
+        _renderHistoriaComercial();
 
         _updateKPIs(filtered);
     }
@@ -1916,6 +2159,8 @@ const VentasModule = (function() {
         const registro = items.filter((i) => es(i) === 'registro' || es(i) === 'nuevo' || es(i) === 'borrador');
         const diagnostico = items.filter((i) => es(i) === 'diagnostico' || es(i) === 'en_diagnostico');
         const cotizacion = items.filter((i) => es(i) === 'cotizacion' || es(i) === 'pendiente_autorizacion_ventas');
+        const esperandoConfirmacion = items.filter((i) => es(i) === 'esperando_confirmacion' || es(i) === 'esperando_confirmacion_cliente' || es(i) === 'pendiente_confirmacion');
+        const confirmado = items.filter((i) => es(i) === 'confirmado' || es(i) === 'confirmada_por_cliente');
         const autorizado = items.filter((i) => es(i) === 'autorizado' || es(i) === 'autorizada_por_ventas');
         const compra = items.filter((i) => es(i) === 'compra' || es(i) === 'en_compra');
         const ejecucion = items.filter((i) => es(i) === 'ejecucion' || es(i) === 'en_ejecucion');
@@ -1923,10 +2168,12 @@ const VentasModule = (function() {
         const pagado = items.filter((i) => i.estatus_pago === 'Pagado' || es(i) === 'pagado');
 
         // Renderizar tarjetas asíncronamente para cargar folios vinculados
-        const [cardsRegistro, cardsDiagnostico, cardsCotizacion, cardsAutorizado, cardsCompra, cardsEjecucion, cardsEntregado, cardsPagado] = await Promise.all([
+        const [cardsRegistro, cardsDiagnostico, cardsCotizacion, cardsEsperaConfirmacion, cardsConfirmado, cardsAutorizado, cardsCompra, cardsEjecucion, cardsEntregado, cardsPagado] = await Promise.all([
             _renderKanbanCardsAsync(registro),
             _renderKanbanCardsAsync(diagnostico),
             _renderKanbanCardsAsync(cotizacion),
+            _renderKanbanCardsAsync(esperandoConfirmacion),
+            _renderKanbanCardsAsync(confirmado),
             _renderKanbanCardsAsync(autorizado),
             _renderKanbanCardsAsync(compra),
             _renderKanbanCardsAsync(ejecucion),
@@ -1955,6 +2202,20 @@ const VentasModule = (function() {
                     <span class="badge" style="background: #ff9800;">${cotizacion.length}</span>
                 </div>
                 <div class="kanban-cards">${cardsCotizacion}</div>
+            </div>
+            <div class="kanban-column">
+                <div class="kanban-header" style="border-bottom-color: #ab47bc;">
+                    <span>Esperando Confirmación</span>
+                    <span class="badge" style="background: #ab47bc;">${esperandoConfirmacion.length}</span>
+                </div>
+                <div class="kanban-cards">${cardsEsperaConfirmacion}</div>
+            </div>
+            <div class="kanban-column">
+                <div class="kanban-header" style="border-bottom-color: #66bb6a;">
+                    <span>Confirmado</span>
+                    <span class="badge" style="background: #66bb6a;">${confirmado.length}</span>
+                </div>
+                <div class="kanban-cards">${cardsConfirmado}</div>
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #4caf50;">
@@ -2203,6 +2464,181 @@ const VentasModule = (function() {
         }).join('');
     }
 
+    // ==================== SUMINISTROS ====================
+    async function _loadSuministrosVentas() {
+        try {
+            const { data, error } = await window.supabase
+                .from('cotizaciones')
+                .select('*')
+                .or('departamento.eq.Suministro,origen.eq.suministro')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            suministrosVentas = data || [];
+        } catch (e) {
+            console.warn('[Ventas] Error cargando Suministros:', e);
+            suministrosVentas = [];
+        }
+    }
+
+    function _renderSuministros() {
+        const tbody = document.getElementById('suministrosTableBody');
+        if (!tbody) return;
+        if (!suministrosVentas || suministrosVentas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;">Sin cotizaciones de Suministros</td></tr>';
+            return;
+        }
+        tbody.innerHTML = suministrosVentas.map(item => {
+            const data = item.data || item;
+            const estado = data.estado || 'registro';
+            const origen = data.vinculacion?.folio || '—';
+            const esperando = ['registrado', 'esperando_cotizacion', 'cotizado', 'en_compra'].includes(estado);
+            const confirmado = ['confirmado', 'compra'].includes(estado);
+            const facturado = ['pagado', 'facturado'].includes(estado);
+            return `<tr>
+                <td><strong>${data.folio || '—'}</strong></td>
+                <td>${data.cliente || data.cliente_nombre || '—'}</td>
+                <td>$${(data.total||0).toLocaleString('es-MX',{minimumFractionDigits:2})}</td>
+                <td><span class="status-badge status-${estatus}">${estado}</span></td>
+                <td>${origen}</td>
+                <td>
+                    <button class="btn btn-sm btn-secondary" onclick="ventasModule._verPDFSuministro('${item.id}')" title="Ver PDF"><i class="fas fa-eye"></i></button>
+                    <button class="btn btn-sm btn-primary" onclick="ventasModule._descargarPDFSuministro('${item.id}')" title="Descargar PDF"><i class="fas fa-download"></i></button>
+                    ${esperando ? `
+                    <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); ventasModule._confirmarCompraSuministro('${item.id}')" title="Cliente Confirmó"><i class="fas fa-check-circle"></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); ventasModule._clienteCanceloSuministro('${item.id}')" title="Cliente Canceló"><i class="fas fa-times-circle"></i></button>` : ''}
+                    ${confirmado ? `
+                    <button class="btn btn-sm btn-warning" onclick="event.stopPropagation(); ventasModule._enviarAFacturacionSuministro('${item.id}')" title="Enviar a Facturación"><i class="fas fa-file-invoice"></i></button>` : ''}
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    async function _verPDFSuministro(id) {
+        await _generarPDFSuministro(id, true);
+    }
+
+    async function _descargarPDFSuministro(id) {
+        await _generarPDFSuministro(id, false);
+    }
+
+    async function _generarPDFSuministro(id, preview) {
+        const item = suministrosVentas.find(s => s.id === id);
+        if (!item) { _showToast('Registro no encontrado', 'error'); return; }
+        const data = item.data || item;
+        const comps = data.componentes || data.items || [];
+        try {
+            const { data: { user } } = await window.supabase.auth.getUser();
+            const conceptos = comps.map(c => ({
+                cantidad: c.cantidad,
+                descripcion: c.descripcion || c.codigo || '',
+                precio: c.precio_venta_unitario || c.precio_unitario || 0,
+                subtotal: c.subtotal_venta || c.importe || c.subtotal || 0
+            }));
+            await pdfGenerator.generateCotizacion({
+                folio: data.folio,
+                cliente: data.cliente || data.cliente_nombre || 'Cliente',
+                departamento: 'Compras',
+                conceptos,
+                subtotal: data.subtotal || 0,
+                iva: data.iva || 0,
+                total: data.total || 0
+            }, user, preview);
+            if (!preview) _showToast(`PDF ${data.folio} descargado`, 'success');
+        } catch (err) {
+            console.error('[Ventas] Error PDF Suministro:', err);
+            _showToast('Error al generar PDF: ' + (err.message || err), 'error');
+        }
+    }
+
+    async function _confirmarCompraSuministro(id) {
+        const item = suministrosVentas.find(s => s.id === id);
+        if (!item) { _showToast('Registro no encontrado', 'error'); return; }
+        const data = item.data || item;
+        const compraId = data.vinculacion?.id;
+        if (!compraId) { _showToast('No hay compra vinculada', 'warning'); return; }
+        if (!confirm('¿El cliente confirmó la cotización de suministros? Se notificará a Compras para proceder con la entrega.')) return;
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            const comprasService = createDataService('compras');
+            const compra = await comprasService.getById(compraId);
+            if (!compra) { _showToast('Compra vinculada no encontrada', 'error'); return; }
+            if (compra.estado >= 3) { _showToast('La compra ya está confirmada', 'info'); return; }
+
+            const pasos = Array.isArray(compra.pasos) ? [...compra.pasos] : [];
+            pasos.push({
+                paso: pasos.length + 1,
+                fecha: new Date().toISOString(),
+                usuario: currentUserName || 'Sistema',
+                accion: 'Cliente confirmó - Ventas (Suministros)'
+            });
+            await comprasService.update(compraId, { estado: 3, pasos }, csrfToken);
+
+            await cotizacionesService.update(id, {
+                estado: 'confirmado',
+                confirmacion_cliente: 'confirmado',
+                fecha_confirmacion_cliente: new Date().toISOString()
+            }, csrfToken);
+            data.estado = 'confirmado';
+            _showToast('Cliente confirmó. Enviada a Compras para ejecución.', 'success');
+            _addToFeed('✅', `Compra ${compra.folio} confirmada por cliente desde Ventas/Suministros`);
+            _renderSuministros();
+        } catch (e) {
+            console.error('[Ventas] Error confirmando compra:', e);
+            _showToast('Error al confirmar compra: ' + (e.message || e), 'error');
+        }
+    }
+
+    async function _enviarAFacturacionSuministro(id) {
+        const item = suministrosVentas.find(s => s.id === id);
+        if (!item) { _showToast('Registro no encontrado', 'error'); return; }
+        const data = item.data || item;
+        try {
+            await _crearFacturaVinculada(id, data.folio, data.cliente || data.cliente_nombre, data.total);
+            await cotizacionesService.update(id, { estado: 'pagado', estatus_pago: 'Pagado', facturado: true });
+            data.estado = 'pagado';
+            data.estatus_pago = 'Pagado';
+            data.facturado = true;
+            _showToast('Enviado a Facturación correctamente', 'success');
+            _addToFeed('🧾', `Factura vinculada para ${data.folio}`);
+            _renderSuministros();
+        } catch (e) {
+            console.error('[Ventas] Error enviando a facturación:', e);
+            _showToast('Error al enviar a facturación: ' + (e.message || e), 'error');
+        }
+    }
+
+    async function _clienteCanceloSuministro(id) {
+        const item = suministrosVentas.find(s => s.id === id);
+        if (!item) { _showToast('Registro no encontrado', 'error'); return; }
+        const motivo = prompt('Motivo de cancelación (opcional):') || '';
+        if (!confirm('¿El cliente canceló la cotización de suministros? Se cerrará la orden.')) return;
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            const data = item.data || item;
+            const compraId = data.vinculacion?.id;
+            // Cancelar compra vinculada si existe
+            if (compraId) {
+                try {
+                    const comprasService = createDataService('compras');
+                    await comprasService.update(compraId, { estado: 0, estado_interno: 'cancelado' }, csrfToken);
+                } catch (e) { console.warn('[Ventas] Error cancelando compra vinculada:', e); }
+            }
+            await cotizacionesService.update(id, {
+                estado: 'cancelado',
+                confirmacion_cliente: 'cancelado',
+                motivo_cancelacion: motivo,
+                fecha_confirmacion_cliente: new Date().toISOString()
+            }, csrfToken);
+            data.estado = 'cancelado';
+            _showToast('Cotización de suministros cancelada.', 'warning');
+            _addToFeed('❌', `Suministro ${data.folio} cancelado por cliente`);
+            _renderSuministros();
+        } catch (e) {
+            console.error('[Ventas] Error cancelando suministro:', e);
+            _showToast('Error al cancelar: ' + (e.message || e), 'error');
+        }
+    }
+
     function _renderGrafica(items) {
         const canvas = document.getElementById('ventasChart');
         if (!canvas) return;
@@ -2361,16 +2797,49 @@ const VentasModule = (function() {
         const c1 = document.getElementById('opVCountTaller');
         const c2 = document.getElementById('opVCountMotor');
         const c3 = document.getElementById('opVCountAuto');
+        const c4 = document.getElementById('opVCountFacturar');
         if (c1) c1.textContent = '(' + nt + ')';
         if (c2) c2.textContent = '(' + nm + ')';
         if (c3) c3.textContent = '(' + np + ')';
-        let rows = operativasTabVentas === 'motor' ? motores : (operativasTabVentas === 'auto' ? proyectos : taller);
-        rows = (rows || []).filter(_operativaVigenteVentas).slice(0, 50);
         function esc(s) {
             const d = document.createElement('div');
             d.textContent = s == null ? '' : String(s);
             return d.innerHTML;
         }
+        if (operativasTabVentas === 'facturar') {
+            const estadosFacturar = ['reparado', 'terminado', 'entregado', 'listo para facturar', 'completado'];
+            const ft = (taller || []).filter(r => estadosFacturar.includes(String(r.estado || '').toLowerCase()));
+            const fm = (motores || []).filter(r => estadosFacturar.includes(String(r.estado || '').toLowerCase()));
+            const fp = (proyectos || []).filter(r => estadosFacturar.includes(String(r.estado || '').toLowerCase()));
+            const totalF = ft.length + fm.length + fp.length;
+            if (c4) c4.textContent = '(' + totalF + ')';
+            if (!totalF) {
+                list.innerHTML = '<div class="op-empty">Sin órdenes ni proyectos listos para facturar en este momento.</div>';
+                return;
+            }
+            const all = [
+                ...ft.map(r => ({ ...r, _mod: 'taller', _modLabel: 'Laboratorio', _url: '/panel/pages/ssepi_taller.html' })),
+                ...fm.map(r => ({ ...r, _mod: 'motor', _modLabel: 'Motores', _url: '/panel/pages/ssepi_motores.html' })),
+                ...fp.map(r => ({ ...r, _mod: 'auto', _modLabel: 'Automatización', _url: '/panel/pages/ssepi_servicios.html' }))
+            ];
+            list.innerHTML = all.map(function (r) {
+                const folio = r.folio || (r.id && String(r.id).slice(-8)) || '—';
+                const cliente = r.cliente_nombre || r.cliente || r.nombre || '—';
+                const st = r.estado || '—';
+                const id = encodeURIComponent(r.id);
+                const hrefCompras = '/panel/pages/ssepi_compras.html?vincTipo=' + encodeURIComponent(r._mod) + '&vincId=' + id;
+                return '<div class="op-row">' +
+                    '<div><span class="op-badge" style="font-size:10px;background:#f0f0f0;padding:2px 6px;border-radius:4px;margin-right:6px;">' + esc(r._modLabel) + '</span><strong>' + esc(folio) + '</strong> · ' + esc(cliente) + '<br><span class="op-meta">' + esc(st) + '</span></div>' +
+                    '<div class="op-actions">' +
+                    '<a class="btn-ssepi btn-ventas op-link" style="font-size:12px;padding:6px 12px;text-decoration:none;display:inline-block;" href="' + esc(r._url) + '">Abrir módulo</a> ' +
+                    '<a class="btn-ssepi btn-ventas op-link" style="font-size:12px;padding:6px 12px;text-decoration:none;display:inline-block;" href="' + hrefCompras + '">Compras vinculadas</a>' +
+                    '</div></div>';
+            }).join('');
+            return;
+        }
+        if (c4) c4.textContent = '(0)';
+        let rows = operativasTabVentas === 'motor' ? motores : (operativasTabVentas === 'auto' ? proyectos : taller);
+        rows = (rows || []).filter(_operativaVigenteVentas).slice(0, 50);
         if (!rows.length) {
             list.innerHTML = '<div class="op-empty">Sin registros en esta área o aún cargando.</div>';
             return;
@@ -2828,7 +3297,9 @@ const VentasModule = (function() {
     function _eliminarComponente(idx) {
         calculadoraComponentes.splice(idx, 1);
         _renderizarComponentes();
+        _renderWizardBomSeleccionados();
         _recalcular();
+        if (ventasAutosaveCtrl) ventasAutosaveCtrl.schedule();
     }
 
     function _refreshLogisticaFromInputs() {
@@ -3680,11 +4151,22 @@ const VentasModule = (function() {
                     </div>
                 `}
             </div>
-            <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
-                ${(estadoActual === 'entregado' || estadoActual === 'pagado') ? `
+            <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
+                ${(estadoActual === 'esperando_confirmacion' || estadoActual === 'esperando_confirmacion_cliente' || estadoActual === 'pendiente_confirmacion') ? `
+                <button class="btn btn-success" onclick="ventasModule._clienteConfirmo('${id}')">
+                    <i class="fas fa-check-circle"></i> Cliente Confirmó
+                </button>
+                <button class="btn btn-danger" onclick="ventasModule._clienteCancelo('${id}')">
+                    <i class="fas fa-times-circle"></i> Cliente Canceló
+                </button>` : ''}
+                ${(estadoActual === 'entregado' || estadoActual === 'pagado' || estadoActual === 'facturado' || estadoActual === 'reparado') ? `
                 <button class="btn btn-primary" onclick="ventasModule._generarPDFDesdeHistorial('${id}', '${tipo}')">
                     <i class="fas fa-file-pdf"></i> Generar PDF
-                </button>` : ''}
+                </button>
+                ${item && item.orden_origen_id ? `
+                <button class="btn btn-info" onclick="ventasModule._activarGarantia('${item.orden_origen_id}', '${item.origen || 'taller'}')">
+                    <i class="fas fa-shield-alt"></i> Activar Garantía
+                </button>` : ''}` : ''}
                 <button class="btn btn-warning" onclick="ventasModule._editarVenta('${id}', '${tipo}')">
                     <i class="fas fa-edit"></i> Editar
                 </button>
@@ -4072,6 +4554,7 @@ const VentasModule = (function() {
             }
             body.innerHTML = _renderWizardPaso1();
             _attachWizardPaso1();
+            _toggleWizardDeptFields();
         } else if (paso === 2) {
             let horasEst = 0;
             const vid = compraActual?.vinculacion?.id;
@@ -4129,9 +4612,19 @@ const VentasModule = (function() {
 
     function _renderWizardPaso1() {
         var contactosList = contactos || [];
-        var clientesOptions = contactosList.map(function (c) {
+        var clientesOptions = contactosList
+            .filter(function (c) { return c.tipo_ficha !== 'contacto_empresa'; })
+            .map(function (c) {
             var sel = (ventasWizardCerebro && String(ventasWizardCerebro.cliente_id || calculadoraClienteActual?.id) === String(c.id)) ? ' selected' : '';
-            return '<option value="' + c.id + '"' + sel + ' data-nombre="' + (c.nombre || c.empresa || '') + '" data-km="' + (c.km || 0) + '" data-horas="' + (c.horas_viaje || 0) + '" data-email="' + (c.email || '') + '" data-telefono="' + (c.telefono || '') + '" data-rfc="' + (c.rfc || '') + '">' + (c.nombre || c.empresa || c.email || 'Sin nombre') + '</option>';
+            var tabLabel = c.empresa_tabulador || c.empresa || '';
+            var label = tabLabel ? (tabLabel + (c.nombre && c.tipo_ficha === 'empresa' ? '' : (c.nombre ? ' — ' + c.nombre : ''))) : (c.nombre || c.empresa || c.email || 'Sin nombre');
+            return '<option value="' + c.id + '"' + sel
+                + ' data-nombre="' + (c.nombre || c.empresa || '') + '"'
+                + ' data-empresa-tabulador="' + (c.empresa_tabulador || c.empresa || '') + '"'
+                + ' data-tipo-ficha="' + (c.tipo_ficha || '') + '"'
+                + ' data-km="' + (c.km || 0) + '" data-horas="' + (c.horas_viaje || 0) + '"'
+                + ' data-email="' + (c.email || '') + '" data-telefono="' + (c.telefono || '') + '"'
+                + ' data-rfc="' + (c.rfc || '') + '">' + label + '</option>';
         }).join('');
         // Incluir clientes del tabulador que no estén ya en contactos
         var nombresContactos = new Set(contactosList.map(function(c){ return (c.nombre || c.empresa || '').toLowerCase().trim(); }));
@@ -4221,10 +4714,33 @@ const VentasModule = (function() {
                     </div>
                 </div>
 
-                <div class="editor-item" style="margin-top:14px;">
+                <div class="editor-item" id="wizardNombreProductoWrap" style="margin-top:14px;">
                     <label>Nombre del producto / Equipo <span style="color:#c62828;">*</span></label>
                     <input type="text" id="wizardNombreProducto" value="${preProducto}" placeholder="Ej. Sistema de control, Motor trifásico, Tablero eléctrico..." style="width:100%; padding:10px;">
                     <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Requerido para generar la orden.</p>
+                </div>
+
+                <div id="wizardSuministroWrap" style="display:none; margin-top:14px; border:1px solid #e2e8f0; border-radius:8px; padding:12px; background:#f8fafc;">
+                    <div class="calculadora-titulo" style="margin-bottom:8px;"><i class="fas fa-list"></i> Catálogo BOM — Suministros</div>
+                    <p style="font-size:12px; color:var(--text-secondary); margin:0 0 10px 0;">Lista completa del BOM. Agrega ítems con + o captura un componente que no esté en el catálogo.</p>
+                    <input type="search" id="wizardBomBusqueda" placeholder="Buscar por descripción, código o ítem…" style="width:100%; padding:8px; margin-bottom:8px;">
+                    <div style="max-height:220px; overflow:auto; border:1px solid #e2e8f0; border-radius:6px; background:#fff;">
+                        <table class="componentes-table" style="width:100%; font-size:12px;">
+                            <thead><tr><th>Ítem</th><th>Descripción</th><th>Código</th><th></th></tr></thead>
+                            <tbody id="wizardBomListaBody"><tr><td colspan="4">Cargando BOM…</td></tr></tbody>
+                        </table>
+                    </div>
+                    <div style="display:grid; grid-template-columns:2fr 80px 100px auto; gap:8px; margin-top:10px;">
+                        <input type="text" id="wizardBomManualNombre" placeholder="Componente no en BOM (nombre)" style="padding:8px;">
+                        <input type="number" id="wizardBomManualCant" value="1" min="1" style="padding:8px;">
+                        <input type="number" id="wizardBomManualPrecio" placeholder="Precio ref." min="0" step="0.01" style="padding:8px;">
+                        <button type="button" class="btn btn-sm btn-secondary" id="wizardBomManualBtn">Agregar</button>
+                    </div>
+                    <p style="font-size:12px; margin:10px 0 6px; font-weight:600;">Materiales seleccionados <span style="color:#c62828;">*</span></p>
+                    <table class="componentes-table" style="width:100%; font-size:12px;">
+                        <thead><tr><th>Código</th><th>Descripción</th><th>Cant.</th><th></th></tr></thead>
+                        <tbody id="wizardBomSeleccionadosBody"></tbody>
+                    </table>
                 </div>
 
                 <div class="editor-item" style="margin-top:14px;">
@@ -4247,8 +4763,12 @@ const VentasModule = (function() {
                     </div>
                 </div>
                 <div class="editor-item" style="margin-top:10px;">
-                    <label>Vendedor</label>
+                    <label>Vendedor (usuario SSEPI)</label>
                     <input type="text" id="wizardVendedor" value="${currentUserName}" readonly style="width:100%; padding:10px; background:#f5f5f5; color:var(--text-secondary);">
+                </div>
+                <div class="editor-item" style="margin-top:8px;">
+                    <label>Vendedor en empresa (Odoo)</label>
+                    <input type="text" id="wizardVendedorAsociado" readonly placeholder="Se muestra al elegir empresa tabulador" style="width:100%; padding:10px; background:#f5f5f5; color:var(--text-secondary);">
                 </div>
             </div>
         `;
@@ -4346,8 +4866,18 @@ const VentasModule = (function() {
             // VALIDACIÓN DE CAMPOS REQUERIDOS
             if (!clienteId) { _wizardSetPaso1Error('❌ Selecciona un cliente.'); return; }
             if (!fechaIn?.value) { _wizardSetPaso1Error('❌ Indica la fecha de ingreso.'); return; }
-            if (!nombreProducto) { _wizardSetPaso1Error('❌ Ingresa el nombre del producto (requerido para continuar).'); return; }
-            if (!falla) { _wizardSetPaso1Error('❌ Describe la falla o el requerimiento.'); return; }
+            const esSuministro = dept === 'Suministro';
+            if (!esSuministro && !nombreProducto) { _wizardSetPaso1Error('❌ Ingresa el nombre del producto (requerido para continuar).'); return; }
+            if (esSuministro && calculadoraComponentes.length === 0) {
+                _wizardSetPaso1Error('❌ Agrega al menos un material del BOM o un componente manual.');
+                return;
+            }
+            if (!esSuministro && !falla) { _wizardSetPaso1Error('❌ Describe la falla o el requerimiento.'); return; }
+            if (esSuministro && !falla) {
+                const notas = 'Solicitud de suministros — ' + calculadoraComponentes.length + ' material(es)';
+                const fallaEl = document.getElementById('wizardFallaReportada');
+                if (fallaEl) fallaEl.value = notas;
+            }
             if (!dept) { _wizardSetPaso1Error('❌ Selecciona el departamento que recibe el caso.'); return; }
 
             const contacto = contactos.find(c => String(c.id) === String(clienteId));
@@ -4435,14 +4965,10 @@ const VentasModule = (function() {
             }
 
             const servicioAuto = document.getElementById('wizardServicioAutoSelect')?.value || '';
-            // Redirigir a módulo correspondiente si el departamento lo requiere
-            if (creado && creado.redirectTo) {
-                window.location.href = creado.redirectTo;
-                return;
-            }
+            const fallaFinal = (document.getElementById('wizardFallaReportada') || {}).value?.trim() || falla;
             ventasWizardCerebro = {
                 fecha_ingreso: fechaIn.value,
-                falla_reportada: falla,
+                falla_reportada: fallaFinal,
                 prioridad,
                 departamento: dept,
                 cliente_id: clienteId,
@@ -4450,8 +4976,9 @@ const VentasModule = (function() {
                 folio_operativo: creado.folio || null,
                 tipo_vinculo: creado.tipo || null,
                 origen_cotizacion: origenCot,
-                nombre_producto: nombreProducto,
-                servicio_automatizacion: servicioAuto
+                nombre_producto: esSuministro ? ('Suministros (' + calculadoraComponentes.length + ' ítems)') : nombreProducto,
+                servicio_automatizacion: servicioAuto,
+                componentes_suministro: esSuministro ? calculadoraComponentes.slice() : undefined
             };
 
             // Registrar evento en historial inmediatamente al crear orden (paso 1 → 2)
@@ -4548,9 +5075,11 @@ const VentasModule = (function() {
                 wrap.style.display = (dept === 'Automatización' || dept === 'Proyectos' || dept === 'Soporte en planta') ? 'block' : 'none';
             }
 
-            // Cambiar label de falla según departamento
             if (fallaLabel) {
-                if (dept === 'Laboratorio de Electrónica' || dept === 'Taller Motores') {
+                if (dept === 'Suministro') {
+                    fallaLabel.innerHTML = 'Notas de la solicitud <span style="font-weight:normal;color:#64748b;">(opcional)</span>';
+                    if (fallaInput) fallaInput.placeholder = 'Ej. urgencia, entrega en planta, referencia del cliente…';
+                } else if (dept === 'Laboratorio de Electrónica' || dept === 'Taller Motores') {
                     fallaLabel.innerHTML = 'Falla reportada / Descripción del equipo <span style="color:#c62828;">*</span>';
                     if (fallaInput) fallaInput.placeholder = 'Describe la falla, modelo del equipo, número de serie, voltaje, etc.';
                 } else if (dept === 'Automatización' || dept === 'Proyectos' || dept === 'Soporte en planta') {
@@ -4562,7 +5091,7 @@ const VentasModule = (function() {
                 }
             }
 
-            _wizardActualizarAyudaFolio();
+            _toggleWizardDeptFields();
         };
     }
 
@@ -5259,72 +5788,160 @@ const VentasModule = (function() {
         _setupHistoriaComercialTabs();
     }
 
-    // ==================== HISTORIA COMERCIAL (Pendientes vs Emitidas) ====================
+    // ==================== HISTORIA COMERCIAL (Activas vs Cerradas unificadas) ====================
     let comercialTabActual = 'pendientes';
 
     function _renderHistoriaComercial() {
         const container = document.getElementById('historiaComercialContainer');
         if (!container) return;
 
-        // Obtener todas las cotizaciones
-        const todas = Array.isArray(cotizaciones) ? cotizaciones : [];
+        const unified = [];
 
-        // Definir "emitida": enviada, autorizada, o con venta cerrada
-        const estadosPendientes = ['registro', 'Nuevo', 'diagnostico', 'en_diagnostico', 'cotizacion', 'pendiente_autorizacion_ventas'];
-        const estadosEmitidas = ['autorizado', 'autorizada_por_ventas', 'compra', 'en_compra', 'ejecucion', 'en_ejecucion', 'entregado', 'pagado'];
+        // Cotizaciones / Ventas
+        (cotizaciones || []).forEach(function (c) {
+            unified.push({
+                id: c.id,
+                folio: c.folio || (c.id ? String(c.id).slice(-6) : '—'),
+                cliente: c.cliente || '—',
+                estado: String(c.estado || '').toLowerCase(),
+                estadoRaw: c.estado,
+                total: c.total || 0,
+                fecha: c.fecha_creacion || c.fecha || c.created_at,
+                tipo: 'cotizacion',
+                modulo: 'Ventas',
+                moduloKey: 'ventas',
+                url: null
+            });
+        });
 
-        const pendientes = todas.filter(c => estadosPendientes.includes(c.estado));
-        const emitidas = todas.filter(c => estadosEmitidas.includes(c.estado));
+        // Laboratorio (Taller)
+        (taller || []).forEach(function (r) {
+            unified.push({
+                id: r.id,
+                folio: r.folio || (r.id ? String(r.id).slice(-6) : '—'),
+                cliente: r.cliente_nombre || r.cliente || '—',
+                estado: String(r.estado || '').toLowerCase(),
+                estadoRaw: r.estado,
+                total: r.total || r.costo_venta || r.presupuesto || 0,
+                fecha: r.fecha_ingreso || r.fecha_creacion || r.created_at || r.fecha,
+                tipo: 'ordenes_taller',
+                modulo: 'Laboratorio',
+                moduloKey: 'taller',
+                url: '/panel/pages/ssepi_taller.html?open=' + encodeURIComponent(r.id)
+            });
+        });
+
+        // Motores
+        (motores || []).forEach(function (r) {
+            unified.push({
+                id: r.id,
+                folio: r.folio || (r.id ? String(r.id).slice(-6) : '—'),
+                cliente: r.cliente_nombre || r.cliente || '—',
+                estado: String(r.estado || '').toLowerCase(),
+                estadoRaw: r.estado,
+                total: r.total || r.costo_venta || r.presupuesto || 0,
+                fecha: r.fecha_ingreso || r.fecha_creacion || r.created_at || r.fecha,
+                tipo: 'ordenes_motores',
+                modulo: 'Motores',
+                moduloKey: 'motores',
+                url: '/panel/pages/ssepi_motores.html?open=' + encodeURIComponent(r.id)
+            });
+        });
+
+        // Automatización (Proyectos)
+        (proyectos || []).forEach(function (r) {
+            unified.push({
+                id: r.id,
+                folio: r.folio || (r.id ? String(r.id).slice(-6) : '—'),
+                cliente: r.cliente || r.cliente_nombre || r.nombre || '—',
+                estado: String(r.estado || '').toLowerCase(),
+                estadoRaw: r.estado,
+                total: r.total || r.presupuesto || r.costo_venta || 0,
+                fecha: r.fecha_creacion || r.created_at || r.fecha,
+                tipo: 'proyectos_automatizacion',
+                modulo: 'Automatización',
+                moduloKey: 'auto',
+                url: '/panel/pages/ssepi_servicios.html?open=' + encodeURIComponent(r.id)
+            });
+        });
+
+        // Aplicar filtro de fechas
+        const filtradas = unified.filter(_fechaItemEnRango);
+
+        // Clasificar activas vs cerradas
+        const estadosCerrados = ['entregado','pagado','terminado','completado','cancelado','cancelada','facturado','archivado','cerrado'];
+        const activas = filtradas.filter(function (i) { return !estadosCerrados.includes(i.estado); });
+        const cerradas = filtradas.filter(function (i) { return estadosCerrados.includes(i.estado); });
+
+        // Ordenar por fecha descendente
+        activas.sort(function (a, b) { return new Date(b.fecha || 0) - new Date(a.fecha || 0); });
+        cerradas.sort(function (a, b) { return new Date(b.fecha || 0) - new Date(a.fecha || 0); });
 
         if (comercialTabActual === 'pendientes') {
-            _renderComercialPanel('pendientesGrid', pendientes, 'pendiente');
+            _renderHistoriaTable('pendientesGrid', activas, 'activa');
         } else {
-            _renderComercialPanel('emitidasGrid', emitidas, 'emitida');
+            _renderHistoriaTable('emitidasGrid', cerradas, 'cerrada');
         }
     }
 
-    function _renderComercialPanel(gridId, items, tipo) {
+    function _renderHistoriaTable(gridId, items, tipo) {
         const grid = document.getElementById(gridId);
         if (!grid) return;
 
         if (items.length === 0) {
-            grid.innerHTML = `
-                <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--text-muted);">
-                    <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
-                    <p>No hay cotizaciones ${tipo === 'pendiente' ? 'pendientes' : 'emitidas'} en este período.</p>
-                </div>
-            `;
+            grid.innerHTML =
+                '<div style="text-align:center;padding:60px 20px;color:var(--text-muted);">' +
+                '<i class="fas fa-inbox" style="font-size:48px;margin-bottom:16px;opacity:0.3;"></i>' +
+                '<p>No hay órdenes ' + (tipo === 'activa' ? 'activas' : 'cerradas') + ' en este período.</p>' +
+                '<small>Ajusta el rango de fechas para ver más resultados.</small>' +
+                '</div>';
             return;
         }
 
-        grid.innerHTML = items.map(item => {
-            const estadoClass = _getEstadoComercialClass(item.estado);
-            const estadoLabel = _getEstadoComercialLabel(item.estado);
-            const fecha = item.fecha_creacion || item.fecha || '';
-            const fechaStr = fecha ? new Date(fecha).toLocaleDateString('es-MX') : '--/--/----';
+        function esc(s) {
+            var d = document.createElement('div');
+            d.textContent = s == null ? '' : String(s);
+            return d.innerHTML;
+        }
 
-            return `
-                <div class="comercial-card" data-id="${item.id}" data-tipo="cotizacion">
-                    <div class="comercial-card-header">
-                        <span class="comercial-folio">${item.folio || item.id.slice(-6)}</span>
-                        <span class="comercial-estado ${estadoClass}">${estadoLabel}</span>
-                    </div>
-                    <div class="comercial-card-body">
-                        <div class="comercial-cliente">${item.cliente || 'Cliente'}</div>
-                        <div class="comercial-total">$${(item.total || 0).toFixed(2)}</div>
-                    </div>
-                    <div class="comercial-card-footer">
-                        <small><i class="fas fa-calendar"></i> ${fechaStr}</small>
-                        <small><i class="fas fa-user"></i> ${item.vendedor || 'Ventas'}</small>
-                    </div>
-                </div>
-            `;
+        var rows = items.map(function (item) {
+            var estadoClass = _getEstadoComercialClass(item.estadoRaw);
+            var estadoLabel = _getEstadoComercialLabel(item.estadoRaw);
+            var fechaStr = item.fecha ? new Date(item.fecha).toLocaleDateString('es-MX') : '--/--/----';
+            var moduloClass = _getModuloBadgeClass(item.moduloKey);
+            return '<tr class="historia-row" data-id="' + esc(item.id) + '" data-tipo="' + esc(item.tipo) + '" data-url="' + esc(item.url || '') + '">' +
+                '<td><small>' + esc(fechaStr) + '</small></td>' +
+                '<td><strong>' + esc(item.folio) + '</strong></td>' +
+                '<td>' + esc(item.cliente) + '</td>' +
+                '<td><span class="status-badge ' + moduloClass + '">' + esc(item.modulo) + '</span></td>' +
+                '<td><span class="status-badge ' + estadoClass + '">' + esc(estadoLabel) + '</span></td>' +
+                '<td style="text-align:right;">' + esc('$' + (item.total || 0).toFixed(2)) + '</td>' +
+                '<td><button class="btn-ssepi btn-ventas" style="font-size:12px;padding:4px 10px;"><i class="fas fa-eye"></i> Ver</button></td>' +
+                '</tr>';
         }).join('');
 
-        // Bind click events
-        grid.querySelectorAll('.comercial-card').forEach(card => {
-            card.addEventListener('click', () => _abrirDetalle(card.dataset.id, card.dataset.tipo));
+        grid.innerHTML =
+            '<table class="lista-table">' +
+            '<thead><tr><th>Fecha</th><th>Folio</th><th>Cliente</th><th>Módulo</th><th>Estado</th><th style="text-align:right;">Total</th><th>Acción</th></tr></thead>' +
+            '<tbody>' + rows + '</tbody></table>';
+
+        grid.querySelectorAll('.historia-row').forEach(function (row) {
+            row.addEventListener('click', function (e) {
+                var id = this.dataset.id;
+                var tipo = this.dataset.tipo;
+                var url = this.dataset.url;
+                if (url) {
+                    window.location.href = url;
+                } else {
+                    _abrirDetalle(id, tipo);
+                }
+            });
         });
+    }
+
+    function _getModuloBadgeClass(key) {
+        var map = { ventas: 'status-cotizacion', taller: 'status-info', motores: 'status-warning', auto: 'status-success' };
+        return map[key] || 'status-pendiente';
     }
 
     function _getEstadoComercialClass(estado) {
@@ -5382,11 +5999,13 @@ const VentasModule = (function() {
                 const lista = document.getElementById('listaContainer');
                 const comercial = document.getElementById('historiaComercialContainer');
                 const grafica = document.getElementById('graficaContainer');
+                const suministros = document.getElementById('suministrosContainer');
 
                 kanban.style.display = 'none';
                 lista.style.display = 'none';
                 comercial.style.display = 'none';
                 grafica.style.display = 'none';
+                if (suministros) suministros.style.display = 'none';
 
                 if (tabName === 'operativo') {
                     kanban.style.display = 'flex';
@@ -5395,6 +6014,9 @@ const VentasModule = (function() {
                 } else if (tabName === 'comercial') {
                     comercial.style.display = 'block';
                     _renderHistoriaComercial();
+                } else if (tabName === 'suministros') {
+                    if (suministros) suministros.style.display = 'block';
+                    _renderSuministros();
                 } else if (tabName === 'grafica') {
                     grafica.style.display = 'block';
                     vistaActual = 'grafica';
@@ -5541,6 +6163,103 @@ const VentasModule = (function() {
     window.addEventListener('beforeunload', _cleanup);
 
     // ==================== EXPOSICIÓN PÚBLICA ====================
+    // ===== FLUJO COMERCIAL: Confirmación / Cancelación / Garantía =====
+    async function _clienteConfirmo(cotizacionId) {
+        if (!confirm('¿El cliente confirmó la cotización? Se notificará al departamento técnico para proceder.')) return;
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            await cotizacionesService.update(cotizacionId, { estado: 'confirmado', confirmacion_cliente: 'confirmado', fecha_confirmacion_cliente: new Date().toISOString() }, csrfToken);
+            const c = cotizaciones.find(x => x.id === cotizacionId);
+            if (c) await _persistirOrdenTrasConfirmacionCliente(c);
+            if (c && c.orden_origen_id) {
+                const tipoMap = { taller: 'taller', motor: 'motores', proyecto: 'automatizacion', soporte: 'soporte' };
+                const para = tipoMap[c.origen] || c.origen || 'taller';
+                await notificacionesService.insert({
+                    para,
+                    tipo: 'cliente_confirmo',
+                    orden_id: c.orden_origen_id,
+                    cotizacion_id: cotizacionId,
+                    folio: c.folio,
+                    cliente: c.cliente || c.cliente_nombre,
+                    mensaje: `Cliente confirmó cotización ${c.folio}. Proceda con la reparación/ejecución.`,
+                    leido: false,
+                    fecha: new Date().toISOString()
+                }, csrfToken);
+            }
+            _showToast('Cliente confirmó. Departamento técnico notificado.', 'success');
+            _applyFilters();
+        } catch (e) {
+            console.error(e);
+            _showToast('Error al confirmar: ' + e.message, 'error');
+        }
+    }
+
+    async function _clienteCancelo(cotizacionId) {
+        const motivo = prompt('Motivo de cancelación (opcional):') || '';
+        if (!confirm('¿El cliente canceló la cotización? Se cerrará la orden y se cancelará la compra vinculada.')) return;
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            await cotizacionesService.update(cotizacionId, { estado: 'cancelado', confirmacion_cliente: 'cancelado', motivo_cancelacion: motivo, fecha_confirmacion_cliente: new Date().toISOString() }, csrfToken);
+            const c = cotizaciones.find(x => x.id === cotizacionId);
+            if (c && c.orden_origen_id) {
+                // Actualizar orden operativa a Cancelado
+                const tipo = c.origen || 'taller';
+                const tabla = tipo === 'motor' ? 'ordenes_motores' : (tipo === 'proyecto' ? 'proyectos_automatizacion' : (tipo === 'soporte' ? 'soporte_visitas' : 'ordenes_taller'));
+                try { await window.supabase.from(tabla).update({ estado: 'Cancelado' }).eq('id', c.orden_origen_id); } catch (e2) {}
+                // Cancelar compra vinculada
+                try {
+                    const { data: cmp } = await window.supabase.from('compras').select('id').eq('vinculacion->>id', c.orden_origen_id).limit(1).single();
+                    if (cmp) await window.supabase.from('compras').update({ estado: 0, estado_interno: 'cancelado' }).eq('id', cmp.id);
+                } catch (e3) {}
+            }
+            _showToast('Cotización cancelada.', 'warning');
+            _applyFilters();
+        } catch (e) {
+            console.error(e);
+            _showToast('Error al cancelar: ' + e.message, 'error');
+        }
+    }
+
+    async function _activarGarantia(ordenId, tipoOrden) {
+        if (!confirm('¿Activar garantía para esta orden? Se creará una nueva orden en estado Garantía-Diagnóstico.')) return;
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            const tabla = tipoOrden === 'motor' ? 'ordenes_motores' : (tipoOrden === 'proyecto' ? 'proyectos_automatizacion' : (tipoOrden === 'soporte' ? 'soporte_visitas' : 'ordenes_taller'));
+            const { data: orden } = await window.supabase.from(tabla).select('*').eq('id', ordenId).single();
+            if (!orden) { _showToast('Orden no encontrada', 'error'); return; }
+
+            const nuevoFolio = (orden.folio || 'G') + '-G1';
+            const nuevaOrden = { ...orden };
+            delete nuevaOrden.id;
+            delete nuevaOrden.created_at;
+            nuevaOrden.folio = nuevoFolio;
+            nuevaOrden.estado = 'Garantía';
+            nuevaOrden.es_garantia = true;
+            nuevaOrden.garantia_origen_id = ordenId;
+            nuevaOrden.fecha_ingreso = new Date().toISOString();
+            nuevaOrden.notas_generales = (orden.notas_generales || '') + '\n\n[GARANTÍA] Orden activada desde ' + orden.folio;
+
+            const inserted = await window.supabase.from(tabla).insert(nuevaOrden).select().single();
+            if (inserted.data) {
+                await notificacionesService.insert({
+                    para: tipoOrden === 'motor' ? 'motores' : (tipoOrden === 'proyecto' ? 'automatizacion' : 'taller'),
+                    tipo: 'garantia_activada',
+                    orden_id: inserted.data.id,
+                    folio: nuevoFolio,
+                    cliente: orden.cliente_nombre || orden.cliente,
+                    mensaje: `Garantía activada: ${nuevoFolio}. Proceda con diagnóstico.`,
+                    leido: false,
+                    fecha: new Date().toISOString()
+                }, csrfToken);
+                _showToast('Garantía activada: ' + nuevoFolio, 'success');
+                _applyFilters();
+            }
+        } catch (e) {
+            console.error(e);
+            _showToast('Error al activar garantía: ' + e.message, 'error');
+        }
+    }
+
     return {
         init,
         _nuevaCotizacion,
@@ -5567,9 +6286,17 @@ const VentasModule = (function() {
         _mostrarHistorial,
         _eliminarVenta,
         _generarPDFDesdeHistorial,
-        _insertarEventoHistorial,  // Expuesto para otros módulos que registren eventos
-        _getFolioOrdenVinculada,   // Utilidad para obtener folios vinculados
-        _renderKanbanCardsAsync    // Render asíncrono con etiquetas de vinculación
+        _insertarEventoHistorial,
+        _getFolioOrdenVinculada,
+        _renderKanbanCardsAsync,
+        _verPDFSuministro,
+        _descargarPDFSuministro,
+        _confirmarCompraSuministro,
+        _enviarAFacturacionSuministro,
+        _clienteCanceloSuministro,
+        _clienteConfirmo,
+        _clienteCancelo,
+        _activarGarantia
     };
 })();
 

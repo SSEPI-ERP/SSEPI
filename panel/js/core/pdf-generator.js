@@ -622,63 +622,62 @@ export class PDFGenerator {
         };
 
         // ================================================================
-        // PÁGINA 1: MEMBRETE + DATOS BÁSICOS SOLAMENTE
+        // PORTADA (MEMBRETE) – opcional
         // ================================================================
-        let pgNum=1;
-        if (membreteB64) {
-            try { doc.addImage(membreteB64, 'JPEG', 0, 0, PW, PH); }
-            catch(e) { doc.setFillColor(255,255,255); doc.rect(0,0,PW,PH,'F'); }
-        } else {
-            doc.setFillColor(255,255,255); doc.rect(0,0,PW,PH,'F');
-        }
+        let pgNum = 1;
+        let y;
+        const sinPortada = data.sinPortada === true;
+        const partirSecciones = data.partirSecciones === true && imgs.length > 0;
 
-        // ── Datos primera página: layout horizontal (etiqueta + valor misma línea) ──
-        const p1c = DEPTO_P1_COORDS[deptoKey] || DEPTO_P1_COORDS.automatizacion;
-        const P1Y   = p1c.folioY;
-        const P1LX  = ML + 5;       // etiqueta izquierda
-        const P1VX  = ML + 35;      // valor izquierda
-        const P1RLX = Math.round(p1c.xRight - 65);  // etiqueta derecha
-        const P1RVX = Math.round(p1c.xRight - 28);  // valor derecha
-        const AZUL=[0,47,108];
+        if (!sinPortada) {
+            if (membreteB64) {
+                try { doc.addImage(membreteB64, 'JPEG', 0, 0, PW, PH); }
+                catch(e) { doc.setFillColor(255,255,255); doc.rect(0,0,PW,PH,'F'); }
+            } else {
+                doc.setFillColor(255,255,255); doc.rect(0,0,PW,PH,'F');
+            }
 
-        // Fila 1: Folio + Fecha
-        doc.setFont('times','bold'); doc.setFontSize(11); doc.setTextColor(...AZUL);
-        doc.text('Folio:', P1LX, P1Y);
-        doc.text('Fecha:', P1RLX, P1Y);
-        doc.setFont('times','normal'); doc.setFontSize(11); doc.setTextColor(...GR_TXT);
-        doc.text(folio, P1VX, P1Y);
-        doc.text(fecha, P1RVX, P1Y);
+            const p1c = DEPTO_P1_COORDS[deptoKey] || DEPTO_P1_COORDS.automatizacion;
+            const P1Y   = p1c.folioY;
+            const P1LX  = ML + 5;
+            const P1VX  = ML + 35;
+            const P1RLX = Math.round(p1c.xRight - 65);
+            const P1RVX = Math.round(p1c.xRight - 28);
+            const AZUL=[0,47,108];
 
-        // Fila 2: Vendedor + Cliente
-        const P1Y2 = P1Y + 12;
-        doc.setFont('times','bold'); doc.setFontSize(11); doc.setTextColor(...AZUL);
-        doc.text('Vendedor:', P1LX, P1Y2);
-        doc.text('Cliente:', P1RLX, P1Y2);
-        doc.setFont('times','normal'); doc.setFontSize(11); doc.setTextColor(...GR_TXT);
-        doc.text(vendedor||'—', P1VX, P1Y2);
-        doc.text(cliente||'Cliente no especificado', P1RVX, P1Y2);
-
-        // Fila 3: RFC (si aplica)
-        if(rfc){
-            const P1Y3 = P1Y2 + 12;
             doc.setFont('times','bold'); doc.setFontSize(11); doc.setTextColor(...AZUL);
-            doc.text('RFC:', P1LX, P1Y3);
+            doc.text('Folio:', P1LX, P1Y);
+            doc.text('Fecha:', P1RLX, P1Y);
             doc.setFont('times','normal'); doc.setFontSize(11); doc.setTextColor(...GR_TXT);
-            doc.text(rfc, P1VX, P1Y3);
+            doc.text(folio, P1VX, P1Y);
+            doc.text(fecha, P1RVX, P1Y);
+
+            const P1Y2 = P1Y + 12;
+            doc.setFont('times','bold'); doc.setFontSize(11); doc.setTextColor(...AZUL);
+            doc.text('Vendedor:', P1LX, P1Y2);
+            doc.text('Cliente:', P1RLX, P1Y2);
+            doc.setFont('times','normal'); doc.setFontSize(11); doc.setTextColor(...GR_TXT);
+            doc.text(vendedor||'—', P1VX, P1Y2);
+            doc.text(cliente||'Cliente no especificado', P1RVX, P1Y2);
+
+            if(rfc){
+                const P1Y3 = P1Y2 + 12;
+                doc.setFont('times','bold'); doc.setFontSize(11); doc.setTextColor(...AZUL);
+                doc.text('RFC:', P1LX, P1Y3);
+                doc.setFont('times','normal'); doc.setFontSize(11); doc.setTextColor(...GR_TXT);
+                doc.text(rfc, P1VX, P1Y3);
+            }
+
+            doc.setFontSize(8); doc.setTextColor(130,130,130);
+            doc.text('ventas@ssepi.org', ML, PH-12);
+            doc.text('477 737 3118', PW/2, PH-12, {align:'center'});
+            doc.text('www.ssepi.org', PW-MR, PH-12, {align:'right'});
+
+            drawFooter(pgNum);
+            doc.addPage(); pgNum++;
         }
 
-        // Pie de contacto (página 1)
-        doc.setFontSize(8); doc.setTextColor(130,130,130);
-        doc.text('ventas@ssepi.org', ML, PH-12);
-        doc.text('477 737 3118', PW/2, PH-12, {align:'center'});
-        doc.text('www.ssepi.org', PW-MR, PH-12, {align:'right'});
-
-        // ================================================================
-        // SALTO A PÁGINA 2: HEADER + CONTENIDO DEL REPORTE
-        // ================================================================
-        drawFooter(pgNum);
-        doc.addPage(); pgNum++;
-        let y = drawHeader();
+        y = drawHeader();
 
         // Título
         doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(0,47,108);
@@ -687,13 +686,19 @@ export class PDFGenerator {
         y += 13;
 
         // ── Helper drawSection con salto de página inteligente ──
+        let primeraSeccion = true;
         const drawSection=(title, content)=>{
             if(!content) return;
-            if(y+20 > BODY_BOTTOM){
+            if(partirSecciones && !primeraSeccion){
+                drawFooter(pgNum);
+                doc.addPage(); pgNum++;
+                y = drawHeader();
+            } else if(y+20 > BODY_BOTTOM){
                 drawFooter(pgNum);
                 doc.addPage(); pgNum++;
                 y = drawHeader();
             }
+            primeraSeccion = false;
             doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(0,47,108);
             doc.text(title, ML, y);
             y+=6;
@@ -728,7 +733,8 @@ export class PDFGenerator {
                         doc.addPage(); pgNum++;
                         iy = drawHeader();
                     }
-                    doc.addImage(b64, 'JPEG', ix, iy, imgW, imgH);
+                    const fmt = (b64||'').startsWith('data:image/png') ? 'PNG' : 'JPEG';
+                    doc.addImage(b64, fmt, ix, iy, imgW, imgH);
                     doc.setDrawColor(...GR_SEP); doc.setLineWidth(0.3);
                     doc.rect(ix, iy, imgW, imgH, 'S');
                     ix += imgW + gap;

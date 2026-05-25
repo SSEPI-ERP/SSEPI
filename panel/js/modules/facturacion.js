@@ -15,8 +15,12 @@ import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/c
 
 const FacturacionModule = (function() {
     // ==================== ESTADO PRIVADO ====================
-    let ordenesTaller = [];           // órdenes de taller en estado 'Reparado'
-    let ordenesMotores = [];          // órdenes de motores en estado 'Reparado'
+    const ESTADOS_LISTOS_FACTURAR = [
+        'Reparado', 'Reparado / Listo', 'Terminado', 'Entregado',
+        'Listo para facturar', 'Completado', 'completado', 'cerrado'
+    ];
+    let ordenesTaller = [];
+    let ordenesMotores = [];
     let ordenesProyectos = [];        // proyectos automatización listos para facturar
     let ventas = [];                  // ventas pagadas (para consultar clientes)
     let contactos = [];               // contactos (para datos fiscales)
@@ -170,19 +174,19 @@ const FacturacionModule = (function() {
         const sb = _supabase();
         if (!sb) return;
 
-        // Órdenes de taller en estado "Reparado"
+        // Órdenes de taller listas para facturar
         const subTaller = sb
             .channel('taller_facturacion')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes_taller', filter: 'estado=eq.Reparado' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes_taller', filter: 'estado=in.(Reparado,"Reparado / Listo",Terminado,Entregado,"Listo para facturar",Completado)' }, () => {
                 _loadTaller();
             })
             .subscribe();
         subscriptions.push(subTaller);
 
-        // Órdenes de motores en estado "Reparado"
+        // Órdenes de motores listas para facturar
         const subMotores = sb
             .channel('motores_facturacion')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes_motores', filter: 'estado=eq.Reparado' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ordenes_motores', filter: 'estado=in.(Reparado,"Reparado / Listo",Terminado,Entregado,"Listo para facturar",Completado)' }, () => {
                 _loadMotores();
             })
             .subscribe();
@@ -308,7 +312,7 @@ const FacturacionModule = (function() {
         const { data, error } = await supabase
             .from('ordenes_taller')
             .select('*')
-            .eq('estado', 'Reparado')
+            .in('estado', ESTADOS_LISTOS_FACTURAR)
             .order('fecha_reparacion', { ascending: false });
         if (error) console.error(error);
         else {
@@ -323,7 +327,7 @@ const FacturacionModule = (function() {
         const { data, error } = await supabase
             .from('ordenes_motores')
             .select('*')
-            .eq('estado', 'Reparado')
+            .in('estado', ESTADOS_LISTOS_FACTURAR)
             .order('fecha_reparacion', { ascending: false });
         if (error) console.error(error);
         else {
@@ -565,7 +569,7 @@ const FacturacionModule = (function() {
         });
 
         if (html === '') {
-            html = '<tr><td colspan="7" style="text-align:center; padding:40px;">No hay registros</td></tr>';
+            html = '<tr><td colspan="7" style="text-align:center; padding:40px;">No hay órdenes listas para facturar.<br><small style="color:#999;">Estados considerados: Reparado, Terminado, Entregado, Listo para facturar</small></td></tr>';
         }
         tbody.innerHTML = html;
     }

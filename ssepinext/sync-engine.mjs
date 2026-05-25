@@ -8,8 +8,7 @@ const TABLES_TO_SYNC = [
   'actividades_diarias','actividades_historial','actividades_subtareas',
   'clientes_adeudos','notificaciones','suministros_items',
   'soporte_visitas','ingresos_contabilidad','bom_automatizacion',
-  'calculadoras','calculadora_costos','calculadora_clientes',
-  'calculadora_hoja_filas','servicios_automatizacion',
+  'calculadoras','calculadora_costos','servicios_automatizacion',
   'parametros_costos','clientes_tabulador','estado_pipeline_unificado',
   'pagos_nomina'
 ];

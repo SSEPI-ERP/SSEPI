@@ -379,7 +379,10 @@ CREATE TABLE soporte_visitas (
   pruebas_realizadas TEXT,
   recomendaciones TEXT,
   observaciones_cliente TEXT,
-  estado TEXT DEFAULT 'confirmacion' CHECK (estado IN ('confirmacion', 'proyecto', 'cancelado')),
+  estado TEXT DEFAULT 'confirmacion' CHECK (estado IN ('confirmacion', 'Registrado', 'Nuevo', 'Diagnóstico', 'Esperando Cotización', 'Esperando Confirmación Cliente', 'Confirmado', 'En reparación', 'progreso', 'Reparado', 'Reparado / Listo', 'Completado', 'completado', 'Entregado', 'Facturado', 'cancelado', 'Cancelado', 'garantia', 'Garantía')),
+  numero_visita INTEGER DEFAULT 1,
+  es_garantia BOOLEAN DEFAULT false,
+  garantia_origen_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   created_by UUID REFERENCES profiles(id),
@@ -416,7 +419,7 @@ CREATE TABLE proyectos_automatizacion (
   materiales JSONB,
   epicas JSONB,
   apartados JSONB,
-  estado TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'progreso', 'completado', 'cancelado')),
+  estado TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'Registrado', 'Nuevo', 'Diagnóstico', 'progreso', 'levantamiento', 'Esperando Cotización', 'Esperando Confirmación Cliente', 'Confirmado', 'En ejecución', 'ejecucion', 'desarrollo', 'Reparado', 'Reparado / Listo', 'Completado', 'completado', 'Entregado', 'Facturado', 'cancelado', 'Cancelado', 'garantia', 'Garantía')),
   etapa_actual INTEGER DEFAULT 1,
   avance INTEGER DEFAULT 0,
   fechas_etapas JSONB,
@@ -424,6 +427,8 @@ CREATE TABLE proyectos_automatizacion (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   created_by UUID REFERENCES profiles(id),
+  es_garantia BOOLEAN DEFAULT false,
+  garantia_origen_id UUID,
   hash TEXT
 );
 
@@ -467,7 +472,7 @@ CREATE TABLE ordenes_taller (
   consumibles_usados JSONB,
   componentes_inventario JSONB,
   componentes_compra JSONB,
-  estado TEXT DEFAULT 'Nuevo' CHECK (estado IN ('Nuevo', 'Diagnóstico', 'En Espera', 'Reparado', 'Entregado', 'Facturado')),
+  estado TEXT DEFAULT 'Nuevo' CHECK (estado IN ('Nuevo', 'Registrado', 'Diagnóstico', 'En Espera', 'Esperando Cotización', 'Esperando Confirmación Cliente', 'Confirmado', 'En reparación', 'Reparado', 'Reparado / Listo', 'Entregado', 'Facturado', 'Cancelado', 'Garantía')),
   fecha_reparacion TIMESTAMPTZ,
   fecha_entrega TIMESTAMPTZ,
   recibe_nombre TEXT,
@@ -483,6 +488,8 @@ CREATE TABLE ordenes_taller (
   fecha_envio_compra TIMESTAMPTZ,
   sin_reparacion BOOLEAN DEFAULT false,
   fecha_sin_reparacion TIMESTAMPTZ,
+  es_garantia BOOLEAN DEFAULT false,
+  garantia_origen_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   created_by UUID REFERENCES profiles(id),
@@ -529,7 +536,7 @@ CREATE TABLE ordenes_motores (
   consumibles_usados JSONB,
   componentes_inventario JSONB,
   componentes_compra JSONB,
-  estado TEXT DEFAULT 'Nuevo' CHECK (estado IN ('Nuevo', 'Diagnóstico', 'En Espera', 'Reparado', 'Entregado', 'Facturado')),
+  estado TEXT DEFAULT 'Nuevo' CHECK (estado IN ('Nuevo', 'Registrado', 'Diagnóstico', 'En Espera', 'Esperando Cotización', 'Esperando Confirmación Cliente', 'Confirmado', 'En reparación', 'Reparado', 'Reparado / Listo', 'Entregado', 'Facturado', 'Cancelado', 'Garantía')),
   fecha_reparacion TIMESTAMPTZ,
   fecha_entrega TIMESTAMPTZ,
   recibe_nombre TEXT,
@@ -544,6 +551,8 @@ CREATE TABLE ordenes_motores (
   fecha_envio_compra TIMESTAMPTZ,
   sin_reparacion BOOLEAN DEFAULT false,
   fecha_sin_reparacion TIMESTAMPTZ,
+  es_garantia BOOLEAN DEFAULT false,
+  garantia_origen_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   created_by UUID REFERENCES profiles(id),
@@ -560,10 +569,11 @@ CREATE TABLE compras (
   departamento TEXT,
   fecha_requerida DATE,
   prioridad TEXT DEFAULT 'Normal',
-  vinculacion JSONB, -- { tipo: 'taller'|'motor'|'proyecto', id: UUID, nombre: cliente }
+  vinculacion JSONB, -- { tipo: 'taller'|'motor'|'proyecto'|'suministro', id: UUID, nombre: cliente }
   items JSONB,
   total NUMERIC(12,2) DEFAULT 0,
-  estado INTEGER DEFAULT 1, -- 1: Solicitud, 2: Cotización, 3: Confirmada, 4: Recibida, 5: Entregada
+  estado INTEGER DEFAULT 1, -- 0: Borrador, 1: Solicitud, 2: Cotización, 3: Confirmada, 4: Recibida, 5: Entregada
+  estado_interno TEXT, -- esperando_diagnostico | esperando_cotizacion | cotizado_enviado_ventas | cancelado
   pasos JSONB,
   confirmado_ventas BOOLEAN DEFAULT false,
   fecha_creacion TIMESTAMPTZ DEFAULT NOW(),
@@ -615,6 +625,9 @@ CREATE TABLE cotizaciones (
   origen TEXT, -- 'taller'|'motor'|'proyecto'|'directo'
   orden_origen_id UUID,
   vendedor TEXT,
+  confirmacion_cliente TEXT DEFAULT 'pendiente',
+  fecha_confirmacion_cliente TIMESTAMPTZ,
+  motivo_cancelacion TEXT,
   fecha_creacion TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -687,6 +700,7 @@ CREATE TABLE facturas (
   total NUMERIC(12,2),
   uuid_cfdi TEXT UNIQUE,
   estatus TEXT DEFAULT 'activa',
+  estado TEXT DEFAULT 'borrador', -- borrador | emitida | cancelada
   pdf_url TEXT,
   xml_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),

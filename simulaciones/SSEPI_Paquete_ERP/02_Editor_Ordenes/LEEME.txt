@@ -1,0 +1,22 @@
+EDITOR DE ÓRDENES DE REPARACIÓN
+===============================
+
+Archivos en esta carpeta (copia de referencia; fuente viva en carpeta padre):
+
+  editor_ordenes.html   — Interfaz web
+  servidor_local.py     — Servidor puerto 8765 + API /api/guardar-orden
+  limpiar_datos.py      — Genera datos_ordenes_editables.json desde reportes\
+  iniciar_servidor.bat  — Arranque (libera puerto 8765)
+
+Datos en carpeta padre escaner de imagenes\:
+  datos_ordenes_editables.json  (el editor guarda aquí)
+  datos_reportes_ocr.json
+  reportes\  (imágenes por orden)
+
+Uso:
+  Desde paquete: ..\INICIAR_EDITOR.bat
+  URL: http://TU_IP:8765/editor_ordenes.html
+
+Tras nuevos reportes escaneados:
+  cd ..\..
+  python limpiar_datos.py

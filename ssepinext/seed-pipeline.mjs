@@ -26,8 +26,8 @@ async function seedPipeline() {
     total: 8700,
     notas: 'Cotización por reparación de variador de frecuencia ABB ACS580. Diagnóstico: falla OVERCURRENT en arranque.',
     fecha: '2026-04-18',
-    vendedor: 'Norberto Moro',
-    departamento: 'Taller Electrónica'
+    vendedor: 'Ing. Roberto Sánchez',
+    departamento: 'Laboratorio de Electrónica'
   };
   const cot1 = await stmtCotizaciones.insert(null, cotTaller1);
   console.log(`[Pipeline] Cotización: ${cotTaller1.folio} → SP-E2605001`);
@@ -43,7 +43,7 @@ async function seedPipeline() {
     origen: 'taller',
     orden_origen_folio: 'SP-E2605001',
     fecha: '2026-04-19',
-    vendedor: 'Norberto Moro',
+    vendedor: 'Ing. Roberto Sánchez',
     notas: 'Venta vinculada a orden de taller SP-E2605001. Variador ABB ACS580 reparado y entregado.'
   };
   const v1 = await stmtVentas.insert(null, ventaTaller1);
@@ -91,8 +91,8 @@ async function seedPipeline() {
     total: 14500,
     notas: 'Reparación PLC Allen-Bradley L33ER. Pérdida de comunicación PROFINET intermitente.',
     fecha: '2026-04-23',
-    vendedor: 'Norberto Moro',
-    departamento: 'Taller Electrónica'
+    vendedor: 'Ing. Roberto Sánchez',
+    departamento: 'Laboratorio de Electrónica'
   };
   await stmtCotizaciones.insert(null, cotTaller2);
   console.log(`[Pipeline] Cotización: ${cotTaller2.folio} → SP-E2605002`);
@@ -107,7 +107,7 @@ async function seedPipeline() {
     origen: 'taller',
     orden_origen_folio: 'SP-E2605002',
     fecha: '2026-04-24',
-    vendedor: 'Norberto Moro',
+    vendedor: 'Ing. Roberto Sánchez',
     notas: 'Venta vinculada a SP-E2605002. PLC reparado y entregado.'
   };
   await stmtVentas.insert(null, ventaTaller2);

@@ -25,7 +25,7 @@ async function seedOrdenesMotores() {
     notas_internas: 'Diagnóstico: Aislamiento del estator degradado (Índice de polaridad 1.8). Devinado U1-U2 con cortocircuito intervuelta en ranuras 12-15. Se rebobinó estator con alambre magneto AWG 12. Se reemplazó rodamiento 6314-2RS ambos lados. Se aplicó barniz de impregnación epóxica clase H. Prueba de vacío: 2.5kV durante 60s sin fuga.',
     notas_generales: 'Garantía de 12 meses en rebobinado. Se recomienda instalar protector térmico bimetálico en devanado. Verificar alineación con bomba centrífuga.',
     tecnico_responsable: 'Ing. Mario Hernández',
-    encargado_recepcion: 'Norberto Moro',
+    encargado_recepcion: 'Ing. Roberto Sánchez',
     prioridad: 'alta',
     fecha_ingreso: '2026-05-10T08:00',
     fecha_entrega: '2026-05-24T14:00',
@@ -34,7 +34,10 @@ async function seedOrdenesMotores() {
     horas_estimadas: 24,
     horas_invertido: 22,
     tiempo_entrega_dias: 14,
-    refacciones_enlaces: [],
+    refacciones_enlaces: [
+      { descripcion: 'Alambre magneto AWG 12 clase H (rollo 5kg)', cantidad: 1, costo: 3200, link: 'https://www.magnetwire.com/awg12' },
+      { descripcion: 'Rodamiento WEG 6314-2RS (par)', cantidad: 1, costo: 1850, link: 'https://www.weg.net/products/xxxxx' }
+    ],
     refacciones_inventario: [
       { descripcion: 'Alambre magneto AWG 12 clase H (rollo 5kg)', cantidad: 1, costo: 3200 },
       { descripcion: 'Rodamiento WEG 6314-2RS (par)', cantidad: 1, costo: 1850 }
@@ -43,7 +46,10 @@ async function seedOrdenesMotores() {
       { descripcion: 'Barniz de impregnación epóxica 1L', cantidad: 1, costo: 420 },
       { descripcion: 'Papel Nomex 410 0.25mm (rollo)', cantidad: 1, costo: 650 }
     ],
-    diagnosticoEnlaces: [],
+    diagnosticoEnlaces: [
+      { descripcion: 'Alambre magneto AWG 12 clase H (rollo 5kg)', cantidad: 1, costo: 3200, link: 'https://www.magnetwire.com/awg12' },
+      { descripcion: 'Rodamiento WEG 6314-2RS (par)', cantidad: 1, costo: 1850, link: 'https://www.weg.net/products/xxxxx' }
+    ],
     diagnosticoInventario: [
       { descripcion: 'Alambre magneto AWG 12 clase H (rollo 5kg)', cantidad: 1, costo: 3200 },
       { descripcion: 'Rodamiento WEG 6314-2RS (par)', cantidad: 1, costo: 1850 }
@@ -52,10 +58,22 @@ async function seedOrdenesMotores() {
       { descripcion: 'Barniz de impregnación epóxica 1L', cantidad: 1, costo: 420 },
       { descripcion: 'Papel Nomex 410 0.25mm (rollo)', cantidad: 1, costo: 650 }
     ],
-    componentes_inventario: [],
-    componentes_compra: [],
-    componentesInventario: [],
-    componentesCompra: [],
+    componentes_inventario: [
+      { descripcion: 'Barniz de impregnación epóxica 1L', cantidad: 1, costo: 420 },
+      { descripcion: 'Papel Nomex 410 0.25mm (rollo)', cantidad: 1, costo: 650 }
+    ],
+    componentes_compra: [
+      { descripcion: 'Protector térmico bimetálico 155°C', cantidad: 3, costo_unitario: 180, subtotal: 540 },
+      { descripcion: 'Kit de sellos laberinto eje 60mm', cantidad: 1, costo_unitario: 320, subtotal: 320 }
+    ],
+    componentesInventario: [
+      { descripcion: 'Barniz de impregnación epóxica 1L', cantidad: 1, costo: 420 },
+      { descripcion: 'Papel Nomex 410 0.25mm (rollo)', cantidad: 1, costo: 650 }
+    ],
+    componentesCompra: [
+      { descripcion: 'Protector térmico bimetálico 155°C', cantidad: 3, costo_unitario: 180, subtotal: 540 },
+      { descripcion: 'Kit de sellos laberinto eje 60mm', cantidad: 1, costo_unitario: 320, subtotal: 320 }
+    ],
     componentes_extras: [
       { descripcion: 'Protector térmico bimetálico 155°C', cantidad: 3, costo_unitario: 180, subtotal: 540 },
       { descripcion: 'Kit de sellos laberinto eje 60mm', cantidad: 1, costo_unitario: 320, subtotal: 320 }
@@ -94,7 +112,7 @@ async function seedOrdenesMotores() {
     notas_internas: 'Diagnóstico: Bobinado de armadura con corto a masa en segmento 8 del conmutador. Campo shunt con resistencia fuera de tolerancia (+18%). Se rebobinó armadura con alambre redondo AWG 15. Se reparó conmutador (fresado y ranurado). Se ajustó campo shunt a valores nominales. Se reemplazaron escobillas EG319 por E46F3.',
     notas_generales: 'Garantía de 6 meses. Se recomienda limpiar ventilador mensualmente debido a polvo de grano. Verificar que el drive DC tenga protección de sobre-corrente ajustada a 125%.',
     tecnico_responsable: 'Ing. Mario Hernández',
-    encargado_recepcion: 'Norberto Moro',
+    encargado_recepcion: 'Ing. Roberto Sánchez',
     prioridad: 'media',
     fecha_ingreso: '2026-05-05T10:30',
     fecha_entrega: '2026-05-19T11:00',
@@ -103,7 +121,10 @@ async function seedOrdenesMotores() {
     horas_estimadas: 18,
     horas_invertido: 16,
     tiempo_entrega_dias: 12,
-    refacciones_enlaces: [],
+    refacciones_enlaces: [
+      { descripcion: 'Alambre magneto redondo AWG 15 (rollo 3kg)', cantidad: 1, costo: 2100, link: 'https://www.magnetwire.com/awg15' },
+      { descripcion: 'Escobillas E46F3 (par)', cantidad: 2, costo: 480, link: 'https://www.carbonbrushes.com/e46f3' }
+    ],
     refacciones_inventario: [
       { descripcion: 'Alambre magneto redondo AWG 15 (rollo 3kg)', cantidad: 1, costo: 2100 },
       { descripcion: 'Escobillas E46F3 (par)', cantidad: 2, costo: 480 }
@@ -112,7 +133,10 @@ async function seedOrdenesMotores() {
       { descripcion: 'Barniz impregnación poliéster 500ml', cantidad: 1, costo: 280 },
       { descripcion: 'Lija conmutador 400grit (paquete)', cantidad: 1, costo: 95 }
     ],
-    diagnosticoEnlaces: [],
+    diagnosticoEnlaces: [
+      { descripcion: 'Alambre magneto redondo AWG 15 (rollo 3kg)', cantidad: 1, costo: 2100, link: 'https://www.magnetwire.com/awg15' },
+      { descripcion: 'Escobillas E46F3 (par)', cantidad: 2, costo: 480, link: 'https://www.carbonbrushes.com/e46f3' }
+    ],
     diagnosticoInventario: [
       { descripcion: 'Alambre magneto redondo AWG 15 (rollo 3kg)', cantidad: 1, costo: 2100 },
       { descripcion: 'Escobillas E46F3 (par)', cantidad: 2, costo: 480 }
@@ -121,9 +145,15 @@ async function seedOrdenesMotores() {
       { descripcion: 'Barniz impregnación poliéster 500ml', cantidad: 1, costo: 280 },
       { descripcion: 'Lija conmutador 400grit (paquete)', cantidad: 1, costo: 95 }
     ],
-    componentes_inventario: [],
+    componentes_inventario: [
+      { descripcion: 'Barniz impregnación poliéster 500ml', cantidad: 1, costo: 280 },
+      { descripcion: 'Lija conmutador 400grit (paquete)', cantidad: 1, costo: 95 }
+    ],
     componentes_compra: [],
-    componentesInventario: [],
+    componentesInventario: [
+      { descripcion: 'Barniz impregnación poliéster 500ml', cantidad: 1, costo: 280 },
+      { descripcion: 'Lija conmutador 400grit (paquete)', cantidad: 1, costo: 95 }
+    ],
     componentesCompra: [],
     componentes_extras: [],
     reparacion_notas: 'Rebobinado de armadura DC 7.5HP. Corto a masa en segmento 8 reparado. Fresado de conmutador y ranurado. Ajuste de bobinado de campo shunt. Sin componentes extras.',

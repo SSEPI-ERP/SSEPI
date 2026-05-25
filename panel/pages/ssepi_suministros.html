@@ -23,7 +23,11 @@
     <script src="/panel/js/core/nav-by-role.js?v=2"></script>
     <script src="/panel/js/core/folio-formats.js?v=2"></script>
     <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script type="module" src="/panel/js/modules/suministros.js?v=2"></script>
+    <script type="module" src="/panel/js/core/n8n-status.js?v=2"></script>
+    <script type="module" src="/panel/js/core/n8n-insights-panel.js?v=2"></script>
 </head>
 <body class="page-suministros nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -132,11 +136,11 @@
             <div class="cotizacion-form">
                 <div class="form-row">
                     <div class="form-group"><label>Cliente</label><select id="cotCliente" class="form-control"></select></div>
-                    <div class="form-group"><label>Folio</label><input type="text" id="cotFolio" class="form-control" readonly placeholder="Se genera al guardar"></div>
+                    <div class="form-group"><label>Folio</label><input type="text" id="cotFolio" class="form-control" placeholder="Auto-generado"></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Días de gestión</label><input type="number" id="cotDias" class="form-control" value="1" min="1"></div>
-                    <div class="form-group"><label>Km recorrido</label><input type="number" id="cotKm" class="form-control" value="0" min="0"></div>
+                    <div class="form-group" style="display:none;"><label>Km recorrido (interno)</label><input type="number" id="cotKm" class="form-control" value="0" min="0"></div>
                     <div class="form-group"><label>Utilidad (%)</label><input type="number" id="cotUtilidad" class="form-control" value="40" min="0" max="200"></div>
                 </div>
                 <div class="form-row">
@@ -172,7 +176,7 @@
                 <h2><i class="fas fa-list"></i> Historial de Cotizaciones</h2>
             </div>
             <table class="data-table" id="cotizacionesTabla">
-                <thead><tr><th>Folio</th><th>Cliente</th><th>Items</th><th>Total</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
+                <thead><tr><th>Folio</th><th>Cliente</th><th>Items</th><th>Total</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
                 <tbody id="cotizacionesBody"></tbody>
             </table>
         </section>

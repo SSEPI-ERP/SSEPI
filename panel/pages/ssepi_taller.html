@@ -44,6 +44,8 @@
     <script type="module" src="/panel/js/core/pdf-generator.js?v=2"></script>
     <script type="module" src="/panel/js/modules/actividades.js?v=2"></script>
     <script type="module" src="/panel/js/modules/taller.js?v=2"></script>
+    <script type="module" src="/panel/js/core/n8n-status.js?v=2"></script>
+    <script type="module" src="/panel/js/core/n8n-insights-panel.js?v=2"></script>
 </head>
 <body class="page-taller nav-loading">
 <script>(function(){ var t=localStorage.getItem('sb-offline-token')||sessionStorage.getItem('sb-offline-token-sess'); if(!t){window.location.href='/panel/login.html';} })();</script>
@@ -122,15 +124,20 @@
                 <label>Estado:</label>
                 <select id="filtroEstado">
                     <option value="todos">Todos</option>
+                    <option value="Registrado">Registrado</option>
                     <option value="Nuevo">Nuevo</option>
-                    <option value="Confirmado">Confirmado</option>
                     <option value="Diagnóstico">Diagnóstico</option>
+                    <option value="Esperando Cotización">Esperando Cotización</option>
                     <option value="En Espera">En Espera</option>
+                    <option value="Esperando Confirmación Cliente">Esperando Confirmación Cliente</option>
+                    <option value="Confirmado">Confirmado</option>
                     <option value="En reparación">En reparación</option>
                     <option value="Reparado">Reparado</option>
+                    <option value="Reparado / Listo">Reparado / Listo</option>
                     <option value="Entregado">Entregado</option>
                     <option value="Facturado">Facturado</option>
                     <option value="Cancelado">Cancelado</option>
+                    <option value="Garantía">Garantía</option>
                 </select>
             </div>
             <div class="filtro-grupo">
@@ -262,6 +269,9 @@
                 <button type="button" class="btn-primary ws-print-btn" id="btnReportePDFTaller" title="Generar reporte de servicio técnico en PDF con membrete institucional">
                     <i class="fas fa-file-pdf"></i> Reporte PDF
                 </button>
+                <button type="button" class="btn-primary ws-print-btn hidden" id="btnReporteParcialTaller" title="Generar reporte sin portada y por secciones">
+                    <i class="fas fa-file-pdf"></i> Reporte Parcial
+                </button>
                 <button type="button" class="btn-secondary ws-print-btn" id="btnVistaPreviaReporteTaller" title="Vista previa del reporte de servicio">
                     <i class="fas fa-eye"></i> Ver reporte
                 </button>
@@ -311,7 +321,7 @@
                         <div class="input-group"><label>Falla reportada</label><textarea id="inpFail" rows="2"></textarea></div>
                         <div class="input-group"><label>Condiciones físicas</label><textarea id="inpCond" rows="2"></textarea></div>
                         <div class="form-grid">
-                            <div class="input-group"><label>Encargado de recepción</label><input type="text" id="inpReceptionBy"></div>
+                            <div class="input-group"><label>Encargado de recepción</label><select id="inpReceptionBy"><option value="">Seleccionar</option></select></div>
                             <div class="input-group"><label><input type="checkbox" id="inpUnderWarranty"> ¿Bajo garantía?</label></div>
                         </div>
                         <div class="input-group">
@@ -363,35 +373,38 @@
 
                         <h4>Refacciones con enlace externo</h4>
                         <table class="tabla-diagnostico" id="tablaEnlaces">
-                            <thead><tr><th>Descripción</th><th>SKU</th><th>Cantidad</th><th>Link</th><th></th></tr></thead>
+                            <thead><tr><th>Nombre</th><th>Descripción</th><th>SKU</th><th>Cantidad</th><th>Link</th><th></th></tr></thead>
                             <tbody id="diagnosticoEnlacesBody"></tbody>
                         </table>
                         <button class="btn-add-row" id="addEnlaceBtn"><i class="fas fa-plus"></i> Agregar refacción con enlace</button>
 
                         <h4>Refacciones desde inventario</h4>
                         <table class="tabla-diagnostico">
-                            <thead><tr><th>SKU</th><th>Descripción</th><th>Stock disp.</th><th>Cantidad</th><th></th></tr></thead>
+                            <thead><tr><th>SKU</th><th>Nombre</th><th>Descripción</th><th>Stock disp.</th><th>Cantidad</th><th></th></tr></thead>
                             <tbody id="diagnosticoInventarioBody"></tbody>
                         </table>
                         <button class="btn-add-row" id="addInventarioBtn"><i class="fas fa-plus"></i> Agregar desde inventario</button>
 
-                        <div style="display:flex; gap:15px; justify-content:flex-end; margin-top:30px;">
+                        <div style="display:flex; gap:15px; justify-content:flex-end; margin-top:30px; flex-wrap: wrap;">
                             <button class="btn-etapa" id="terminarEtapa2" data-etapa="2"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
-                            <button class="btn-primary" id="generarCompraBtn"><i class="fas fa-shopping-cart"></i> Generar Solicitud de Compra</button>
+                            <button class="btn-primary" id="generarCompraBtn"><i class="fas fa-paper-plane"></i> Enviar Lista de Refacciones a Compras</button>
                             <button class="btn-secondary" id="sinReparacionBtn" style="background:#f59e0b; color:white;"><i class="fas fa-ban"></i> Sin reparación</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- PASO 3: EN ESPERA -->
+                <!-- PASO 3: ESPERANDO CONFIRMACION CLIENTE -->
                 <div id="step-3" class="step-content">
                     <div class="form-section">
-                        <div class="section-title-form"><i class="fas fa-hourglass-half"></i> En Espera</div>
-                        <p>La orden está en espera. Puede deberse a falta de componentes o decisión del cliente.</p>
+                        <div class="section-title-form"><i class="fas fa-hourglass-half"></i> Esperando Confirmación del Cliente</div>
+                        <p>La lista de refacciones fue enviada a Compras para cotización. Compras cotizará con proveedores y enviará los precios a Ventas. Ventas calculará el precio final y presentará la cotización al cliente. La orden no puede avanzar hasta que el cliente confirme el servicio.</p>
                         <div class="info-compra" id="infoCompraEspera"></div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
-                            <div><strong>Fecha de inicio de espera:</strong> <span id="fechaEsperaDisplay"></span></div>
-                            <button class="btn-etapa" id="terminarEtapa3" data-etapa="3"><i class="fas fa-flag-checkered"></i> Continuar</button>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; flex-wrap:wrap; gap:10px;">
+                            <div><strong>Fecha de envío a Compras:</strong> <span id="fechaEsperaDisplay"></span></div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="btn-etapa" id="terminarEtapa3" data-etapa="3" disabled style="opacity:0.5;"><i class="fas fa-lock"></i> Esperando confirmación...</button>
+                                <button class="btn-etapa" id="btnClienteConfirmadoTaller" style="background:#10b981; color:white; display:none;"><i class="fas fa-check-circle"></i> Cliente confirmó — Avanzar a Reparación</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -433,13 +446,13 @@
 
                         <h4>Componentes usados desde inventario</h4>
                         <table class="componentes-table">
-                            <thead><tr><th>SKU</th><th>Descripción</th><th>Solicitado</th><th>Usado</th><th></th></tr></thead>
+                            <thead><tr><th>SKU</th><th>Nombre</th><th>Descripción</th><th>Solicitado</th><th>Usado</th><th></th></tr></thead>
                             <tbody id="componentesInventarioBody"></tbody>
                         </table>
 
                         <h4>Componentes desde compra</h4>
                         <table class="componentes-table">
-                            <thead><tr><th>Descripción</th><th>SKU</th><th>Recibido</th><th>Usado</th><th></th></tr></thead>
+                            <thead><tr><th>Nombre</th><th>Descripción</th><th>SKU</th><th>Recibido</th><th>Usado</th><th></th></tr></thead>
                             <tbody id="componentesCompraBody"></tbody>
                         </table>
 
@@ -455,11 +468,12 @@
                             <div class="section-title-form" style="font-size:15px; margin-bottom:10px; color:#92400e;"><i class="fas fa-plus-circle"></i> Componentes extras (costo adicional)</div>
                             <p style="font-size:12px; color:#92400e; margin-bottom:10px;">Estos componentes generan un costo extra que se suma automáticamente a la cotización / facturación.</p>
                             <table class="componentes-table">
-                                <thead><tr><th>Descripción</th><th>Cantidad</th><th>Costo unitario ($)</th><th>Subtotal ($)</th><th></th></tr></thead>
+                                <thead><tr><th>Nombre</th><th>Descripción</th><th>Cantidad</th><th>Costo unitario ($)</th><th>Subtotal ($)</th><th></th></tr></thead>
                                 <tbody id="componentesExtrasBody"></tbody>
                             </table>
                             <div style="display:flex; gap:10px; margin-top:10px;">
-                                <input type="text" id="extraDescInput" placeholder="Descripción del componente" style="flex:1; padding:8px;">
+                                <input type="text" id="extraNombreInput" placeholder="Nombre del componente" style="flex:1; padding:8px;">
+                                <input type="text" id="extraDescInput" placeholder="Descripción" style="flex:1; padding:8px;">
                                 <input type="number" id="extraCantInput" placeholder="Cantidad" min="1" value="1" style="width:80px; padding:8px;">
                                 <input type="number" id="extraCostoInput" placeholder="Costo unitario" min="0" step="0.01" style="width:120px; padding:8px;">
                                 <button class="btn-add-row" id="addComponenteExtraBtn" type="button"><i class="fas fa-plus"></i> Agregar extra</button>
@@ -491,8 +505,9 @@
                             </div>
                         </div>
 
-                        <div style="display:flex; justify-content:flex-end; margin-top:30px;">
+                        <div style="display:flex; gap:15px; justify-content:flex-end; margin-top:30px; flex-wrap: wrap;">
                             <button class="btn-etapa" id="terminarReparacionBtn"><i class="fas fa-check-double"></i> Terminar reparación</button>
+                            <button class="btn-primary" id="btnNotificarVentasReparado" style="background:#10b981;"><i class="fas fa-bell"></i> Notificar a Ventas que equipo está reparado</button>
                         </div>
                     </div>
                 </div>
@@ -537,9 +552,9 @@
                 </div>
             </div>
 
-            <aside class="ws-chatter" aria-label="Notas y actividad">
+            <aside class="ws-chatter" aria-label="Bitácora: notas y registro de estados">
                 <div class="ws-chatter-header">
-                    <div class="ws-chatter-title">Actividad</div>
+                    <div class="ws-chatter-title">Bitácora</div>
                     <div class="ws-chatter-sub" id="wsChatterFolio">—</div>
                 </div>
                 <div class="ws-chatter-tabs">
