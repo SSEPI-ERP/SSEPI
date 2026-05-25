@@ -328,13 +328,18 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 app.post('/api/upload', express.raw({ type: '*/*', limit: '20mb' }), (req, res) => {
   try {
     const filename = req.headers['x-filename'] || `upload_${Date.now()}`;
-    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const filePath = path.join(UPLOADS_DIR, safeName);
+    // Sanitizar ruta conservando subcarpetas: uploads/modulo/orden/imagenes/archivo.jpg
+    const parts = filename.split('/').filter(Boolean).map(p => p.replace(/[^a-zA-Z0-9._-]/g, '_'));
+    const fileName = parts.pop();
+    const subDir = path.join(UPLOADS_DIR, ...parts);
+    if (!fs.existsSync(subDir)) fs.mkdirSync(subDir, { recursive: true });
+    const filePath = path.join(subDir, fileName);
     fs.writeFileSync(filePath, req.body);
+    const urlPath = parts.length ? parts.join('/') + '/' + fileName : fileName;
     res.json({
       data: {
-        path: safeName,
-        url: `/uploads/${safeName}`,
+        path: urlPath,
+        url: `/uploads/${urlPath}`,
         localPath: filePath
       }
     });
@@ -343,18 +348,10 @@ app.post('/api/upload', express.raw({ type: '*/*', limit: '20mb' }), (req, res) 
   }
 });
 
-app.get('/uploads/:filename', (req, res) => {
-  try {
-    const safeName = req.params.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const filePath = path.join(UPLOADS_DIR, safeName);
-    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Archivo no encontrado' });
-    res.sendFile(path.resolve(filePath));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// Servir uploads con soporte para subcarpetas (taller, motores, automatizacion, etc.)
+app.use('/uploads', express.static(UPLOADS_DIR));
 
-// Servir imágenes de clientes subcarpeta
+// Fallback legacy para clientes
 app.get('/uploads/clientes/:filename', (req, res) => {
   try {
     const safeName = req.params.filename.replace(/[^a-zA-Z0-9._-]/g, '_');

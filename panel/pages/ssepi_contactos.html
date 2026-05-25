@@ -143,7 +143,7 @@
         <div id="listContainer" class="list-container" style="display: none;">
             <table class="list-table">
                 <thead>
-                    <tr><th>Nombre</th><th>Empresa</th><th>Email</th><th>Teléfono</th><th>RFC</th><th>Tipo</th></tr>
+                    <tr><th>Nombre</th><th>Empresa</th><th>Email</th><th>Teléfono</th><th>RFC</th><th>Categoría</th><th>Tipo</th></tr>
                 </thead>
                 <tbody id="listTableBody"></tbody>
             </table>
@@ -186,6 +186,12 @@
                     <div class="input-group"><label>Correo electrónico</label><input type="email" id="panelEmail" placeholder="correo@ejemplo.com"></div>
                     <div class="input-group"><label>RFC</label><input type="text" id="panelRfc" placeholder="RFC"></div>
                     <div class="input-group"><label>Sitio web</label><input type="url" id="panelSitio" placeholder="https://..."></div>
+                    <div class="input-group"><label>Categoría</label>
+                        <select id="panelCategoria">
+                            <option value="persona">Persona</option>
+                            <option value="empresa">Empresa</option>
+                        </select>
+                    </div>
                     <div class="input-group"><label>Tipo</label>
                         <select id="panelTipo">
                             <option value="client">Cliente</option>
@@ -227,6 +233,12 @@
                         <div class="input-group"><label>Teléfono</label><input type="tel" id="inputTelefono"></div>
                         <div class="input-group"><label>Dirección</label><textarea id="inputDireccion" rows="2"></textarea></div>
                         <div class="input-group"><label>RFC</label><input type="text" id="inputRfc"></div>
+                        <div class="input-group"><label>Categoría</label>
+                            <select id="inputCategoria">
+                                <option value="persona">Persona</option>
+                                <option value="empresa">Empresa</option>
+                            </select>
+                        </div>
                         <div class="input-group"><label>Tipo</label>
                             <select id="inputTipo">
                                 <option value="client">Cliente</option>

@@ -158,7 +158,7 @@ async function _renderVentasFacturas() {
         const rows = await _selectFacturasRows();
         let list = (rows || []).filter(f => _inDateRange(f.fecha_emision, desde, hasta));
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">Sin facturas en el rango.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">Sin facturas en el rango seleccionado.<br><small>Ajusta las fechas o verifica que existan registros en el módulo Facturación.</small></td></tr>';
             return;
         }
         list = list.slice(0, 200);
@@ -196,7 +196,7 @@ async function _renderCompras() {
         list = list.filter(c => _inDateRange(_comprasFechaRaw(c), desde, hasta));
         if (cat && cat !== 'todos') list = list.filter(c => (c.departamento || '') === cat);
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">Sin compras en el rango.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">Sin compras en el rango seleccionado.<br><small>Ajusta las fechas o verifica que existan registros en el módulo Compras.</small></td></tr>';
             return;
         }
         list = list.slice(0, 200);
@@ -237,7 +237,7 @@ async function _renderCobranza() {
         let list = (rows || []).filter(x => (x.tipo || '').toLowerCase() === 'ingreso');
         list = list.filter(m => _inDateRange(m.fecha, desde, hasta));
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="coi-log-empty">Sin cobros en el rango.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="coi-log-empty">Sin movimientos de banco en el rango seleccionado.<br><small>Ajusta las fechas o verifica que existan registros en el módulo correspondiente.</small></td></tr>';
             return;
         }
         list = list.slice(0, 200);
@@ -269,7 +269,7 @@ async function _renderNomina() {
         const rows = await nominaService.select({}, { orderBy: 'fecha_pago', ascending: false, limit: 300 });
         let list = (rows || []).filter(n => _inDateRange(n.fecha_pago, desde, hasta));
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="coi-log-empty">Sin registros en el rango.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="coi-log-empty">Sin registros de nómina para el periodo seleccionado.<br><small>Ajusta las fechas o captura un nuevo pago de nómina.</small></td></tr>';
             return;
         }
         list = list.slice(0, 200);

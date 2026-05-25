@@ -56,6 +56,12 @@ export const TABLES = [
 
 let _sql = null;
 let _db = null;
+let _deferPersist = false;
+
+/** Evita reescribir el .db en cada insert (seeds por lote). */
+export function setDeferPersist(defer) {
+  _deferPersist = !!defer;
+}
 
 async function getSQL() {
   if (!_sql) _sql = await initSqlJs();
@@ -63,8 +69,9 @@ async function getSQL() {
 }
 
 export function persistDb() {
-  if (!_db) return;
+  if (!_db || _deferPersist) return;
   const data = _db.export();
+  if (!data || data.length < 16) return;
   fs.writeFileSync(DB_PATH, Buffer.from(data));
 }
 
@@ -72,8 +79,15 @@ export async function getDb() {
   if (_db) return _db;
   const SQL = await getSQL();
   if (fs.existsSync(DB_PATH)) {
-    const filebuffer = fs.readFileSync(DB_PATH);
-    _db = new SQL.Database(filebuffer);
+    const stat = fs.statSync(DB_PATH);
+    if (stat.size < 16) {
+      console.warn('[db] ssepi-local.db vacío o corrupto — se recrea desde cero');
+      try { fs.unlinkSync(DB_PATH); } catch { /* ignore */ }
+      _db = new SQL.Database();
+    } else {
+      const filebuffer = fs.readFileSync(DB_PATH);
+      _db = new SQL.Database(filebuffer);
+    }
   } else {
     _db = new SQL.Database();
   }
@@ -311,12 +325,15 @@ export async function incrementRetry(_db, id, error) {
   persistDb();
 }
 
+/** Laboratorio: prefix SP-E → SP-E0687 (sin guion extra). Otros: PREFIX-0001 */
 export async function getNextFolio(_db, prefix) {
-  let row = get(`SELECT last_number FROM local_sequences WHERE prefix = ?`, [prefix]);
+  const p = String(prefix || '').toUpperCase();
+  let row = get(`SELECT last_number FROM local_sequences WHERE prefix = ?`, [p]);
   const next = (row ? row.last_number : 0) + 1;
   const stmt = _db.prepare(`INSERT INTO local_sequences (prefix, last_number) VALUES (?, ?) ON CONFLICT(prefix) DO UPDATE SET last_number = ?`);
-  stmt.run([prefix, next, next]);
+  stmt.run([p, next, next]);
   stmt.free();
   persistDb();
-  return `${prefix}-${String(next).padStart(4, '0')}`;
+  if (p === 'SP-E') return `SP-E${String(next).padStart(4, '0')}`;
+  return `${p}-${String(next).padStart(4, '0')}`;
 }

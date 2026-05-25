@@ -117,6 +117,8 @@
                     <option value="registro">Registro</option>
                     <option value="diagnostico">Diagnóstico</option>
                     <option value="cotizacion">Cotización</option>
+                    <option value="esperando_confirmacion">Esperando Confirmación</option>
+                    <option value="confirmado">Confirmado</option>
                     <option value="autorizado">Autorizado</option>
                     <option value="compra">En Compra</option>
                     <option value="ejecucion">En Ejecución</option>
@@ -130,6 +132,8 @@
                 <button type="button" class="chip-filtro" data-estado="registro">Registro</button>
                 <button type="button" class="chip-filtro" data-estado="diagnostico">Diagnóstico</button>
                 <button type="button" class="chip-filtro" data-estado="cotizacion">Cotización</button>
+                <button type="button" class="chip-filtro" data-estado="esperando_confirmacion">Esperando Confirmación</button>
+                <button type="button" class="chip-filtro" data-estado="confirmado">Confirmado</button>
                 <button type="button" class="chip-filtro" data-estado="autorizado">Autorizado</button>
                 <button type="button" class="chip-filtro" data-estado="compra">En Compra</button>
                 <button type="button" class="chip-filtro" data-estado="ejecucion">En Ejecución</button>
@@ -192,6 +196,7 @@
                 <button type="button" class="active" data-op-tab="taller"><i class="fas fa-microchip"></i> Laboratorio <span id="opVCountTaller">(0)</span></button>
                 <button type="button" data-op-tab="motor"><i class="fas fa-industry"></i> Motores <span id="opVCountMotor">(0)</span></button>
                 <button type="button" data-op-tab="auto"><i class="fas fa-robot"></i> Automatización <span id="opVCountAuto">(0)</span></button>
+                <button type="button" data-op-tab="facturar"><i class="fas fa-file-invoice-dollar"></i> Por facturar <span id="opVCountFacturar">(0)</span></button>
             </div>
             <div id="operativasListVentas" class="operativas-list"></div>
         </div>
@@ -200,13 +205,14 @@
         <div class="actions-header">
             <h2 class="section-title"><i class="fas fa-file-invoice"></i> Historial de Ventas</h2>
             <div id="exportCSVContainer"></div>
-            <button class="btn-ssepi btn-ventas" id="newCotizacionBtn"><i class="fas fa-plus"></i> Nueva Cotización</button>
+            <button class="btn-ssepi btn-ventas" id="newCotizacionBtn"><i class="fas fa-plus"></i> Nuevo Requerimiento</button>
         </div>
 
         <!-- Tabs: Historial Operativo vs Historia Comercial -->
         <div class="ventas-tabs">
             <button class="ventas-tab active" data-tab="operativo"><i class="fas fa-clipboard-list"></i> Kanban Operativo</button>
             <button class="ventas-tab" data-tab="comercial"><i class="fas fa-chart-line"></i> Historia Comercial</button>
+            <button class="ventas-tab" data-tab="suministros"><i class="fas fa-boxes-stacked"></i> Suministros</button>
             <button class="ventas-tab" data-tab="grafica"><i class="fas fa-chart-bar"></i> Gráfica</button>
         </div>
 
@@ -219,27 +225,27 @@
             </table>
         </div>
 
-        <!-- HISTORIA COMERCIAL: Pendientes vs Emitidas -->
+        <!-- HISTORIA COMERCIAL: Activas vs Cerradas -->
         <div id="historiaComercialContainer" class="historia-comercial-container" style="display: none;">
             <div class="comercial-tabs">
-                <button class="comercial-tab active" data-comercial="pendientes"><i class="fas fa-clock"></i> Pendientes</button>
-                <button class="comercial-tab" data-comercial="emitidas"><i class="fas fa-check-circle"></i> Emitidas</button>
+                <button class="comercial-tab active" data-comercial="pendientes"><i class="fas fa-clock"></i> Activas</button>
+                <button class="comercial-tab" data-comercial="emitidas"><i class="fas fa-check-circle"></i> Cerradas</button>
             </div>
 
-            <!-- Panel: Pendientes -->
+            <!-- Panel: Activas -->
             <div id="comercialPendientes" class="comercial-panel">
                 <div class="comercial-header">
-                    <h3><i class="fas fa-hourglass-half"></i> Cotizaciones Pendientes</h3>
-                    <p class="comercial-desc">Por autorizar, por enviar, por pago</p>
+                    <h3><i class="fas fa-hourglass-half"></i> Órdenes y Cotizaciones Activas</h3>
+                    <p class="comercial-desc">En proceso, por autorizar, en ejecución o reparación</p>
                 </div>
                 <div class="comercial-grid" id="pendientesGrid"></div>
             </div>
 
-            <!-- Panel: Emitidas -->
+            <!-- Panel: Cerradas -->
             <div id="comercialEmitidas" class="comercial-panel" style="display: none;">
                 <div class="comercial-header">
-                    <h3><i class="fas fa-paper-plane"></i> Cotizaciones Emitidas</h3>
-                    <p class="comercial-desc">Enviadas, autorizadas, cerradas, facturadas</p>
+                    <h3><i class="fas fa-paper-plane"></i> Órdenes y Cotizaciones Cerradas</h3>
+                    <p class="comercial-desc">Entregadas, pagadas, completadas, facturadas o canceladas</p>
                 </div>
                 <div class="comercial-grid" id="emitidasGrid"></div>
             </div>
@@ -251,6 +257,17 @@
                 <p class="grafica-desc">Flujo de cotizaciones vs ventas cerradas para planear carga de trabajo.</p>
             </div>
             <canvas id="ventasChart"></canvas>
+        </div>
+
+        <!-- PANEL SUMINISTROS -->
+        <div id="suministrosContainer" class="lista-container" style="display:none;">
+            <div class="actions-header">
+                <h2 class="section-title"><i class="fas fa-boxes-stacked"></i> Cotizaciones de Suministros</h2>
+            </div>
+            <table class="lista-table">
+                <thead><tr><th>Folio</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Origen Compras</th><th>Acciones</th></tr></thead>
+                <tbody id="suministrosTableBody"></tbody>
+            </table>
         </div>
     </main>
 
@@ -273,7 +290,7 @@
     <div class="modal-backdrop" id="registroRapidoModal">
         <div class="modal" style="max-width: 500px;">
             <div class="modal-header">
-                <h3 class="modal-title"><i class="fas fa-clipboard-list"></i> Nueva Cotización Rápida</h3>
+                <h3 class="modal-title"><i class="fas fa-clipboard-list"></i> Nuevo Requerimiento Rápido</h3>
                 <button class="modal-close" id="closeRegistroRapidoModal">&times;</button>
             </div>
             <div class="modal-body">
@@ -325,7 +342,7 @@
     <div class="modal-backdrop" id="calculadoraModal">
         <div class="modal">
             <div class="modal-header">
-                <h3 class="modal-title"><i class="fas fa-file-invoice-dollar"></i> <span id="wizardModalTitle">Nueva Cotización</span></h3>
+                <h3 class="modal-title"><i class="fas fa-file-invoice-dollar"></i> <span id="wizardModalTitle">Nuevo Requerimiento</span></h3>
                 <span class="wizard-steps" id="wizardStepIndicator">Paso 1 de 4</span>
                 <button class="modal-close" id="closeCalculadoraModal">&times;</button>
             </div>

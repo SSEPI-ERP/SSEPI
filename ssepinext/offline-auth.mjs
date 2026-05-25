@@ -51,20 +51,29 @@ function verifyPassword(password, stored) {
 
 export async function registerOfflineUser(email, password, nombre, rol, departamento, customId) {
   const db = await getDb();
-  const check = db.prepare(`SELECT id FROM offline_usuarios WHERE email = ?`);
-  check.bind([email]);
-  let exists = false;
-  if (check.step()) exists = true;
+  const check = db.prepare(`SELECT id, email FROM offline_usuarios WHERE email = ? OR id = ?`);
+  check.bind([email, customId || '']);
+  let existingId = null;
+  if (check.step()) existingId = check.getAsObject().id;
   check.free();
-  if (exists) throw new Error('Usuario ya existe');
 
-  const id = customId || crypto.randomUUID();
+  const id = customId || existingId || crypto.randomUUID();
   const passHash = hashPassword(password);
-  const stmt = db.prepare(`INSERT INTO offline_usuarios (id, email, password_hash, nombre, rol, departamento, activo, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`);
-  stmt.run([id, email, passHash, nombre, rol, departamento || null]);
-  stmt.free();
+  if (existingId) {
+    const stmt = db.prepare(
+      `UPDATE offline_usuarios SET email = ?, password_hash = ?, nombre = ?, rol = ?, departamento = ?, activo = 1, updated_at = datetime('now') WHERE id = ?`
+    );
+    stmt.run([email, passHash, nombre, rol, departamento || null, existingId]);
+    stmt.free();
+  } else {
+    const stmt = db.prepare(
+      `INSERT INTO offline_usuarios (id, email, password_hash, nombre, rol, departamento, activo, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
+    );
+    stmt.run([id, email, passHash, nombre, rol, departamento || null]);
+    stmt.free();
+  }
   persistDb();
-  return { id, email, nombre, rol };
+  return { id: existingId || id, email, nombre, rol };
 }
 
 export async function loginOfflineUser(email, password) {

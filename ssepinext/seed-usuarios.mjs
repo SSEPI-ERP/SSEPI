@@ -11,12 +11,16 @@ function hashPassword(password) {
 
 const users = [
   { id: 'user-001', email: 'norbertomoro4@gmail.com', password: 'Ssepi2025!', nombre: 'Norberto Moro', rol: 'superadmin', departamento: 'Administracion' },
-  { id: 'user-002', email: 'ventas1@ssepi.org', password: 'Ssepi2025!', nombre: 'Ventas 1', rol: 'ventas', departamento: 'Ventas' },
-  { id: 'user-003', email: 'laboratorio1@ssepi.org', password: 'Ssepi2025!', nombre: 'Laboratorio 1', rol: 'admin', departamento: 'Laboratorio' },
-  { id: 'user-004', email: 'motores1@ssepi.org', password: 'Ssepi2025!', nombre: 'Motores 1', rol: 'admin', departamento: 'Motores' },
-  { id: 'user-005', email: 'automatizacion1@ssepi.org', password: 'Ssepi2025!', nombre: 'Automatizacion 1', rol: 'automatizacion', departamento: 'Automatizacion' },
-  { id: 'user-006', email: 'ivang.ssepi@gmail.com', password: 'Ssepi2025!', nombre: 'Ivan Garcia', rol: 'automatizacion', departamento: 'Automatizacion' },
-  { id: 'user-007', email: 'administracion@ssepi.org', password: 'Ssepi2025!', nombre: 'Admin SSEPI', rol: 'admin', departamento: 'Administracion' }
+  { id: 'user-002', email: 'ventas1@ssepi.org', password: 'Ssepi2025!', nombre: 'Carlos Calderon', rol: 'ventas', departamento: 'Ventas' },
+  { id: 'user-003', email: 'ventas@ssepi.org', password: 'Ssepi2025!', nombre: 'Daniel Zuniga', rol: 'admin', departamento: 'Ventas' },
+  { id: 'user-004', email: 'compras@ssepi.org', password: 'Ssepi2025!', nombre: 'Itzel', rol: 'compras', departamento: 'Compras' },
+  { id: 'user-005', email: 'motores1@ssepi.org', password: 'Ssepi2025!', nombre: 'Becerra', rol: 'motores', departamento: 'Motores' },
+  { id: 'user-006', email: 'automatizacion1@ssepi.org', password: 'Ssepi2025!', nombre: 'Tecnico', rol: 'automatizacion', departamento: 'Automatizacion' },
+  { id: 'user-007', email: 'ivang.ssepi@gmail.com', password: 'Ssepi2025!', nombre: 'Ivan', rol: 'automatizacion', departamento: 'Automatizacion' },
+  { id: 'user-008', email: 'administracion@ssepi.org', password: 'Ssepi2025!', nombre: 'Administracion', rol: 'administracion', departamento: 'Administracion' },
+  { id: 'user-009', email: 'automatizacion@ssepi.org', password: 'Ssepi2025!', nombre: 'Arturo', rol: 'admin', departamento: 'Automatizacion' },
+  { id: 'user-010', email: 'electronica@ssepi.org', password: 'Ssepi2025!', nombre: 'Javier', rol: 'admin', departamento: 'Laboratorio de Electronica' },
+  { id: 'user-011', email: 'electronica.ssepi@gmail.com', password: 'Ssepi2025!', nombre: 'Aron', rol: 'taller', departamento: 'Laboratorio de Electronica' }
 ];
 
 for (const u of users) {
@@ -25,7 +29,7 @@ for (const u of users) {
     const stmt = db.prepare(`INSERT OR REPLACE INTO offline_usuarios (id, email, password_hash, nombre, rol, departamento, activo, auth_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, datetime('now'), datetime('now'))`);
     stmt.run([u.id, u.email, passHash, u.nombre, u.rol, u.departamento || null, u.id]);
     stmt.free();
-    console.log(`[OK] Usuario creado: ${u.email} (${u.rol})`);
+    console.log(`[OK] Usuario creado: ${u.email} (${u.nombre} / ${u.rol})`);
   } catch (e) {
     console.error(`[ERROR] ${u.email}:`, e.message);
   }

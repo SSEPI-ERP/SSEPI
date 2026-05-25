@@ -263,9 +263,11 @@ const ActividadesModule = (function() {
             // Fallback: usuarios del sistema (offline o cloud)
             if (tecnicos.length === 0) {
                 var usuarios = await authService.getUsersByRol(['taller', 'electronica', 'motores', 'automatizacion', 'admin', 'superadmin']);
-                tecnicos = usuarios.map(function(u) {
-                    return { id: u.id, nombre: u.nombre || u.email, email: u.email };
-                });
+                tecnicos = usuarios
+                    .filter(function(u) { return !((u.nombre || '').toLowerCase().includes('norberto')); })
+                    .map(function(u) {
+                        return { id: u.id, nombre: u.nombre || u.email, email: u.email };
+                    });
             }
         } catch (error) {
             console.error('[Actividades] Error cargando técnicos:', error);
@@ -566,6 +568,8 @@ const ActividadesModule = (function() {
             const tecnico = act.creado_por_usuario?.nombre || 'Técnico';
             const fecha = act.fecha ? new Date(act.fecha).toLocaleDateString('es-MX') : '--/--/----';
             const tieneArchivo = act.archivo_url ? true : false;
+            const deptoLabel = DEPARTAMENTOS.find(d => d.key === act.departamento)?.label || act.departamento || '';
+            const ordenVinc = act.orden_origen_id ? `${act.orden_origen_tipo || 'Orden'} #${act.orden_origen_id}` : '';
             const iconClass = tieneArchivo
                 ? (act.archivo_tipo === 'pdf' ? 'pdf' : 'doc')
                 : 'sin-archivo';
@@ -583,6 +587,8 @@ const ActividadesModule = (function() {
                         </div>
                         <div class="actividad-card-meta">
                             <span><i class="fas fa-calendar"></i> ${fecha}</span>
+                            ${deptoLabel ? `<span><i class="fas fa-building"></i> ${deptoLabel}</span>` : ''}
+                            ${ordenVinc ? `<span><i class="fas fa-link"></i> ${ordenVinc}</span>` : ''}
                             ${tieneArchivo ? `<span><i class="fas fa-paperclip"></i> Archivo adjunto</span>` : ''}
                         </div>
                         <div class="actividad-card-resumen">${act.resumen || 'Sin resumen'}</div>
@@ -845,6 +851,9 @@ const ActividadesModule = (function() {
         // Cargar historial
         await _cargarHistorial(id);
 
+        const deptoLabel = DEPARTAMENTOS.find(d => d.key === act.departamento)?.label || act.departamento || '—';
+        const ordenVinculada = act.orden_origen_id ? `${act.orden_origen_tipo || 'Orden'} #${act.orden_origen_id}` : 'Sin orden vinculada';
+
         body.innerHTML = `
             <div class="ver-actividad-seccion">
                 <h4>Información General</h4>
@@ -852,6 +861,8 @@ const ActividadesModule = (function() {
                     <p><strong>Técnico:</strong> ${tecnico}</p>
                     <p><strong>Fecha:</strong> ${fecha}</p>
                     <p><strong>Estado:</strong> <span class="estado-badge ${act.estado}">${estadoLabel}</span></p>
+                    <p><strong>Departamento:</strong> ${deptoLabel}</p>
+                    <p><strong>Orden vinculada:</strong> ${ordenVinculada}</p>
                 </div>
             </div>
 
@@ -1454,7 +1465,7 @@ const ActividadesModule = (function() {
         try {
             const { data, error } = await window.supabase
                 .from('actividades_diarias')
-                .select('id, estado, resumen, fecha, creado_por, departamento')
+                .select('id, estado, resumen, fecha, creado_por, departamento, created_at, notas')
                 .eq('orden_origen_id', ordenId)
                 .eq('orden_origen_tipo', ordenTipo)
                 .order('fecha', { ascending: false });
@@ -1489,13 +1500,16 @@ const ActividadesModule = (function() {
                     </div>
                     ${acts.length > 0 ? `
                         <div class="actividades-widget-list">
-                            ${acts.slice(0, 3).map(a => `
+                            ${acts.slice(0, 3).map(a => {
+                                const ts = a.created_at ? new Date(a.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : (a.fecha ? new Date(a.fecha).toLocaleDateString('es-MX') : '');
+                                const extra = a.notas ? ' · ' + (a.notas.length > 25 ? a.notas.substring(0,25)+'...' : a.notas) : '';
+                                return `
                                 <div class="actividades-widget-item ${a.estado || 'pendiente'}">
                                     <span class="widget-dot dot-${a.estado || 'pendiente'}"></span>
-                                    <span class="widget-resumen">${(a.resumen || 'Sin resumen').substring(0, 40)}${(a.resumen || '').length > 40 ? '...' : ''}</span>
-                                    <span class="widget-fecha">${a.fecha ? new Date(a.fecha).toLocaleDateString('es-MX') : ''}</span>
+                                    <span class="widget-resumen">${(a.resumen || 'Sin resumen').substring(0, 35)}${(a.resumen || '').length > 35 ? '...' : ''}${extra}</span>
+                                    <span class="widget-fecha">${ts}</span>
                                 </div>
-                            `).join('')}
+                            `;}).join('')}
                             ${acts.length > 3 ? `<div class="actividades-widget-mas">+${acts.length - 3} más</div>` : ''}
                         </div>
                     ` : `<div class="actividades-widget-empty">No hay actividades vinculadas</div>`}

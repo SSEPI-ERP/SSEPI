@@ -24,6 +24,9 @@
     <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
     <script type="module" src="/panel/js/modules/actividades.js?v=2"></script>
     <script type="module" src="/panel/js/modules/proyectos.js?v=2"></script>
+    <script type="module" src="/panel/js/modules/soporte.js?v=2"></script>
+    <script type="module" src="/panel/js/core/n8n-status.js?v=2"></script>
+    <script type="module" src="/panel/js/core/n8n-insights-panel.js?v=2"></script>
 </head>
 <body class="page-proyectos nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -100,9 +103,18 @@
                 <label>Estado:</label>
                 <select id="filtroEstado">
                     <option value="todos">Todos</option>
-                    <option value="confirmacion">Confirmación</option>
-                    <option value="proyecto">Proyecto</option>
-                    <option value="cancelado">Cancelado</option>
+                    <option value="Registrado">Registrado</option>
+                    <option value="Diagnóstico">Diagnóstico</option>
+                    <option value="Esperando Cotización">Esperando Cotización</option>
+                    <option value="Esperando Confirmación Cliente">Esperando Confirmación Cliente</option>
+                    <option value="Confirmado">Confirmado</option>
+                    <option value="En reparación">En reparación</option>
+                    <option value="Reparado / Listo">Reparado / Listo</option>
+                    <option value="Completado">Completado</option>
+                    <option value="Entregado">Entregado</option>
+                    <option value="Facturado">Facturado</option>
+                    <option value="Cancelado">Cancelado</option>
+                    <option value="Garantía">Garantía</option>
                 </select>
             </div>
             <div class="filtro-grupo">
@@ -244,6 +256,25 @@
                     </div>
                 </div>
 
+                <div class="form-section">
+                    <div class="section-title-form"><i class="fas fa-tag"></i> Estado del Servicio</div>
+                    <div class="input-group"><label>Estado</label>
+                        <select id="estadoVisita">
+                            <option value="Registrado">Registrado</option>
+                            <option value="Diagnóstico">Diagnóstico</option>
+                            <option value="Esperando Cotización">Esperando Cotización</option>
+                            <option value="Esperando Confirmación Cliente">Esperando Confirmación Cliente</option>
+                            <option value="Confirmado">Confirmado</option>
+                            <option value="En reparación">En reparación</option>
+                            <option value="Reparado / Listo">Reparado / Listo</option>
+                            <option value="Completado">Completado</option>
+                            <option value="Entregado">Entregado</option>
+                            <option value="Facturado">Facturado</option>
+                            <option value="Cancelado">Cancelado</option>
+                            <option value="Garantía">Garantía</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="form-section">
                     <div class="section-title-form"><i class="fas fa-file-alt"></i> Descripción y Observaciones</div>
                     <div class="input-group"><label>Descripción de Actividades</label><textarea id="descripcionActividades" rows="4"></textarea></div>

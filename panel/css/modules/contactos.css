@@ -293,6 +293,18 @@
     border: 1px solid var(--accent-provider);
 }
 
+.badge.empresa {
+    background: rgba(25,118,210,0.2);
+    color: #1976d2;
+    border: 1px solid #1976d2;
+}
+
+.badge.persona {
+    background: rgba(117,117,117,0.15);
+    color: #757575;
+    border: 1px solid #bdbdbd;
+}
+
 /* ========== LISTA ========== */
 .list-container {
     display: none;

@@ -76,7 +76,7 @@
     <main>
         <!-- Selector de Departamento + Cliente -->
         <div class="form-section calc-sim-wrap">
-            <h3 class="section-title-form"><i class="fas fa-bullseye"></i> Nueva Cotización</h3>
+            <h3 class="section-title-form"><i class="fas fa-bullseye"></i> Cotización Express</h3>
             <p class="form-hint">Selecciona el <strong>departamento</strong> y el <strong>cliente</strong> para auto-cargar KM y ver las tarifas específicas.</p>
             <div class="calc-sim-grid calc-sim-grid--2">
                 <div class="calc-sim-field">
@@ -90,7 +90,7 @@
                     </select>
                 </div>
                 <div class="calc-sim-field">
-                    <label for="selClienteCotizacion">Cliente (del tabulador)</label>
+                    <label for="selClienteCotizacion">Cliente</label>
                     <select id="selClienteCotizacion" class="form-control">
                         <option value="">-- Selecciona cliente --</option>
                     </select>
@@ -104,7 +104,7 @@
             <div class="calc-sim-grid">
                 <div class="calc-sim-field"><label for="labKm">Km (traslado)</label><input type="number" id="labKm" class="form-control" step="0.1" value="226" min="0"></div>
                 <div class="calc-sim-field"><label for="labHorasViaje">Horas viaje (opcional)</label><input type="number" id="labHorasViaje" class="form-control" step="0.25" value="" min="0" placeholder="Si vacío: km/50"></div>
-                <div class="calc-sim-field"><label for="labHorasTaller">Horas taller</label><input type="number" id="labHorasTaller" class="form-control" step="0.25" value="16" min="0"></div>
+                <div class="calc-sim-field"><label for="labHorasTaller">Horas laboratorio</label><input type="number" id="labHorasTaller" class="form-control" step="0.25" value="16" min="0"></div>
                 <div class="calc-sim-field"><label for="labRefacciones">Refacciones ($)</label><input type="number" id="labRefacciones" class="form-control" step="0.01" value="0" min="0"></div>
             </div>
             <button type="button" class="btn-ssepi" id="btnCalcLaboratorio"><i class="fas fa-calculator"></i> Calcular cotización</button>
@@ -186,9 +186,7 @@
         <div class="form-section">
             <h3 class="section-title-form"><i class="fas fa-function"></i> Funciones de calculadora</h3>
             <p class="form-hint">Configuración y funciones disponibles por calculadora.</p>
-            <div class="filtros-bar" style="margin-bottom:10px">
-                <button type="button" class="btn-ssepi" id="btnNuevaCalculadora"><i class="fas fa-plus"></i> Nueva calculadora</button>
-            </div>
+            <!-- La creación de nuevas calculadoras para módulos adicionales se gestiona desde SSEPI-NEXT -->
             <div class="resumen-table-wrap">
                 <table class="lista-table" id="tablaFunciones">
                     <thead>

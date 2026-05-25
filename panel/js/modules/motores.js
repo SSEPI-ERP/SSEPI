@@ -62,6 +62,7 @@ const MotoresModule = (function() {
 
     // Suscripciones para cleanup
     let subscriptions = [];
+    let perfilUsuario = null;
 
     function _motoresRecordKey() {
         if (orderId) return String(orderId);
@@ -234,7 +235,10 @@ const MotoresModule = (function() {
     // ==================== CARGAR TÉCNICOS ====================
     async function _cargarTecnicos() {
         try {
-            var tecnicos = await authService.getUsersByRol(['motores', 'admin', 'superadmin']);
+            var tecnicos = (await authService.getUsersByRol(['motores', 'admin', 'superadmin']))
+                .filter(t => {
+                    return t.departamento === 'Motores' || t.rol === 'superadmin';
+                });
             var select = document.getElementById('techSelect');
             if (!select) return;
             var valActual = select.value;
@@ -250,7 +254,10 @@ const MotoresModule = (function() {
 
     async function _cargarVendedores() {
         try {
-            var vendedores = await authService.getUsersByRol(['ventas', 'admin', 'superadmin']);
+            var vendedores = (await authService.getUsersByRol(['ventas', 'admin', 'superadmin']))
+                .filter(v => {
+                    return v.departamento === 'Ventas' || v.rol === 'superadmin';
+                });
             var select = document.getElementById('recibidoPorSelect');
             if (!select) return;
             var valActual = select.value;
@@ -267,9 +274,14 @@ const MotoresModule = (function() {
     // ==================== INICIALIZACIÓN ====================
     async function init() {
         console.log('✅ [Motores] Conectado');
+        try { perfilUsuario = await authService.getCurrentProfile(); } catch(e) {}
         await _initUI();
         _bindEvents();
         await _loadInitialData();
+        try {
+            var openId = new URLSearchParams(window.location.search).get('open');
+            if (openId) { setTimeout(function () { _abrirOrden(openId); }, 400); }
+        } catch (e) {}
         _startClock();
         _setupRealtime();
         _cargarNotificaciones();
@@ -516,7 +528,17 @@ const MotoresModule = (function() {
         const subNotificaciones = supabase
             .channel('motores_notificaciones')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: 'para=eq.motores' }, payload => {
-                _mostrarNotificacion(payload.new);
+                const notif = payload.new || {};
+                _mostrarNotificacion(notif);
+                // Si es confirmación de cliente para la orden actual, actualizar estado local
+                if (notif.tipo === 'cliente_confirmo' && currentOrder && currentOrder.id === notif.orden_id) {
+                    currentOrder.estado = 'Confirmado';
+                    _showToast('✅ Cliente confirmó la cotización. Puede avanzar a Reparación.', 'success');
+                }
+                // Si es garantía activada, recargar para mostrar nueva orden
+                if (notif.tipo === 'garantia_activada') {
+                    _showToast('🔔 ' + (notif.mensaje || 'Garantía activada'), 'info');
+                }
             })
             .subscribe();
         subscriptions.push(subNotificaciones);
@@ -605,10 +627,10 @@ const MotoresModule = (function() {
     function _renderKanban(ordenes) {
         const container = document.getElementById('kanbanContainer');
         if (!container) return;
-        const etapas = ['Nuevo', 'Diagnóstico', 'En Espera', 'Reparado', 'Entregado'];
+        const etapas = ['Registrado', 'Diagnóstico', 'Esperando Cotización', 'Esperando Confirmación Cliente', 'Confirmado', 'En reparación', 'Reparado / Listo', 'Entregado', 'Facturado', 'Cancelado', 'Garantía'];
         let html = '';
         etapas.forEach(etapa => {
-            const ordenesFiltradas = ordenes.filter(o => (o.estado || 'Nuevo') === etapa);
+            const ordenesFiltradas = ordenes.filter(o => (o.estado || 'Registrado') === etapa);
             html += `
                 <div class="kanban-column">
                     <div class="kanban-header">
@@ -730,7 +752,7 @@ const MotoresModule = (function() {
     function _renderGrafica(ordenes) {
         const ctx = document.getElementById('graficaCanvas').getContext('2d');
         if (chartInstance) chartInstance.destroy();
-        const estados = ['Nuevo', 'Diagnóstico', 'En Espera', 'Reparado', 'Entregado'];
+        const estados = ['Registrado', 'Diagnóstico', 'Esperando Cotización', 'Esperando Confirmación Cliente', 'Confirmado', 'En reparación', 'Reparado / Listo', 'Entregado', 'Facturado', 'Cancelado', 'Garantía'];
         const counts = estados.map(e => ordenes.filter(o => o.estado === e).length);
         chartInstance = new Chart(ctx, {
             type: 'bar',
@@ -747,11 +769,11 @@ const MotoresModule = (function() {
     }
 
     function _updateKPIs(ordenes) {
-        const nuevo = ordenes.filter(o => o.estado === 'Nuevo').length;
+        const nuevo = ordenes.filter(o => ['Nuevo','Registrado'].includes(o.estado)).length;
         const diagnostico = ordenes.filter(o => o.estado === 'Diagnóstico').length;
-        const espera = ordenes.filter(o => o.estado === 'En Espera').length;
-        const reparado = ordenes.filter(o => o.estado === 'Reparado').length;
-        const entregado = ordenes.filter(o => o.estado === 'Entregado').length;
+        const espera = ordenes.filter(o => ['En Espera','Esperando Cotización','Esperando Confirmación Cliente'].includes(o.estado)).length;
+        const reparado = ordenes.filter(o => ['Reparado','Reparado / Listo','Confirmado','En reparación'].includes(o.estado)).length;
+        const entregado = ordenes.filter(o => ['Entregado','Facturado'].includes(o.estado)).length;
         const conCompra = Object.keys(comprasVinculadas).filter(id => {
             const orden = ordenes.find(o => o.id === id);
             return orden && comprasVinculadas[id].estado < 5;
@@ -776,6 +798,7 @@ const MotoresModule = (function() {
             orden.compraVinculada = comprasVinculadas[id];
         }
         _cargarDatosEnModal(orden);
+        _initWsChatterUI(orden);
         document.getElementById('wsModal').classList.add('active');
         _irPaso(_estadoToPaso(orden.estado || 'Nuevo'));
         _renderPrioritySupplierBarMotores();
@@ -985,14 +1008,24 @@ const MotoresModule = (function() {
         console.log('[Motores] Orden cargada desde cotización', cotizacion.folio);
     }
 
+    // Estados del flujo comercial:
+    // Registrado → Diagnóstico → Esperando Cotización → Esperando Confirmación Cliente → Confirmado → En reparación → Reparado → Entregado → Facturado
     function _estadoToPaso(estado) {
-        const mapa = { 'Nuevo': 1, 'Diagnóstico': 2, 'En Espera': 3, 'Reparado': 4, 'Entregado': 5 };
+        const mapa = {
+            'Nuevo': 1, 'Registrado': 1,
+            'Diagnóstico': 2,
+            'Esperando Cotización': 3, 'En Espera': 3, 'Esperando Confirmación Cliente': 3,
+            'Confirmado': 4, 'En reparación': 4,
+            'Reparado': 4, 'Reparado / Listo': 4,
+            'Entregado': 5, 'Facturado': 5,
+            'Cancelado': 1, 'Garantía': 2
+        };
         return mapa[estado] || 1;
     }
 
     function _pasoToEstado(paso) {
-        const mapa = { 1: 'Nuevo', 2: 'Diagnóstico', 3: 'En Espera', 4: 'Reparado', 5: 'Entregado' };
-        return mapa[paso] || 'Nuevo';
+        const mapa = { 1: 'Registrado', 2: 'Diagnóstico', 3: 'Esperando Cotización', 4: 'En reparación', 5: 'Entregado' };
+        return mapa[paso] || 'Registrado';
     }
 
     async function _renderTimelineMotores(ordenId, estadoActual) {
@@ -1093,6 +1126,7 @@ const MotoresModule = (function() {
         componentesExtras = orden.componentes_extras || [];
         _renderComponentesExtras();
         _renderPanelRentabilidad();
+        _initWsChatterUI(currentOrder || orden);
 
         document.getElementById('resumenCliente').innerText = orden.cliente_nombre || '';
         document.getElementById('resumenMotor').innerText = orden.motor || '';
@@ -1216,9 +1250,11 @@ const MotoresModule = (function() {
         if (paso < 1 || paso > 5) return;
         currentStep = paso;
         document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
-        document.getElementById(`step-${paso}`).classList.add('active');
+        const stepEl = document.getElementById(`step-${paso}`);
+        if (stepEl) stepEl.classList.add('active');
         document.querySelectorAll('.ws-step-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`.ws-step-btn[data-step="${paso}"]`).classList.add('active');
+        const wsBtn = document.querySelector(`.ws-step-btn[data-step="${paso}"]`);
+        if (wsBtn) wsBtn.classList.add('active');
         _actualizarBotonesPaso();
         // Registrar inicio de etapa automáticamente (solo la primera vez)
         const campoInicio = `etapa${paso}_inicio`;
@@ -1247,11 +1283,20 @@ const MotoresModule = (function() {
         const completeBtn = document.getElementById('completeOrderBtn');
         const sinReparacionBtn = document.getElementById('sinReparacionBtn');
         const reportePdfBtn = document.getElementById('btnReportePDFMotores');
+        const reporteParcialBtn = document.getElementById('btnReporteParcialMotores');
         const vistaPreviaReporteBtn = document.getElementById('btnVistaPreviaReporteMotores');
+
+        // Botones del flujo comercial
+        const btnEnviarEstimacion = document.getElementById('btnEnviarEstimacionVentas');
+        const btnCompraEspecial = document.getElementById('btnCompraEspecialMotores');
+        const btnNotificarReparado = document.getElementById('btnNotificarVentasReparado');
+        const btnClienteConfirmado = document.getElementById('btnClienteConfirmadoMotores');
+
         const isPaso5 = currentStep === 5;
         const isEntregadoFacturado = currentOrder && (currentOrder.estado === 'Entregado' || currentOrder.estado === 'Facturado');
         const mostrarReporte = isPaso5 && isEntregadoFacturado;
         if (reportePdfBtn) reportePdfBtn.classList.toggle('hidden', !mostrarReporte);
+        if (reporteParcialBtn) reporteParcialBtn.classList.toggle('hidden', !mostrarReporte);
         if (vistaPreviaReporteBtn) vistaPreviaReporteBtn.classList.toggle('hidden', !mostrarReporte);
 
         if (currentStep === 1) {
@@ -1260,18 +1305,53 @@ const MotoresModule = (function() {
             saveBtn.style.display = 'inline-flex';
             completeBtn.style.display = 'none';
             sinReparacionBtn.style.display = 'none';
+            if (btnEnviarEstimacion) btnEnviarEstimacion.style.display = 'none';
+            if (btnCompraEspecial) btnCompraEspecial.style.display = 'none';
+            if (btnNotificarReparado) btnNotificarReparado.style.display = 'none';
+        } else if (currentStep === 2) {
+            prevBtn.style.display = 'flex';
+            nextBtn.style.display = 'flex';
+            saveBtn.style.display = 'inline-flex';
+            completeBtn.style.display = 'none';
+            sinReparacionBtn.style.display = 'flex';
+            if (btnEnviarEstimacion) btnEnviarEstimacion.style.display = 'inline-flex';
+            if (btnCompraEspecial) btnCompraEspecial.style.display = 'inline-flex';
+            if (btnNotificarReparado) btnNotificarReparado.style.display = 'none';
+        } else if (currentStep === 4) {
+            prevBtn.style.display = 'flex';
+            nextBtn.style.display = 'flex';
+            saveBtn.style.display = 'inline-flex';
+            completeBtn.style.display = 'none';
+            sinReparacionBtn.style.display = 'none';
+            if (btnEnviarEstimacion) btnEnviarEstimacion.style.display = 'none';
+            if (btnCompraEspecial) btnCompraEspecial.style.display = 'none';
+            if (btnNotificarReparado) btnNotificarReparado.style.display = 'inline-flex';
         } else if (currentStep === 5) {
             prevBtn.style.display = 'flex';
             nextBtn.style.display = 'none';
             saveBtn.style.display = 'none';
             completeBtn.style.display = 'flex';
             sinReparacionBtn.style.display = 'none';
+            if (btnEnviarEstimacion) btnEnviarEstimacion.style.display = 'none';
+            if (btnCompraEspecial) btnCompraEspecial.style.display = 'none';
+            if (btnNotificarReparado) btnNotificarReparado.style.display = 'none';
         } else {
             prevBtn.style.display = 'flex';
             nextBtn.style.display = 'flex';
             saveBtn.style.display = 'inline-flex';
             completeBtn.style.display = 'none';
-            sinReparacionBtn.style.display = currentStep === 2 ? 'flex' : 'none';
+            sinReparacionBtn.style.display = 'none';
+            if (btnEnviarEstimacion) btnEnviarEstimacion.style.display = 'none';
+            if (btnCompraEspecial) btnCompraEspecial.style.display = 'none';
+            if (btnNotificarReparado) btnNotificarReparado.style.display = 'none';
+        }
+        // Mostrar botón "Cliente confirmó" en paso 3 cuando la orden esté confirmada
+        if (btnClienteConfirmado && currentStep === 3) {
+            const est = currentOrder ? String(currentOrder.estado || '').trim() : '';
+            const confirmado = est === 'Confirmado' || est === 'confirmado';
+            btnClienteConfirmado.style.display = confirmado ? 'inline-flex' : 'none';
+        } else if (btnClienteConfirmado) {
+            btnClienteConfirmado.style.display = 'none';
         }
     }
 
@@ -1302,12 +1382,13 @@ const MotoresModule = (function() {
         if (!tbody) return;
         tbody.innerHTML = '';
         if (diagnosticoEnlaces.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">No hay refacciones con enlace</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">No hay refacciones con enlace</td></tr>';
             return;
         }
         diagnosticoEnlaces.forEach((item, idx) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
+                <td><input type="text" value="${item.nombre || ''}" placeholder="Nombre" data-index="${idx}" onchange="motoresModule._actualizarEnlace(${idx}, 'nombre', this.value)"></td>
                 <td><input type="text" value="${item.descripcion || ''}" placeholder="Descripción" data-index="${idx}" onchange="motoresModule._actualizarEnlace(${idx}, 'descripcion', this.value)"></td>
                 <td><input type="text" value="${item.sku || ''}" placeholder="SKU" data-index="${idx}" onchange="motoresModule._actualizarEnlace(${idx}, 'sku', this.value)"></td>
                 <td><input type="number" value="${item.cantidad || 1}" min="1" data-index="${idx}" onchange="motoresModule._actualizarEnlace(${idx}, 'cantidad', this.value)"></td>
@@ -1323,13 +1404,14 @@ const MotoresModule = (function() {
         if (!tbody) return;
         tbody.innerHTML = '';
         if (diagnosticoInventario.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">No hay productos de inventario</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">No hay productos de inventario</td></tr>';
             return;
         }
         diagnosticoInventario.forEach((item, idx) => {
             const producto = inventory.find(p => p.sku === item.sku);
             const stock = producto ? producto.stock : 0;
-            const desc = producto ? producto.nombre : item.descripcion || '';
+            const nombre = producto ? producto.nombre : item.nombre || '';
+            const desc = producto ? (producto.descripcion || '') : item.descripcion || '';
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>
@@ -1338,7 +1420,8 @@ const MotoresModule = (function() {
                         ${inventory.map(p => `<option value="${p.sku}" ${p.sku === item.sku ? 'selected' : ''}>${p.sku} - ${p.nombre}</option>`).join('')}
                     </select>
                 </td>
-                <td><input type="text" value="${desc}" placeholder="Descripción" readonly></td>
+                <td><input type="text" value="${nombre}" placeholder="Nombre" data-index="${idx}" onchange="motoresModule._actualizarInventarioCampo(${idx}, 'nombre', this.value)"></td>
+                <td><input type="text" value="${desc}" placeholder="Descripción" data-index="${idx}" onchange="motoresModule._actualizarInventarioCampo(${idx}, 'descripcion', this.value)"></td>
                 <td>${stock}</td>
                 <td><input type="number" value="${item.cantidad || 1}" min="1" max="${stock}" data-index="${idx}" onchange="motoresModule._actualizarInventarioCantidad(${idx}, this.value)"></td>
                 <td><button class="btn-remove" onclick="motoresModule._eliminarInventario(${idx})">✖</button></td>
@@ -1384,18 +1467,20 @@ const MotoresModule = (function() {
             const existente = componentesInventario.find(c => c.sku === solicitado.sku);
             return {
                 sku: solicitado.sku,
+                nombre: solicitado.nombre || '',
                 descripcion: solicitado.descripcion,
                 cantidad_solicitada: solicitado.cantidad,
                 cantidad_usada: existente ? existente.cantidad_usada : solicitado.cantidad
             };
         });
         if (items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay componentes de inventario</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay componentes de inventario</td></tr>';
             return;
         }
         tbody.innerHTML = items.map((item, idx) => `
             <tr>
                 <td>${item.sku}</td>
+                <td>${item.nombre || ''}</td>
                 <td>${item.descripcion}</td>
                 <td>${item.cantidad_solicitada}</td>
                 <td><input type="number" value="${item.cantidad_usada}" min="0" data-index="${idx}" onchange="motoresModule._actualizarComponenteInventario(${idx}, this.value)"></td>
@@ -1413,6 +1498,7 @@ const MotoresModule = (function() {
             if (compra.items && compra.items.length > 0) {
                 tbody.innerHTML = compra.items.map((item, idx) => `
                     <tr>
+                        <td>${item.nombre || ''}</td>
                         <td>${item.desc || 'Producto'}</td>
                         <td>${item.sku || '—'}</td>
                         <td>${item.qty || 0}</td>
@@ -1421,10 +1507,10 @@ const MotoresModule = (function() {
                     </tr>
                 `).join('');
             } else {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Compra sin items registrados</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Compra sin items registrados</td></tr>';
             }
         } else {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay compra vinculada a esta orden</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay compra vinculada a esta orden</td></tr>';
         }
     }
 
@@ -1442,10 +1528,14 @@ const MotoresModule = (function() {
         const producto = inventory.find(p => p.sku === sku);
         diagnosticoInventario[idx] = {
             sku: sku,
-            descripcion: producto ? producto.nombre : '',
+            nombre: producto ? producto.nombre : (diagnosticoInventario[idx]?.nombre || ''),
+            descripcion: producto ? (producto.descripcion || '') : (diagnosticoInventario[idx]?.descripcion || ''),
             cantidad: diagnosticoInventario[idx]?.cantidad || 1
         };
         _renderDiagnosticoInventario();
+    }
+    function _actualizarInventarioCampo(idx, campo, valor) {
+        if (diagnosticoInventario[idx]) diagnosticoInventario[idx][campo] = valor;
     }
     function _actualizarInventarioCantidad(idx, cantidad) {
         diagnosticoInventario[idx].cantidad = parseInt(cantidad) || 1;
@@ -1458,6 +1548,7 @@ const MotoresModule = (function() {
         const producto = inventory.find(p => p.sku === sku);
         consumiblesUsados[idx] = {
             sku: sku,
+            nombre: producto ? producto.nombre : '',
             descripcion: producto ? producto.nombre : '',
             cantidad: consumiblesUsados[idx]?.cantidad || 1
         };
@@ -1495,11 +1586,12 @@ const MotoresModule = (function() {
         if (!tbody) return;
         tbody.innerHTML = '';
         if (componentesExtras.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay componentes extras</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay componentes extras</td></tr>';
         } else {
             componentesExtras.forEach((item, idx) => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
+                    <td>${item.nombre || ''}</td>
                     <td>${item.descripcion || ''}</td>
                     <td>${item.cantidad || 0}</td>
                     <td>$${(item.costo_unitario || 0).toFixed(2)}</td>
@@ -1515,18 +1607,21 @@ const MotoresModule = (function() {
     }
 
     function _agregarComponenteExtra() {
+        const nombreEl = document.getElementById('extraNombreInput');
         const descEl = document.getElementById('extraDescInput');
         const cantEl = document.getElementById('extraCantInput');
         const costoEl = document.getElementById('extraCostoInput');
+        const nombre = (nombreEl?.value || '').trim();
         const desc = (descEl?.value || '').trim();
         const cant = parseFloat(cantEl?.value) || 0;
         const costo = parseFloat(costoEl?.value) || 0;
-        if (!desc) { _showToast('Ingresa la descripción del componente extra', 'warning'); return; }
+        if (!nombre) { _showToast('Ingresa el nombre del componente extra', 'warning'); return; }
         if (cant <= 0) { _showToast('La cantidad debe ser mayor a 0', 'warning'); return; }
         if (costo < 0) { _showToast('El costo no puede ser negativo', 'warning'); return; }
-        componentesExtras.push({ descripcion: desc, cantidad: cant, costo_unitario: costo, subtotal: cant * costo });
+        componentesExtras.push({ nombre, descripcion: desc, cantidad: cant, costo_unitario: costo, subtotal: cant * costo });
         _renderComponentesExtras();
         _renderPanelRentabilidad();
+        if (nombreEl) nombreEl.value = '';
         if (descEl) descEl.value = '';
         if (cantEl) cantEl.value = '1';
         if (costoEl) costoEl.value = '';
@@ -1608,10 +1703,164 @@ const MotoresModule = (function() {
         }
     }
 
-    async function _generarSolicitudCompra() {
-        console.log('[Motores] Click en Generar Solicitud de Compra');
+    // ==================== FLUJO COMERCIAL: ENVIAR ESTIMACION A VENTAS ====================
+    async function _enviarEstimacionAVentas() {
+        console.log('[Motores] Enviando estimación a Ventas');
         if (!orderId && !isNewOrder) {
-            alert('Primero guarde la orden de taller');
+            alert('Primero guarde la orden de motores');
+            return;
+        }
+
+        await _guardarOrden(true);
+
+        const data = _recolectarDatos();
+        if (!data.cliente_nombre) { alert('Seleccione cliente'); _irPaso(1); return; }
+        if (!data.motor) { alert('Ingrese el motor'); _irPaso(1); return; }
+
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            let ordenMotorId = orderId;
+            let folioMotor = data.folio;
+
+            // Calcular costo estimado con inventario interno
+            let costoEstimado = 0;
+            try {
+                await CostosEngine.loadFromDatabase('motores');
+                const desglose = CostosEngine.calcularMotores(
+                    data.tiempo_entrega_dias || 0,
+                    data.km_distancia || 0,
+                    data.becerra || 0,
+                    data.utilidad_factor || 1.4
+                );
+                costoEstimado = desglose.credito || 0;
+            } catch (ce) {
+                console.warn('[SSEPI-COSTOS] Error calculando costos para estimación:', ce);
+            }
+
+            // Sumar costo de materiales de inventario seleccionados
+            const costoMateriales = diagnosticoInventario.reduce((sum, i) => sum + ((Number(i.costo_unitario) || 0) * (Number(i.cantidad) || 1)), 0);
+            costoEstimado += costoMateriales;
+
+            if (isNewOrder) {
+                folioMotor = document.getElementById('inpFolio').value;
+                const nuevaOrden = {
+                    ...data,
+                    folio: folioMotor,
+                    estado: 'Esperando Confirmación Cliente',
+                    fecha_ingreso: new Date().toISOString(),
+                    fecha_inicio: fechaInicioOrden,
+                    fechas_etapas: fechasEtapas,
+                    costo_estimado: costoEstimado,
+                    espera_confirmacion_cliente: true
+                };
+                const fotoInput = document.getElementById('productImage');
+                if (fotoInput && fotoInput.files[0]) {
+                    nuevaOrden.foto_ingreso = await _subirFoto(fotoInput.files[0], 'uploads/motores/nueva/imagenes');
+                }
+                const inserted = await ordenesService.insert(nuevaOrden, csrfToken);
+                ordenMotorId = inserted.id;
+                orderId = ordenMotorId;
+                isNewOrder = false;
+                if (window.SSEPIStateMachine) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', ordenMotorId, 'cambio_estado', `Diagnóstico completado. Estimación enviada a Ventas. Esperando confirmación del cliente.`, csrfToken);
+                }
+            } else {
+                data.estado = 'Esperando Confirmación Cliente';
+                data.costo_estimado = costoEstimado;
+                data.espera_confirmacion_cliente = true;
+                await ordenesService.update(orderId, data, csrfToken);
+                if (window.SSEPIStateMachine) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', orderId, 'cambio_estado', `Diagnóstico completado. Estimación enviada a Ventas. Esperando confirmación del cliente.`, csrfToken);
+                }
+            }
+
+            // Notificar a Ventas con la estimación
+            await notificacionesService.insert({
+                para: 'ventas',
+                tipo: 'diagnostico_completado',
+                orden_id: ordenMotorId,
+                folio: folioMotor,
+                cliente: data.cliente_nombre,
+                mensaje: `Taller de Motores completó diagnóstico para ${folioMotor}. Costo estimado: $${costoEstimado.toFixed(2)}. Esperando cálculo de precio final y confirmación del cliente.`,
+                leido: false,
+                fecha: new Date().toISOString()
+            }, csrfToken);
+
+            _showSuccessAlert('✅ Estimación enviada a Ventas. La orden queda en "Esperando Confirmación Cliente".');
+            _addToFeed('📤', `Estimación enviada a Ventas para ${folioMotor}`);
+            _afterMotoresPersistOk();
+
+        } catch (error) {
+            console.error(error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // ==================== FLUJO COMERCIAL: NOTIFICAR A VENTAS QUE MOTOR ESTA REPARADO ====================
+    async function _notificarVentasReparado() {
+        console.log('[Motores] Notificando a Ventas que motor está reparado');
+        if (!orderId) {
+            alert('Primero guarde la orden de motores');
+            return;
+        }
+
+        await _guardarOrden(true);
+
+        const data = _recolectarDatos();
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            data.estado = 'Reparado / Listo';
+            data.fecha_reparado = new Date().toISOString();
+            await ordenesService.update(orderId, data, csrfToken);
+
+            if (window.SSEPIStateMachine) {
+                await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', orderId, 'cambio_estado', `Motor reparado y probado. Notificado a Ventas para facturación y entrega.`, csrfToken);
+            }
+
+            // Notificar a Ventas
+            await notificacionesService.insert({
+                para: 'ventas',
+                tipo: 'trabajo_terminado',
+                orden_id: orderId,
+                folio: data.folio,
+                cliente: data.cliente_nombre,
+                mensaje: `Taller de Motores completó la reparación de ${data.folio}. Motor listo para entrega. Coordine facturación y entrega al cliente.`,
+                leido: false,
+                fecha: new Date().toISOString()
+            }, csrfToken);
+
+            _showSuccessAlert('✅ Motor reparado. Ventas ha sido notificado para coordinar facturación y entrega.');
+            _addToFeed('✅', `Motor reparado. Notificado a Ventas: ${data.folio}`);
+            _afterMotoresPersistOk();
+
+        } catch (error) {
+            console.error(error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function _marcarClienteConfirmado() {
+        console.log('[Motores] Cliente confirmó. Avanzando a reparación.');
+        if (!orderId) { alert('Primero guarde la orden de motores'); return; }
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            const data = _recolectarDatos();
+            data.estado = 'Confirmado';
+            await ordenesService.update(orderId, data, csrfToken);
+            if (currentOrder) currentOrder.estado = 'Confirmado';
+            _showToast('✅ Cliente confirmó. Avanzando a Reparación.', 'success');
+            _irPaso(4);
+        } catch (error) {
+            console.error(error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // ==================== COMPRA ESPECIAL (solo si falta pieza no en inventario) ====================
+    async function _generarSolicitudCompra() {
+        console.log('[Motores] Click en Generar Solicitud de Compra Especial');
+        if (!orderId && !isNewOrder) {
+            alert('Primero guarde la orden de motores');
             return;
         }
 
@@ -1627,48 +1876,61 @@ const MotoresModule = (function() {
 
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
-            let ordenTallerId = orderId;
-            let folioTaller = data.folio;
+            let ordenMotorId = orderId;
+            let folioMotor = data.folio;
 
             if (isNewOrder) {
-                folioTaller = document.getElementById('inpFolio').value;
+                folioMotor = document.getElementById('inpFolio').value;
                 const nuevaOrden = {
                     ...data,
-                    folio: folioTaller,
-                    estado: 'En Espera',
+                    folio: folioMotor,
+                    estado: 'Esperando Cotización',
                     fecha_ingreso: new Date().toISOString(),
                     fecha_inicio: fechaInicioOrden,
                     fechas_etapas: fechasEtapas
                 };
                 const fotoInput = document.getElementById('productImage');
                 if (fotoInput && fotoInput.files[0]) {
-                    nuevaOrden.foto_ingreso = await _subirFoto(fotoInput.files[0], 'motores/nueva');
+                    nuevaOrden.foto_ingreso = await _subirFoto(fotoInput.files[0], 'uploads/motores/nueva/imagenes');
                 }
                 const inserted = await ordenesService.insert(nuevaOrden, csrfToken);
-                ordenTallerId = inserted.id;
-                orderId = ordenTallerId;
+                ordenMotorId = inserted.id;
+                orderId = ordenMotorId;
                 isNewOrder = false;
                 if (window.SSEPIStateMachine) {
-                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', ordenTallerId, 'creacion', `Orden ${folioTaller} creada y enviada a compras`, csrfToken);
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', ordenMotorId, 'cambio_estado', `Orden ${folioMotor}: solicitud de compra especial generada (pieza no en inventario)`, csrfToken);
                 }
             } else {
-                data.estado = 'En Espera';
+                data.estado = 'Esperando Cotización';
                 data.fecha_envio_compra = new Date().toISOString();
                 await ordenesService.update(orderId, data, csrfToken);
                 if (window.SSEPIStateMachine) {
-                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', orderId, 'cambio_estado', `Estado cambiado a En Espera (solicitud de compra generada)`, csrfToken);
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', orderId, 'cambio_estado', `Solicitud de compra especial generada (pieza no en inventario)`, csrfToken);
                 }
             }
 
             const itemsCompra = [
-                ...diagnosticoEnlaces.map(e => ({ sku: e.sku || '', descripcion: e.descripcion || '', cantidad: Number(e.cantidad) || 1, link: e.link || '' })),
-                ...diagnosticoInventario.map(i => ({ sku: i.sku || '', descripcion: i.descripcion || '', cantidad: Number(i.cantidad) || 1 }))
+                ...diagnosticoEnlaces.map(e => ({ nombre: e.nombre || '', sku: e.sku || '', descripcion: e.descripcion || '', cantidad: Number(e.cantidad) || 1, link: e.link || '' })),
+                ...diagnosticoInventario.map(i => ({ nombre: i.nombre || '', sku: i.sku || '', descripcion: i.descripcion || '', cantidad: Number(i.cantidad) || 1 }))
             ];
+            const itemsReserva = itemsCompra.filter((i) => i.sku);
+            if (itemsReserva.length && window.supabase) {
+                try {
+                    const { error: resErr } = await window.supabase.rpc('reservar_material', {
+                        p_orden_id: ordenMotorId,
+                        p_orden_tipo: 'motor',
+                        p_items: itemsReserva
+                    });
+                    if (resErr) console.warn('[Motores] reservar_material:', resErr.message || resErr);
+                } catch (resEx) {
+                    console.warn('[Motores] reservar_material:', resEx);
+                }
+            }
             const nuevaCompra = {
-                folio: `PO-${folioTaller}`,
+                folio: `PO-${folioMotor}`,
                 proveedor: 'Por asignar',
                 departamento: 'Taller Motores',
-                vinculacion: { tipo: 'motor', id: ordenTallerId, nombre: data.cliente_nombre, folio_taller: folioTaller },
+                vinculacion: { tipo: 'motor', id: ordenMotorId, nombre: data.cliente_nombre, folio_taller: folioMotor },
                 items: itemsCompra,
                 estado: 1,
                 updated_at: new Date().toISOString()
@@ -1676,29 +1938,28 @@ const MotoresModule = (function() {
 
             const compraRef = await comprasService.insert(nuevaCompra, csrfToken);
 
-            await ordenesService.update(ordenTallerId, {
+            await ordenesService.update(ordenMotorId, {
                 compra_vinculada: compraRef.id,
                 compra_folio: nuevaCompra.folio,
-                estado: 'En Espera',
+                estado: 'Esperando Cotización',
                 fecha_envio_compra: new Date().toISOString()
             }, csrfToken);
 
             await notificacionesService.insert({
                 para: 'compras',
                 tipo: 'nueva_solicitud',
-                orden_id: ordenTallerId,
+                orden_id: ordenMotorId,
                 compra_id: compraRef.id,
                 folio: nuevaCompra.folio,
                 cliente: data.cliente_nombre,
-                mensaje: `Nueva solicitud de compra ${nuevaCompra.folio} desde taller de motores`,
+                mensaje: `Solicitud de compra especial ${nuevaCompra.folio} desde Motores (pieza no disponible en inventario)`,
                 leido: false,
                 fecha: new Date().toISOString()
             }, csrfToken);
 
-            _showSuccessAlert('✅ Solicitud de compra generada. La orden pasó a estado "En Espera".');
-            _addToFeed('🛒', `Solicitud de compra creada para ${folioTaller}`);
+            _showSuccessAlert('✅ Solicitud de compra especial generada. La orden pasó a estado "Esperando Cotización".');
+            _addToFeed('🛒', `Compra especial creada para ${folioMotor}`);
             _afterMotoresPersistOk();
-            _cerrarModal();
 
         } catch (error) {
             console.error(error);
@@ -1789,7 +2050,7 @@ const MotoresModule = (function() {
 
         const fotoInput = document.getElementById('productImage');
         if (fotoInput && fotoInput.files[0]) {
-            data.foto_ingreso = await _subirFoto(fotoInput.files[0], 'motores/' + (orderId || 'nueva'));
+            data.foto_ingreso = await _subirFoto(fotoInput.files[0], 'uploads/motores/' + (orderId || 'nueva') + '/imagenes');
         }
 
         data.refacciones_enlaces = diagnosticoEnlaces;
@@ -1836,6 +2097,7 @@ const MotoresModule = (function() {
         }
 
         const csrfToken = sessionStorage.getItem('csrfToken');
+        const fueNueva = isNewOrder;
         try {
             if (isNewOrder) {
                 data.folio = document.getElementById('inpFolio').value;
@@ -1865,6 +2127,41 @@ const MotoresModule = (function() {
             }
             _afterMotoresPersistOk();
             _addToFeed('💾', `Orden ${data.folio} guardada`);
+
+            // E8: Registrar en orden_historial
+            try {
+                const historialService = createDataService('orden_historial');
+                await historialService.insert({
+                    orden_id: orderId,
+                    evento: fueNueva ? 'creacion' : 'actualizacion',
+                    descripcion: `Orden ${data.folio} ${fueNueva ? 'creada' : 'guardada'} — estado: ${data.estado}`,
+                    usuario: perfilUsuario?.nombre || 'Sistema',
+                    fecha: new Date().toISOString()
+                }, csrfToken);
+            } catch (histErr) { console.warn('[Motores] Error historial:', histErr); }
+
+            // Crear actividad Kanban automática
+            try {
+                const actividadesService = createDataService('actividades_diarias');
+                const perfilAct = await authService.getCurrentProfile();
+                const ahora = new Date();
+                const horaStr = ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+                const apartado = data.estado || 'Nuevo';
+                await actividadesService.insert({
+                    departamento: 'motores',
+                    orden_origen_id: orderId,
+                    orden_origen_tipo: 'ordenes_motores',
+                    resumen: 'Orden ' + data.folio + ' - ' + data.cliente_nombre + ' - ' + data.equipo,
+                    estado: 'pendiente',
+                    tecnico: data.tecnico_responsable || 'Por asignar',
+                    fecha: ahora.toISOString().split('T')[0],
+                    notas: `Generado automáticamente desde Motores. Estado: ${data.estado}. Hora: ${horaStr}. Apartado: ${apartado}.`,
+                    user_id: perfilAct ? perfilAct.id : null,
+                    creado_por: perfilAct ? perfilAct.id : null
+                }, csrfToken);
+            } catch (actErr) {
+                console.warn('[Motores] Error creando actividad automática:', actErr);
+            }
 
             // Generar adeudo si la orden salió en números rojos
             if (data.adeudo_generado > 0 && orderId) {
@@ -1963,7 +2260,7 @@ const MotoresModule = (function() {
 
         const fotoInput = document.getElementById('fotoEntrega');
         if (fotoInput && fotoInput.files[0]) {
-            data.foto_entrega = await _subirFoto(fotoInput.files[0], 'motores/' + (orderId || 'nueva'));
+            data.foto_entrega = await _subirFoto(fotoInput.files[0], 'uploads/motores/' + (orderId || 'nueva') + '/imagenes');
         }
 
         const csrfToken = sessionStorage.getItem('csrfToken');
@@ -1976,13 +2273,14 @@ const MotoresModule = (function() {
                 await ordenesService.update(orderId, data, csrfToken);
             }
 
+            // Notificar a Ventas para que coordine facturación y entrega al cliente
             await notificacionesService.insert({
-                para: 'facturacion',
-                tipo: 'taller_entregado',
+                para: 'ventas',
+                tipo: 'motor_entregado_a_ventas',
                 orden_id: orderId,
                 folio: data.folio,
                 cliente: data.cliente_nombre,
-                mensaje: `Orden ${data.folio} entregada a ventas`,
+                mensaje: `Motor ${data.folio} entregado a Ventas. Coordine facturación y entrega al cliente.`,
                 leido: false,
                 fecha: new Date().toISOString()
             }, csrfToken);
@@ -2175,7 +2473,7 @@ const MotoresModule = (function() {
         }
     }
 
-    async function _generarReporteMotores(preview = false) {
+    async function _generarReporteMotores(preview = false, options = {}) {
         if (!currentOrder) { _showToast('No hay orden activa', 'warning'); return; }
         const orden = currentOrder;
         const user = await authService.getCurrentProfile();
@@ -2230,6 +2528,9 @@ const MotoresModule = (function() {
         ].join('\n');
 
         const imgs = [];
+        if (currentOrder && currentOrder.reporte_imagenes && currentOrder.reporte_imagenes.length) {
+            currentOrder.reporte_imagenes.forEach(img => { if (img.dataUrl) imgs.push(img.dataUrl); });
+        }
         const previewEntrega = document.getElementById('previewEntrega');
         if (previewEntrega) {
             previewEntrega.querySelectorAll('img').forEach(img => {
@@ -2247,7 +2548,9 @@ const MotoresModule = (function() {
             repHallazgos: hallazgos,
             repRefacciones: refacciones,
             repRecomendaciones: recomendaciones,
-            imagenes: imgs
+            imagenes: imgs,
+            sinPortada: options.sinPortada === true,
+            partirSecciones: options.partirSecciones === true
         };
 
         pdfGenerator.generateReport(pdfData, user, preview)
@@ -2263,7 +2566,9 @@ const MotoresModule = (function() {
         document.getElementById('closeWsBtn').addEventListener('click', _cerrarModal);
         document.getElementById('cancelWsBtn').addEventListener('click', _cerrarModal);
         const reportePdfBtn = document.getElementById('btnReportePDFMotores');
-        if (reportePdfBtn) reportePdfBtn.addEventListener('click', () => _generarReporteMotores(false));
+        if (reportePdfBtn) reportePdfBtn.addEventListener('click', () => _generarReporteMotores(false, { sinPortada: true, partirSecciones: true }));
+        const reporteParcialBtn = document.getElementById('btnReporteParcialMotores');
+        if (reporteParcialBtn) reporteParcialBtn.addEventListener('click', () => _generarReporteMotores(false, { sinPortada: false, partirSecciones: false }));
         const prevReporteBtn = document.getElementById('btnVistaPreviaReporteMotores');
         if (prevReporteBtn) prevReporteBtn.addEventListener('click', () => _generarReporteMotores(true));
         const cotPdfBtn = document.getElementById('btnCotizacionPDFMotores');
@@ -2276,7 +2581,15 @@ const MotoresModule = (function() {
         document.getElementById('saveOrderBtn').addEventListener('click', () => _guardarOrden(false));
         document.getElementById('completeOrderBtn').addEventListener('click', _completarEntrega);
         document.getElementById('sinReparacionBtn').addEventListener('click', _sinReparacion);
-        document.getElementById('generarCompraBtn').addEventListener('click', _generarSolicitudCompra);
+        document.getElementById('generarCompraBtn').addEventListener('click', _enviarEstimacionAVentas);
+
+        // Botones del flujo comercial
+        const btnCompraEspecial = document.getElementById('btnCompraEspecialMotores');
+        if (btnCompraEspecial) btnCompraEspecial.addEventListener('click', _generarSolicitudCompra);
+        const btnNotificarReparado = document.getElementById('btnNotificarVentasReparado');
+        if (btnNotificarReparado) btnNotificarReparado.addEventListener('click', _notificarVentasReparado);
+        const btnClienteConfirmado = document.getElementById('btnClienteConfirmadoMotores');
+        if (btnClienteConfirmado) btnClienteConfirmado.addEventListener('click', _marcarClienteConfirmado);
 
         for (let i = 1; i <= 5; i++) {
             const btn = document.getElementById(`terminarEtapa${i}`);
@@ -2285,15 +2598,15 @@ const MotoresModule = (function() {
 
         document.getElementById('terminarReparacionBtn').addEventListener('click', _terminarReparacion);
         document.getElementById('addEnlaceBtn').addEventListener('click', () => {
-            diagnosticoEnlaces.push({ descripcion: '', sku: '', cantidad: 1, link: '' });
+            diagnosticoEnlaces.push({ nombre: '', descripcion: '', sku: '', cantidad: 1, link: '' });
             _renderDiagnosticoEnlaces();
         });
         document.getElementById('addInventarioBtn').addEventListener('click', () => {
-            diagnosticoInventario.push({ sku: '', descripcion: '', cantidad: 1 });
+            diagnosticoInventario.push({ sku: '', nombre: '', descripcion: '', cantidad: 1 });
             _renderDiagnosticoInventario();
         });
         document.getElementById('addConsumibleBtn').addEventListener('click', () => {
-            consumiblesUsados.push({ sku: '', descripcion: '', cantidad: 1 });
+            consumiblesUsados.push({ sku: '', nombre: '', descripcion: '', cantidad: 1 });
             _renderConsumibles();
         });
         const addComponenteExtraBtn = document.getElementById('addComponenteExtraBtn');
@@ -2401,6 +2714,172 @@ const MotoresModule = (function() {
             modal.classList.remove('active');
             setTimeout(() => modal.remove(), 300);
         });
+    }
+
+    // ==================== WS-CHATTER ====================
+    function _escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s == null ? '' : String(s);
+        return d.innerHTML;
+    }
+
+    function _initWsChatterUI(orden) {
+        const folio = orden?.folio || '';
+        const folioEl = document.getElementById('wsChatterFolio');
+        if (folioEl) folioEl.textContent = folio ? `Orden ${folio}` : '—';
+        _bindWsChatterTabs();
+        _renderWsNotesFromOrden(orden);
+        _loadWsActividad(orden).catch(() => {});
+    }
+
+    function _bindWsChatterTabs() {
+        const tabs = document.querySelectorAll('.ws-chatter-tab');
+        if (!tabs || !tabs.length) return;
+        tabs.forEach(btn => {
+            btn.onclick = () => {
+                tabs.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const tab = btn.dataset.tab;
+                document.querySelectorAll('.ws-chatter-pane').forEach(p => p.classList.remove('active'));
+                const pane = document.querySelector(`.ws-chatter-pane[data-pane="${tab}"]`);
+                if (pane) pane.classList.add('active');
+            };
+        });
+        const addBtn = document.getElementById('wsAddNoteBtn');
+        if (addBtn && !addBtn.dataset.bound) {
+            addBtn.dataset.bound = '1';
+            addBtn.addEventListener('click', _wsAddNote);
+        }
+    }
+
+    function _splitNotes(text) {
+        const raw = String(text || '').trim();
+        if (!raw) return [];
+        return raw.split(/\n-{3,}\n/).map(s => s.trim()).filter(Boolean);
+    }
+
+    function _renderWsNotesFromOrden(orden) {
+        const list = document.getElementById('wsNotesList');
+        if (!list) return;
+        const chunks = _splitNotes(orden?.notas_internas || '');
+        if (!chunks.length) {
+            list.innerHTML = `<div class="ws-activity-item"><div class="ws-activity-body">Sin notas internas.</div></div>`;
+            return;
+        }
+        list.innerHTML = chunks.map((c) => {
+            const m = c.match(/^\[(.+?)\]\s*(.+?):\s*([\s\S]*)$/);
+            const when = m ? m[1] : '';
+            const who = m ? m[2] : 'Usuario';
+            const body = m ? m[3] : c;
+            return `
+              <div class="ws-note-item">
+                <div class="ws-note-meta"><span>${_escapeHtml(who)}</span><span>${_escapeHtml(when)}</span></div>
+                <div class="ws-note-body">${_escapeHtml(body)}</div>
+              </div>
+            `;
+        }).join('');
+    }
+
+    async function _wsAddNote() {
+        if (!orderId || !currentOrder) return;
+        const ta = document.getElementById('wsNoteText');
+        const txt = String(ta?.value || '').trim();
+        if (!txt) return;
+        const profile = await authService.getCurrentProfile();
+        const who = profile?.nombre || profile?.email || 'Usuario';
+        const when = new Date().toLocaleString('es-MX');
+        const block = `[${when}] ${who}: ${txt}`;
+        const next = (String(currentOrder.notas_internas || '').trim() ? (String(currentOrder.notas_internas).trim() + `\n---\n`) : '') + block;
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            await ordenesService.update(orderId, { notas_internas: next }, csrfToken);
+            currentOrder.notas_internas = next;
+            if (ta) ta.value = '';
+            _renderWsNotesFromOrden(currentOrder);
+            _addToFeed('📝', `Nota registrada en ${currentOrder.folio || 'orden'}`);
+        } catch (e) {
+            console.error(e);
+            _showToast('No se pudo registrar la nota', 'error');
+        }
+    }
+
+    async function _loadWsActividad(orden) {
+        const list = document.getElementById('wsActivityList');
+        if (!list) return;
+        list.innerHTML = `<div class="ws-activity-item"><div class="ws-activity-body">Cargando actividad…</div></div>`;
+        const supabase = _supabase();
+        const items = [];
+        const fe = orden?.fechas_etapas || {};
+        const push = (title, iso, body) => {
+            if (!iso) return;
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) return;
+            items.push({ when: d.toLocaleString('es-MX'), title, body: body || '' });
+        };
+        push('Recepción', fe['etapa1_inicio'], 'Equipo recibido');
+        push('Diagnóstico', fe['etapa2_inicio'], 'Diagnóstico iniciado/terminado');
+        push('Espera/Reparación', fe['etapa3_inicio'], 'En espera o en reparación');
+        push('Reparado', fe['etapa4_inicio'], 'Reparación terminada');
+        push('Entregado', fe['etapa5_inicio'], 'Entrega registrada');
+        if (supabase && orden?.id) {
+            try {
+                let rows = [];
+                const q1 = await supabase
+                    .from('audit_logs')
+                    .select('timestamp,action,table_name')
+                    .eq('table_name', 'ordenes_motores')
+                    .eq('record_id', orden.id)
+                    .order('timestamp', { ascending: false })
+                    .limit(30);
+                if (!q1.error && q1.data) {
+                    rows = q1.data;
+                } else if (q1.error && String(q1.error.message || '').includes('table_name')) {
+                    const q2 = await supabase
+                        .from('audit_logs')
+                        .select('timestamp,action,metadata')
+                        .eq('record_id', orden.id)
+                        .order('timestamp', { ascending: false })
+                        .limit(40);
+                    if (!q2.error && q2.data) {
+                        rows = (q2.data || []).filter((l) => {
+                            const t = (l.metadata && l.metadata.table) || '';
+                            return !t || t === 'ordenes_motores';
+                        }).slice(0, 30);
+                    }
+                }
+                if (rows.length) {
+                    rows.forEach(l => {
+                        const d = l.timestamp ? new Date(l.timestamp) : null;
+                        items.push({ when: d ? d.toLocaleString('es-MX') : '—', title: String(l.action || 'EVENTO'), body: 'ordenes_motores' });
+                    });
+                }
+            } catch (e) { /* audit_logs opcional */ }
+            try {
+                const { data: histRows } = await supabase
+                    .from('orden_historial')
+                    .select('fecha,evento,descripcion,usuario')
+                    .eq('orden_id', orden.id)
+                    .order('fecha', { ascending: false })
+                    .limit(30);
+                if (histRows && histRows.length) {
+                    histRows.forEach(h => {
+                        const d = h.fecha ? new Date(h.fecha) : null;
+                        items.push({ when: d ? d.toLocaleString('es-MX') : '—', title: String(h.evento || 'EVENTO').toUpperCase(), body: String(h.descripcion || '') + (h.usuario ? ` — ${h.usuario}` : '') });
+                    });
+                }
+            } catch (e) { /* orden_historial opcional */ }
+        }
+        if (!items.length) {
+            list.innerHTML = `<div class="ws-activity-item"><div class="ws-activity-body">Sin actividad.</div></div>`;
+            return;
+        }
+        items.sort((a, b) => String(b.when).localeCompare(String(a.when)));
+        list.innerHTML = items.map(it => `
+          <div class="ws-activity-item">
+            <div class="ws-activity-meta"><span>${_escapeHtml(it.title)}</span><span>${_escapeHtml(it.when)}</span></div>
+            <div class="ws-activity-body">${_escapeHtml(it.body)}</div>
+          </div>
+        `).join('');
     }
 
     // ==================== LIMPIEZA ====================

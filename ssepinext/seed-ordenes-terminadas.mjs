@@ -27,7 +27,7 @@ async function seedOrdenesTerminadas() {
     notas_internas: 'Diagnóstico: IGBT módulo de salida dañado en fase V. Fuente de 24V interna con ripple elevado (120mV en vez de <50mV). Se reemplazó IGBT y condensadores C14, C15 de la fuente interna. Prueba en banco: OK 3 ciclos de arranque/paro sin falla.',
     notas_generales: 'Garantía de 6 meses en reparación. Se recomienda instalar supresor de transitorios en la alimentación del variador.',
     tecnico_responsable: 'Ing. Roberto Sánchez',
-    encargado_recepcion: 'Norberto Moro',
+    encargado_recepcion: 'Ing. Roberto Sánchez',
     prioridad: 'alta',
     fecha_ingreso: '2026-04-20T09:30',
     fecha_entrega: '2026-05-02T16:00',
@@ -38,7 +38,10 @@ async function seedOrdenesTerminadas() {
     tiempo_entrega_dias: 10,
     // Arrays para _cargarDatosEnModal (refacciones_inventario / consumibles_usados)
     // Y también para _applyTallerDraft (diagnosticoInventario / consumiblesUsados)
-    refacciones_enlaces: [],
+    refacciones_enlaces: [
+      { descripcion: 'Módulo IGBT ABB ACS580 fase V', cantidad: 1, costo: 4500, link: 'https://new.abb.com/products/3AUA0000xxxxx' },
+      { descripcion: 'Condensador electrolítico 470µF/450V', cantidad: 2, costo: 180, link: 'https://www.mouser.mx/ProductDetail/xxxx' }
+    ],
     refacciones_inventario: [
       { descripcion: 'Módulo IGBT ABB ACS580 fase V', cantidad: 1, costo: 4500 },
       { descripcion: 'Condensador electrolítico 470µF/450V', cantidad: 2, costo: 180 }
@@ -47,7 +50,10 @@ async function seedOrdenesTerminadas() {
       { descripcion: 'Pasta térmica disipador', cantidad: 1, costo: 85 },
       { descripcion: 'Cable de potencia 10 AWG (0.5m)', cantidad: 1, costo: 45 }
     ],
-    diagnosticoEnlaces: [],
+    diagnosticoEnlaces: [
+      { descripcion: 'Módulo IGBT ABB ACS580 fase V', cantidad: 1, costo: 4500, link: 'https://new.abb.com/products/3AUA0000xxxxx' },
+      { descripcion: 'Condensador electrolítico 470µF/450V', cantidad: 2, costo: 180, link: 'https://www.mouser.mx/ProductDetail/xxxx' }
+    ],
     diagnosticoInventario: [
       { descripcion: 'Módulo IGBT ABB ACS580 fase V', cantidad: 1, costo: 4500 },
       { descripcion: 'Condensador electrolítico 470µF/450V', cantidad: 2, costo: 180 }
@@ -56,10 +62,24 @@ async function seedOrdenesTerminadas() {
       { descripcion: 'Pasta térmica disipador', cantidad: 1, costo: 85 },
       { descripcion: 'Cable de potencia 10 AWG (0.5m)', cantidad: 1, costo: 45 }
     ],
-    componentes_inventario: [],
-    componentes_compra: [],
-    componentesInventario: [],
-    componentesCompra: [],
+    componentes_inventario: [
+      { descripcion: 'Pasta térmica disipador', cantidad: 1, costo: 85 },
+      { descripcion: 'Cable de potencia 10 AWG (0.5m)', cantidad: 1, costo: 45 }
+    ],
+    componentes_compra: [
+      { descripcion: 'Varistor de protección 275V', cantidad: 3, costo_unitario: 450, subtotal: 1350, link: 'https://www.digikey.mx/products/xxxxx' },
+      { descripcion: 'Fusible cerámico 32A gG', cantidad: 2, costo_unitario: 120, subtotal: 240, link: 'https://www.mouser.mx/ProductDetail/xxxxx' },
+      { descripcion: 'Disipador aluminio anodizado', cantidad: 1, costo_unitario: 890, subtotal: 890 }
+    ],
+    componentesInventario: [
+      { descripcion: 'Pasta térmica disipador', cantidad: 1, costo: 85 },
+      { descripcion: 'Cable de potencia 10 AWG (0.5m)', cantidad: 1, costo: 45 }
+    ],
+    componentesCompra: [
+      { descripcion: 'Varistor de protección 275V', cantidad: 3, costo_unitario: 450, subtotal: 1350, link: 'https://www.digikey.mx/products/xxxxx' },
+      { descripcion: 'Fusible cerámico 32A gG', cantidad: 2, costo_unitario: 120, subtotal: 240, link: 'https://www.mouser.mx/ProductDetail/xxxxx' },
+      { descripcion: 'Disipador aluminio anodizado', cantidad: 1, costo_unitario: 890, subtotal: 890 }
+    ],
     componentes_extras: [
       { descripcion: 'Varistor de protección 275V', cantidad: 3, costo_unitario: 450, subtotal: 1350 },
       { descripcion: 'Fusible cerámico 32A gG', cantidad: 2, costo_unitario: 120, subtotal: 240 },
@@ -98,7 +118,7 @@ async function seedOrdenesTerminadas() {
     notas_internas: 'Diagnóstico: Firmware corrupto en módulo de comunicación EN2T. Se actualizó firmware a v11.012. También se reemplazó módulo EN2T dañado. Se verificó configuración de red EtherNet/IP y se ajustó RPI a 50ms en módulos remotos.',
     notas_generales: 'Se recomienda instalar UPS en la alimentación del PLC y gabinete de control. Garantía de 3 meses en la reparación.',
     tecnico_responsable: 'Ing. Roberto Sánchez',
-    encargado_recepcion: 'Norberto Moro',
+    encargado_recepcion: 'Ing. Roberto Sánchez',
     prioridad: 'media',
     fecha_ingreso: '2026-04-25T10:00',
     fecha_entrega: '2026-05-04T14:30',
@@ -107,16 +127,36 @@ async function seedOrdenesTerminadas() {
     horas_estimadas: 20,
     horas_invertido: 18,
     tiempo_entrega_dias: 8,
-    refacciones_enlaces: [],
-    refacciones_inventario: [],
+    refacciones_enlaces: [
+      { descripcion: 'Módulo comunicación EN2T 1756-EN2T', cantidad: 1, costo: 8200, link: 'https://www.rockwellautomation.com/products/xxxxx' },
+      { descripcion: 'Cable Ethernet Cat6 industrial 5m', cantidad: 3, costo: 350, link: 'https://www.mouser.mx/ProductDetail/xxxxx' }
+    ],
+    refacciones_inventario: [
+      { descripcion: 'Módulo comunicación EN2T 1756-EN2T', cantidad: 1, costo: 8200 },
+      { descripcion: 'Cable Ethernet Cat6 industrial 5m', cantidad: 3, costo: 350 }
+    ],
     consumibles_usados: [],
-    diagnosticoEnlaces: [],
-    diagnosticoInventario: [],
+    diagnosticoEnlaces: [
+      { descripcion: 'Módulo comunicación EN2T 1756-EN2T', cantidad: 1, costo: 8200, link: 'https://www.rockwellautomation.com/products/xxxxx' },
+      { descripcion: 'Cable Ethernet Cat6 industrial 5m', cantidad: 3, costo: 350, link: 'https://www.mouser.mx/ProductDetail/xxxxx' }
+    ],
+    diagnosticoInventario: [
+      { descripcion: 'Módulo comunicación EN2T 1756-EN2T', cantidad: 1, costo: 8200 },
+      { descripcion: 'Cable Ethernet Cat6 industrial 5m', cantidad: 3, costo: 350 }
+    ],
     consumiblesUsados: [],
-    componentes_inventario: [],
-    componentes_compra: [],
-    componentesInventario: [],
-    componentesCompra: [],
+    componentes_inventario: [
+      { descripcion: 'Conector RJ45 industrial M12', cantidad: 4, costo: 120 }
+    ],
+    componentes_compra: [
+      { descripcion: 'Switch Ethernet industrial 8 puertos', cantidad: 1, costo_unitario: 4500, subtotal: 4500, link: 'https://www.phoenixcontact.com/xxxxx' }
+    ],
+    componentesInventario: [
+      { descripcion: 'Conector RJ45 industrial M12', cantidad: 4, costo: 120 }
+    ],
+    componentesCompra: [
+      { descripcion: 'Switch Ethernet industrial 8 puertos', cantidad: 1, costo_unitario: 4500, subtotal: 4500, link: 'https://www.phoenixcontact.com/xxxxx' }
+    ],
     reparacion_notas: 'Se actualizó firmware del módulo EN2T a v11.012. Se reemplazó módulo EN2T con dirección IP configurada. Se ajustó RPI a 50ms en módulos remotos para estabilizar comunicación EtherNet/IP. Sin extras ni adeudos: trabajo dentro del presupuesto aprobado.',
     costo_mano_obra: 5200,
     costo_refacciones: 8200,

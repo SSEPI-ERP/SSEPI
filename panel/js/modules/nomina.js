@@ -5,8 +5,10 @@ import { createDataService } from '../core/data-service.js';
 import { enqueueCoiJob } from '../core/coi-queue.js';
 
 const nominaService = createDataService('pagos_nomina');
+const contactosService = createDataService('contactos');
 
 let _feed = [];
+let _empleadosCache = [];
 
 function _fmtMoney(n) {
     if (n == null || Number.isNaN(Number(n))) return '—';
@@ -79,6 +81,25 @@ function _recalcModalTotal() {
     if (inp) inp.value = t.toFixed(2);
 }
 
+async function _loadEmpleadosDatalist() {
+    const dl = document.getElementById('nomListaEmpleados');
+    if (!dl) return;
+    let nombres = [];
+    try {
+        const rows = await contactosService.select({}, { limit: 500 });
+        nombres = (rows || [])
+            .map(c => c.nombre || c.nombre_cliente || c.empresa)
+            .filter(Boolean)
+            .filter((v, i, a) => a.indexOf(v) === i);
+    } catch (_) {
+        nombres = [];
+    }
+    const fallback = ['Norberto Moro', 'Carlos Calderon', 'Daniel', 'Itzel', 'Becerra', 'Tecnico', 'Ivan', 'Administracion', 'Arturo', 'javier', 'Aaron'];
+    fallback.forEach(n => { if (!nombres.includes(n)) nombres.push(n); });
+    _empleadosCache = nombres;
+    dl.innerHTML = nombres.map(n => `<option value="${_escape(n)}">`).join('');
+}
+
 function _openNomModal() {
     const back = document.getElementById('nomModalBackdrop');
     if (!back) return;
@@ -97,6 +118,7 @@ function _openNomModal() {
     document.getElementById('nomInpEstado').value = 'pagado';
     document.getElementById('nomInpMetodo').value = 'transferencia';
     _recalcModalTotal();
+    _loadEmpleadosDatalist();
     back.classList.add('nom-modal-visible');
     back.setAttribute('aria-hidden', 'false');
 }
@@ -200,7 +222,10 @@ async function refreshList() {
         _updateKpis(list);
         _addToFeed('📥', 'Cargados ' + list.length + ' pagos en rango', 'ok');
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="coi-log-empty">Sin registros en el rango.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="6" class="coi-log-empty">
+                Sin registros de nómina para el periodo seleccionado.<br>
+                <small>Ajusta las fechas o captura un nuevo pago de nómina.</small>
+            </td></tr>`;
             return;
         }
         list = list.slice(0, 300);
@@ -243,6 +268,7 @@ async function init() {
     }
     _addToFeed('✅', 'Módulo iniciado', 'info');
     await refreshList();
+    _loadEmpleadosDatalist();
 }
 
 window.nominaModule = { init, refreshList };

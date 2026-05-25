@@ -27,6 +27,8 @@
     <script type="module" src="/panel/js/core/pdf-generator.js?v=2"></script>
     <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
     <script type="module" src="/panel/js/modules/compras.js?v=2"></script>
+    <script type="module" src="/panel/js/core/n8n-status.js?v=2"></script>
+    <script type="module" src="/panel/js/core/n8n-insights-panel.js?v=2"></script>
 </head>
 <body class="page-compras nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -160,6 +162,7 @@
                 <button type="button" class="active" data-op-tab="taller"><i class="fas fa-microchip"></i> Laboratorio <span id="opCountTaller">(0)</span></button>
                 <button type="button" data-op-tab="motor"><i class="fas fa-industry"></i> Motores <span id="opCountMotor">(0)</span></button>
                 <button type="button" data-op-tab="auto"><i class="fas fa-robot"></i> Automatización <span id="opCountAuto">(0)</span></button>
+                <button type="button" data-op-tab="solicitudes"><i class="fas fa-file-invoice"></i> Solicitudes de Cotización <span id="opCountSolicitudes">(0)</span></button>
             </div>
             <div id="operativasListCompras" class="operativas-list"></div>
         </div>
@@ -234,11 +237,14 @@
             </div>
             <div class="modal-body">
                 <form id="nuevaOrdenForm">
+                    <input type="hidden" id="vinculacionTipo">
+                    <input type="hidden" id="vinculacionId">
+
                     <div class="form-grid">
-                        <div class="input-group required">
+                        <div class="input-group">
                             <label>Proveedor</label>
-                            <select id="proveedorSelect" required>
-                                <option value="">Seleccionar proveedor</option>
+                            <select id="proveedorSelect">
+                                <option value="">PENDIENTE / Por asignar</option>
                             </select>
                         </div>
                         <div class="input-group required">
@@ -267,25 +273,44 @@
                             </select>
                         </div>
                     </div>
-                    <div class="input-group">
-                        <label>Vinculación (opcional)</label>
-                        <div style="display:flex; gap:10px;">
-                            <select id="vinculacionTipo">
-                                <option value="">Sin vinculación</option>
-                                <option value="taller">Laboratorio de Electrónica</option>
-                                <option value="motor">Motores</option>
-                                <option value="proyecto">Proyecto / Soporte</option>
-                                <option value="automatizacion">Automatización (SP-A)</option>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Tipo de Orden</label>
+                            <select id="ordenTipoSelect">
+                                <option value="sencilla" selected>Sencilla (un solo registro)</option>
+                                <option value="personalizada">Personalizada (por proveedor)</option>
                             </select>
-                            <input type="text" id="vinculacionId" placeholder="ID de orden de Laboratorio/Motores/Proyecto">
+                        </div>
+                        <div class="input-group">
+                            <label>Fecha Generación BOM</label>
+                            <input type="date" id="fechaGeneracionBom">
                         </div>
                     </div>
-                    <h4>Productos</h4>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Fecha Esperada de Llegada</label>
+                            <input type="date" id="fechaEsperadaLlegada">
+                        </div>
+                    </div>
+
+                    <!-- Cliente info (auto-importado desde orden vinculada) -->
+                    <div id="clienteInfoCompra" style="display:none; margin: 12px 0; padding: 12px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px;">
+                        <div style="font-weight: 600; color: #0369a1; margin-bottom: 8px;"><i class="fas fa-user"></i> Información del Cliente (importada)</div>
+                        <div id="clienteInfoGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;"></div>
+                    </div>
+
+                    <h4 style="margin-top: 18px;"><i class="fas fa-truck"></i> Materiales de Proveedores (a comprar)</h4>
                     <table class="items-table">
-                        <thead><tr><th>Descripción</th><th>SKU</th><th>Cantidad</th><th>Precio Unit.</th><th>Link</th><th></th></tr></thead>
+                        <thead><tr><th>Nombre</th><th>Descripción</th><th>SKU</th><th>Cantidad</th><th>Precio Unit.</th><th>Link</th><th></th></tr></thead>
                         <tbody id="itemsBody"></tbody>
                     </table>
-                    <button type="button" class="btn-add-row" id="addItemBtn"><i class="fas fa-plus"></i> Agregar producto</button>
+                    <h4 style="margin-top: 18px;"><i class="fas fa-warehouse"></i> Materiales de Inventario</h4>
+                    <table class="items-table">
+                        <thead><tr><th>Nombre</th><th>Descripción</th><th>SKU</th><th>Cantidad</th><th>Precio Unit.</th><th></th></tr></thead>
+                        <tbody id="itemsBodyInventario"></tbody>
+                    </table>
+                    <button type="button" class="btn-add-row" id="addItemBtn"><i class="fas fa-plus"></i> Agregar producto proveedor</button>
+                    <button type="button" class="btn-add-row" id="addItemInventarioBtn"><i class="fas fa-plus"></i> Agregar producto inventario</button>
                 </form>
             </div>
             <div class="modal-footer">

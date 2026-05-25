@@ -474,13 +474,6 @@ const AnalisisModule = (function() {
         document.getElementById('kpiProyeccionUtilidad').innerHTML = '$' + utilidadProyectada.toLocaleString();
     }
 
-        const utilidadProyectada = utilidadActual - gastoExtra;
-        const utilEl = document.getElementById('utilidadProyectada');
-        const kpiEl = document.getElementById('kpiProyeccionUtilidad');
-        if (utilEl) utilEl.innerHTML = '$' + utilidadProyectada.toLocaleString();
-        if (kpiEl) kpiEl.innerHTML = '$' + utilidadProyectada.toLocaleString();
-    }
-
     function _exportarPDF() {
         if (!window.jspdf || !window.jspdf.jsPDF) {
             alert('No se pudo cargar la librería PDF. Recarga la página e intenta de nuevo.');
@@ -548,7 +541,7 @@ const AnalisisModule = (function() {
         const deptos = [
             { nombre: 'Ventas', datos: _filtrarPorFecha(ventas, 'fecha'), total: (arr) => arr.reduce((s, v) => s + (v.total || 0), 0), cols: ['Folio', 'Cliente', 'Total', 'Fecha'] },
             { nombre: 'Compras', datos: comprasF, total: (arr) => arr.reduce((s, c) => s + (c.total || 0), 0), cols: ['Folio', 'Proveedor', 'Total', 'Fecha'] },
-            { nombre: 'Taller (órdenes)', datos: _filtrarPorFecha(taller, 'fecha_ingreso'), total: () => 0, cols: ['Folio', 'Estado', 'Fecha ingreso'] },
+            { nombre: 'Laboratorio (órdenes)', datos: _filtrarPorFecha(taller, 'fecha_ingreso'), total: () => 0, cols: ['Folio', 'Estado', 'Fecha ingreso'] },
             { nombre: 'Motores (órdenes)', datos: _filtrarPorFecha(motores, 'fecha_ingreso'), total: () => 0, cols: ['Folio', 'Estado', 'Fecha ingreso'] },
             { nombre: 'Automatización (proyectos)', datos: _filtrarPorFecha(proyectos, 'fecha'), total: () => 0, cols: ['Folio', 'Cliente', 'Estado'] },
             { nombre: 'Contabilidad (ingresos)', datos: ingresosContabF, total: (arr) => arr.reduce((s, i) => s + (i.monto_total || 0), 0), cols: ['Concepto', 'Monto', 'Fecha'] }
@@ -573,7 +566,7 @@ const AnalisisModule = (function() {
             const filas = depto.datos.slice(0, 15).map(item => {
                 if (depto.nombre === 'Ventas') return [item.folio || '-', (item.cliente || '').substring(0, 25), '$' + (item.total || 0).toLocaleString(), item.fecha ? moment(item.fecha).format('DD/MM/YY') : ''];
                 if (depto.nombre === 'Compras') return [item.folio || '-', (item.proveedor || item.vinculacion?.nombre || '-').substring(0, 25), '$' + (item.total || 0).toLocaleString(), item.fecha_creacion ? moment(item.fecha_creacion).format('DD/MM/YY') : ''];
-                if (depto.nombre === 'Taller (órdenes)') return [item.folio || '-', item.estado || '-', item.fecha_ingreso ? moment(item.fecha_ingreso).format('DD/MM/YY') : ''];
+                if (depto.nombre === 'Laboratorio (órdenes)') return [item.folio || '-', item.estado || '-', item.fecha_ingreso ? moment(item.fecha_ingreso).format('DD/MM/YY') : ''];
                 if (depto.nombre === 'Motores (órdenes)') return [item.folio || '-', item.estado || '-', item.fecha_ingreso ? moment(item.fecha_ingreso).format('DD/MM/YY') : ''];
                 if (depto.nombre === 'Automatización (proyectos)') return [item.folio || '-', (item.cliente || '').substring(0, 25), item.estado || '-'];
                 if (depto.nombre === 'Contabilidad (ingresos)') return [(item.concepto || '-').substring(0, 30), '$' + (item.monto_total || 0).toLocaleString(), item.fecha_pago ? moment(item.fecha_pago).format('DD/MM/YY') : ''];

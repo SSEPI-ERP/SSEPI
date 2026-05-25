@@ -23,12 +23,28 @@ export async function seedIfEmpty(db) {
     }
   }
 
-  if (count('local_contactos') === 0) runSeed('seed-limpiar-contactos.mjs');
+  if (count('local_contactos') < 20) {
+    console.warn('[SeedCheck] Pocos contactos — ejecuta manual: node seed-erp-maestro-local.mjs --replace-contactos');
+    // No correr seed-contactos-imagenes (obsoleto); el ERP maestro es la fuente única.
+  }
   if (count('local_inventario') === 0) runSeed('seed-inventario.mjs');
   if (count('local_bom_automatizacion') === 0) runSeed('seed-bom.mjs');
   if (count('local_calculadoras') === 0) runSeed('seed-calculadoras.mjs');
+  else {
+    if (count('local_clientes_tabulador') === 0 || count('local_calculadora_clientes') === 0) {
+      runSeed('seed-calculadoras.mjs');
+    }
+    if (count('local_calculadora_hoja_filas') === 0) runSeed('seed-calculadoras.mjs');
+  }
   if (count('local_actividades_diarias') === 0) runSeed('seed-actividades.mjs');
-  if (count('local_ordenes_taller') === 0) runSeed('seed-ordenes-ejemplo.mjs');
+  if (count('local_ordenes_taller') < 15) {
+    console.log('[SeedCheck] Pocas ordenes taller — ejecutando importar-reportes-a-bd.mjs...');
+    try {
+      execSync('node importar-reportes-a-bd.mjs', { cwd: __dirname, stdio: 'inherit', timeout: 600000 });
+    } catch (e) {
+      console.warn('[SeedCheck] importar-reportes falló:', e.message);
+    }
+  }
   if (count('local_proyectos_automatizacion') === 0) runSeed('seed-proyectos-automatizacion.mjs');
   if (count('local_estado_pipeline_unificado') === 0) runSeed('seed-pipeline.mjs');
 }

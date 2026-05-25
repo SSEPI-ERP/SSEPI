@@ -223,13 +223,19 @@ const ProyectosModule = (function() {
         const container = document.getElementById('kanbanContainer');
         if (!container) return;
         const estados = [
-            { id: 'confirmacion', label: 'En Confirmación', color: '#ff9800' },
-            { id: 'proyecto', label: 'Convertidas a Proyecto', color: '#2196f3' },
-            { id: 'cancelado', label: 'Canceladas', color: '#f44336' }
+            { label: 'Registrado', match: s => s === 'Registrado' },
+            { label: 'Diagnóstico', match: s => s === 'Diagnóstico' },
+            { label: 'Esperando Cotización', match: s => s === 'Esperando Cotización' },
+            { label: 'Esperando Confirmación', match: s => s === 'Esperando Confirmación Cliente' },
+            { label: 'En reparación', match: s => s === 'Confirmado' || s === 'En reparación' },
+            { label: 'Reparado / Listo', match: s => s === 'Reparado / Listo' },
+            { label: 'Completado', match: s => s === 'Completado' || s === 'Entregado' || s === 'Facturado' },
+            { label: 'Cancelado', match: s => s === 'Cancelado' },
+            { label: 'Garantía', match: s => s === 'Garantía' }
         ];
         let html = '';
         estados.forEach(estado => {
-            const filtrados = visitas.filter(v => v.estado === estado.id);
+            const filtrados = visitas.filter(v => estado.match(v.estado));
             html += `
                 <div class="kanban-column">
                     <div class="kanban-header" style="border-bottom-color: ${estado.color};">
@@ -276,10 +282,16 @@ const ProyectosModule = (function() {
         let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Origen</th><th>Cliente</th><th>Equipo</th><th>Técnico</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>';
         visitas.forEach(v => {
             let estadoClass = '';
-            let estadoTexto = '';
-            if (v.estado === 'confirmacion') { estadoClass = 'status-confirmacion'; estadoTexto = 'Confirmación'; }
-            else if (v.estado === 'proyecto') { estadoClass = 'status-proyecto'; estadoTexto = 'Proyecto'; }
-            else if (v.estado === 'cancelado') { estadoClass = 'status-cancelado'; estadoTexto = 'Cancelado'; }
+            let estadoTexto = v.estado || 'Registrado';
+            if (v.estado === 'Registrado') { estadoClass = 'status-confirmacion'; }
+            else if (v.estado === 'Diagnóstico') { estadoClass = 'status-confirmacion'; }
+            else if (v.estado === 'Esperando Cotización') { estadoClass = 'status-confirmacion'; }
+            else if (v.estado === 'Esperando Confirmación Cliente') { estadoClass = 'status-confirmacion'; }
+            else if (v.estado === 'Confirmado' || v.estado === 'En reparación') { estadoClass = 'status-proyecto'; }
+            else if (v.estado === 'Reparado / Listo') { estadoClass = 'status-proyecto'; }
+            else if (v.estado === 'Completado' || v.estado === 'Entregado' || v.estado === 'Facturado') { estadoClass = 'status-proyecto'; }
+            else if (v.estado === 'Cancelado') { estadoClass = 'status-cancelado'; }
+            else if (v.estado === 'Garantía') { estadoClass = 'status-confirmacion'; }
             const origenLabel = v.origen === 'ventas' ? '<span style="background:#10b981;color:#fff;padding:1px 6px;border-radius:8px;font-size:.65rem;">Ventas</span>' : 'Manual';
             html += `<tr onclick="proyectosModule._editarVisita('${v.id}')">
                 <td>${v.folio || v.id.slice(-6)}</td>
@@ -298,16 +310,17 @@ const ProyectosModule = (function() {
     function _renderGrafica(visitas) {
         const ctx = document.getElementById('graficaCanvas').getContext('2d');
         if (chartInstance) chartInstance.destroy();
-        const confirmacion = visitas.filter(v => v.estado === 'confirmacion').length;
-        const proyecto = visitas.filter(v => v.estado === 'proyecto').length;
-        const cancelado = visitas.filter(v => v.estado === 'cancelado').length;
+        const pendiente = visitas.filter(v => ['Registrado','Diagnóstico','Esperando Cotización','Esperando Confirmación Cliente'].includes(v.estado)).length;
+        const progreso = visitas.filter(v => ['Confirmado','En reparación','Reparado / Listo'].includes(v.estado)).length;
+        const completado = visitas.filter(v => ['Completado','Entregado','Facturado'].includes(v.estado)).length;
+        const cancelado = visitas.filter(v => v.estado === 'Cancelado').length;
         chartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['En Confirmación', 'Convertidas', 'Canceladas'],
+                labels: ['Pendiente / Espera', 'En Proceso', 'Completadas', 'Canceladas'],
                 datasets: [{
-                    data: [confirmacion, proyecto, cancelado],
-                    backgroundColor: ['#ff9800', '#2196f3', '#f44336']
+                    data: [pendiente, progreso, completado, cancelado],
+                    backgroundColor: ['#ff9800', '#2196f3', '#4caf50', '#f44336']
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false }
@@ -321,8 +334,8 @@ const ProyectosModule = (function() {
         var elProy = document.getElementById('kpiProyecto');
         var elCanc = document.getElementById('kpiCancelado');
         if (elTotal) elTotal.innerText = list.length;
-        if (elConf) elConf.innerText = list.filter(function (v) { return v.estado === 'confirmacion'; }).length;
-        if (elProy) elProy.innerText = list.filter(function (v) { return v.estado === 'proyecto'; }).length;
+        if (elConf) elConf.innerText = list.filter(function (v) { return ['Registrado','Diagnóstico','Esperando Cotización','Esperando Confirmación Cliente'].includes(v.estado); }).length;
+        if (elProy) elProy.innerText = list.filter(function (v) { return ['Confirmado','En reparación','Reparado / Listo','Completado','Entregado','Facturado'].includes(v.estado); }).length;
         if (elCanc) elCanc.innerText = list.filter(function (v) { return v.estado === 'cancelado'; }).length;
     }
 
@@ -389,6 +402,8 @@ const ProyectosModule = (function() {
             }
         }
 
+        var estadoVisitaEl = document.getElementById('estadoVisita');
+        if (estadoVisitaEl) estadoVisitaEl.value = visita.estado || 'Registrado';
         document.querySelectorAll('#actividadesCheckbox input').forEach(cb => {
             cb.checked = visita.actividades && visita.actividades.includes(cb.value);
         });
@@ -413,7 +428,7 @@ const ProyectosModule = (function() {
             pruebas_realizadas: document.getElementById('pruebasRealizadas').value,
             recomendaciones: document.getElementById('recomendaciones').value,
             observaciones_cliente: document.getElementById('observacionesCliente').value,
-            estado: 'confirmacion'
+            estado: document.getElementById('estadoVisita').value || 'Registrado'
         };
 
         document.querySelectorAll('#actividadesCheckbox input:checked').forEach(cb => {

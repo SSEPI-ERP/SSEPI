@@ -18,6 +18,7 @@
     var hojaFilasList = [];
     var bomList = [];
     var serviciosList = [];
+    var contactosList = [];
 
     function loadCalculadoras() {
         if (!supabase()) return Promise.resolve([]);
@@ -67,6 +68,55 @@
             serviciosList = r.data || [];
             return serviciosList;
         });
+    }
+
+    function loadContactos() {
+        if (!supabase()) return Promise.resolve([]);
+        return supabase().from('contactos').select('*').order('nombre').then(function(r) {
+            if (r.error) {
+                console.warn('[Calculadoras] No se pudo cargar contactos:', r.error.message);
+                contactosList = [];
+                return [];
+            }
+            contactosList = r.data || [];
+            console.log('[Calculadoras] Contactos cargados:', contactosList.length);
+            return contactosList;
+        });
+    }
+
+    // ========== INTÉRPRETE DE NOMBRES (contactos ↔ tabulador) ==========
+    function _normalizarNombre(n) {
+        return String(n || '').toLowerCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/\b(s\.?a\.?\s*de\s*c\.?v\.?|s\.?a\.?c\.?v\.?|s\.?a\.?\s*de\s*r\.?l\.?|s\.?a\.?|c\.?v\.?|llc|inc|ltda?)\b/gi, '')
+            .replace(/[,\.\-\_\s]+/g, ' ')
+            .trim()
+            .replace(/\s+/g, '');
+    }
+
+    function _matchClienteTabulador(nombreContacto) {
+        var normC = _normalizarNombre(nombreContacto);
+        if (!normC || !clientesTabulador.length) return null;
+        var best = null, bestScore = 0;
+        clientesTabulador.forEach(function(ct) {
+            var normT = _normalizarNombre(ct.nombre_cliente);
+            if (!normT) return;
+            var score = 0;
+            if (normT === normC) { score = 1; }
+            else if (normT.indexOf(normC) !== -1 || normC.indexOf(normT) !== -1) {
+                score = 0.85;
+            } else {
+                var wordsC = normC.match(/[a-z0-9]+/g) || [];
+                var wordsT = normT.match(/[a-z0-9]+/g) || [];
+                var common = 0;
+                wordsC.forEach(function(w) {
+                    if (wordsT.indexOf(w) !== -1) common++;
+                });
+                score = common / Math.max(wordsC.length, wordsT.length);
+            }
+            if (score > bestScore) { bestScore = score; best = ct; }
+        });
+        return bestScore >= 0.5 ? best : null;
     }
 
     // Tabulador de clientes (viáticos) - carga desde clientes_tabulador
@@ -1575,10 +1625,22 @@
     function fillClienteSelector() {
         var sel = document.getElementById('selClienteCotizacion');
         if (!sel) return;
-        sel.innerHTML = '<option value="">-- Selecciona cliente --</option>' +
-            clientesTabulador.map(function(c) {
-                return '<option value="' + esc(c.id) + '" data-km="' + (c.km || 0) + '" data-horas="' + (c.horas_viaje || 0) + '" data-nombre="' + esc(c.nombre_cliente) + '">' + esc(c.nombre_cliente) + ' (' + (c.km || 0) + ' km)</option>';
-            }).join('');
+        var opts = '<option value="">-- Selecciona cliente --</option>';
+        contactosList.forEach(function(c) {
+            var match = _matchClienteTabulador(c.nombre);
+            var km = match ? (match.km || 0) : 0;
+            var horas = match ? (match.horas_viaje || 0) : 0;
+            var tabId = match ? match.id : '';
+            var label = esc(c.nombre) + (c.nombre_comercial && c.nombre_comercial !== c.nombre ? ' / ' + esc(c.nombre_comercial) : '');
+            opts += '<option value="' + esc(c.id) + '" data-km="' + km + '" data-horas="' + horas + '" data-nombre="' + esc(c.nombre) + '" data-contacto="' + esc(c.id) + '" data-tabulador="' + esc(tabId) + '" data-rfc="' + esc(c.rfc || '') + '" data-direccion="' + esc(c.direccion || '') + '">' + label + (km > 0 ? ' (' + km + ' km)' : '') + '</option>';
+        });
+        // Si no hay contactos, fallback al tabulador directo
+        if (!contactosList.length) {
+            clientesTabulador.forEach(function(c) {
+                opts += '<option value="' + esc(c.id) + '" data-km="' + (c.km || 0) + '" data-horas="' + (c.horas_viaje || 0) + '" data-nombre="' + esc(c.nombre_cliente) + '" data-tabulador="' + esc(c.id) + '">' + esc(c.nombre_cliente) + ' (' + (c.km || 0) + ' km)</option>';
+            });
+        }
+        sel.innerHTML = opts;
     }
 
     function onCambioDepto() {
@@ -1721,7 +1783,6 @@
         if (selDepto) selDepto.addEventListener('change', onCambioDepto);
         if (selCliente) selCliente.addEventListener('change', onCambioCliente);
 
-        if (document.getElementById('btnNuevaCalculadora')) document.getElementById('btnNuevaCalculadora').addEventListener('click', function() { openModalCalculadora(null); });
         if (document.getElementById('btnNuevoCosto')) document.getElementById('btnNuevoCosto').addEventListener('click', function() { openModalCosto(null); });
         if (document.getElementById('btnNuevoCliente')) document.getElementById('btnNuevoCliente').addEventListener('click', function() { openModalCliente(null); });
 
@@ -1815,6 +1876,7 @@
             await loadCostos();
             await loadClientes();
             await loadClientesTabulador();
+            await loadContactos();
             renderFunciones();
             renderCostos();
             renderClientes();
@@ -1870,7 +1932,6 @@
         var pn2 = (item.numero_parte || item.part_number || '').toLowerCase().replace(/\s+/g, '').replace(/\./g, '-');
         if (pn2 && idx[pn2]) return '/panel/assets/bom/' + idx[pn2];
         return '';
-    }
     }
 
     function fillBOMCatalogoCategorias() {

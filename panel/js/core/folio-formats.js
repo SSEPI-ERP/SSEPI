@@ -110,11 +110,29 @@
             .catch(function () { return prefix + '1'; });
     }
 
+    /**
+     * Laboratorio: SP-0513 / SP.0418 / SP0687 → SP-E0513 (no toca SP-M, SP-A, etc.).
+     */
+    function normalizeFolioLaboratorio(folio) {
+        var s = String(folio || '').trim().toUpperCase().replace(/\s+/g, '');
+        if (!s) return '';
+        if (/^SP-M|^SP-A|^SP-S|^SP-OC|^SP-SOP/i.test(s)) return s;
+        if (/^SP-E/i.test(s)) return s.replace(/^SP-E/i, 'SP-E');
+        var m = s.match(/^SP-(\d{2,})/);
+        if (m) return 'SP-E' + m[1];
+        m = s.match(/^SP\.(\d{2,})/);
+        if (m) return 'SP-E' + m[1];
+        m = s.match(/^SP(\d{3,})$/);
+        if (m) return 'SP-E' + m[1];
+        return s;
+    }
+
     window.folioFormats = {
         getNextFolioAutomatizacion: getNextFolioAutomatizacion,
         getNextFolioMotores: getNextFolioMotores,
         getNextFolioLaboratorio: getNextFolioLaboratorio,
         getNextFolioSuministro: getNextFolioSuministro,
-        getNextFolioOrdenCompra: getNextFolioOrdenCompra
+        getNextFolioOrdenCompra: getNextFolioOrdenCompra,
+        normalizeFolioLaboratorio: normalizeFolioLaboratorio
     };
 })();

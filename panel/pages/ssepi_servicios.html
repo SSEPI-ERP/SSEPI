@@ -32,6 +32,8 @@
     <script type="module" src="/panel/js/core/folio-formats.js?v=2"></script>
     <script type="module" src="/panel/js/modules/actividades.js?v=2"></script>
     <script type="module" src="/panel/js/modules/servicios.js?v=2"></script>
+    <script type="module" src="/panel/js/core/n8n-status.js?v=2"></script>
+    <script type="module" src="/panel/js/core/n8n-insights-panel.js?v=2"></script>
 </head>
 <body class="page-servicios nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -108,9 +110,13 @@
                 <label>Estado:</label>
                 <select id="filtroEstado">
                     <option value="todos">Todos</option>
-                    <option value="pendiente">Pendiente</option>
-                    <option value="progreso">En Progreso</option>
+                    <option value="pendiente">Registrado / Diagnóstico</option>
+                    <option value="esperando_cotizacion">Esperando Cotización</option>
+                    <option value="esperando_confirmacion">Esperando Confirmación Cliente</option>
+                    <option value="progreso">En Ejecución</option>
                     <option value="completado">Completado</option>
+                    <option value="cancelado">Cancelado</option>
+                    <option value="garantia">Garantía</option>
                 </select>
             </div>
             <div class="filtro-grupo">
@@ -195,6 +201,7 @@
         </div>
 
         <div class="ws-body">
+            <div class="ws-layout">
             <div class="ws-content">
                 <!-- PASO 1: LEVANTAMIENTO -->
                 <div id="step-1" class="step-content active">
@@ -207,7 +214,7 @@
                             <div class="input-group"><label>Vendedor</label><input type="text" id="paso1_vendedor"></div>
                         </div>
                         <div class="input-group"><label>Notas Generales</label><textarea id="paso1_notasGenerales" rows="3"></textarea></div>
-                        <div class="input-group"><label>Notas Internas</label><textarea id="paso1_notasInternas" rows="3"></textarea></div>
+                        <div class="input-group" style="display:none;"><label>Notas Internas</label><textarea id="paso1_notasInternas" rows="3"></textarea></div>
                         <div id="widgetActividadesProyecto"></div>
                         <div style="display:flex; justify-content:flex-end;">
                             <button class="btn-etapa" id="guardarPaso1"><i class="fas fa-save"></i> Guardar</button>
@@ -259,12 +266,13 @@
                         </div>
                         <button class="btn-add-row" id="agregarMaterialManual"><i class="fas fa-plus"></i> Agregar Manual</button>
                         <table class="materiales-table">
-                            <thead><tr><th>Nombre</th><th>Descripción</th><th>Cantidad</th><th>SKU</th><th>Costo u.</th><th>Subtotal</th><th></th></tr></thead>
+                            <thead><tr><th>Nombre</th><th>Descripción</th><th>Cantidad</th><th>SKU</th><th>Proveedor</th><th>Costo u.</th><th>Subtotal</th><th></th></tr></thead>
                             <tbody id="materialesBody"></tbody>
                         </table>
-                        <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+                        <div style="display:flex; justify-content:flex-end; margin-top:20px; gap:8px; flex-wrap:wrap;">
                             <button class="btn-etapa" id="guardarMateriales"><i class="fas fa-save"></i> Guardar</button>
-                            <button class="btn-etapa" id="generarRequerimientoCompraBtn"><i class="fas fa-file-invoice"></i> Generar requerimiento</button>
+                            <button class="btn-etapa" id="generarRequerimientoCompraBtn"><i class="fas fa-paper-plane"></i> Enviar lista de materiales a Compras</button>
+                            <button class="btn-etapa" id="btnClienteConfirmadoAuto" style="background:#10b981; color:white; display:none;"><i class="fas fa-check-circle"></i> Cliente confirmó — Avanzar a Desarrollo</button>
                             <button class="btn-etapa" id="terminarEtapa3" data-etapa="3"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
                         </div>
                     </div>
@@ -351,10 +359,36 @@
                         <button class="btn-nuevo-apartado" id="crearNuevoApartado"><i class="fas fa-plus-circle"></i> Nuevo Apartado</button>
                         <div class="apartados-grid" id="apartadosContainer"></div>
                         <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+                            <button class="btn-primary" id="btnNotificarVentasCompletado" style="background:#10b981;"><i class="fas fa-bell"></i> Notificar a Ventas que proyecto está completado</button>
                             <button class="btn-etapa" id="completarEntregaBtn"><i class="fas fa-flag-checkered"></i> Completar entrega</button>
                         </div>
                     </div>
                 </div>
+            </div>
+            <aside class="ws-chatter" aria-label="Bitácora: notas y registro de estados">
+                <div class="ws-chatter-header">
+                    <div class="ws-chatter-title">Bitácora</div>
+                    <div class="ws-chatter-sub" id="wsChatterFolio">—</div>
+                </div>
+                <div class="ws-chatter-tabs">
+                    <button type="button" class="ws-chatter-tab active" data-tab="notas"><i class="fas fa-message"></i> Notas</button>
+                    <button type="button" class="ws-chatter-tab" data-tab="actividad"><i class="fas fa-list"></i> Registro</button>
+                </div>
+                <div class="ws-chatter-body">
+                    <div class="ws-chatter-pane active" id="wsPaneNotas" data-pane="notas">
+                        <div class="ws-notes-list" id="wsNotesList"></div>
+                        <div class="ws-note-compose">
+                            <textarea id="wsNoteText" rows="3" placeholder="Escribe una nota interna..."></textarea>
+                            <div class="ws-note-actions">
+                                <button type="button" class="btn-ssepi btn-automatizacion" id="wsAddNoteBtn"><i class="fas fa-paper-plane"></i> Registrar nota</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ws-chatter-pane" id="wsPaneActividad" data-pane="actividad">
+                        <div class="ws-activity-list" id="wsActivityList"></div>
+                    </div>
+                </div>
+            </aside>
             </div>
         </div>
 

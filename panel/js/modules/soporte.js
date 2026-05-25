@@ -27,13 +27,18 @@ const SoporteModule = (function() {
     // Servicios de datos
     const visitasService = createDataService('soporte_visitas');
     const proyectosService = createDataService('proyectos_automatizacion');
+    const notificacionesService = createDataService('notificaciones');
     const supabase = window.supabase;
+
+    // Suscripciones para cleanup
+    let subscriptions = [];
 
     // ==================== INICIALIZACIÓN ====================
     async function init() {
         await _initUI();
         _bindEvents();
         await _loadInitialData();
+        _setupRealtime();
         _startClock();
         console.log('✅ Módulo soporte iniciado');
     }
@@ -74,6 +79,50 @@ const SoporteModule = (function() {
             el = document.getElementById('clock');
             if (el) el.innerText = fmt24();
         }, 1000);
+    }
+
+    function _setupRealtime() {
+        const sb = window.supabase;
+        if (!sb) return;
+        const subVisitas = sb
+            .channel('soporte_visitas_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'soporte_visitas' }, payload => {
+                _loadVisits();
+                _addToFeed('📋', 'Datos de Soporte actualizados');
+            })
+            .subscribe();
+        subscriptions.push(subVisitas);
+
+        const subNotif = sb
+            .channel('soporte_notificaciones')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: 'para=eq.soporte' }, payload => {
+                const notif = payload.new || {};
+                _addToFeed('🔔', notif.mensaje || 'Nueva notificación');
+                if (notif.tipo === 'cliente_confirmo' && currentVisit && currentVisit.id === notif.orden_id) {
+                    currentVisit.estado = 'Confirmado';
+                    _showToast('✅ Cliente confirmó la cotización. Puede proceder con la segunda visita.', 'success');
+                }
+                if (notif.tipo === 'garantia_activada') {
+                    _showToast('🔔 ' + (notif.mensaje || 'Garantía activada'), 'info');
+                }
+                _loadVisits();
+            })
+            .subscribe();
+        subscriptions.push(subNotif);
+    }
+
+    function _showToast(msg, type) {
+        if (window.ssepiToast) window.ssepiToast.show(msg, type);
+        else console.log('[Soporte]', msg);
+    }
+
+    function _addToFeed(icon, mensaje) {
+        const feed = document.getElementById('feedList');
+        if (!feed) return;
+        const item = document.createElement('div');
+        item.className = 'feed-item';
+        item.innerHTML = `<span style="margin-right:6px;">${icon}</span>${mensaje}`;
+        feed.prepend(item);
     }
 
     // ==================== CARGA DE DATOS INICIAL ====================
@@ -146,13 +195,21 @@ const SoporteModule = (function() {
         const container = document.getElementById('kanbanContainer');
         if (!container) return;
         const estados = [
-            { id: 'confirmacion', label: 'En Confirmación', color: '#ff9800' },
-            { id: 'proyecto', label: 'Convertidas a Proyecto', color: '#2196f3' },
-            { id: 'cancelado', label: 'Canceladas', color: '#f44336' }
+            { id: 'Registrado', label: 'Registrado', color: '#9e9e9e' },
+            { id: 'Diagnóstico', label: 'Diagnóstico', color: '#ff9800' },
+            { id: 'Esperando Cotización', label: 'Esperando Cotización', color: '#ab47bc' },
+            { id: 'Esperando Confirmación Cliente', label: 'Esperando Confirmación', color: '#9c27b0' },
+            { id: 'Confirmado', label: 'Confirmado', color: '#2196f3' },
+            { id: 'Reparado / Listo', label: 'Reparado / Listo', color: '#4caf50' },
+            { id: 'Completado', label: 'Completado', color: '#4caf50' },
+            { id: 'Entregado', label: 'Entregado', color: '#1abc9c' },
+            { id: 'Facturado', label: 'Facturado', color: '#1abc9c' },
+            { id: 'Cancelado', label: 'Cancelado', color: '#f44336' },
+            { id: 'Garantía', label: 'Garantía', color: '#e91e63' }
         ];
         let html = '';
         estados.forEach(estado => {
-            const filtrados = visitas.filter(v => v.estado === estado.id);
+            const filtrados = visitas.filter(v => (v.estado || 'Registrado') === estado.id);
             html += `
                 <div class="kanban-column">
                     <div class="kanban-header" style="border-bottom-color: ${estado.color};">
@@ -194,18 +251,29 @@ const SoporteModule = (function() {
         if (!container) return;
         let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Cliente</th><th>Equipo</th><th>Técnico</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>';
         visitas.forEach(v => {
-            let estadoClass = '';
-            let estadoTexto = '';
-            if (v.estado === 'confirmacion') { estadoClass = 'status-confirmacion'; estadoTexto = 'Confirmación'; }
-            else if (v.estado === 'proyecto') { estadoClass = 'status-proyecto'; estadoTexto = 'Proyecto'; }
-            else if (v.estado === 'cancelado') { estadoClass = 'status-cancelado'; estadoTexto = 'Cancelado'; }
+            const est = v.estado || 'Registrado';
+            const estadoMap = {
+                'Registrado': { class: 'status-registrado', text: 'Registrado' },
+                'Diagnóstico': { class: 'status-diagnostico', text: 'Diagnóstico' },
+                'Esperando Cotización': { class: 'status-esperando', text: 'Esperando Cotización' },
+                'Esperando Confirmación Cliente': { class: 'status-esperando-confirmacion', text: 'Esperando Confirmación' },
+                'Confirmado': { class: 'status-confirmado', text: 'Confirmado' },
+                'En reparación': { class: 'status-reparacion', text: 'En reparación' },
+                'Reparado / Listo': { class: 'status-reparado', text: 'Reparado / Listo' },
+                'Completado': { class: 'status-completado', text: 'Completado' },
+                'Entregado': { class: 'status-entregado', text: 'Entregado' },
+                'Facturado': { class: 'status-facturado', text: 'Facturado' },
+                'Cancelado': { class: 'status-cancelado', text: 'Cancelado' },
+                'Garantía': { class: 'status-garantia', text: 'Garantía' }
+            };
+            const em = estadoMap[est] || { class: '', text: est };
             html += `<tr onclick="soporteModule._editarVisita('${v.id}')">
                 <td>${v.folio || v.id.slice(-6)}</td>
                 <td>${v.cliente || ''}</td>
                 <td>${v.equipo || ''}</td>
                 <td>${v.tecnico || ''}</td>
                 <td>${v.fecha || ''}</td>
-                <td><span class="status-badge ${estadoClass}">${estadoTexto}</span></td>
+                <td><span class="status-badge ${em.class}">${em.text}</span></td>
             </tr>`;
         });
         html += '</tbody></table>';
@@ -215,16 +283,22 @@ const SoporteModule = (function() {
     function _renderGrafica(visitas) {
         const ctx = document.getElementById('graficaCanvas').getContext('2d');
         if (chartInstance) chartInstance.destroy();
-        const confirmacion = visitas.filter(v => v.estado === 'confirmacion').length;
-        const proyecto = visitas.filter(v => v.estado === 'proyecto').length;
-        const cancelado = visitas.filter(v => v.estado === 'cancelado').length;
+        const registrado = visitas.filter(v => v.estado === 'Registrado').length;
+        const diagnostico = visitas.filter(v => v.estado === 'Diagnóstico').length;
+        const esperandoCot = visitas.filter(v => v.estado === 'Esperando Cotización').length;
+        const esperandoConf = visitas.filter(v => v.estado === 'Esperando Confirmación Cliente').length;
+        const confirmado = visitas.filter(v => v.estado === 'Confirmado').length;
+        const reparado = visitas.filter(v => v.estado === 'Reparado / Listo' || v.estado === 'Completado').length;
+        const entregado = visitas.filter(v => v.estado === 'Entregado' || v.estado === 'Facturado').length;
+        const cancelado = visitas.filter(v => v.estado === 'Cancelado').length;
+        const garantia = visitas.filter(v => v.estado === 'Garantía').length;
         chartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['En Confirmación', 'Convertidas', 'Canceladas'],
+                labels: ['Registrado', 'Diagnóstico', 'Esperando Cotización', 'Esperando Confirmación', 'Confirmado', 'Reparado/Listo', 'Entregado/Facturado', 'Cancelado', 'Garantía'],
                 datasets: [{
-                    data: [confirmacion, proyecto, cancelado],
-                    backgroundColor: ['#ff9800', '#2196f3', '#f44336']
+                    data: [registrado, diagnostico, esperandoCot, esperandoConf, confirmado, reparado, entregado, cancelado, garantia],
+                    backgroundColor: ['#9e9e9e', '#ff9800', '#ab47bc', '#9c27b0', '#2196f3', '#4caf50', '#1abc9c', '#f44336', '#e91e63']
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false }
@@ -233,9 +307,9 @@ const SoporteModule = (function() {
 
     function _updateKPIs(visitas) {
         document.getElementById('kpiTotal').innerText = visitas.length;
-        document.getElementById('kpiConfirmacion').innerText = visitas.filter(v => v.estado === 'confirmacion').length;
-        document.getElementById('kpiProyecto').innerText = visitas.filter(v => v.estado === 'proyecto').length;
-        document.getElementById('kpiCancelado').innerText = visitas.filter(v => v.estado === 'cancelado').length;
+        document.getElementById('kpiConfirmacion').innerText = visitas.filter(v => v.estado === 'Registrado' || v.estado === 'Diagnóstico' || v.estado === 'Esperando Cotización' || v.estado === 'Esperando Confirmación Cliente').length;
+        document.getElementById('kpiProyecto').innerText = visitas.filter(v => v.estado === 'Confirmado' || v.estado === 'En reparación' || v.estado === 'Reparado / Listo' || v.estado === 'Completado').length;
+        document.getElementById('kpiCancelado').innerText = visitas.filter(v => v.estado === 'Cancelado').length;
     }
 
     // ==================== FUNCIONES DEL MODAL ====================
@@ -279,6 +353,7 @@ const SoporteModule = (function() {
         document.getElementById('pruebasRealizadas').value = visita.pruebasRealizadas || '';
         document.getElementById('recomendaciones').value = visita.recomendaciones || '';
         document.getElementById('observacionesCliente').value = visita.observacionesCliente || '';
+        document.getElementById('estadoVisita').value = visita.estado || 'Registrado';
 
         document.querySelectorAll('#actividadesCheckbox input').forEach(cb => {
             cb.checked = visita.actividades && visita.actividades.includes(cb.value);
@@ -304,7 +379,7 @@ const SoporteModule = (function() {
             pruebasRealizadas: document.getElementById('pruebasRealizadas').value,
             recomendaciones: document.getElementById('recomendaciones').value,
             observacionesCliente: document.getElementById('observacionesCliente').value,
-            estado: 'confirmacion'
+            estado: document.getElementById('estadoVisita').value || 'Registrado'
         };
 
         document.querySelectorAll('#actividadesCheckbox input:checked').forEach(cb => {
@@ -313,6 +388,7 @@ const SoporteModule = (function() {
 
         if (!data.cliente) { alert('El cliente es obligatorio'); return; }
 
+        const estadoAnterior = currentVisit && currentVisit.estado;
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
             if (isNewVisit) {
@@ -325,6 +401,31 @@ const SoporteModule = (function() {
                 alert('✅ Visita actualizada');
             }
             _addToFeed('💾', `Visita ${data.folio} guardada`);
+
+            // Notificar flujo comercial según cambio de estado
+            if (!isNewVisit && estadoAnterior !== data.estado) {
+                if (data.estado === 'Esperando Cotización') {
+                    try {
+                        await notificacionesService.insert({
+                            para: 'compras', tipo: 'esperando_cotizacion_compras',
+                            orden_id: visitId, folio: data.folio, cliente: data.cliente,
+                            mensaje: `Soporte en Planta solicita cotización de refacciones para ${data.folio}.`,
+                            leido: false, fecha: new Date().toISOString()
+                        }, csrfToken);
+                    } catch(e) {}
+                }
+                if (data.estado === 'Reparado / Listo' || data.estado === 'Completado') {
+                    try {
+                        await notificacionesService.insert({
+                            para: 'ventas', tipo: 'trabajo_terminado',
+                            orden_id: visitId, folio: data.folio, cliente: data.cliente,
+                            mensaje: `Soporte en Planta completó el servicio ${data.folio}. Proceda a facturar/entregar.`,
+                            leido: false, fecha: new Date().toISOString()
+                        }, csrfToken);
+                    } catch(e) {}
+                }
+            }
+
             _cerrarModal();
         } catch (error) {
             console.error(error);

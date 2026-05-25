@@ -101,6 +101,42 @@ function colRef(col) {
   return col === 'id' ? 'id' : `json_extract(data, '$.${col}')`;
 }
 
+/** Evita RangeError al serializar órdenes con imágenes base64 en listados. */
+const HEAVY_TABLES = new Set([
+  'local_ordenes_taller',
+  'local_ordenes_motores',
+  'local_proyectos_automatizacion',
+]);
+
+function stripHeavyFields(row, localTable, select) {
+  if (!HEAVY_TABLES.has(localTable)) return row;
+  const wantsImages =
+    typeof select === 'string' &&
+    (select.includes('reporte_imagenes') || select.includes('documentos_adjuntos'));
+  if (wantsImages) return row;
+
+  const out = { ...row };
+  for (const key of ['reporte_imagenes', 'documentos_adjuntos', 'historial_actividad']) {
+    if (!(key in out)) continue;
+    if (Array.isArray(out[key])) {
+      out[key] = out[key].map((item) => {
+        if (!item || typeof item !== 'object') return item;
+        const copy = { ...item };
+        if (typeof copy.dataUrl === 'string' && copy.dataUrl.length > 256) {
+          copy.dataUrl = null;
+          copy._omitted = true;
+        }
+        return copy;
+      });
+      out[`_${key}_count`] = out[key].length;
+    } else if (typeof out[key] === 'string' && out[key].length > 512) {
+      out[key] = null;
+      out[`_${key}_omitted`] = true;
+    }
+  }
+  return out;
+}
+
 function buildSqliteWhere(filters) {
   const clauses = [], params = [];
   for (const f of filters) {
@@ -175,7 +211,8 @@ export function createOfflineProxyRouter(db) {
 
       const rows = await stmt.query(where, params, orderBy, 100000);
       const total = rows.length;
-      const paginated = rows.slice(offset, offset + limit);
+      const lightRows = rows.map((r) => stripHeavyFields(r, localTable, parsed.select));
+      const paginated = lightRows.slice(offset, offset + limit);
 
       // Content-Range para compatibilidad con Supabase-js .range() y Prefer: count=exact
       const wantsCount = req.headers['prefer'] && req.headers['prefer'].includes('count=exact');

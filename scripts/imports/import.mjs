@@ -16,6 +16,8 @@
  *   node import.mjs bom --dry-run | --apply
  *   node import.mjs formulas --dry-run | --apply
  *       — FORMULAS DE COTIZACIÓN.xlsx en fuente/ → calculadoras + calculadora_costos
+ *   node import.mjs erp-maestro [--dry-run|--apply] [--link-adeudos]
+ *       — Paquete ERP: contactos + tabulador + alias (ver docs/IMPORT-PAQUETE-ERP.md)
  *
  * No commitear claves. --dry-run escribe CSV en scripts/imports/out/
  */
@@ -26,6 +28,8 @@ import { fileURLToPath } from 'url';
 import { parse } from 'csv-parse/sync';
 import XLSX from 'xlsx';
 import { createClient } from '@supabase/supabase-js';
+import { runErpMaestro } from './import-erp-maestro.mjs';
+import { printPathsStatus } from './erp-paquete-paths.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
@@ -779,6 +783,18 @@ async function cmdBom(argv) {
   console.log('BOM líneas procesadas:', out.length);
 }
 
+async function cmdErpMaestro(argv) {
+  const apply = argv.includes('--apply');
+  const linkAdeudos = argv.includes('--link-adeudos');
+  printPathsStatus();
+  const supabase = getSupabase(apply);
+  const stats = await runErpMaestro(supabase, { apply, linkAdeudos });
+  console.log('erp-maestro:', JSON.stringify(stats, null, 2));
+  if (!apply) {
+    console.log('Dry-run. Revisa scripts/imports/out/ y ejecuta con --apply');
+  }
+}
+
 // ---------- main ----------
 const [, , cmd, ...argv] = process.argv;
 const cmds = {
@@ -788,16 +804,18 @@ const cmds = {
   inventario: cmdInventario,
   bom: cmdBom,
   formulas: cmdFormulas,
+  'erp-maestro': cmdErpMaestro,
 };
 
 if (!cmd || !cmds[cmd]) {
-  console.log(`Uso: node import.mjs <inspect|contacts|orders|inventario|bom|formulas> [--dry-run|--apply]
+  console.log(`Uso: node import.mjs <inspect|contacts|orders|inventario|bom|formulas|erp-maestro> [--dry-run|--apply]
   inspect     — muestra columnas de archivos en fuente/
   contacts    — res.partner / contactos (logo desde /clintes)
   orders      — repair.order → ordenes_taller (requiere migración estados Odoo)
   inventario  — fusiona todos los xlsx/csv de fuente/ excepto contactos/reparaciones
   bom         — BOM_*.csv → bom_lineas
-  formulas    — FORMULAS*COTIZACION*.xlsx → calculadoras + calculadora_costos`);
+  formulas    — FORMULAS*COTIZACION*.xlsx → calculadoras + calculadora_costos
+  erp-maestro — import paquete simulaciones (build-erp-maestro.mjs antes)`);
   process.exit(cmd ? 1 : 0);
 }
 

@@ -44,6 +44,7 @@ const ComprasModule = (function() {
     const proyectosService = createDataService('proyectos_automatizacion');
     const notificacionesService = createDataService('notificaciones');
     const comprasItemsService = createDataService('compras_items');
+    const cotizacionesService = createDataService('cotizaciones');
 
     function _supabase() { return window.supabase; }
 
@@ -427,7 +428,7 @@ const ComprasModule = (function() {
                 <td><strong>${c.folio || c.id.slice(-6)}</strong> ${badgeCuarentena}</td>
                 <td>${c.proveedor || '—'}</td>
                 <td>${c.departamento || '—'}</td>
-                <td>${c.vinculacion ? `${c.vinculacion.tipo}: ${c.vinculacion.nombre || ''}` : '—'}</td>
+                <td>${c.vinculacion ? `<span style="color:#0369a1;font-weight:600;">${c.vinculacion.folio_taller || c.vinculacion.folio || ''}</span>` : '—'}</td>
                 <td>$${(c.total || 0).toFixed(2)}</td>
                 <td><span class="status-badge estado-${c.estado}">${_getEstadoLabel(c.estado)}</span></td>
             </tr>
@@ -725,32 +726,60 @@ const ComprasModule = (function() {
             }
         }
 
+        const clienteInfo = (compra.data && compra.data.cliente_info) ? compra.data.cliente_info : null;
+        const itemsProveedor = (currentCompra.itemsData || []).filter(i => i.link_proveedor);
+        const itemsInventario = (currentCompra.itemsData || []).filter(i => !i.link_proveedor);
+
         return `
             <div class="detalle-section">
                 <h4>Información General</h4>
                 <div class="detalle-grid">
                     <div><strong>Folio:</strong> ${compra.folio}</div>
-                    <div><strong>Proveedor:</strong> ${compra.proveedor}</div>
+                    <div><strong>Proveedor:</strong> ${compra.proveedor || 'PENDIENTE'}</div>
                     <div><strong>Departamento:</strong> ${compra.departamento}</div>
                     <div><strong>Fecha Requerida:</strong> ${compra.fecha_requerida ? new Date(compra.fecha_requerida).toLocaleDateString() : '—'}</div>
                     <div><strong>Prioridad:</strong> ${compra.prioridad || 'Normal'}</div>
                     <div><strong>Estado:</strong> ${_getEstadoLabel(compra.estado)}</div>
+                    <div><strong>Tipo de Orden:</strong> ${(compra.data && compra.data.orden_tipo) || 'sencilla'}</div>
+                    <div><strong>BOM Generado:</strong> ${(compra.data && compra.data.fecha_generacion_bom) || '—'}</div>
+                    <div><strong>Esperada Llegada:</strong> ${(compra.data && compra.data.fecha_esperada_llegada) || '—'}</div>
                 </div>
-                <div style="margin-top: 16px;">
+                <div style="margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap;">
                     <button onclick="comprasModule._descargarOC()" class="btn-ssepi btn-compras" style="display: inline-flex; align-items: center; gap: 8px;">
                         <i class="fas fa-file-excel"></i> Descargar OC
                     </button>
+                    <button onclick="comprasModule._generarPDFCompra(true)" class="btn-ssepi btn-compras" style="display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-eye"></i> Ver PDF
+                    </button>
+                    <button onclick="comprasModule._generarPDFCompra(false)" class="btn-ssepi btn-compras" style="display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-download"></i> Descargar PDF
+                    </button>
+                    ${(compra.departamento === 'Suministro' || compra.vinculacion?.tipo === 'cotizacion_suministro') && !compra.confirmado_ventas ? `
+                    <button onclick="comprasModule._enviarAVentas('${compra.id}')" class="btn-ssepi btn-ventas" style="display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-paper-plane"></i> Enviar a Ventas
+                    </button>` : ''}
                 </div>
             </div>
             ${compra.vinculacion ? `
             <div class="detalle-section">
                 <h4>Vinculación con Orden Operativa</h4>
                 <div class="detalle-grid">
-                    <div><strong>Tipo:</strong> ${compra.vinculacion.tipo}</div>
-                    <div><strong>ID:</strong> ${compra.vinculacion.id}</div>
+                    <div><strong>Módulo:</strong> ${compra.vinculacion.tipo}</div>
+                    <div><strong>Folio Origen:</strong> <span style="color:#0369a1;font-weight:600;">${compra.vinculacion.folio_taller || compra.vinculacion.folio || ''}</span></div>
                     <div><strong>Cliente/Orden:</strong> ${compra.vinculacion.nombre || ''}</div>
-                    <div><strong>Folio Laboratorio:</strong> ${compra.vinculacion.folio_taller || ''}</div>
                 </div>
+                ${clienteInfo ? `
+                <div style="margin-top: 12px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+                    <div style="color: #475569; font-weight: 600; margin-bottom: 8px;"><i class="fas fa-user"></i> Información del Cliente</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
+                        <div><strong>Nombre:</strong> ${clienteInfo.nombre || '—'}</div>
+                        <div><strong>RFC:</strong> ${clienteInfo.rfc || '—'}</div>
+                        <div><strong>Teléfono:</strong> ${clienteInfo.telefono || '—'}</div>
+                        <div><strong>Email:</strong> ${clienteInfo.email || '—'}</div>
+                        <div><strong>Dirección:</strong> ${clienteInfo.direccion || '—'}</div>
+                        <div><strong>CP:</strong> ${clienteInfo.cp || '—'}</div>
+                    </div>
+                </div>` : ''}
                 ${estatusOrden ? `
                 <div style="margin-top: 12px; padding: 12px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px;">
                     <div style="color: #0369a1; font-weight: 600; margin-bottom: 8px;">
@@ -768,23 +797,68 @@ const ComprasModule = (function() {
             </div>
             ` : ''}
             <div class="detalle-section">
-                <h4>Productos</h4>
+                <h4><i class="fas fa-truck"></i> Materiales de Proveedores (${itemsProveedor.length})</h4>
                 <table class="items-table">
-                    <thead><tr><th>Descripción</th><th>SKU</th><th>Cantidad</th><th>Precio Unit.</th><th>Total</th><th>Link</th></tr></thead>
+                    <thead><tr><th>Producto</th><th>Cant.</th><th>Recibido</th><th>Facturado</th><th>Precio Unit.</th><th>Impuestos (16%)</th><th>Desc.%</th><th>Importe</th></tr></thead>
                     <tbody>
-                        ${currentCompra.itemsData && currentCompra.itemsData.length ? currentCompra.itemsData.map(item => `
+                        ${itemsProveedor.length ? itemsProveedor.map(item => {
+                            const pu = Number(item.costo_unitario) || 0;
+                            const qty = Number(item.cantidad) || 0;
+                            const desc = Number(item.descuento_pct) || 0;
+                            const base = pu * qty;
+                            const descMonto = base * (desc / 100);
+                            const sub = base - descMonto;
+                            const iva = sub * 0.16;
+                            const totalItem = sub + iva;
+                            return `
                             <tr>
-                                <td>${item.descripcion || ''}</td>
-                                <td>${item.sku || ''}</td>
-                                <td>${item.cantidad || 0}</td>
-                                <td>$${(item.costo_unitario || 0).toFixed(2)}</td>
-                                <td>$${(item.costo_total || 0).toFixed(2)}</td>
-                                <td>${item.link_proveedor ? `<a href="${item.link_proveedor}" target="_blank">Ver</a>` : '—'}</td>
-                            </tr>
-                        `).join('') : '<tr><td colspan="6">No hay productos</td></tr>'}
+                                <td>${item.nombre || item.descripcion || '—'}</td>
+                                <td>${qty}</td>
+                                <td>${compra.estado >= 4 ? '✅ ' + (compra.fecha_recepcion ? new Date(compra.fecha_recepcion).toLocaleDateString() : '') : '—'}</td>
+                                <td>${compra.estado >= 5 ? '✅' : '—'}</td>
+                                <td>$${pu.toFixed(2)}</td>
+                                <td>$${iva.toFixed(2)}</td>
+                                <td>${desc > 0 ? desc + '%' : '—'}</td>
+                                <td>$${totalItem.toFixed(2)}</td>
+                            </tr>`;
+                        }).join('') : '<tr><td colspan="8">No hay materiales de proveedores</td></tr>'}
                     </tbody>
                 </table>
-                <div class="total-final"><strong>Total:</strong> $${(compra.total || 0).toFixed(2)}</div>
+            </div>
+            <div class="detalle-section">
+                <h4><i class="fas fa-warehouse"></i> Materiales de Inventario (${itemsInventario.length})</h4>
+                <table class="items-table">
+                    <thead><tr><th>Producto</th><th>Cant.</th><th>Recibido</th><th>Facturado</th><th>Precio Unit.</th><th>Impuestos (16%)</th><th>Desc.%</th><th>Importe</th></tr></thead>
+                    <tbody>
+                        ${itemsInventario.length ? itemsInventario.map(item => {
+                            const pu = Number(item.costo_unitario) || 0;
+                            const qty = Number(item.cantidad) || 0;
+                            const desc = Number(item.descuento_pct) || 0;
+                            const base = pu * qty;
+                            const descMonto = base * (desc / 100);
+                            const sub = base - descMonto;
+                            const iva = sub * 0.16;
+                            const totalItem = sub + iva;
+                            return `
+                            <tr>
+                                <td>${item.nombre || item.descripcion || '—'}</td>
+                                <td>${qty}</td>
+                                <td>${compra.estado >= 4 ? '✅ ' + (compra.fecha_recepcion ? new Date(compra.fecha_recepcion).toLocaleDateString() : '') : '—'}</td>
+                                <td>${compra.estado >= 5 ? '✅' : '—'}</td>
+                                <td>$${pu.toFixed(2)}</td>
+                                <td>$${iva.toFixed(2)}</td>
+                                <td>${desc > 0 ? desc + '%' : '—'}</td>
+                                <td>$${totalItem.toFixed(2)}</td>
+                            </tr>`;
+                        }).join('') : '<tr><td colspan="8">No hay materiales de inventario</td></tr>'}
+                    </tbody>
+                </table>
+                <div class="total-final">
+                    <div><strong>Subtotal:</strong> $${(compra.subtotal || (compra.total ? compra.total / 1.16 : 0)).toFixed(2)}</div>
+                    <div><strong>IVA (16%):</strong> $${(compra.iva || (compra.total ? compra.total - (compra.total / 1.16) : 0)).toFixed(2)}</div>
+                    ${compra.descuento_general > 0 ? `<div><strong>Descuento general (${compra.descuento_general}%):</strong> -$${((compra.total || 0) * (compra.descuento_general / 100)).toFixed(2)}</div>` : ''}
+                    <div style="font-size:18px; margin-top:8px;"><strong>TOTAL:</strong> $${(compra.total || 0).toFixed(2)}</div>
+                </div>
             </div>
             ${compra.pasos ? `
             <div class="detalle-section">
@@ -810,8 +884,266 @@ const ComprasModule = (function() {
         `;
     }
 
-    function _editarOrden(id) {
-        alert('Función de edición pendiente de implementación');
+    async function _editarOrden(id) {
+        const compra = compras.find(c => c.id === id) || currentCompra;
+        if (!compra) { _showToast('Orden no encontrada', 'error'); return; }
+
+        // Cerrar modal de detalle
+        document.getElementById('detalleModal').classList.remove('active');
+
+        // Abrir modal de nueva orden
+        const modal = document.getElementById('nuevaOrdenModal');
+        const title = modal.querySelector('.modal-title');
+        if (title) title.innerHTML = '<i class="fas fa-edit"></i> Editar Orden de Compra';
+
+        isNewCompra = false;
+        currentCompra = compra;
+        compraId = id;
+
+        // Rellenar campos
+        document.getElementById('proveedorSelect').value = compra.proveedor || '';
+        document.getElementById('departamentoSelect').value = compra.departamento || 'Laboratorio de Electrónica';
+        document.getElementById('fechaRequerida').value = compra.fecha_requerida ? compra.fecha_requerida.split('T')[0] : new Date().toISOString().split('T')[0];
+        document.getElementById('prioridadSelect').value = compra.prioridad || 'Normal';
+        document.getElementById('ordenTipoSelect').value = (compra.data && compra.data.orden_tipo) || 'sencilla';
+        document.getElementById('fechaGeneracionBom').value = (compra.data && compra.data.fecha_generacion_bom) || '';
+        document.getElementById('fechaEsperadaLlegada').value = (compra.data && compra.data.fecha_esperada_llegada) || '';
+        if (compra.vinculacion) {
+            document.getElementById('vinculacionTipo').value = compra.vinculacion.tipo || '';
+            document.getElementById('vinculacionId').value = compra.vinculacion.id || '';
+        } else {
+            document.getElementById('vinculacionTipo').value = '';
+            document.getElementById('vinculacionId').value = '';
+        }
+
+        // Cliente info
+        const cliDiv = document.getElementById('clienteInfoCompra');
+        const cliGrid = document.getElementById('clienteInfoGrid');
+        if (compra.data && compra.data.cliente_info) {
+            const ci = compra.data.cliente_info;
+            cliDiv.style.display = 'block';
+            cliGrid.innerHTML = `
+                <div><strong>Nombre:</strong> ${ci.nombre || '—'}</div>
+                <div><strong>RFC:</strong> ${ci.rfc || '—'}</div>
+                <div><strong>Teléfono:</strong> ${ci.telefono || '—'}</div>
+                <div><strong>Email:</strong> ${ci.email || '—'}</div>
+                <div><strong>Dirección:</strong> ${ci.direccion || '—'}</div>
+                <div><strong>CP:</strong> ${ci.cp || '—'}</div>
+            `;
+            window._clienteInfoCompra = ci;
+        } else {
+            cliDiv.style.display = 'none';
+            cliGrid.innerHTML = '';
+            window._clienteInfoCompra = null;
+        }
+
+        // Limpiar y cargar items
+        document.getElementById('itemsBody').innerHTML = '';
+        document.getElementById('itemsBodyInventario').innerHTML = '';
+        try {
+            const { data: itemsData } = await window.supabase
+                .from('compras_items')
+                .select('*')
+                .eq('compra_id', id)
+                .order('created_at', { ascending: true });
+            if (itemsData && itemsData.length) {
+                itemsData.forEach(it => {
+                    if (it.link_proveedor) {
+                        _agregarItemRowConDatos(it);
+                    } else {
+                        _agregarItemRowInventarioConDatos(it);
+                    }
+                });
+            } else {
+                _agregarItemRow();
+            }
+        } catch (e) {
+            console.warn('[Compras] Error cargando items para edición:', e);
+            _agregarItemRow();
+        }
+
+        modal.classList.add('active');
+    }
+
+    function _agregarItemRowConDatos(it) {
+        const tbody = document.getElementById('itemsBody');
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="text" placeholder="Nombre" class="item-nombre" value="${it.nombre || ''}"></td>
+            <td><input type="text" placeholder="Descripción" class="item-desc" value="${it.descripcion || ''}"></td>
+            <td><input type="text" placeholder="SKU" class="item-sku" value="${it.sku || ''}"></td>
+            <td><input type="number" value="${it.cantidad || 1}" min="1" class="item-qty"></td>
+            <td><input type="number" value="${(it.costo_unitario || 0).toFixed(2)}" step="0.01" class="item-price"></td>
+            <td><input type="url" placeholder="Link" class="item-link" value="${it.link_proveedor || ''}"></td>
+            <td><button type="button" class="btn-remove" onclick="this.closest('tr').remove()">✖</button></td>
+        `;
+        tbody.appendChild(row);
+    }
+
+    function _agregarItemRowInventarioConDatos(it) {
+        const tbody = document.getElementById('itemsBodyInventario');
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="text" placeholder="Nombre" class="item-nombre" value="${it.nombre || ''}"></td>
+            <td><input type="text" placeholder="Descripción" class="item-desc" value="${it.descripcion || ''}"></td>
+            <td><input type="text" placeholder="SKU" class="item-sku" value="${it.sku || ''}"></td>
+            <td><input type="number" value="${it.cantidad || 1}" min="1" class="item-qty"></td>
+            <td><input type="number" value="${(it.costo_unitario || 0).toFixed(2)}" step="0.01" class="item-price"></td>
+            <td><button type="button" class="btn-remove" onclick="this.closest('tr').remove()">✖</button></td>
+        `;
+        tbody.appendChild(row);
+    }
+
+    async function _cargarItemsDesdeVinculacion(tipo, idOrden) {
+        if (!tipo || !idOrden) return;
+        try {
+            let enlaces = [];
+            let inventario = [];
+            if (tipo === 'taller') {
+                const { data } = await window.supabase.from('ordenes_taller').select('*').eq('id', idOrden).single();
+                if (data) {
+                    const rawEnlaces = data.refacciones_enlaces || (data.data && data.data.refacciones_enlaces) || [];
+                    const rawInv = data.refacciones_inventario || (data.data && data.data.refacciones_inventario) || [];
+                    const rawCompCompra = data.componentes_compra || (data.data && data.data.componentes_compra) || [];
+                    const rawCompInv = data.componentes_inventario || (data.data && data.data.componentes_inventario) || [];
+                    enlaces = [
+                        ...rawEnlaces.map(e => ({ nombre: e.nombre || '', sku: e.sku || '', descripcion: e.descripcion || '', cantidad: e.cantidad || 1, link: e.link || '' })),
+                        ...rawCompCompra.map(e => ({ nombre: e.nombre || '', sku: e.sku || '', descripcion: e.descripcion || '', cantidad: e.cantidad || 1, link: e.link || '' }))
+                    ];
+                    inventario = [
+                        ...rawInv.map(i => ({ nombre: i.nombre || '', sku: i.sku || '', descripcion: i.descripcion || '', cantidad: i.cantidad || 1 })),
+                        ...rawCompInv.map(i => ({ nombre: i.nombre || '', sku: i.sku || '', descripcion: i.descripcion || '', cantidad: i.cantidad || 1 }))
+                    ];
+                }
+            } else if (tipo === 'motor') {
+                const { data } = await window.supabase.from('ordenes_motores').select('*').eq('id', idOrden).single();
+                if (data) {
+                    const rawEnlaces = data.refacciones_enlaces || (data.data && data.data.refacciones_enlaces) || [];
+                    const rawInv = data.refacciones_inventario || (data.data && data.data.refacciones_inventario) || [];
+                    const rawCompCompra = data.componentes_compra || (data.data && data.data.componentes_compra) || [];
+                    const rawCompInv = data.componentes_inventario || (data.data && data.data.componentes_inventario) || [];
+                    enlaces = [
+                        ...rawEnlaces.map(e => ({ nombre: e.nombre || '', sku: e.sku || '', descripcion: e.descripcion || '', cantidad: e.cantidad || 1, link: e.link || '' })),
+                        ...rawCompCompra.map(e => ({ nombre: e.nombre || '', sku: e.sku || '', descripcion: e.descripcion || '', cantidad: e.cantidad || 1, link: e.link || '' }))
+                    ];
+                    inventario = [
+                        ...rawInv.map(i => ({ nombre: i.nombre || '', sku: i.sku || '', descripcion: i.descripcion || '', cantidad: i.cantidad || 1 })),
+                        ...rawCompInv.map(i => ({ nombre: i.nombre || '', sku: i.sku || '', descripcion: i.descripcion || '', cantidad: i.cantidad || 1 }))
+                    ];
+                }
+            } else if (tipo === 'automatizacion' || tipo === 'proyecto') {
+                const { data } = await window.supabase.from('proyectos_automatizacion').select('*').eq('id', idOrden).single();
+                if (data) {
+                    const mats = data.materiales || (data.data && data.data.materiales) || [];
+                    enlaces = mats.map(m => ({
+                        nombre: m.nombre || '',
+                        sku: m.sku || '',
+                        descripcion: m.descripcion || '',
+                        cantidad: m.cantidad || 1,
+                        link: ''
+                    }));
+                }
+            }
+
+            const tbodyProv = document.getElementById('itemsBody');
+            const tbodyInv = document.getElementById('itemsBodyInventario');
+            tbodyProv.innerHTML = '';
+            tbodyInv.innerHTML = '';
+
+            if (enlaces.length > 0) {
+                enlaces.forEach(it => _agregarItemRowConDatos({
+                    nombre: it.nombre,
+                    descripcion: it.descripcion,
+                    sku: it.sku,
+                    cantidad: it.cantidad,
+                    costo_unitario: 0,
+                    link_proveedor: it.link || ''
+                }));
+            }
+            if (inventario.length > 0) {
+                inventario.forEach(it => _agregarItemRowInventarioConDatos({
+                    nombre: it.nombre,
+                    descripcion: it.descripcion,
+                    sku: it.sku,
+                    cantidad: it.cantidad,
+                    costo_unitario: 0
+                }));
+            }
+
+            const total = enlaces.length + inventario.length;
+            if (total > 0) {
+                _showToast(`${enlaces.length} proveedor + ${inventario.length} inventario importados`, 'success');
+            } else {
+                _showToast('La orden vinculada no tiene materiales registrados', 'warning');
+            }
+        } catch (e) {
+            console.warn('[Compras] Error cargando items desde vinculación:', e);
+            _showToast('No se pudieron cargar los items de la orden vinculada', 'error');
+        }
+    }
+
+    async function _enviarAVentas(id) {
+        const compra = compras.find(c => c.id === id) || currentCompra;
+        if (!compra) { _showToast('Orden no encontrada', 'error'); return; }
+        try {
+            const { data: itemsData } = await window.supabase
+                .from('compras_items')
+                .select('*')
+                .eq('compra_id', compra.id)
+                .order('created_at', { ascending: true });
+
+            // Buscar cotización original por folio vinculado
+            let cotizacionOriginal = null;
+            const folioSuministro = compra.vinculacion?.folio;
+            if (folioSuministro) {
+                const { data: cotData } = await window.supabase
+                    .from('cotizaciones')
+                    .select('*')
+                    .eq('folio', folioSuministro)
+                    .limit(1)
+                    .single();
+                cotizacionOriginal = cotData;
+            }
+
+            const ventaData = {
+                folio: cotizacionOriginal?.folio || compra.folio,
+                cliente: cotizacionOriginal?.cliente_nombre || compra.proveedor_nombre || 'Cliente',
+                estado: 'registro',
+                departamento: 'Suministro',
+                tipo: 'cotizacion',
+                origen: 'suministro',
+                orden_origen_id: compra.id,
+                vinculacion: { tipo: 'compra', id: compra.id, folio: compra.folio },
+                total: compra.total || 0,
+                subtotal: (compra.total || 0) / 1.16,
+                iva: (compra.total || 0) - ((compra.total || 0) / 1.16),
+                items: (itemsData || []).map(i => ({
+                    descripcion: i.descripcion || i.nombre || '',
+                    cantidad: i.cantidad || 1,
+                    precio_unitario: i.costo_unitario || 0,
+                    importe: i.costo_total || 0
+                })),
+                observaciones: `Derivado de compra ${compra.folio}`,
+                created_at: new Date().toISOString()
+            };
+
+            await cotizacionesService.insert(ventaData);
+            await comprasService.update(compra.id, { confirmado_ventas: true });
+            await notificacionesService.insert({
+                para: 'ventas',
+                tipo: 'nueva_venta_suministro',
+                compra_id: compra.id,
+                folio: ventaData.folio,
+                mensaje: `Nueva cotización de Suministros ${ventaData.folio} enviada a Ventas`,
+                leido: false,
+                fecha: new Date().toISOString()
+            });
+            _showToast('Enviado a Ventas correctamente', 'success');
+            _addToFeed('🚀', `Compra ${compra.folio} enviada a Ventas`);
+        } catch (e) {
+            console.error('[Compras] Error enviando a Ventas:', e);
+            _showToast('Error al enviar a Ventas: ' + (e.message || e), 'error');
+        }
     }
 
     // ==================== NUEVA ORDEN ====================
@@ -841,13 +1173,23 @@ const ComprasModule = (function() {
         document.getElementById('prioridadSelect').value = 'Normal';
         document.getElementById('vinculacionTipo').value = '';
         document.getElementById('vinculacionId').value = '';
+        document.getElementById('ordenTipoSelect').value = 'sencilla';
+        document.getElementById('fechaGeneracionBom').value = '';
+        document.getElementById('fechaEsperadaLlegada').value = '';
         document.getElementById('itemsBody').innerHTML = '';
+        document.getElementById('itemsBodyInventario').innerHTML = '';
+        const cliDiv = document.getElementById('clienteInfoCompra');
+        if (cliDiv) cliDiv.style.display = 'none';
+        const cliGrid = document.getElementById('clienteInfoGrid');
+        if (cliGrid) cliGrid.innerHTML = '';
+        window._clienteInfoCompra = null;
     }
 
     function _agregarItemRow() {
         const tbody = document.getElementById('itemsBody');
         const row = document.createElement('tr');
         row.innerHTML = `
+            <td><input type="text" placeholder="Nombre" class="item-nombre"></td>
             <td><input type="text" placeholder="Descripción" class="item-desc"></td>
             <td><input type="text" placeholder="SKU" class="item-sku"></td>
             <td><input type="number" value="1" min="1" class="item-qty"></td>
@@ -858,27 +1200,54 @@ const ComprasModule = (function() {
         tbody.appendChild(row);
     }
 
+    function _agregarItemRowInventario() {
+        const tbody = document.getElementById('itemsBodyInventario');
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="text" placeholder="Nombre" class="item-nombre"></td>
+            <td><input type="text" placeholder="Descripción" class="item-desc"></td>
+            <td><input type="text" placeholder="SKU" class="item-sku"></td>
+            <td><input type="number" value="1" min="1" class="item-qty"></td>
+            <td><input type="number" value="0" step="0.01" class="item-price"></td>
+            <td><button type="button" class="btn-remove" onclick="this.closest('tr').remove()">✖</button></td>
+        `;
+        tbody.appendChild(row);
+    }
+
     async function _guardarBorrador() {
         console.log('[Compras] Guardar borrador (avance sin cerrar)');
-        const proveedor = document.getElementById('proveedorSelect').value;
+        const proveedor = document.getElementById('proveedorSelect').value || 'PENDIENTE';
         const departamento = document.getElementById('departamentoSelect').value;
         const fechaRequerida = document.getElementById('fechaRequerida').value;
         const prioridad = document.getElementById('prioridadSelect').value;
         const vinculacionTipo = document.getElementById('vinculacionTipo').value;
         const vinculacionId = document.getElementById('vinculacionId').value;
+        const ordenTipo = document.getElementById('ordenTipoSelect').value || 'sencilla';
+        const fechaGeneracionBom = document.getElementById('fechaGeneracionBom').value;
+        const fechaEsperadaLlegada = document.getElementById('fechaEsperadaLlegada').value;
 
         const items = [];
         document.querySelectorAll('#itemsBody tr').forEach(tr => {
+            const nombre = tr.querySelector('.item-nombre')?.value;
             const desc = tr.querySelector('.item-desc')?.value;
             const sku = tr.querySelector('.item-sku')?.value;
             const qty = parseInt(tr.querySelector('.item-qty')?.value) || 0;
             const price = parseFloat(tr.querySelector('.item-price')?.value) || 0;
             const link = tr.querySelector('.item-link')?.value;
-            items.push({ desc: desc || '', sku: sku || '', qty: qty || 0, price: price || 0, link: link || '' });
+            items.push({ nombre: nombre || '', desc: desc || '', sku: sku || '', qty: qty || 0, price: price || 0, link: link || '', origen: 'proveedor' });
+        });
+        document.querySelectorAll('#itemsBodyInventario tr').forEach(tr => {
+            const nombre = tr.querySelector('.item-nombre')?.value;
+            const desc = tr.querySelector('.item-desc')?.value;
+            const sku = tr.querySelector('.item-sku')?.value;
+            const qty = parseInt(tr.querySelector('.item-qty')?.value) || 0;
+            const price = parseFloat(tr.querySelector('.item-price')?.value) || 0;
+            items.push({ nombre: nombre || '', desc: desc || '', sku: sku || '', qty: qty || 0, price: price || 0, link: '', origen: 'inventario' });
         });
 
         const total = items.reduce((sum, i) => sum + (i.qty * i.price), 0);
         const vinculacion = vinculacionTipo && vinculacionId ? { tipo: vinculacionTipo, id: vinculacionId, nombre: '' } : null;
+        const clienteInfo = window._clienteInfoCompra || null;
         let folio = compraId ? (currentCompra && currentCompra.folio) : null;
         if (!folio) {
             folio = (window.folioFormats && window.folioFormats.getNextFolioOrdenCompra)
@@ -904,7 +1273,13 @@ const ComprasModule = (function() {
             }],
             confirmado_ventas: false,
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            data: {
+                orden_tipo: ordenTipo,
+                fecha_generacion_bom: fechaGeneracionBom,
+                fecha_esperada_llegada: fechaEsperadaLlegada,
+                cliente_info: clienteInfo
+            }
         };
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
@@ -927,27 +1302,41 @@ const ComprasModule = (function() {
 
     async function _guardarNuevaOrden() {
         console.log('[Compras] Click en Guardar Nueva Orden');
-        const proveedor = document.getElementById('proveedorSelect').value;
+        const proveedor = document.getElementById('proveedorSelect').value || 'PENDIENTE';
         const departamento = document.getElementById('departamentoSelect').value;
         const fechaRequerida = document.getElementById('fechaRequerida').value;
         const prioridad = document.getElementById('prioridadSelect').value;
         const vinculacionTipo = document.getElementById('vinculacionTipo').value;
         const vinculacionId = document.getElementById('vinculacionId').value;
+        const ordenTipo = document.getElementById('ordenTipoSelect').value || 'sencilla';
+        const fechaGeneracionBom = document.getElementById('fechaGeneracionBom').value;
+        const fechaEsperadaLlegada = document.getElementById('fechaEsperadaLlegada').value;
 
-        if (!proveedor || !departamento) {
-            alert('Complete los campos obligatorios');
+        if (!departamento) {
+            alert('Seleccione un departamento');
             return;
         }
 
         const items = [];
         document.querySelectorAll('#itemsBody tr').forEach(tr => {
+            const nombre = tr.querySelector('.item-nombre')?.value;
             const desc = tr.querySelector('.item-desc')?.value;
             const sku = tr.querySelector('.item-sku')?.value;
             const qty = parseInt(tr.querySelector('.item-qty')?.value) || 0;
             const price = parseFloat(tr.querySelector('.item-price')?.value) || 0;
             const link = tr.querySelector('.item-link')?.value;
-            if (desc && qty > 0) {
-                items.push({ desc, sku, qty, price, link });
+            if ((nombre || desc) && qty > 0) {
+                items.push({ nombre, desc, sku, qty, price, link, origen: 'proveedor' });
+            }
+        });
+        document.querySelectorAll('#itemsBodyInventario tr').forEach(tr => {
+            const nombre = tr.querySelector('.item-nombre')?.value;
+            const desc = tr.querySelector('.item-desc')?.value;
+            const sku = tr.querySelector('.item-sku')?.value;
+            const qty = parseInt(tr.querySelector('.item-qty')?.value) || 0;
+            const price = parseFloat(tr.querySelector('.item-price')?.value) || 0;
+            if ((nombre || desc) && qty > 0) {
+                items.push({ nombre, desc, sku, qty, price, link: '', origen: 'inventario' });
             }
         });
 
@@ -972,6 +1361,7 @@ const ComprasModule = (function() {
                 ? await window.folioFormats.getNextFolioOrdenCompra()
                 : 'SP-OC' + new Date().getFullYear().toString().slice(-2) + (new Date().getMonth() + 1).toString().padStart(2, '0') + '1';
         }
+        const clienteInfo = window._clienteInfoCompra || null;
         const nuevaCompra = {
             folio,
             proveedor,
@@ -990,15 +1380,44 @@ const ComprasModule = (function() {
             }],
             confirmado_ventas: false,
             created_at: (currentCompra && currentCompra.created_at) || new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            data: {
+                orden_tipo: ordenTipo,
+                fecha_generacion_bom: fechaGeneracionBom,
+                fecha_esperada_llegada: fechaEsperadaLlegada,
+                cliente_info: clienteInfo
+            }
         };
 
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
             let inserted;
             if (compraId) {
+                const veniaDeSolicitud = currentCompra && currentCompra.estado_interno === 'esperando_cotizacion';
+                if (veniaDeSolicitud) {
+                    nuevaCompra.estado = 2;
+                    nuevaCompra.estado_interno = 'cotizado_enviado_ventas';
+                }
                 await comprasService.update(compraId, nuevaCompra, csrfToken);
                 inserted = { id: compraId };
+
+                // Notificar a Ventas si venía de solicitud de cotización
+                if (veniaDeSolicitud && vinculacion) {
+                    try {
+                        await notificacionesService.insert({
+                            para: 'ventas',
+                            tipo: 'esperando_cotizacion_compras',
+                            compra_id: compraId,
+                            folio,
+                            orden_id: vinculacion.id,
+                            cliente: vinculacion.nombre || '',
+                            mensaje: `Compras envió cotización para ${folio}. Precios reales capturados. Calcule precio final y presente al cliente.`,
+                            leido: false,
+                            fecha: new Date().toISOString()
+                        }, csrfToken);
+                    } catch (nerr) { console.warn('[Compras] Error notificando a Ventas:', nerr); }
+                }
+
                 alert('✅ Orden confirmada');
                 document.getElementById('nuevaOrdenModal').classList.remove('active');
                 _addToFeed('➕', `Orden ${folio} confirmada`);
@@ -1013,6 +1432,7 @@ const ComprasModule = (function() {
                 for (const item of items) {
                     await itemsService.insert({
                         compra_id: inserted.id,
+                        nombre: item.nombre || '',
                         sku: item.sku || '',
                         descripcion: item.desc || '',
                         cantidad: item.qty || 1,
@@ -1076,6 +1496,45 @@ const ComprasModule = (function() {
         return '';
     }
 
+    async function _abrirCotizacionDesdeSolicitud(compraId) {
+        console.log('[Compras] Abrir cotización desde solicitud', compraId);
+        const compra = compras.find(c => c.id === compraId);
+        if (!compra) { _showToast('Solicitud no encontrada', 'error'); return; }
+        currentCompra = compra;
+        compraId = compra.id;
+        isNewCompra = false;
+        const modal = document.getElementById('nuevaOrdenModal');
+        const title = modal.querySelector('.modal-title');
+        if (title) title.innerHTML = '<i class="fas fa-file-invoice"></i> Cotizar Solicitud ' + (compra.folio || '');
+        document.getElementById('proveedorSelect').value = compra.proveedor || 'PENDIENTE';
+        document.getElementById('departamentoSelect').value = compra.departamento || 'Laboratorio de Electrónica';
+        document.getElementById('fechaRequerida').value = new Date().toISOString().split('T')[0];
+        document.getElementById('prioridadSelect').value = compra.prioridad || 'Normal';
+        if (compra.vinculacion) {
+            document.getElementById('vinculacionTipo').value = compra.vinculacion.tipo || '';
+            document.getElementById('vinculacionId').value = compra.vinculacion.id || '';
+        }
+        // Cargar items existentes
+        const itemsBody = document.getElementById('itemsBody');
+        itemsBody.innerHTML = '';
+        try {
+            const { data: itemsData } = await window.supabase.from('compras_items').select('*').eq('compra_id', compra.id).order('created_at', { ascending: true });
+            (itemsData || []).forEach(it => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td><input type="text" class="item-nombre" value="' + (it.nombre || '') + '" placeholder="Nombre"></td>' +
+                    '<td><input type="text" class="item-desc" value="' + (it.descripcion || '') + '" placeholder="Descripción"></td>' +
+                    '<td><input type="text" class="item-sku" value="' + (it.sku || '') + '" placeholder="SKU"></td>' +
+                    '<td><input type="number" class="item-qty" value="' + (it.cantidad || 1) + '" min="1"></td>' +
+                    '<td><input type="number" class="item-price" value="' + (it.costo_unitario || 0) + '" step="0.01"></td>' +
+                    '<td><input type="text" class="item-link" value="' + (it.link_proveedor || '') + '" placeholder="Link"></td>' +
+                    '<td><button type="button" class="btn-icon btn-remove-item"><i class="fas fa-trash"></i></button></td>';
+                itemsBody.appendChild(tr);
+            });
+        } catch (e) { console.warn('[Compras] Error cargando items:', e); }
+        modal.classList.add('active');
+        _showToast('Captura precios reales de proveedores y guarda para enviar a Ventas', 'info');
+    }
+
     async function _crearOrdenDesdeSolicitud(id, tipo) {
         console.log('[Compras] Crear orden desde solicitud', { id, tipo });
 
@@ -1084,7 +1543,6 @@ const ComprasModule = (function() {
         let departamentoPorDefecto = 'Laboratorio de Electrónica';
 
         try {
-            // Primero obtener datos de la orden de taller
             if (tipo === 'taller') {
                 ordenTallerData = await tallerService.getById(id);
                 departamentoPorDefecto = 'Laboratorio de Electrónica';
@@ -1097,19 +1555,16 @@ const ComprasModule = (function() {
                 departamentoPorDefecto = tipo === 'automatizacion' ? 'Automatización' : 'Proyectos';
             }
 
-            // Buscar la orden de compra vinculada (creada por Laboratorio)
             if (ordenTallerData) {
+                const vincTipo = tipo === 'automatizacion' ? 'proyecto' : tipo;
                 const { data: comprasList, error } = await window.supabase
                     .from('compras')
                     .select('*')
-                    .eq('vinculacion->>tipo', 'taller')
+                    .eq('vinculacion->>tipo', vincTipo)
                     .eq('vinculacion->>id', id)
                     .order('created_at', { ascending: false })
                     .limit(1);
-
-                if (error) {
-                    console.error('[Compras] Error buscando compra vinculada:', error);
-                } else if (comprasList && comprasList.length > 0) {
+                if (!error && comprasList && comprasList.length > 0) {
                     compraData = comprasList[0];
                     console.log('[Compras] Solicitud de compra encontrada:', compraData);
                 } else {
@@ -1121,42 +1576,148 @@ const ComprasModule = (function() {
         }
 
         // Precargar formulario
+        isNewCompra = true;
+        currentCompra = null;
+        compraId = null;
         document.getElementById('vinculacionTipo').value = tipo;
         document.getElementById('vinculacionId').value = id;
         document.getElementById('departamentoSelect').value = departamentoPorDefecto;
+        document.getElementById('proveedorSelect').value = '';
+        document.getElementById('ordenTipoSelect').value = 'sencilla';
+        document.getElementById('fechaGeneracionBom').value = new Date().toISOString().split('T')[0];
+        const hoyMas7 = new Date(); hoyMas7.setDate(hoyMas7.getDate() + 7);
+        document.getElementById('fechaEsperadaLlegada').value = hoyMas7.toISOString().split('T')[0];
 
-        // Importar items desde la orden de compras (creada por Laboratorio)
         const itemsBody = document.getElementById('itemsBody');
+        const itemsBodyInv = document.getElementById('itemsBodyInventario');
         itemsBody.innerHTML = '';
-        const itemsAImportar = compraData?.items || [];
+        itemsBodyInv.innerHTML = '';
+        const clienteInfoDiv = document.getElementById('clienteInfoCompra');
+        const clienteInfoGrid = document.getElementById('clienteInfoGrid');
+        clienteInfoDiv.style.display = 'none';
+        clienteInfoGrid.innerHTML = '';
 
-        console.log('[Compras] Items a importar:', itemsAImportar.length);
-        console.log('[Compras] Equipo info:', ordenTallerData?.equipo, ordenTallerData?.marca, ordenTallerData?.modelo, ordenTallerData?.serie);
+        // === IMPORTAR DATOS DEL CLIENTE ===
+        if (ordenTallerData) {
+            const clienteNombre = ordenTallerData.cliente_nombre || ordenTallerData.cliente || '';
+            let clienteInfo = { nombre: clienteNombre };
+            if (clienteNombre) {
+                try {
+                    const contactosList = await contactosService.select({ tipo: 'client' }, { page: 0, pageSize: 500 });
+                    const contacto = contactosList.find(c => (c.nombre || '').toLowerCase().trim() === clienteNombre.toLowerCase().trim());
+                    if (contacto) {
+                        clienteInfo = {
+                            nombre: contacto.nombre || clienteNombre,
+                            rfc: contacto.rfc || '',
+                            direccion: contacto.direccion || '',
+                            cp: contacto.cp || contacto.codigo_postal || '',
+                            telefono: contacto.telefono || '',
+                            email: contacto.email || '',
+                            ciudad: contacto.ciudad || ''
+                        };
+                    }
+                } catch (e) { console.warn('[Compras] Error buscando contacto:', e); }
+            }
+            if (clienteInfo.nombre) {
+                clienteInfoDiv.style.display = 'block';
+                clienteInfoGrid.innerHTML = `
+                    <div><strong>Nombre:</strong> ${clienteInfo.nombre || '—'}</div>
+                    <div><strong>RFC:</strong> ${clienteInfo.rfc || '—'}</div>
+                    <div><strong>Teléfono:</strong> ${clienteInfo.telefono || '—'}</div>
+                    <div><strong>Email:</strong> ${clienteInfo.email || '—'}</div>
+                    <div><strong>Dirección:</strong> ${clienteInfo.direccion || '—'}</div>
+                    <div><strong>CP:</strong> ${clienteInfo.cp || '—'}</div>
+                `;
+                window._clienteInfoCompra = clienteInfo;
+            }
+        }
 
-        if (itemsAImportar.length > 0) {
-            itemsAImportar.forEach(item => {
+        // === IMPORTAR ITEMS: dos listas separadas ===
+        let enlaces = [];
+        let inventario = [];
+
+        if (ordenTallerData) {
+            // Nombres de campo reales en taller.js: refacciones_enlaces, refacciones_inventario, componentes_compra, componentes_inventario
+            const rawEnlaces = ordenTallerData.refacciones_enlaces || (ordenTallerData.data && ordenTallerData.data.refacciones_enlaces) || [];
+            const rawInv = ordenTallerData.refacciones_inventario || (ordenTallerData.data && ordenTallerData.data.refacciones_inventario) || [];
+            const rawCompCompra = ordenTallerData.componentes_compra || (ordenTallerData.data && ordenTallerData.data.componentes_compra) || [];
+            const rawCompInv = ordenTallerData.componentes_inventario || (ordenTallerData.data && ordenTallerData.data.componentes_inventario) || [];
+            enlaces = [
+                ...rawEnlaces.map(e => ({ nombre: e.nombre || '', descripcion: e.descripcion || '', sku: e.sku || '', cantidad: Number(e.cantidad) || 1, link: e.link || '' })),
+                ...rawCompCompra.map(e => ({ nombre: e.nombre || '', descripcion: e.descripcion || '', sku: e.sku || '', cantidad: Number(e.cantidad) || 1, link: e.link || '' }))
+            ];
+            inventario = [
+                ...rawInv.map(i => ({ nombre: i.nombre || '', descripcion: i.descripcion || '', sku: i.sku || '', cantidad: Number(i.cantidad) || 1 })),
+                ...rawCompInv.map(i => ({ nombre: i.nombre || '', descripcion: i.descripcion || '', sku: i.sku || '', cantidad: Number(i.cantidad) || 1 }))
+            ];
+        }
+
+        // Fallback: si no hay arrays directos, usar items de compra existente
+        if (enlaces.length === 0 && inventario.length === 0 && compraData) {
+            const itemsFallback = compraData.items || [];
+            enlaces = itemsFallback.map(it => ({ nombre: it.nombre || '', descripcion: it.descripcion || '', sku: it.sku || '', cantidad: Number(it.cantidad) || 1, link: it.link || '' }));
+        }
+
+        // Fallback DB
+        if (enlaces.length === 0 && inventario.length === 0 && compraData?.id) {
+            try {
+                const { data: itemsDB } = await window.supabase.from('compras_items').select('*').eq('compra_id', compraData.id).order('created_at', { ascending: true });
+                if (itemsDB && itemsDB.length > 0) {
+                    enlaces = itemsDB.map(it => ({
+                        nombre: it.nombre || it.descripcion || '',
+                        descripcion: it.descripcion || '',
+                        sku: it.sku || '',
+                        cantidad: it.cantidad || 1,
+                        link: it.link_proveedor || ''
+                    }));
+                }
+            } catch (e) { console.warn('[Compras] Error cargando items DB:', e); }
+        }
+
+        // Renderizar enlaces (proveedores)
+        if (enlaces.length > 0) {
+            enlaces.forEach(item => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td><input type="text" value="${item.descripcion || item.desc || ''}" class="item-desc"></td>
+                    <td><input type="text" value="${item.nombre || ''}" class="item-nombre"></td>
+                    <td><input type="text" value="${item.descripcion || ''}" class="item-desc"></td>
                     <td><input type="text" value="${item.sku || ''}" class="item-sku"></td>
-                    <td><input type="number" value="${item.cantidad || item.qty || 1}" min="1" class="item-qty"></td>
-                    <td><input type="number" value="${item.precio_unitario || item.price || 0}" step="0.01" class="item-price"></td>
+                    <td><input type="number" value="${item.cantidad || 1}" min="1" class="item-qty"></td>
+                    <td><input type="number" value="${item.precio_unitario || 0}" step="0.01" class="item-price"></td>
                     <td><input type="url" value="${item.link || ''}" placeholder="Link" class="item-link"></td>
                     <td><button type="button" class="btn-remove" onclick="this.closest('tr').remove()">✖</button></td>
                 `;
                 itemsBody.appendChild(row);
             });
-        } else {
-            // Sin items - crear uno con info del equipo
+        }
+
+        // Renderizar inventario
+        if (inventario.length > 0) {
+            inventario.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><input type="text" value="${item.nombre || ''}" class="item-nombre"></td>
+                    <td><input type="text" value="${item.descripcion || ''}" class="item-desc"></td>
+                    <td><input type="text" value="${item.sku || ''}" class="item-sku"></td>
+                    <td><input type="number" value="${item.cantidad || 1}" min="1" class="item-qty"></td>
+                    <td><input type="number" value="${item.precio_unitario || 0}" step="0.01" class="item-price"></td>
+                    <td><button type="button" class="btn-remove" onclick="this.closest('tr').remove()">✖</button></td>
+                `;
+                itemsBodyInv.appendChild(row);
+            });
+        }
+
+        // Si no hay nada, crear fila genérica con info del equipo
+        if (enlaces.length === 0 && inventario.length === 0) {
             const equipo = ordenTallerData?.equipo || 'Equipo sin nombre';
             const marca = ordenTallerData?.marca || '';
             const modelo = ordenTallerData?.modelo || '';
             const serie = ordenTallerData?.serie || '';
             const falla = ordenTallerData?.falla_reportada || 'Servicio requerido';
-
-            const row = document.createElement('tr');
             const desc = `${falla} - ${equipo}${marca ? ' ' + marca : ''}${modelo ? ' ' + modelo : ''}${serie ? ' S/N: ' + serie : ''}`;
+            const row = document.createElement('tr');
             row.innerHTML = `
+                <td><input type="text" placeholder="Nombre" class="item-nombre"></td>
                 <td><input type="text" value="${desc}" class="item-desc"></td>
                 <td><input type="text" placeholder="SKU" class="item-sku"></td>
                 <td><input type="number" value="1" min="1" class="item-qty"></td>
@@ -1167,7 +1728,8 @@ const ComprasModule = (function() {
             itemsBody.appendChild(row);
         }
 
-        _nuevaOrden();
+        document.getElementById('nuevaOrdenModal').classList.add('active');
+        _showToast(`Importados: ${enlaces.length} proveedor, ${inventario.length} inventario`, 'success');
     }
 
     function _verProveedor(id) {
@@ -1196,6 +1758,23 @@ const ComprasModule = (function() {
         document.getElementById('feedCount').innerText = feed.children.length;
     }
 
+    // ==================== PDF ====================
+    async function _generarPDFCompra(preview = false) {
+        if (!currentCompra || !window.pdfGenerator) return;
+        var user = await authService.getCurrentProfile();
+        var data = {
+            folio: currentCompra.folio,
+            proveedor: currentCompra.proveedor,
+            fecha_requerida: currentCompra.fecha_requerida,
+            departamento: currentCompra.departamento || 'Compras',
+            items: (currentCompra.itemsData || []).map(function (i) {
+                return { desc: i.descripcion || i.nombre, sku: i.sku, qty: i.cantidad, price: i.costo_unitario };
+            }),
+            total: currentCompra.total
+        };
+        await window.pdfGenerator.generateOrdenCompra(data, user, preview);
+    }
+
     // ==================== EVENTOS DOM ====================
     function _bindEvents() {
         document.getElementById('toggleMenu').addEventListener('click', _toggleMenu);
@@ -1216,18 +1795,6 @@ const ComprasModule = (function() {
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
             setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
         });
-        async function _generarPDFCompra(preview = false) {
-            if (!currentCompra || !window.pdfGenerator) return;
-            var user = await authService.getCurrentProfile();
-            var data = {
-                folio: currentCompra.folio,
-                proveedor: currentCompra.proveedor,
-                fecha_requerida: currentCompra.fecha_requerida,
-                items: (currentCompra.items || []).map(function (i) { return { desc: i.desc, sku: i.sku, qty: i.qty, price: i.price }; }),
-                total: currentCompra.total
-            };
-            await window.pdfGenerator.generateOrdenCompra(data, user, preview);
-        }
         var descargarPDFOC = document.getElementById('descargarPDFOrdenCompraBtn');
         if (descargarPDFOC) descargarPDFOC.addEventListener('click', () => _generarPDFCompra(false));
         var vistaPreviaPDFOC = document.getElementById('vistaPreviaPDFOrdenCompraBtn');
@@ -1239,9 +1806,24 @@ const ComprasModule = (function() {
             document.getElementById('nuevaOrdenModal').classList.remove('active');
         });
         document.getElementById('addItemBtn').addEventListener('click', _agregarItemRow);
+        var addItemInvBtn = document.getElementById('addItemInventarioBtn');
+        if (addItemInvBtn) addItemInvBtn.addEventListener('click', _agregarItemRowInventario);
         document.getElementById('guardarNuevaOrden').addEventListener('click', _guardarNuevaOrden);
         var guardarBorradorBtn = document.getElementById('guardarBorradorBtn');
         if (guardarBorradorBtn) guardarBorradorBtn.addEventListener('click', _guardarBorrador);
+
+        // Auto-cargar items al perder foco en vinculación
+        var vincIdInput = document.getElementById('vinculacionId');
+        var vincTipoSelect = document.getElementById('vinculacionTipo');
+        if (vincIdInput && vincTipoSelect) {
+            vincIdInput.addEventListener('blur', function() {
+                var tipo = vincTipoSelect.value;
+                var id = vincIdInput.value.trim();
+                if (tipo && id && document.getElementById('nuevaOrdenModal').classList.contains('active')) {
+                    _cargarItemsDesdeVinculacion(tipo, id);
+                }
+            });
+        }
 
         document.getElementById('aplicarFiltrosBtn').addEventListener('click', () => {
             filtroFechaInicio = document.getElementById('filtroFechaInicio').valueAsDate;
@@ -1337,12 +1919,46 @@ const ComprasModule = (function() {
         const nt = (ordenesTaller || []).filter(_operativaVigente).length;
         const nm = (ordenesMotores || []).filter(_operativaVigente).length;
         const np = (proyectos || []).filter(_operativaVigente).length;
+        const solicitudes = (compras || []).filter(c => (c.estado === 1 || c.estado === 2) && c.estado_interno === 'esperando_cotizacion');
         const c1 = document.getElementById('opCountTaller');
         const c2 = document.getElementById('opCountMotor');
         const c3 = document.getElementById('opCountAuto');
+        const c4 = document.getElementById('opCountSolicitudes');
         if (c1) c1.textContent = '(' + nt + ')';
         if (c2) c2.textContent = '(' + nm + ')';
         if (c3) c3.textContent = '(' + np + ')';
+        if (c4) c4.textContent = '(' + solicitudes.length + ')';
+
+        if (operativasTabCompras === 'solicitudes') {
+            function esc(s) {
+                const d = document.createElement('div');
+                d.textContent = s == null ? '' : String(s);
+                return d.innerHTML;
+            }
+            if (!solicitudes.length) {
+                list.innerHTML = '<div class="op-empty">No hay solicitudes de cotización pendientes.</div>';
+                return;
+            }
+            list.innerHTML = solicitudes.map(function (r) {
+                const folio = r.folio || (r.id && String(r.id).slice(-8)) || '—';
+                const cliente = (r.vinculacion && r.vinculacion.cliente) || (r.vinculacion && r.vinculacion.nombre) || '—';
+                const st = r.estado === 1 ? 'Solicitud' : (r.estado === 2 ? 'Cotización' : '—');
+                const id = r.id;
+                return '<div class="op-row">' +
+                    '<div><strong>' + esc(folio) + '</strong> · ' + esc(cliente) + '<br><span class="op-meta">Estado: ' + esc(st) + ' · Esperando cotización</span></div>' +
+                    '<div class="op-actions">' +
+                    '<button type="button" class="btn-ssepi btn-compras op-cotizar" style="font-size:12px;padding:6px 12px;" data-compra-id="' + esc(id) + '">Cotizar y enviar a Ventas</button>' +
+                    '</div></div>';
+            }).join('');
+            list.querySelectorAll('.op-cotizar').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const cid = btn.getAttribute('data-compra-id');
+                    _abrirCotizacionDesdeSolicitud(cid);
+                });
+            });
+            return;
+        }
+
         let rows = operativasTabCompras === 'motor' ? ordenesMotores : (operativasTabCompras === 'auto' ? proyectos : ordenesTaller);
         rows = (rows || []).filter(_operativaVigente).slice(0, 50);
         function esc(s) {
@@ -1370,17 +1986,7 @@ const ComprasModule = (function() {
             btn.addEventListener('click', function () {
                 const t = btn.getAttribute('data-vinc-tipo');
                 const vid = btn.getAttribute('data-vinc-id');
-                const dep = document.getElementById('departamentoSelect');
-                if (dep) {
-                    if (t === 'taller') dep.value = 'Laboratorio de Electrónica';
-                    else if (t === 'motor') dep.value = 'Taller Motores';
-                    else dep.value = 'Automatización';
-                }
-                const selTipo = document.getElementById('vinculacionTipo');
-                if (selTipo) selTipo.value = t === 'automatizacion' ? 'automatizacion' : t;
-                const selId = document.getElementById('vinculacionId');
-                if (selId) selId.value = vid;
-                _nuevaOrden();
+                _crearOrdenDesdeSolicitud(vid, t);
             });
         });
     }
@@ -1390,17 +1996,7 @@ const ComprasModule = (function() {
         const vt = p.get('vincTipo');
         const vid = p.get('vincId');
         if (!vt || !vid) return;
-        const dep = document.getElementById('departamentoSelect');
-        if (dep) {
-            if (vt === 'taller') dep.value = 'Laboratorio de Electrónica';
-            else if (vt === 'motor') dep.value = 'Taller Motores';
-            else if (vt === 'automatizacion' || vt === 'proyecto') dep.value = 'Automatización';
-        }
-        const selTipo = document.getElementById('vinculacionTipo');
-        if (selTipo) selTipo.value = vt === 'proyecto' ? 'proyecto' : vt;
-        const selId = document.getElementById('vinculacionId');
-        if (selId) selId.value = vid;
-        _nuevaOrden();
+        _crearOrdenDesdeSolicitud(vid, vt);
         try {
             history.replaceState({}, document.title, window.location.pathname);
         } catch (e) { /* ignore */ }
@@ -1418,9 +2014,13 @@ const ComprasModule = (function() {
         init,
         _abrirDetalle,
         _crearOrdenDesdeSolicitud,
+        _editarOrden,
+        _cargarItemsDesdeVinculacion,
         _verProveedor,
         _recibirCompra,
-        _descargarOC
+        _descargarOC,
+        _enviarAVentas,
+        _generarPDFCompra
     };
 })();
 

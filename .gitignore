@@ -47,3 +47,11 @@ Thumbs.db
 
 .vercel
 .env.cloudflare
+ssepinext/data/ssepi-local.db
+ssepinext/uploads/
+clintes/
+Compras/
+
+# Simulaciones / datos de entrada grandes (imágenes, OCR, reportes escaneados)
+simulaciones/escaner de imagenes/
+simulaciones/SSEPI_Paquete_ERP/reportes/

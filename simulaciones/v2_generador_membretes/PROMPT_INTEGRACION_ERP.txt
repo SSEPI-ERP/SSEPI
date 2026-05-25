@@ -1,0 +1,104 @@
+================================================================================
+  PROMPT TÉCNICO PARA INTEGRACIÓN / MODIFICACIÓN DEL GENERADOR PDF SSEPI
+  Sistema: Generador de PDFs SSEPI (Cotizaciones + Reportes de Servicio)
+  Ubicación: C:\Users\norbe\Documents\robot_mecanum_esp32_v3\pdfs\v2_generador_membretes
+================================================================================
+
+ARCHIVOS CLAVE
+--------------------------------------------------------------------------------
+1. ssepi_servicios_enterprise_v11.html  -> HTML con generarPDF() y generarReportePDF()
+2. membretes_base64.js                  -> Diccionario JPEG base64 (~1 MB)
+3. convert_membretes.py                 -> Script para regenerar el diccionario
+
+MOTOR PDF
+--------------------------------------------------------------------------------
+- jsPDF 2.5.1 + jspdf-autotable 3.5.28.
+- Formato A4, unit:'mm'. PW=210, PH=297, ML=15, MR=15, TW=180.
+- Membrete: JPEG base64 escalado a A4 completo: doc.addImage(b64, 'JPEG', 0, 0, PW, PH)
+- Fuente única: 'times' (serif institucional) en TODO el documento. No usar 'helvetica'.
+- jsPDF incluye fuentes built-in: helvetica, times, courier. Usar exclusivamente 'times'.
+- Capa 0: membrete JPEG. Capa 1: textos dinámicos encima.
+
+FLUJO DE PÁGINAS — COTIZACIÓN (generarPDF)
+--------------------------------------------------------------------------------
+Página 1: Membrete institucional completo (sin texto encima).
+Página 2: drawHeader() + datos cliente + tabla productos + subtotal/iva/total.
+           Tabla puede ocupar varias páginas si es larga (autoTable continuo).
+Post-tabla: Tiempo de entrega + Notas + Términos de Pago (compactados, máx 1-2 páginas).
+Footer drawFooter() en cada página.
+
+ESTILO DE TABLA (ACTUALIZADO)
+--------------------------------------------------------------------------------
+- Header de tabla: fondo VERDE INSTITUCIONAL [0,104,71], texto blanco 13 pts.
+- Filas alternadas: fondo verde claro [230,245,240] / blanco.
+- Líneas separadoras: verde suave [180,210,195].
+- Texto de filas: mínimo 12 pts (descripción bold 13, specs 12, cant/precio/imp/importe 12).
+- Unidad: 11 pts.
+- Altura de fila header: 10 mm. Altura de fila de datos: dinámica según texto (mín 16 mm).
+- Columnas: Desc 85 | Cant 20 | Precio 33 | Imp 20 | Importe 22 (mm, suma=180).
+
+TAMAÑOS DE TIPOGRAFÍA UNIFICADOS (TODO EL DOCUMENTO)
+--------------------------------------------------------------------------------
+- Header (drawHeader): dirección 10, tagline 10, folio 14 (auto-escalable).
+- Datos cliente: nombre 12 bold, dirección/RFC 12, labels fecha/vencimiento/vendedor 12 bold, valores 12.
+- Tabla: header 13 blanco, filas 12–13, unidad 11.
+- Totales: Subtotal/IVA/Total 12, altura de fila 10 mm.
+- Post-tabla títulos: 14 bold.
+- Post-tabla contenido: 12.
+- Notas (bullets): 12, interlineado 5.2 mm.
+- Términos de pago: 12, interlineado 6 mm.
+- Footer: 9 (único lugar permitido menor a 12).
+- Reporte de servicio: todo 12 mínimo, títulos 14 bold.
+
+SEPARACIÓN NOTAS / TÉRMINOS DE PAGO
+--------------------------------------------------------------------------------
+Entre la última nota y la sección "Términos de Pago" se dibuja:
+  1. ensureSpace(30) — verificar que quepa el espacio, sino salto de página.
+  2. hl(ML, y, TW, GR_SEP, 0.4) — línea separadora horizontal.
+  3. y += 10 — renglón en blanco de separación.
+
+MAPEO DE DEPARTAMENTOS A CLAVES
+--------------------------------------------------------------------------------
+  MEMBRETES:
+    'automatizacion'  -> Encabezado AutoM.pdf
+    'electronicos'    -> Encabezado ELectronica.pdf
+    'motores'         -> Encabezado motores.pdf
+    'suministros'     -> Encabezado suministro.pdf
+
+  DEPTO_POLICIES (texto de notas + tiempo de entrega):
+    'electronicos'    -> Reparación de Equipos Electrónicos
+    'motores'         -> Reparación de Motores
+    'suministros'     -> Ventas de Suministro
+    'automatizacion'  -> (default)
+    'soporte'         -> Soporte a Planta
+
+REGLAS DE ESTILO EN PÁGINA 1 (MEMBRETE)
+--------------------------------------------------------------------------------
+- NO dibujar rectángulos blancos ni fondos antes de addImage.
+- Textos sobre membrete: ubicarse en sector central/blanco del diseño (aprox X=75–135 mm).
+
+REGLA DE TIPOGRAFÍA
+--------------------------------------------------------------------------------
+- Todo el PDF usa 'times' exclusivamente. No usar 'helvetica' ni 'courier'.
+- Tamaño mínimo de contenido: 12 pts.
+- Footer puede quedar en 9 pts.
+
+SI LOS MEMBRETES CAMBIAN EN EL FUTURO
+--------------------------------------------------------------------------------
+1. Reemplazar el PDF en la carpeta formatos/.
+2. Ejecutar: python convert_membretes.py
+3. Copiar el nuevo membretes_base64.js generado al proyecto destino.
+4. Recargar la página (F5). No requiere recompilación.
+
+RESUMEN RÁPIDO PARA PRÓXIMA SESIÓN
+--------------------------------------------------------------------------------
+"Tengo el generador PDF SSEPI con:
+- Tipografía 'times' unificada en todo el documento (sin helvetica).
+- Tabla con fondo verde institucional [0,104,71] y filas alternadas verde claro.
+- Tamaño de fuente mínimo 12 pts para todo el contenido principal.
+- Cotización compactada a 2-3 páginas (membrete + tabla + post-tabla compacto).
+- Separador visual entre Notas y Términos de Pago.
+- Reporte de servicio con la misma tipografía unificada.
+Archivo clave: ssepi_servicios_enterprise_v11.html"
+
+================================================================================
