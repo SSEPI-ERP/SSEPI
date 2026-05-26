@@ -560,10 +560,15 @@ const TallerModule = (function() {
         }
     }
 
+    function _esAdmin() {
+        return perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+    }
+
     function _populateClientSelect() {
         const sel = document.getElementById('selClient');
         if (!sel) return;
         sel.innerHTML = '<option value="">-- Seleccionar empresa / contacto --</option>';
+        const esAdmin = _esAdmin();
 
         // Agrupar contactos por empresa
         const grupos = {};
@@ -584,18 +589,13 @@ const TallerModule = (function() {
         const empresasSorted = Object.keys(grupos).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
         empresasSorted.forEach(emp => {
             const arr = grupos[emp];
-            // Buscar datos del tabulador para esta empresa
             const tab = tabuladorClientes.find(tc => tc.nombre && tc.nombre.toLowerCase().trim() === emp.toLowerCase().trim());
-            const km = tab ? tab.km : 0;
-            const hrs = tab ? tab.horas : 0;
-            const gas = tab ? tab.gasolina : 0;
             let label = emp;
-            if (km || hrs || gas) {
-                label += `  (KM:${km}  Hrs:${hrs}  Gas:$${Math.round(gas || 0)})`;
+            if (esAdmin && tab) {
+                label += `  (KM:${tab.km}  Hrs:${tab.horas}  Gas:$${Math.round(tab.gasolina || 0)})`;
             }
             const og = document.createElement('optgroup');
             og.label = label;
-            // Dentro de la empresa: primero la ficha empresa, luego contactos
             const empresas = arr.filter(c => (c.tipo_ficha || c.tipo) === 'empresa');
             const contactos = arr.filter(c => (c.tipo_ficha || c.tipo) !== 'empresa');
             [...empresas, ...contactos].forEach(c => {
@@ -630,7 +630,9 @@ const TallerModule = (function() {
         tabuladorClientes.forEach(tc => {
             if (tc.nombre && !empresasConContactos.has(tc.nombre)) {
                 const og = document.createElement('optgroup');
-                og.label = `${tc.nombre}  (KM:${tc.km}  Hrs:${tc.horas}  Gas:$${Math.round(tc.gasolina || 0)})`;
+                og.label = esAdmin
+                    ? `${tc.nombre}  (KM:${tc.km}  Hrs:${tc.horas}  Gas:$${Math.round(tc.gasolina || 0)})`
+                    : tc.nombre;
                 const opt = document.createElement('option');
                 opt.value = tc.nombre;
                 opt.textContent = `[Empresa] ${tc.nombre}`;
@@ -653,17 +655,22 @@ const TallerModule = (function() {
             if (infoPanel) infoPanel.style.display = 'none';
             return;
         }
-        // Buscar en contactos
         const contacto = clients.find(c => c.nombre === nombre);
         const emp = contacto ? (contacto.empresa || nombre) : nombre;
         const tab = tabuladorClientes.find(tc => tc.nombre && tc.nombre.toLowerCase().trim() === emp.toLowerCase().trim());
         const kmEl = document.getElementById('tallerKmIda');
         const hrsEl = document.getElementById('tallerHorasViaje');
+        const esAdmin = _esAdmin();
+
+        // Precargar KM/horas siempre (para costos), pero solo mostrar a admin
         if (kmEl) kmEl.value = tab ? tab.km : 0;
         if (hrsEl) hrsEl.value = tab ? tab.horas : 0;
 
-        // Mostrar info panel
         if (infoPanel) {
+            if (!esAdmin) {
+                infoPanel.style.display = 'none';
+                return;
+            }
             const tipo = contacto ? (contacto.tipo_ficha || contacto.tipo || 'contacto') : 'empresa';
             const tipoLabel = tipo === 'empresa' ? 'Empresa' : (tipo === 'contacto_empresa' ? 'Contacto de empresa' : 'Contacto solo');
             let html = `<strong>${nombre}</strong> <span style="color:#1565c0">${tipoLabel}</span>`;
