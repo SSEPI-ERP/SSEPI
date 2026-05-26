@@ -1,0 +1,207 @@
+================================================================================
+GUIA DEL COMPARADOR — EMPRESAS, VENDEDORES Y TABULADOR (CALCULADORA)
+================================================================================
+Pac_Contactos · Actualizado con reglas odoo_sin_tabulador_reglas.py
+Carpeta de codigo: ..\01_Comparador_Odoo_Excel\
+Fuente viva (desarrollo): ..\..\info\
+
+================================================================================
+1. QUE MUESTRA LA PANTALLA (como en tu captura)
+================================================================================
+
+Pestaña: "Tabulador ERP (50 empresas)"
+
+Seccion A — "En tabulador con capturas Odoo vinculadas" (24 empresas)
+----------------------------------------------------------------------
+Cada FILA es una empresa del Excel TABULADOR (calculadora de km, gasolina,
+modulos LAB/MOT/SUM/AUTO). Tiene RFC, km, gasolina, total.
+
+Columna "# Odoo" = cuantas capturas de pantalla Odoo encajan con esa empresa.
+
+Columna "Contactos Odoo (nombre · tipo · empresa)" = detalle de cada captura:
+
+  Etiqueta VERDE  "Empresa (direccion)"     → tipoFicha = empresa
+      La captura ES la ficha de la empresa (tiene direccion propia en Odoo).
+      Ejemplo SOSER: "Soser Soluciones Industriales, S.A. de C.V."
+
+  Etiqueta MORADA "Vendedor -> empresa"      → tipoFicha = contacto_empresa
+      La captura es una PERSONA (vendedor/contacto). El nombre de la empresa
+      va en el campo "Empresa Odoo" debajo del nombre de la persona.
+      Ejemplo ANGUIPLAST:
+        · Empresa (direccion): Ta) Anguiplast
+        · Vendedor -> empresa: Jaziel Lopez  →  Anguiplast, S.A. de C.V.
+
+  Porcentaje (92%, 98%, 100%) = matchScore: similitud nombre/RFC captura vs
+  fila del tabulador Excel. >= 78% se considera vinculado a calculadora.
+
+Seccion B — "En tabulador sin captura Odoo (solo gastos Excel)" (26 empresas)
+------------------------------------------------------------------------------
+Estan en el TABULADOR (tienen km, gasolina, modulos para la calculadora) pero
+NO hay captura Odoo que haya hecho match fuerte. Solo aparecen gastos del Excel.
+
+Seccion C — "Capturas Odoo sin fila en tabulador" (104 capturas)
+-----------------------------------------------------------------
+Son contactos/clientes en Odoo (captura de pantalla) que NO tienen fila propia
+en las 50 empresas del tabulador. Pueden ser clientes reales, proveedores o
+contactos internos. Ahi se aplican las reglas manuales (1 / 2 / nombre definido)
+en odoo_sin_tabulador_reglas.py.
+
+================================================================================
+2. TRES FUENTES DE DATOS
+================================================================================
+
+  A) TABULADOR DE COTIZACION actualizado.xlsx  (~50 empresas canonicas)
+     → Gastos base para calculadora (km Dani, gasolina, LAB 3%, MOT 3%, etc.)
+     → Nombre canonico: ANGUIPLAST, BODYCOTE, FAMO ALIMENTOS...
+
+  B) Capturas Odoo (139 PNG en SistemaContactos/CapturasOdoo/)
+     → Lo que se ve en pantalla: empresa o vendedor + email + RFC + direccion
+     → Validado con rastro_capturas.json (OCR corregido a mano)
+
+  C) contactos_odoo.xlsx (export res.partner, ~140 registros)
+     → Catalogo completo Odoo (no solo los 50 del tabulador)
+
+================================================================================
+3. COMO SE CLASIFICA CADA CAPTURA (build_comparador.py)
+================================================================================
+
+Paso 1 — Leer imagen (rastro + OCR)
+  nombreEnImagen, email, tel, RFC, direccion, puesto, personaImagen
+
+Paso 2 — clasificar_tipo_ficha()
+  empresa          → Ficha con DIRECCION propia (cliente empresa)
+  contacto_empresa → Persona con campo "Empresa: XXX" lleno (vendedor)
+  contacto_solo    → Persona sin empresa en campo
+
+Paso 3 — Match contra tabulador Excel (find_excel_match)
+  Compara nombre empresa (o empresaAsociada si es vendedor) + RFC
+  matchScore >= 78 y nombre canonico → excelMatch = fila tabulador
+
+Paso 4 — Agrupar en build_tabulador_erp()
+  Si excelMatch existe → la captura aparece bajo su empresa tabulador
+  Si no → va a odooSinTabulador (104)
+
+Paso 5 — Reglas manuales (odoo_sin_tabulador_reglas.py)
+  Para los 104 sin tabulador: nombre literal de imagen + nombre definido
+  segun tu revision (1=nombre, 2=sugerencia Excel, texto=manual)
+  Ejemplos corregidos: id 26 DOMUM (no "Calle..."), id 27 Ariel Diaz
+
+================================================================================
+4. CUALES PERTENECEN A LA CALCULADORA (TABULADOR)
+================================================================================
+
+TIENEN fila Excel + gastos (50 en total):
+
+  CON captura Odoo vinculada (24) — listos para ERP/calculadora con contactos:
+    ANGUIPLAST, BODYCOTE, BOLSAS DE LOS ALTOS, BADER TABACHINES, BRUSAROSCO,
+    COFICAB, CONDUMEX, ECOBOLSAS, FAMO ALIMENTOS, FAS, FRAENKISCHE,
+    GRUPO ZAHONERO, HIRUTA, HORMAS PALACIOS, IK PLASTIC, MARQUARDT, MR LUCKY,
+    NHK, NISHIKAWA, PIELES AZTECA, RONGTAI, SADDLEBACK, SOSER, TENERIA VARGAS
+
+  SOLO Excel, sin captura Odoo (26) — calculadora SI, contacto Odoo NO:
+    AEROPUERTO, ARCOSA, CARTOTEC, DI-CENTRAL, EMMSA, EMMSA SILAO, EPC 1, EPC 2,
+    EPC1, GEDNEY, GRANOS Y SEMILLAS, GRUPO ACERERO, HALLIBURTON, HIELO REGIA,
+    IMPRENTA JM, JARDIN LA ALEMANA, MAFLOW, MICROONDA, MINO INDUSTRY, PILSAC,
+    PRELOSA, SAFE DEMO, SERVIACERO ELECTROFORJADOS, SUACERO, TORNIMASTER, TQ-1
+
+  Detalle completo (JSON): ..\04_Datos_muestra\listado_tabulador_odoo.json
+
+================================================================================
+5. CUALES SON SOLO CLIENTES / CONTACTOS (SIN TABULADOR)
+================================================================================
+
+104 capturas Odoo sin fila en tabulador = NO entran a la calculadora de km/gastos
+por nombre, salvo que manualmente los agregues al Excel.
+
+Incluyen por ejemplo:
+  · Clientes Odoo reales sin fila Excel: DOMUM, Ariel Diaz, Demo Technic, EBAY...
+  · Personas sueltas: Alma salcido, Ana Moreno, Ivan Gutierrez, Javier Cruz...
+  · Proveedores / internos: SSEPI, Aaron Garcia, MOUSER, SCOTIABANK...
+  · OCR basura ya corregida con nombreLiteralImagen
+
+No confundir:
+  · "En tabulador" = empresa de la CALCULADORA (Excel 50)
+  · "Solo contacto Odoo" = cliente en CRM sin gastos base en tabulador
+  · "Solo Excel" = gastos en calculadora pero aun sin foto Odoo vinculada
+
+================================================================================
+6. EJEMPLO COMO EN TU IMAGEN (SOSER y ANGUIPLAST)
+================================================================================
+
+SOSER (tabulador)
+  Total $506.80 · 3 capturas Odoo:
+    [Empresa] Soser Soluciones Industriales, S.A. de C.V.  92%
+    [Empresa] Soser Soluciones Industriales                82%
+    [Vendedor->] Contacto creado @ Soser S.A. de C.V.      92%
+
+ANGUIPLAST (tabulador)
+  RFC ANG101215PG0 · km 234 · Total $1,872.22 · 2 capturas:
+    [Empresa] Ta) Anguiplast                              89%
+    [Vendedor->] Jaziel Lopez @ Anguiplast, S.A. de C.V.  98%
+                 email ventas@anguiplast.com
+
+BODYCOTE — igual: ficha empresa + vendedor Christian Ramirez @ BODYCOTE 100%
+
+================================================================================
+7. ARCHIVOS DEL PAQUETE ACTUALIZADO
+================================================================================
+
+01_Comparador_Odoo_Excel/
+  build_comparador.py           Genera datos_comparador.json
+  odoo_sin_tabulador_reglas.py  Reglas 1/2/manual + nombre literal imagen
+  generar_rastro.py             Regenera rastro_capturas.json
+  comparador_clientes.html      Interfaz web (pestanas + tabulador ERP)
+  servidor_comparador.py        Puerto 8766
+  iniciar_comparador.bat
+  rastro_capturas_ejemplo.json  Muestra estructura rastro (incl. DOMUM/Ariel)
+
+04_Datos_muestra/
+  listado_tabulador_odoo.json   Listado exportable 24+26+104
+
+03_Documentacion/
+  GUIA_COMPARADOR_EMPRESAS_VENDEDORES.txt   (este archivo)
+  VINCULACION_EMPRESAS_Y_COSTOS.txt         Costos modulos calculadora
+  GUIA_USO_OPERATIVA.txt
+
+================================================================================
+8. COMO USAR / REGENERAR
+================================================================================
+
+1) Colocar en carpeta info\ (proyecto padre):
+     TABULADOR DE COTIZACION actualizado.xlsx
+     contactos_odoo.xlsx
+     SistemaContactos\CapturasOdoo\*.png
+     rastro_capturas.json
+
+2) Regenerar datos:
+     cd ..\..\info
+     python generar_rastro.py          (opcional, si cambian capturas)
+     python build_comparador.py
+
+3) Abrir comparador:
+     cd ..\01_Comparador_Odoo_Excel
+     iniciar_comparador.bat
+     http://127.0.0.1:8766/comparador_clientes.html
+
+4) Exportar relacion ERP:
+     Pestaña Tabulador ERP → boton "Descargar relacion ERP (JSON)"
+     Incluye empresaTabulador, gastos, contactosOdoo y odooSinTabulador
+
+5) Editar reglas manuales (104 sin tabulador):
+     odoo_sin_tabulador_reglas.py → MANUAL_BY_ID, NOMBRE_LITERAL_BY_ID
+     Luego: python build_comparador.py
+
+================================================================================
+9. RESUMEN RAPIDO PARA GERENCIA
+================================================================================
+
+  50 empresas en Excel tabulador (calculadora de costos)
+   24 con Odoo vinculado (empresa + vendedores visibles como en captura)
+   26 solo Excel (calculadora sin foto Odoo aun)
+  104 contactos Odoo fuera del tabulador (clientes/contactos sin fila gastos)
+  139 capturas Odoo totales procesadas
+
+La columna morada "Vendedor -> empresa" NO es otra empresa del tabulador:
+es la persona que pertenece a la empresa verde de la misma fila tabulador.
+
+================================================================================

@@ -64,6 +64,10 @@ const MotoresModule = (function() {
     let subscriptions = [];
     let perfilUsuario = null;
 
+    function _esAdmin() {
+        return perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+    }
+
     function _motoresRecordKey() {
         if (orderId) return String(orderId);
         const folio = (document.getElementById('inpFolio') && document.getElementById('inpFolio').value || '').trim();
@@ -666,10 +670,13 @@ const MotoresModule = (function() {
         const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
 
         let badgeRentabilidad = '';
+        const esAdminM = _esAdmin();
         if (orden.rentabilidad_estado === 'rojo') {
-            badgeRentabilidad = `<span class="badge-rentabilidad-rojo badge-rentabilidad-inline" title="Adeudo $${(orden.adeudo_generado||0).toFixed(2)}">🔴 $${(orden.adeudo_generado||0).toFixed(0)}</span>`;
+            badgeRentabilidad = esAdminM
+                ? `<span class="badge-rentabilidad-rojo badge-rentabilidad-inline" title="Adeudo $${(orden.adeudo_generado||0).toFixed(2)}">🔴 $${(orden.adeudo_generado||0).toFixed(0)}</span>`
+                : `<span class="badge-rentabilidad-rojo badge-rentabilidad-inline" title="Rentabilidad baja"></span>`;
         } else if (orden.rentabilidad_estado === 'verde') {
-            badgeRentabilidad = `<span class="badge-rentabilidad-verde badge-rentabilidad-inline">🟢 OK</span>`;
+            badgeRentabilidad = `<span class="badge-rentabilidad-verde badge-rentabilidad-inline" title="Rentable">🟢 OK</span>`;
         }
 
         let extrasHtml = '';
@@ -735,7 +742,7 @@ const MotoresModule = (function() {
                 <td>${o.hp || ''}</td>
                 <td>${o.tecnico_responsable || ''}</td>
                 <td>${o.estado || 'Nuevo'}</td>
-                <td>${o.rentabilidad_estado === 'rojo' ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(o.adeudo_generado||0).toFixed(0)}</span>` : (o.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—')}</td>
+                <td>${o.rentabilidad_estado === 'rojo' ? (_esAdmin() ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(o.adeudo_generado||0).toFixed(0)}</span>` : `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;" title="Rentabilidad baja"></span>`) : (o.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—')}</td>
                 <td>${o.fecha_ingreso ? new Date(o.fecha_ingreso).toLocaleDateString() : ''}</td>
                 <td>${o.fecha_reparacion ? new Date(o.fecha_reparacion).toLocaleDateString() : ''}</td>
                 <td>${recibidoPor}</td>
@@ -1637,6 +1644,7 @@ const MotoresModule = (function() {
     function _renderPanelRentabilidad() {
         const panel = document.getElementById('panelRentabilidad');
         if (!panel) return;
+        const esAdminM = _esAdmin();
         const data = _recolectarDatos();
         const costoPresupuestado = currentOrder?.costo_presupuestado || currentOrder?.costo_total || data.costo_total || 0;
         const costoReal = CostosEngine.calcularCostoRealMotores({ ...data, costo_total: costoPresupuestado });
@@ -1655,10 +1663,10 @@ const MotoresModule = (function() {
             badge.className = estado === 'verde' ? 'badge-rentabilidad-verde' : 'badge-rentabilidad-rojo';
             badge.textContent = estado === 'verde' ? 'Orden rentable' : 'Números rojos';
         }
-        if (presEl) presEl.textContent = '$' + (costoPresupuestado || 0).toFixed(2);
-        if (realEl) realEl.textContent = '$' + (costoReal || 0).toFixed(2);
-        if (adeudoRow) adeudoRow.style.display = adeudo > 0 ? 'flex' : 'none';
-        if (adeudoEl) adeudoEl.textContent = '$' + (adeudo || 0).toFixed(2);
+        if (presEl) presEl.textContent = esAdminM ? '$' + (costoPresupuestado || 0).toFixed(2) : '—';
+        if (realEl) realEl.textContent = esAdminM ? '$' + (costoReal || 0).toFixed(2) : '—';
+        if (adeudoRow) adeudoRow.style.display = (esAdminM && adeudo > 0) ? 'flex' : 'none';
+        if (adeudoEl) adeudoEl.textContent = esAdminM ? '$' + (adeudo || 0).toFixed(2) : '—';
     }
 
     // ==================== ACCIONES ESPECIALES ====================

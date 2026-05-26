@@ -192,23 +192,22 @@ if %errorlevel% neq 0 echo      (Error calculadoras - revisa consola)
 
 
 
-:: [3j] Contactos desde paquete simulaciones (datos_comparador.json — NO clintes/)
+:: [3j] Tabulador Excel — 50 clientes oficiales (Ventas / cotización)
 
-echo [3j] Contactos ERP maestro (capturas Odoo + tabulador)...
+echo [3j] Tabulador 50 clientes (TABULADOR DE COTIZACION actualizado.xlsx)...
+
+node seed-tabulador-50.mjs
+
+if %errorlevel% neq 0 echo      (Error seed-tabulador-50)
+
+
+:: [3j2] Contactos ERP maestro (Odoo export + cruces) — llena telefono/email/rfc/direccion
+
+echo [3j2] Contactos ERP maestro (Odoo export + cruces)...
 
 node seed-erp-maestro-local.mjs --replace-contactos
 
 if %errorlevel% neq 0 echo      (Error contactos ERP — ejecuta build-erp-maestro.mjs)
-
-
-
-:: [3j2] Contactos manuales (lista usuario 2026)
-
-echo [3j2] Contactos manuales (lista usuario)...
-
-node seed-contactos-manual.mjs
-
-if %errorlevel% neq 0 echo      (Aviso contactos manuales)
 
 
 
@@ -218,7 +217,7 @@ echo [3k] Importando desde simulaciones\SSEPI_Paquete_ERP (datos_ordenes_editabl
 
 echo      Log: %LOGFILE%
 
-node importar-reportes-a-bd.mjs 1>>"%LOGFILE%" 2>&1
+powershell -NoProfile -Command "node importar-reportes-a-bd.mjs 2>&1 | ForEach-Object { Write-Host $_; $_ }" >> "%LOGFILE%"
 
 if %errorlevel%==0 (
 
@@ -396,7 +395,31 @@ echo   Log:    %LOGFILE%
 
 echo.
 
-echo   Usuarios offline: ver seed-usuarios.mjs / login local
+echo   Usuarios offline (pass Ssepi2025!):
+
+echo     norbertomoro4@gmail.com     — Norberto Moro
+
+echo     ventas1@ssepi.org           — Carlos Calderon
+
+echo     laboratorio1@ssepi.org      — Javier
+
+echo     electronica@ssepi.org       — Javier
+
+echo     electronica.ssepi@gmail.com — Aron
+
+echo     motores1@ssepi.org          — Becerra
+
+echo     automatizacion1@ssepi.org   — Tecnico
+
+echo     ivang.ssepi@gmail.com       — Ivan
+
+echo     administracion@ssepi.org    — Administracion
+
+echo     ventas@ssepi.org            — Daniel Zuniga
+
+echo     automatizacion@ssepi.org    — Arturo
+
+echo     compras@ssepi.org           — Itzel
 
 echo =========================================
 

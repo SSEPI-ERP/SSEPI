@@ -1,0 +1,1617 @@
+{
+  "generado": "2026-05-26T12:25:12",
+  "resumen": {
+    "empresas_tabulador": 50,
+    "con_capturas_odoo": 24,
+    "solo_excel_sin_captura": 26,
+    "odoo_sin_fila_tabulador": 104
+  },
+  "en_tabulador_con_odoo": [
+    {
+      "empresa_tabulador": "SOSER",
+      "rfc": "",
+      "km": 0.0,
+      "total_gastos": 506.8,
+      "contactos_odoo": [
+        {
+          "id_captura": 129,
+          "tipo": "empresa",
+          "nombre_imagen": "Soser Soluciones Industriales, S.A. de C.V.",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 92,
+          "rol": "ficha_cliente"
+        },
+        {
+          "id_captura": 130,
+          "tipo": "empresa",
+          "nombre_imagen": "Soser Soluciones Industriales",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 92,
+          "rol": "ficha_cliente"
+        },
+        {
+          "id_captura": 131,
+          "tipo": "contacto_empresa",
+          "nombre_imagen": "Contacto creade",
+          "empresa_odoo": "Soser Soluciones Industriales, S.A. de CV.",
+          "match_tabulador_pct": 92,
+          "rol": "contacto_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "ANGUIPLAST",
+      "rfc": "ANG101215PG0",
+      "km": 234.0,
+      "total_gastos": 1872.22,
+      "contactos_odoo": [
+        {
+          "id_captura": 8,
+          "tipo": "empresa",
+          "nombre_imagen": "Ta) Anguiplast",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 98,
+          "rol": "ficha_cliente"
+        },
+        {
+          "id_captura": 9,
+          "tipo": "contacto_empresa",
+          "nombre_imagen": "Jaziel Lopez",
+          "empresa_odoo": "Anguiplast, SA. de CV.",
+          "match_tabulador_pct": 98,
+          "rol": "contacto_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "BODYCOTE",
+      "rfc": "BOD770404DD4",
+      "km": 90.6,
+      "total_gastos": 993.55,
+      "contactos_odoo": [
+        {
+          "id_captura": 12,
+          "tipo": "empresa",
+          "nombre_imagen": "Modycote BODYCOTE",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 92,
+          "rol": "ficha_cliente"
+        },
+        {
+          "id_captura": 13,
+          "tipo": "contacto_empresa",
+          "nombre_imagen": "Christian Ramírez",
+          "empresa_odoo": "BODYCOTE",
+          "match_tabulador_pct": 100,
+          "rol": "contacto_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "BOLSAS DE LOS ALTOS",
+      "rfc": "BAL050101AA1",
+      "km": 226.0,
+      "total_gastos": 1939.09,
+      "contactos_odoo": [
+        {
+          "id_captura": 14,
+          "tipo": "empresa",
+          "nombre_imagen": ") BOLSAS DE LOS ALTOS",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 100,
+          "rol": "ficha_cliente"
+        },
+        {
+          "id_captura": 15,
+          "tipo": "contacto_empresa",
+          "nombre_imagen": "J Jennifer Gerrero",
+          "empresa_odoo": "BOLSAS DE LOS ALTOS",
+          "match_tabulador_pct": 100,
+          "rol": "contacto_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "ECOBOLSAS",
+      "rfc": "ECO990202BB2",
+      "km": 216.0,
+      "total_gastos": 1872.22,
+      "contactos_odoo": [
+        {
+          "id_captura": 33,
+          "tipo": "empresa",
+          "nombre_imagen": "ECOBOLSAS",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 100,
+          "rol": "ficha_cliente"
+        },
+        {
+          "id_captura": 34,
+          "tipo": "contacto_empresa",
+          "nombre_imagen": "Elio Cesar",
+          "empresa_odoo": "ECOBOLSAS",
+          "match_tabulador_pct": 100,
+          "rol": "contacto_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "HORMAS PALACIOS",
+      "rfc": "",
+      "km": 0.0,
+      "total_gastos": 488.88,
+      "contactos_odoo": [
+        {
+          "id_captura": 64,
+          "tipo": "empresa",
+          "nombre_imagen": "Hormas Palacios",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 100,
+          "rol": "ficha_cliente"
+        },
+        {
+          "id_captura": 65,
+          "tipo": "contacto_empresa",
+          "nombre_imagen": "Lulu Palacios",
+          "empresa_odoo": "Hormas Palacios, S.A. de CV.",
+          "match_tabulador_pct": 92,
+          "rol": "contacto_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "NISHIKAWA",
+      "rfc": "NIS771212XX4",
+      "km": 61.0,
+      "total_gastos": 1209.85,
+      "contactos_odoo": [
+        {
+          "id_captura": 97,
+          "tipo": "empresa",
+          "nombre_imagen": "Nishikawa Sealing Systems Mexico",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 92,
+          "rol": "ficha_cliente"
+        },
+        {
+          "id_captura": 98,
+          "tipo": "contacto_empresa",
+          "nombre_imagen": "Diego García",
+          "empresa_odoo": "Nishikawa Sealing Systems Mexico",
+          "match_tabulador_pct": 92,
+          "rol": "contacto_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "PIELES AZTECA",
+      "rfc": "PIE660101YY5",
+      "km": 5.0,
+      "total_gastos": 714.28,
+      "contactos_odoo": [
+        {
+          "id_captura": 103,
+          "tipo": "empresa",
+          "nombre_imagen": "Pieles Azteca",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 100,
+          "rol": "ficha_cliente"
+        },
+        {
+          "id_captura": 104,
+          "tipo": "contacto_empresa",
+          "nombre_imagen": "J Jesus Bolaños",
+          "empresa_odoo": "Pieles Azteca, S.A. de C.V.",
+          "match_tabulador_pct": 92,
+          "rol": "contacto_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "RONGTAI",
+      "rfc": "RON550202ZZ6",
+      "km": 28.2,
+      "total_gastos": 742.64,
+      "contactos_odoo": [
+        {
+          "id_captura": 112,
+          "tipo": "empresa",
+          "nombre_imagen": "RONGTAI",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 100,
+          "rol": "ficha_cliente"
+        },
+        {
+          "id_captura": 113,
+          "tipo": "empresa",
+          "nombre_imagen": "RONGTAI",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 100,
+          "rol": "ficha_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "SADDLEBACK",
+      "rfc": "",
+      "km": 0.0,
+      "total_gastos": 506.8,
+      "contactos_odoo": [
+        {
+          "id_captura": 115,
+          "tipo": "empresa",
+          "nombre_imagen": "SADDLEBACK",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 100,
+          "rol": "ficha_cliente"
+        },
+        {
+          "id_captura": 116,
+          "tipo": "contacto_empresa",
+          "nombre_imagen": "Genaro Morales",
+          "empresa_odoo": "SADDLEBACK",
+          "match_tabulador_pct": 100,
+          "rol": "contacto_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "BADER TABACHINES",
+      "rfc": "BAD880303CC3",
+      "km": 17.2,
+      "total_gastos": 489.33,
+      "contactos_odoo": [
+        {
+          "id_captura": 10,
+          "tipo": "empresa",
+          "nombre_imagen": "BADER",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 92,
+          "rol": "ficha_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "BRUSAROSCO",
+      "rfc": "",
+      "km": 0.0,
+      "total_gastos": 488.88,
+      "contactos_odoo": [
+        {
+          "id_captura": 17,
+          "tipo": "empresa",
+          "nombre_imagen": "Brusarosco de México",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 92,
+          "rol": "ficha_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "COFICAB",
+      "rfc": "COF660505EE5",
+      "km": 80.0,
+      "total_gastos": 950.29,
+      "contactos_odoo": [
+        {
+          "id_captura": 18,
+          "tipo": "empresa",
+          "nombre_imagen": "Foricas COFICAB",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 92,
+          "rol": "ficha_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "CONDUMEX",
+      "rfc": "CON550606FF6",
+      "km": 90.6,
+      "total_gastos": 993.55,
+      "contactos_odoo": [
+        {
+          "id_captura": 20,
+          "tipo": "empresa",
+          "nombre_imagen": "A CONDUMEX",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 92,
+          "rol": "ficha_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "FAMO ALIMENTOS",
+      "rfc": "",
+      "km": 0.0,
+      "total_gastos": 805.01,
+      "contactos_odoo": [
+        {
+          "id_captura": 46,
+          "tipo": "empresa",
+          "nombre_imagen": "Famo Alimentos",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 100,
+          "rol": "ficha_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "FAS",
+      "rfc": "",
+      "km": 0.0,
+      "total_gastos": 1757.34,
+      "contactos_odoo": [
+        {
+          "id_captura": 45,
+          "tipo": "empresa",
+          "nombre_imagen": "FAS",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 100,
+          "rol": "ficha_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "FRAENKISCHE",
+      "rfc": "FRA001111KK1",
+      "km": 0.0,
+      "total_gastos": 993.55,
+      "contactos_odoo": [
+        {
+          "id_captura": 47,
+          "tipo": "empresa",
+          "nombre_imagen": "Fraenkische Industrial Pipes México",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 92,
+          "rol": "ficha_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "GRUPO ZAHONERO",
+      "rfc": "",
+      "km": 0.0,
+      "total_gastos": 470.96,
+      "contactos_odoo": [
+        {
+          "id_captura": 54,
+          "tipo": "empresa",
+          "nombre_imagen": "Grupo Zahonero",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 100,
+          "rol": "ficha_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "HIRUTA",
+      "rfc": "HIR660303OO5",
+      "km": 58.4,
+      "total_gastos": 907.03,
+      "contactos_odoo": [
+        {
+          "id_captura": 63,
+          "tipo": "empresa",
+          "nombre_imagen": "Hiruta México, S.A. de C.V.",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 92,
+          "rol": "ficha_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "IK PLASTIC",
+      "rfc": "IKP550404PP6",
+      "km": 61.4,
+      "total_gastos": 924.34,
+      "contactos_odoo": [
+        {
+          "id_captura": 68,
+          "tipo": "empresa",
+          "nombre_imagen": "IK Plastic Compound México, S.A. de C.V.",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 92,
+          "rol": "ficha_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "MARQUARDT",
+      "rfc": "MAR110808TT0",
+      "km": 125.4,
+      "total_gastos": 1209.85,
+      "contactos_odoo": [
+        {
+          "id_captura": 83,
+          "tipo": "empresa",
+          "nombre_imagen": "MARQUARDT",
+          "empresa_odoo": "",
+          "match_tabulador_pct": 100,
+          "rol": "ficha_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "MR LUCKY",
+      "rfc": "MRL991010VV2",
+      "km": 157.0,
+      "total_gastos": 1261.76,
+      "contactos_odoo": [
+        {
+          "id_captura": 88,
+          "tipo": "contacto_empresa",
+          "nombre_imagen": "Reina Medina",
+          "empresa_odoo": "MR LUCKY",
+          "match_tabulador_pct": 100,
+          "rol": "contacto_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "NHK",
+      "rfc": "NHK881111WW3",
+      "km": 138.6,
+      "total_gastos": 1209.85,
+      "contactos_odoo": [
+        {
+          "id_captura": 94,
+          "tipo": "contacto_empresa",
+          "nombre_imagen": "Felipe Garcia",
+          "empresa_odoo": "NHK Spring México, S.A. de C.V.",
+          "match_tabulador_pct": 92,
+          "rol": "contacto_cliente"
+        }
+      ]
+    },
+    {
+      "empresa_tabulador": "TENERÍA VARGAS",
+      "rfc": "",
+      "km": 0.0,
+      "total_gastos": 506.8,
+      "contactos_odoo": [
+        {
+          "id_captura": 138,
+          "tipo": "contacto_empresa",
+          "nombre_imagen": "Contacto cre",
+          "empresa_odoo": "Tenería Vargas, S.A. de CV.",
+          "match_tabulador_pct": 92,
+          "rol": "contacto_cliente"
+        }
+      ]
+    }
+  ],
+  "solo_excel_calculadora": [
+    {
+      "empresa_tabulador": "AEROPUERTO",
+      "rfc": "",
+      "total_gastos": 739.79,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS"
+      ]
+    },
+    {
+      "empresa_tabulador": "ARCOSA",
+      "rfc": "ECS440707GG7",
+      "total_gastos": 906.08,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "CARTOTEC",
+      "rfc": "",
+      "total_gastos": 488.88,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS"
+      ]
+    },
+    {
+      "empresa_tabulador": "DI-CENTRAL",
+      "rfc": "",
+      "total_gastos": 682.08,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS"
+      ]
+    },
+    {
+      "empresa_tabulador": "EMMSA",
+      "rfc": "EMM330808HH8",
+      "total_gastos": 488.88,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "EMMSA SILAO",
+      "rfc": "",
+      "total_gastos": 775.63,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS"
+      ]
+    },
+    {
+      "empresa_tabulador": "EPC 1",
+      "rfc": "EPC220909II9",
+      "total_gastos": 0.0,
+      "hojas": [
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "EPC 2",
+      "rfc": "EPC111010JJ0",
+      "total_gastos": 2737.42,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "EPC1",
+      "rfc": "",
+      "total_gastos": 2737.42,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS"
+      ]
+    },
+    {
+      "empresa_tabulador": "GEDNEY",
+      "rfc": "GED991212LL2",
+      "total_gastos": 699.38,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "GRANOS Y SEMILLAS",
+      "rfc": "",
+      "total_gastos": 1497.78,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS"
+      ]
+    },
+    {
+      "empresa_tabulador": "GRUPO ACERERO",
+      "rfc": "GRU880101MM3",
+      "total_gastos": 2737.42,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "HALLIBURTON",
+      "rfc": "HAL770202NN4",
+      "total_gastos": 907.03,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "HIELO REGIA",
+      "rfc": "",
+      "total_gastos": 596.41,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS"
+      ]
+    },
+    {
+      "empresa_tabulador": "IMPRENTA JM",
+      "rfc": "IMP440505QQ7",
+      "total_gastos": 480.68,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "JARDÍN LA ALEMANA",
+      "rfc": "JAR330606RR8",
+      "total_gastos": 454.72,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "MAFLOW",
+      "rfc": "MAF220707SS9",
+      "total_gastos": 714.28,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "MICROONDA",
+      "rfc": "MIC000909UU1",
+      "total_gastos": 435.01,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "MINO INDUSTRY",
+      "rfc": "MIN000707E55",
+      "total_gastos": 532.59,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "PILSAC",
+      "rfc": "",
+      "total_gastos": 470.96,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS"
+      ]
+    },
+    {
+      "empresa_tabulador": "PRELOSA",
+      "rfc": "",
+      "total_gastos": 849.82,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS"
+      ]
+    },
+    {
+      "empresa_tabulador": "SAFE DEMO",
+      "rfc": "SAF440303A11",
+      "total_gastos": 679.67,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "SERVIACERO ELECTROFORJADOS",
+      "rfc": "SEE330404B22",
+      "total_gastos": 472.02,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "SUACERO",
+      "rfc": "SUA220505C33",
+      "total_gastos": 2737.42,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    },
+    {
+      "empresa_tabulador": "TORNIMASTER",
+      "rfc": "",
+      "total_gastos": 688.52,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS"
+      ]
+    },
+    {
+      "empresa_tabulador": "TQ-1",
+      "rfc": "TQ1110606D44",
+      "total_gastos": 515.28,
+      "hojas": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ]
+    }
+  ],
+  "odoo_sin_tabulador_resumen": [
+    {
+      "id": 1,
+      "nombre_imagen": "EUROSERVICIOS",
+      "nombre_definido": "Nomore ce Ne",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "— Nomore ce Ne",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 2,
+      "nombre_imagen": "AG ELECTRÓNICA",
+      "nombre_definido": "AG ELECTRÓNICA",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 3,
+      "nombre_imagen": "mua ARCOSA",
+      "nombre_definido": "ARCOSA",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "ARCOSA"
+    },
+    {
+      "id": 4,
+      "nombre_imagen": "AUTOMATISCHE TECHNIK MEXICO, S.A. de C.V.",
+      "nombre_definido": "Novo ce",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "— Novo ce",
+      "sugerencia_excel": "BOLSAS DE LOS ALTOS"
+    },
+    {
+      "id": 5,
+      "nombre_imagen": "en q",
+      "nombre_definido": "Aaron Garcia",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 6,
+      "nombre_imagen": "Alma salcido",
+      "nombre_definido": "Alma salcido",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "BOLSAS DE LOS ALTOS"
+    },
+    {
+      "id": 7,
+      "nombre_imagen": "Ana Moreno",
+      "nombre_definido": "Ana Moreno",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "FAMO ALIMENTOS"
+    },
+    {
+      "id": 11,
+      "nombre_imagen": "BIG BEN UNIFORMES",
+      "nombre_definido": "omore ce",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "— omore ce — _",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 16,
+      "nombre_imagen": "Brenda Isela Martínez Morales",
+      "nombre_definido": "Nombre ce i. \"",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "— Nombre ce i. \"",
+      "sugerencia_excel": "BOLSAS DE LOS ALTOS"
+    },
+    {
+      "id": 19,
+      "nombre_imagen": "Componentes de León, S.A. de C.V.",
+      "nombre_definido": "Componentes de León, S.A. de C.V.",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "EMMSA"
+    },
+    {
+      "id": 21,
+      "nombre_imagen": "Centro de Investigación en Cómputo Aplicado, S.A. de C.V.",
+      "nombre_definido": "Centro de Investigación en Cómputo Aplicado, S.A. de C.V.",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "DI-CENTRAL"
+    },
+    {
+      "id": 22,
+      "nombre_imagen": "Cristian san luis",
+      "nombre_definido": "Cristian san luis",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "JARDÍN LA ALEMANA"
+    },
+    {
+      "id": 23,
+      "nombre_imagen": "e DI-CENTRAL",
+      "nombre_definido": "DI-CENTRAL",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "DI-CENTRAL"
+    },
+    {
+      "id": 24,
+      "nombre_imagen": "DISTRIBUIDORA LIVERPOOL",
+      "nombre_definido": "DISTRIBUIDORA LIVERPOOL",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 25,
+      "nombre_imagen": "DMT CORTES UNIVERSALES",
+      "nombre_definido": "Nombre ce E",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "— Nombre ce E.",
+      "sugerencia_excel": "BOLSAS DE LOS ALTOS"
+    },
+    {
+      "id": 26,
+      "nombre_imagen": "DOMUM",
+      "nombre_definido": "DOMUM",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "EPC 1"
+    },
+    {
+      "id": 27,
+      "nombre_imagen": "Ariel Diaz",
+      "nombre_definido": "Ariel Diaz",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "DOMUM",
+      "sugerencia_excel": "JARDÍN LA ALEMANA"
+    },
+    {
+      "id": 28,
+      "nombre_imagen": "DON PULCRO",
+      "nombre_definido": "DON PULCRO",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "BOLSAS DE LOS ALTOS"
+    },
+    {
+      "id": 29,
+      "nombre_imagen": "contact demotechniceesafe-demo.com",
+      "nombre_definido": "Demo technicS. de RL.de W. Leon",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SAFE DEMO"
+    },
+    {
+      "id": 30,
+      "nombre_imagen": "Demo Technic Leon",
+      "nombre_definido": "Demo Technic León",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "Demo Technic Leon",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 31,
+      "nombre_imagen": "Demo Technic",
+      "nombre_definido": "Lic. Blanca Vanesa",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SAFE DEMO"
+    },
+    {
+      "id": 32,
+      "nombre_imagen": "Teléf",
+      "nombre_definido": "EBAY",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "EBAY",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 35,
+      "nombre_imagen": "ECSA",
+      "nombre_definido": "ARCOSA",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "ARCOSA"
+    },
+    {
+      "id": 36,
+      "nombre_imagen": "Ta",
+      "nombre_definido": "EIKI",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 37,
+      "nombre_imagen": "Sistemas de Tuberías IE, S.A. de C.V.",
+      "nombre_definido": "EMMSA",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "EMMSA"
+    },
+    {
+      "id": 38,
+      "nombre_imagen": "N Teléf",
+      "nombre_definido": "EPC 2",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "EPC 2"
+    },
+    {
+      "id": 39,
+      "nombre_imagen": "Estación de Servicio Las Huertas, S.A. de C.V.",
+      "nombre_definido": "ic I",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "— ic I",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 40,
+      "nombre_imagen": "EUROELÉCTRICA",
+      "nombre_definido": "EUROELÉCTRICA",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 41,
+      "nombre_imagen": "Eduardo Amezcua",
+      "nombre_definido": "Eduardo Amezcua",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 42,
+      "nombre_imagen": "Malla red X",
+      "nombre_definido": "Malla red X",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "DI-CENTRAL"
+    },
+    {
+      "id": 43,
+      "nombre_imagen": "Maurico Santiago",
+      "nombre_definido": "Envases Plásticos del Centro, S.A. de C.V.",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "IK PLASTIC"
+    },
+    {
+      "id": 44,
+      "nombre_imagen": "FANTASÍAS MIGUEL",
+      "nombre_definido": "FANTASÍAS MIGUEL",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "BOLSAS DE LOS ALTOS"
+    },
+    {
+      "id": 48,
+      "nombre_imagen": "GRUPO AMIGOS DE SAN ÁNGEL",
+      "nombre_definido": "ombre de a",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "ombre de a",
+      "sugerencia_excel": "GRUPO ACERERO"
+    },
+    {
+      "id": 49,
+      "nombre_imagen": "GRUPO COMERCIAL CZO CARNAVALLIA",
+      "nombre_definido": "Nombre ce i. \"",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "— Nombre ce i. \"",
+      "sugerencia_excel": "GRUPO ACERERO"
+    },
+    {
+      "id": 50,
+      "nombre_imagen": "Grupo Plasma Automation, S.A. de C.V.",
+      "nombre_definido": "Grupo Plasma Automation, S.A. de C.V.",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "IK PLASTIC"
+    },
+    {
+      "id": 51,
+      "nombre_imagen": "Gustavo Nasser González",
+      "nombre_definido": "ombre de",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "ombre de —",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 52,
+      "nombre_imagen": "Granos y Servicios Integrales, S.A. de C.V.",
+      "nombre_definido": "Granos y Servicios Integrales, S.A. de C.V.",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "GRANOS Y SEMILLAS"
+    },
+    {
+      "id": 53,
+      "nombre_imagen": "Ing. Uriel Padilla",
+      "nombre_definido": "SERVIACERO ELECTROFORJADOS",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 55,
+      "nombre_imagen": "HALL ALUMINIUM",
+      "nombre_definido": "HALL ALUMINIUM",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "HALLIBURTON"
+    },
+    {
+      "id": 56,
+      "nombre_imagen": "crore ce a emoress",
+      "nombre_definido": "crore ce a emoress",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "HIRUTA"
+    },
+    {
+      "id": 57,
+      "nombre_imagen": "HOME DEPOT MÉXICO",
+      "nombre_definido": "Nombre ce i",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "— Nombre ce i. .",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 58,
+      "nombre_imagen": "HOSPEDAJE POTOSINO INMOBILIARIA",
+      "nombre_definido": "Nombre ce i. es",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "— Nombre ce i. es",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 59,
+      "nombre_imagen": "HT6 INGENIERÍA S. de R.L. de C.V.",
+      "nombre_definido": "HT6 INGENIERÍA S. de R.L. de C.V.",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "BADER TABACHINES"
+    },
+    {
+      "id": 60,
+      "nombre_imagen": "Maria Delucia",
+      "nombre_definido": "Maria Delucia",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "HT6 INGENIERIA S DE RL DE CV",
+      "sugerencia_excel": "JARDÍN LA ALEMANA"
+    },
+    {
+      "id": 61,
+      "nombre_imagen": "Hebillas y Herrajes Robor S.A. de C.V",
+      "nombre_definido": "Hebillas y Herrajes Robor S.A. de C.V",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 62,
+      "nombre_imagen": "Hielo Regia",
+      "nombre_definido": "Hielo Regia",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "HIELO REGIA"
+    },
+    {
+      "id": 66,
+      "nombre_imagen": "ICEMAN",
+      "nombre_definido": "ICEMAN",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "IMPRENTA JM"
+    },
+    {
+      "id": 67,
+      "nombre_imagen": "Lale ¿. Catan curada Badd BAe Embrelura rea libran aia MEIA lara anicarian de mlarkir Ba, S.A. de C.V.",
+      "nombre_definido": "Lale ¿. Catan curada Badd BAe Embrelura rea libran aia MEIA lara anicarian de mlarkir Ba, S.A. de C.V.",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "EPC 1"
+    },
+    {
+      "id": 69,
+      "nombre_imagen": "Ing. Eduardo Torres",
+      "nombre_definido": "IK Plastic Compound México, S.A. de C.V.",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 70,
+      "nombre_imagen": "INSTITUTO MEXICANO DEL SEGURO SOCIAL",
+      "nombre_definido": "INSTITUTO MEXICANO DEL SEGURO SOCIAL",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 71,
+      "nombre_imagen": "ITX RETAIL MÉXICO",
+      "nombre_definido": "ITX RETAIL MÉXICO",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 72,
+      "nombre_imagen": "Industrias Fivax",
+      "nombre_definido": "Industrias Fivax",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "MINO INDUSTRY"
+    },
+    {
+      "id": 73,
+      "nombre_imagen": "Ivan Gutiérrez",
+      "nombre_definido": "Direrrión == nec’ ra anlica",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "JARDÍN LA ALEMANA"
+    },
+    {
+      "id": 74,
+      "nombre_imagen": "Ciudad Estado",
+      "nombre_definido": "Direrrión —- = —— E, S.A. de C.V.",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 75,
+      "nombre_imagen": "Javier Cruz Castro, S.A. de C.V.",
+      "nombre_definido": "Javier Cruz",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 76,
+      "nombre_imagen": "Jmm Impresos Serigraficos S.R.L, S.A. de C.V.",
+      "nombre_definido": "Jmm Impresos Serigraficos S.R.L, S.A. de C.V.",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "IMPRENTA JM"
+    },
+    {
+      "id": 77,
+      "nombre_imagen": "Jorge Villanueva",
+      "nombre_definido": "Jorge Villanueva",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 78,
+      "nombre_imagen": "LA MANERA DE ESTAR SEGURO SEG-MA",
+      "nombre_definido": "LA MANERA DE ESTAR SEGURO SEG-MA",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 79,
+      "nombre_imagen": "LAURA ELENA RAMIREZ PEREZ, S.A. de C.V.",
+      "nombre_definido": "Laura Elena Ramírez Pérez",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 80,
+      "nombre_imagen": "MARQ",
+      "nombre_definido": "MARQ",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "MARQUARDT"
+    },
+    {
+      "id": 81,
+      "nombre_imagen": "LAURA ELENA RAMIREZ PEREZ",
+      "nombre_definido": "HIELO REGIA",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "HIELO REGIA"
+    },
+    {
+      "id": 82,
+      "nombre_imagen": "Javier Cruz",
+      "nombre_definido": "Javier Cruz",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 84,
+      "nombre_imagen": "MARQUARDT MEXICO",
+      "nombre_definido": "MARQUARDT MÉXICO",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "MARQUARDT"
+    },
+    {
+      "id": 85,
+      "nombre_imagen": "Miguel Ángel García Santacruz",
+      "nombre_definido": "Miguel Ángel García Santacruz",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 86,
+      "nombre_imagen": "MOUSER ELECTRONICS",
+      "nombre_definido": "MOUSER ELECTRONICS",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 87,
+      "nombre_imagen": "MR LUCKY",
+      "nombre_definido": "MR LUCKY",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "MR LUCKY"
+    },
+    {
+      "id": 89,
+      "nombre_imagen": "Mantenimiento Alquin",
+      "nombre_definido": "Mantenimiento Alquin",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "JARDÍN LA ALEMANA"
+    },
+    {
+      "id": 90,
+      "nombre_imagen": "MD Elektronik de México",
+      "nombre_definido": "MD Elektronik de México",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 91,
+      "nombre_imagen": "Misael Moreno",
+      "nombre_definido": "Misael Moreno",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 92,
+      "nombre_imagen": "NHK",
+      "nombre_definido": "NHK",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 93,
+      "nombre_imagen": "NHK Spring México, S.A. de C.V.",
+      "nombre_definido": "NHK Spring México",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "NHK"
+    },
+    {
+      "id": 95,
+      "nombre_imagen": "NIKE DE MÉXICO",
+      "nombre_definido": "NIKE DE MÉXICO",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 96,
+      "nombre_imagen": "NUEVA WAL MART DE MÉXICO",
+      "nombre_definido": "coors ce 3 emoresa",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "coors ce 3 emoresa",
+      "sugerencia_excel": "BOLSAS DE LOS ALTOS"
+    },
+    {
+      "id": 99,
+      "nombre_imagen": "Victor Garnica",
+      "nombre_definido": "Victor Garnica",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "Nichikawa Sealina Sveteme Mevicao",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 100,
+      "nombre_imagen": "ODOO TECHNOLOGIES",
+      "nombre_definido": "ODOO TECHNOLOGIES",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "BOLSAS DE LOS ALTOS"
+    },
+    {
+      "id": 101,
+      "nombre_imagen": "OFFICE DEPOT DE MÉXICO",
+      "nombre_definido": "OFFICE DEPOT DE MÉXICO",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 102,
+      "nombre_imagen": "Óscar Ramírez Moreno",
+      "nombre_definido": "Óscar Ramírez Moreno",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 105,
+      "nombre_imagen": "Polímeros y Derivados",
+      "nombre_definido": "Polímeros y Derivados",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "BOLSAS DE LOS ALTOS"
+    },
+    {
+      "id": 106,
+      "nombre_imagen": "Prefabricadora de Losas",
+      "nombre_definido": "Prefabricadora de Losas",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "PRELOSA"
+    },
+    {
+      "id": 107,
+      "nombre_imagen": "Productos Industriales de León, S.A. de C.V.",
+      "nombre_definido": "Productos Industriales de León, S.A. de C.V.",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "PILSAC"
+    },
+    {
+      "id": 108,
+      "nombre_imagen": "Jonathan Falcón",
+      "nombre_definido": "Jonathan Falcón",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 109,
+      "nombre_imagen": "RED DE CARRETERAS DE OCCIDENTE",
+      "nombre_definido": "RED DE CARRETERAS DE OCCIDENTE",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 110,
+      "nombre_imagen": "Renato Guzmán Muñoz",
+      "nombre_definido": "Renato Guzmán Muñoz",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "FAMO ALIMENTOS"
+    },
+    {
+      "id": 111,
+      "nombre_imagen": "Ricardo Silvestre Méndez Caldera",
+      "nombre_definido": "Ricardo Silvestre Méndez Caldera",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 114,
+      "nombre_imagen": "Ramiro",
+      "nombre_definido": "Ramiro",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 117,
+      "nombre_imagen": "SCOTIABANK INVERLAT",
+      "nombre_definido": "SCOTIABANK INVERLAT",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 118,
+      "nombre_imagen": "Seivier Nolberto Morán Fernández",
+      "nombre_definido": "Seivier Nolberto Morán Fernández",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 119,
+      "nombre_imagen": "Arturo More",
+      "nombre_definido": "Aron Garcia",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 120,
+      "nombre_imagen": "o LA",
+      "nombre_definido": "SSEPI",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 121,
+      "nombre_imagen": "Arturo Moreno",
+      "nombre_definido": "Arturo Moreno",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "SSEPI",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 122,
+      "nombre_imagen": "SSEPI",
+      "nombre_definido": "Daniel Zuñiga",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "SSEPI",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 123,
+      "nombre_imagen": "Enviar i",
+      "nombre_definido": "Ivan Gutierrez",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 124,
+      "nombre_imagen": "ENE En",
+      "nombre_definido": "ENE En",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 125,
+      "nombre_imagen": "Juan Bujanda",
+      "nombre_definido": "Juan Bujanda",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "BOLSAS DE LOS ALTOS"
+    },
+    {
+      "id": 126,
+      "nombre_imagen": "Seroc Corrugados",
+      "nombre_definido": "Seroc Corrugados",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 127,
+      "nombre_imagen": "Serviacero Comercial",
+      "nombre_definido": "SUCOM / Suministros y Control en Movimiento",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 128,
+      "nombre_imagen": "Soluciones Industriales Tau-phi",
+      "nombre_definido": "Soluciones Industriales Tau-phi, S.A. de C.V.",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "HIELO REGIA"
+    },
+    {
+      "id": 132,
+      "nombre_imagen": "REZA TACSA",
+      "nombre_definido": "TACSA",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 133,
+      "nombre_imagen": "Delfino Ortega",
+      "nombre_definido": "Delfino Ortega",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 134,
+      "nombre_imagen": "N' \"Contacto creac, S.A. de C.V.",
+      "nombre_definido": "Tornomaster",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "TORNIMASTER"
+    },
+    {
+      "id": 135,
+      "nombre_imagen": "TRIPLE M",
+      "nombre_definido": "TRIPLE M, MISAEL ALEJANDRO MORENO MENDEZ",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 136,
+      "nombre_imagen": "Misael Alejandro Moreno Méndez",
+      "nombre_definido": "Triple M",
+      "tipo_ficha": "contacto_empresa",
+      "empresa_asociada": "TRIPLE M",
+      "sugerencia_excel": "SERVIACERO ELECTROFORJADOS"
+    },
+    {
+      "id": 137,
+      "nombre_imagen": "Tenería Vargas",
+      "nombre_definido": "Tenería Vargas, S.A. de C.V.",
+      "tipo_ficha": "contacto_solo",
+      "empresa_asociada": "",
+      "sugerencia_excel": "TENERÍA VARGAS"
+    },
+    {
+      "id": 139,
+      "nombre_imagen": "Volker Brunk Sánchez",
+      "nombre_definido": "Volker Brunk Sánchez",
+      "tipo_ficha": "empresa",
+      "empresa_asociada": "",
+      "sugerencia_excel": "BOLSAS DE LOS ALTOS"
+    }
+  ]
+}

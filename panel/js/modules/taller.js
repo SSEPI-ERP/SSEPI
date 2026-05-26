@@ -35,6 +35,7 @@ const TallerModule = (function() {
     let tallerDraftSessionKey = null;
     let tallerAutosaveCtrl = null;
     let perfilUsuario = null;
+    let _historicalEstadosMigrados = false;
 
     // Listas específicas
     let diagnosticoEnlaces = [];
@@ -97,6 +98,23 @@ const TallerModule = (function() {
         const d = document.createElement('div');
         d.textContent = s == null ? '' : String(s);
         return d.innerHTML;
+    }
+
+    function _sanitizarTexto(str, maxLen) {
+        if (!str) return '';
+        let s = String(str)
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        if (maxLen && s.length > maxLen) s = s.slice(0, maxLen);
+        return s;
+    }
+
+    function _esTextoValido(str, minLen) {
+        if (!str) return false;
+        const s = String(str).trim();
+        return s.length >= (minLen || 3);
     }
 
     // Suscripciones para cleanup
@@ -487,8 +505,27 @@ const TallerModule = (function() {
             }
             // Garantizar campo origen para separar viejas vs nuevas
             if (!o.origen) o.origen = 'legacy';
+            // Órdenes históricas importadas: solo Reparado o Cancelado
+            const estadoOriginal = o.estado;
+            if (o.origen === 'import_erp' || o.origen === 'legacy') {
+                const est = (o.estado || '').toLowerCase();
+                if (est.includes('cancel')) o.estado = 'Cancelado';
+                else o.estado = 'Reparado';
+            }
+            o._estadoOriginal = estadoOriginal;
             return o;
         });
+        // Migración one-time: persistir estados corregidos en BD
+        if (!_historicalEstadosMigrados && window.supabase) {
+            _historicalEstadosMigrados = true;
+            const toFix = orders.filter(o => (o.origen === 'import_erp' || o.origen === 'legacy') && o._estadoOriginal && o._estadoOriginal !== o.estado);
+            if (toFix.length) {
+                console.log(`[Taller] Migrando ${toFix.length} estados históricos en BD...`);
+                Promise.all(toFix.map(o => window.supabase.from('ordenes_taller').update({ estado: o.estado }).eq('id', o.id)))
+                    .then(() => console.log('[Taller] Migración de estados completada'))
+                    .catch(e => console.warn('[Taller] Error migrando estados:', e));
+            }
+        }
         // Enriquecer órdenes legacy/demo que no tengan rentabilidad calculada
         orders.forEach(o => {
             if (!o.rentabilidad_estado && o.costo_total) {
@@ -981,12 +1018,15 @@ const TallerModule = (function() {
         const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(orden) ?? true;
         const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
 
-        // Badge de rentabilidad compacto junto al folio
+        // Badge de rentabilidad compacto junto al folio (solo admin ve el monto)
         let badgeRentabilidad = '';
+        const esAdminT = _esAdmin();
         if (orden.rentabilidad_estado === 'rojo') {
-            badgeRentabilidad = `<span class="badge-rentabilidad-rojo badge-rentabilidad-inline" title="Adeudo $${(orden.adeudo_generado||0).toFixed(2)}">🔴 $${(orden.adeudo_generado||0).toFixed(0)}</span>`;
+            badgeRentabilidad = esAdminT
+                ? `<span class="badge-rentabilidad-rojo badge-rentabilidad-inline" title="Adeudo $${(orden.adeudo_generado||0).toFixed(2)}">🔴 $${(orden.adeudo_generado||0).toFixed(0)}</span>`
+                : `<span class="badge-rentabilidad-rojo badge-rentabilidad-inline" title="Rentabilidad baja"></span>`;
         } else if (orden.rentabilidad_estado === 'verde') {
-            badgeRentabilidad = `<span class="badge-rentabilidad-verde badge-rentabilidad-inline">🟢 OK</span>`;
+            badgeRentabilidad = `<span class="badge-rentabilidad-verde badge-rentabilidad-inline" title="Rentable">🟢 OK</span>`;
         }
 
         // Resumen de extras / notas
@@ -1072,8 +1112,9 @@ const TallerModule = (function() {
             if (vis.tecnico !== false) cells.push(`<td>${o.tecnico_responsable || ''}</td>`);
             if (vis.estado !== false) cells.push(`<td>${o.estado || 'Nuevo'}</td>`);
             if (vis.balance !== false) {
+                const esAdminT = _esAdmin();
                 const badgeBal = o.rentabilidad_estado === 'rojo'
-                    ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(o.adeudo_generado||0).toFixed(0)}</span>`
+                    ? (esAdminT ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(o.adeudo_generado||0).toFixed(0)}</span>` : `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;" title="Rentabilidad baja"></span>`)
                     : (o.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—');
                 cells.push(`<td>${badgeBal}</td>`);
             }
@@ -1657,19 +1698,30 @@ const TallerModule = (function() {
         var imgs = LI.imagenesReporte(norm).map(function (u) { return LI.urlImagen(u); }).filter(Boolean).map(function (url, i) {
             return { nombre: url.split('/').pop() || ('imagen-' + (i + 1)), url: url };
         });
+        var capturaUrls = LI.imagenesCaptura ? LI.imagenesCaptura(norm).map(function (u) { return LI.urlImagen(u); }).filter(Boolean) : [];
         var vendedor = norm.vendedor || orden.vendedor_externo || orden.recibido_por || '';
         var encargado = norm.encargado || orden.tecnico_responsable || orden.encargado_recepcion || '';
+        // Sanitizar datos clave: preferir BD si ya tiene valor válido
+        var clienteNombre = _esTextoValido(orden.cliente_nombre, 3)
+            ? orden.cliente_nombre
+            : (_sanitizarTexto(rec.cliente || norm.cliente, 120) || 'Cliente por identificar');
+        var equipoVal = _esTextoValido(orden.equipo, 3)
+            ? orden.equipo
+            : (_sanitizarTexto(rec.equipo || norm.equipo, 120) || 'Equipo por identificar');
+        var fallaVal = _esTextoValido(orden.falla_reportada, 5)
+            ? orden.falla_reportada
+            : (_sanitizarTexto(rec.falla || orden.falla_reportada, 500) || _sanitizarTexto(orden.diagnostico, 500) || _sanitizarTexto(orden.notas_internas, 500) || 'Falla por documentar');
         return Object.assign({}, orden, {
             formato: norm.formato,
             etapa_actual: norm.etapa_actual,
             etapas: norm.etapas,
             datos_recepcion: norm.datos_recepcion,
-            cliente_nombre: rec.cliente || norm.cliente || orden.cliente_nombre,
-            equipo: rec.equipo || norm.equipo || orden.equipo,
+            cliente_nombre: clienteNombre,
+            equipo: equipoVal,
             marca: rec.marca || orden.marca,
             modelo: rec.modelo || orden.modelo,
             serie: rec.serie || norm.componente || orden.serie,
-            falla_reportada: rec.falla || orden.falla_reportada,
+            falla_reportada: fallaVal,
             condiciones_fisicas: rec.condiciones || orden.condiciones_fisicas,
             vendedor_externo: vendedor,
             recibido_por: vendedor,
@@ -1680,7 +1732,8 @@ const TallerModule = (function() {
             diagnostico: norm.resumen_diagnostico || norm.diagnostico,
             notas_internas: norm.resumen_diagnostico || norm.diagnostico || orden.notas_internas,
             reporte_imagenes: imgs.length ? imgs : (orden.reporte_imagenes || []),
-            imagenes_reporte: norm.imagenes_reporte
+            imagenes_reporte: norm.imagenes_reporte,
+            imagen_captura_orden: capturaUrls[0] || null
         });
     }
 
@@ -1743,7 +1796,17 @@ const TallerModule = (function() {
         _renderComponentesCompra();
         _renderComponentesExtras();
         _renderPanelRentabilidad();
-        reporteImagenes = orden.reporte_imagenes || [];
+        const captura = orden.imagen_captura_orden;
+        const tecnicas = (orden.reporte_imagenes || [])
+            .filter(img => {
+                const u = img && (img.url || img.ruta || img);
+                return u !== captura;
+            })
+            .slice(0, captura ? 4 : 5);
+        reporteImagenes = [
+            ...(captura ? [{ nombre: 'Captura orden', url: captura }] : []),
+            ...tecnicas
+        ];
         _renderReporteImagenes();
 
         document.getElementById('resumenCliente').innerText = orden.cliente_nombre || '';
@@ -1966,6 +2029,7 @@ const TallerModule = (function() {
         const panel = document.getElementById('registroTiemposPanel');
         if (!panel) return;
         const labels = _getEtapaLabels();
+        const isOrdenCerrada = currentOrder && (currentOrder.estado === 'Reparado' || currentOrder.estado === 'Cancelado');
         let html = '<div style="display:flex;gap:12px;flex-wrap:wrap;">';
         for (let i = 1; i <= labels.length; i++) {
             const ini = fechasEtapas[`etapa${i}_inicio`];
@@ -1979,7 +2043,11 @@ const TallerModule = (function() {
                 const dur = h > 0 ? `${h}h ${m}m` : `${m}m`;
                 badge = `<span style="color:#059669;font-weight:600;">${dur}</span>`;
             } else if (ini) {
-                badge = `<span style="color:#d97706;font-weight:600;">En curso</span>`;
+                if (isOrdenCerrada) {
+                    badge = `<span style="color:#059669;font-weight:600;">Completado</span>`;
+                } else {
+                    badge = `<span style="color:#d97706;font-weight:600;">En curso</span>`;
+                }
             } else {
                 badge = `<span style="color:#94a3b8;">—</span>`;
             }
@@ -2063,10 +2131,13 @@ const TallerModule = (function() {
         if (wsBtn) wsBtn.classList.add('active');
         _actualizarBotonesPaso();
         _syncWsGnrlVisibility();
-        // Registrar inicio de etapa automáticamente (solo la primera vez)
-        const campoInicio = `etapa${paso}_inicio`;
-        if (!fechasEtapas[campoInicio]) {
-            fechasEtapas[campoInicio] = new Date().toISOString();
+        // Registrar inicio de etapa automáticamente (solo la primera vez) — NO en órdenes ya cerradas
+        const isOrdenCerrada = currentOrder && (currentOrder.estado === 'Reparado' || currentOrder.estado === 'Cancelado');
+        if (!isOrdenCerrada) {
+            const campoInicio = `etapa${paso}_inicio`;
+            if (!fechasEtapas[campoInicio]) {
+                fechasEtapas[campoInicio] = new Date().toISOString();
+            }
         }
         if (paso === 2) {
             _renderDiagnosticoEnlaces();
@@ -2228,7 +2299,7 @@ const TallerModule = (function() {
             : reporteImagenes.map((img, idx) => `
                 <div style="position:relative; width:120px; height:120px; border-radius:8px; overflow:hidden; border:1px solid var(--border);">
                     <img src="${_imagenReporteSrc(img)}" style="width:100%; height:100%; object-fit:cover;" title="${img.nombre || ''}" loading="lazy">
-                    <button onclick="tallerModule._eliminarImagenReporte(${idx})" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:24px; height:24px; cursor:pointer; font-size:12px;">✖</button>
+                    <button class="btn-del-img-reporte" data-img-idx="${idx}" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:24px; height:24px; cursor:pointer; font-size:12px;">✖</button>
                 </div>
             `).join('');
         const container = document.getElementById('reporteImagenesPreview');
@@ -2275,6 +2346,27 @@ const TallerModule = (function() {
             input4.addEventListener('change', function(e) {
                 Array.from(e.target.files).forEach(f => _agregarImagenReporte(f));
                 input4.value = '';
+            });
+        }
+        // Delegación para botones eliminar (sin inline onclick)
+        const container1 = document.getElementById('reporteImagenesPreview');
+        if (container1) {
+            container1.addEventListener('click', function(e) {
+                const btn = e.target.closest('.btn-del-img-reporte');
+                if (btn) {
+                    const idx = parseInt(btn.dataset.imgIdx, 10);
+                    if (!isNaN(idx)) _eliminarImagenReporte(idx);
+                }
+            });
+        }
+        const container4 = document.getElementById('reporteImagenesPreviewPaso4');
+        if (container4) {
+            container4.addEventListener('click', function(e) {
+                const btn = e.target.closest('.btn-del-img-reporte');
+                if (btn) {
+                    const idx = parseInt(btn.dataset.imgIdx, 10);
+                    if (!isNaN(idx)) _eliminarImagenReporte(idx);
+                }
             });
         }
     }

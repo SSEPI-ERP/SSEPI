@@ -1,0 +1,319 @@
+{
+  "generated": "2026-05-22T12:30:14",
+  "stats": {
+    "totalImages": 139,
+    "totalExcel": 50,
+    "totalOdooExcel": 140,
+    "odooMatched55": 133,
+    "withOcr": 139,
+    "matched70": 46,
+    "multiContactCompanies": 10,
+    "contactosVendedores": 32,
+    "fichasEmpresa": 91,
+    "sinMatchExcel": 92,
+    "pendienteOcr": 0,
+    "proveedoresOdoo": 16,
+    "totalEmpresasOdoo": 125,
+    "empresasConVendedores": 55,
+    "tabuladorConCapturas": 24,
+    "tabuladorSinCapturas": 26,
+    "odooSinTabulador": 104
+  },
+  "excel_ejemplo": [
+    {
+      "name": "AEROPUERTO",
+      "nameExcel": "AEROPUERTO",
+      "sheets": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS"
+      ],
+      "modulos": {
+        "laboratorio": {
+          "gasolina": 216.0,
+          "ventas": 174.0,
+          "viajeGasolinaVentas": 390.0,
+          "camioneta": 105.34,
+          "precioFinal": 739.79029,
+          "tiempoInvertido": 0.0,
+          "gastosFijosHora": 0.0,
+          "refacciones": 0.0,
+          "gastosGenerales": 495.34000000000003,
+          "utilidad": 718.243,
+          "costoSinReparacion": 495.34000000000003
+        },
+        "motores": {
+          "gasolina": 216.0,
+          "ventas": 174.0,
+          "viajeGasolinaVentas": 390.0,
+          "camioneta": 105.34,
+          "precioFinal": 739.79029,
+          "becerra": 0.0,
+          "gastosSinUtilidad": 495.34000000000003,
+          "utilidad": 718.243,
+          "costoSinReparacion": 495.34000000000003
+        },
+        "automatizacion": {
+          "gasolina": 216.0,
+          "servicios": {},
+          "totalServicios": 0.0,
+          "gastosGenerales": 0.0,
+          "credito3": 6.4799999999999995,
+          "totalVenta": 222.48,
+          "precioFinal": 222.48,
+          "costoSinReparacion": 216.0
+        },
+        "suministros": {
+          "gasolina": 216.0,
+          "ventas": 174.0,
+          "viajeGasolinaVentas": 390.0,
+          "camioneta": 105.34,
+          "precioFinal": 739.79029,
+          "proveedor": 0.0,
+          "gastosSinUtilidad": 495.34000000000003,
+          "utilidad": 718.243,
+          "costoSinReparacion": 495.34000000000003
+        }
+      },
+      "viajeDani": {},
+      "c1": 0.0,
+      "c2": 0.0,
+      "c3": 216.0,
+      "c4": 0.0,
+      "c5": 0.0,
+      "c6": 739.79029,
+      "rfc": "",
+      "address": "",
+      "contact": "",
+      "enHoja1": false,
+      "gastosHeredadosDe": "",
+      "excelFuente": "TABULADOR DE COTIZACIÓN actualizado.xlsx",
+      "num": 1,
+      "soloEnExcelSinOdoo": true
+    },
+    {
+      "name": "ANGUIPLAST",
+      "nameExcel": "ANGUIPLAST",
+      "sheets": [
+        "LABORATORIO",
+        "MOTORES",
+        "AUTOMATIZACIÓN",
+        "SUMINISTROS",
+        "Hoja1"
+      ],
+      "modulos": {
+        "laboratorio": {
+          "gasolina": 600.0,
+          "ventas": 435.0,
+          "viajeGasolinaVentas": 1035.0,
+          "camioneta": 263.35,
+          "precioFinal": 1872.2206999999999,
+          "tiempoInvertido": 0.0,
+          "gastosFijosHora": 0.0,
+          "refacciones": 0.0,
+          "gastosGenerales": 1298.35,
+          "utilidad": 1817.6899999999998,
+          "costoSinReparacion": 1298.35
+        },
+        "motores": {
+          "gasolina": 600.0,
+          "ventas": 435.0,
+          "viajeGasolinaVentas": 1035.0,
+          "camioneta": 263.35,
+          "precioFinal": 1872.2206999999999,
+          "becerra": 0.0,
+          "gastosSinUtilidad": 1298.35,
+          "utilidad": 1817.6899999999998,
+          "costoSinReparacion": 1298.35
+        },
+        "automatizacion": {
+          "gasolina": 600.0,
+          "servicios": {},
+          "totalServicios": 0.0,
+          "gastosGenerales": 0.0,
+          "credito3": 18.0,
+          "totalVenta": 618.0,
+          "precioFinal": 618.0,
+          "costoSinReparacion": 600.0
+        },
+        "suministros": {
+          "gasolina": 600.0,
+          "ventas": 435.0,
+          "viajeGasolinaVentas": 1035.0,
+          "camioneta": 263.35,
+          "precioFinal": 1872.2206999999999,
+          "proveedor": 0.0,
+          "gastosSinUtilidad": 1298.35,
+          "utilidad": 1817.6899999999998,
+          "costoSinReparacion": 1298.35
+        }
+      },
+      "viajeDani": {
+        "km": 234.0,
+        "litros": 24.63157894736842,
+        "gasolina": 603.4736842105264,
+        "horas": 0.0,
+        "hrDani": 104.16,
+        "costoDani": 624.96,
+        "totalViaje": 1228.4336842105263
+      },
+      "c1": 234.0,
+      "c2": 0.0,
+      "c3": 600.0,
+      "c4": 0.0,
+      "c5": 0.0,
+      "c6": 1872.2206999999999,
+      "rfc": "ANG101215PG0",
+      "address": "",
+      "contact": "",
+      "enHoja1": true,
+      "gastosHeredadosDe": "",
+      "excelFuente": "TABULADOR DE COTIZACIÓN actualizado.xlsx",
+      "num": 2,
+      "soloEnExcelSinOdoo": true
+    }
+  ],
+  "relacionErp_ejemplo": [
+    {
+      "empresaTabulador": "AEROPUERTO",
+      "rfc": "",
+      "km": 0.0,
+      "viajeDani": {},
+      "modulos": {
+        "laboratorio": {
+          "gasolina": 216.0,
+          "ventas": 174.0,
+          "viajeGasolinaVentas": 390.0,
+          "camioneta": 105.34,
+          "precioFinal": 739.79029,
+          "tiempoInvertido": 0.0,
+          "gastosFijosHora": 0.0,
+          "refacciones": 0.0,
+          "gastosGenerales": 495.34000000000003,
+          "utilidad": 718.243,
+          "costoSinReparacion": 495.34000000000003
+        },
+        "motores": {
+          "gasolina": 216.0,
+          "ventas": 174.0,
+          "viajeGasolinaVentas": 390.0,
+          "camioneta": 105.34,
+          "precioFinal": 739.79029,
+          "becerra": 0.0,
+          "gastosSinUtilidad": 495.34000000000003,
+          "utilidad": 718.243,
+          "costoSinReparacion": 495.34000000000003
+        },
+        "automatizacion": {
+          "gasolina": 216.0,
+          "servicios": {},
+          "totalServicios": 0.0,
+          "gastosGenerales": 0.0,
+          "credito3": 6.4799999999999995,
+          "totalVenta": 222.48,
+          "precioFinal": 222.48,
+          "costoSinReparacion": 216.0
+        },
+        "suministros": {
+          "gasolina": 216.0,
+          "ventas": 174.0,
+          "viajeGasolinaVentas": 390.0,
+          "camioneta": 105.34,
+          "precioFinal": 739.79029,
+          "proveedor": 0.0,
+          "gastosSinUtilidad": 495.34000000000003,
+          "utilidad": 718.243,
+          "costoSinReparacion": 495.34000000000003
+        }
+      },
+      "total": 739.79,
+      "contactosOdoo": []
+    },
+    {
+      "empresaTabulador": "ANGUIPLAST",
+      "rfc": "ANG101215PG0",
+      "km": 234.0,
+      "viajeDani": {
+        "km": 234.0,
+        "litros": 24.63157894736842,
+        "gasolina": 603.4736842105264,
+        "horas": 0.0,
+        "hrDani": 104.16,
+        "costoDani": 624.96,
+        "totalViaje": 1228.4336842105263
+      },
+      "modulos": {
+        "laboratorio": {
+          "gasolina": 600.0,
+          "ventas": 435.0,
+          "viajeGasolinaVentas": 1035.0,
+          "camioneta": 263.35,
+          "precioFinal": 1872.2206999999999,
+          "tiempoInvertido": 0.0,
+          "gastosFijosHora": 0.0,
+          "refacciones": 0.0,
+          "gastosGenerales": 1298.35,
+          "utilidad": 1817.6899999999998,
+          "costoSinReparacion": 1298.35
+        },
+        "motores": {
+          "gasolina": 600.0,
+          "ventas": 435.0,
+          "viajeGasolinaVentas": 1035.0,
+          "camioneta": 263.35,
+          "precioFinal": 1872.2206999999999,
+          "becerra": 0.0,
+          "gastosSinUtilidad": 1298.35,
+          "utilidad": 1817.6899999999998,
+          "costoSinReparacion": 1298.35
+        },
+        "automatizacion": {
+          "gasolina": 600.0,
+          "servicios": {},
+          "totalServicios": 0.0,
+          "gastosGenerales": 0.0,
+          "credito3": 18.0,
+          "totalVenta": 618.0,
+          "precioFinal": 618.0,
+          "costoSinReparacion": 600.0
+        },
+        "suministros": {
+          "gasolina": 600.0,
+          "ventas": 435.0,
+          "viajeGasolinaVentas": 1035.0,
+          "camioneta": 263.35,
+          "precioFinal": 1872.2206999999999,
+          "proveedor": 0.0,
+          "gastosSinUtilidad": 1298.35,
+          "utilidad": 1817.6899999999998,
+          "costoSinReparacion": 1298.35
+        }
+      },
+      "total": 1872.22,
+      "contactosOdoo": [
+        {
+          "id": 8,
+          "nombreEnImagen": "Ta) Anguiplast",
+          "persona": "Arandas Centro So RR",
+          "tipoFicha": "empresa",
+          "empresaAsociada": "",
+          "email": "",
+          "tel": "+52 348 784 6573",
+          "matchScore": 98
+        },
+        {
+          "id": 9,
+          "nombreEnImagen": "Jaziel Lopez",
+          "persona": "Jaziel Lopez",
+          "tipoFicha": "contacto_empresa",
+          "empresaAsociada": "Anguiplast, SA. de CV.",
+          "email": "ventas@anguiplast.com",
+          "tel": "+52 345 784 6573",
+          "matchScore": 98
+        }
+      ]
+    }
+  ],
+  "nota": "Muestra. Archivo completo en info/datos_comparador.json"
+}

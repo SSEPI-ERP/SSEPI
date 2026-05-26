@@ -1,0 +1,53 @@
+PAC CONTACTOS — Comparador Odoo ↔ Tabulador Excel
+==================================================
+
+Carpeta con el codigo del comparador de clientes (empresa + vendedores).
+
+ARCHIVOS PRINCIPALES
+--------------------
+  build_comparador.py           Genera datos_comparador.json + datos_embebidos.js
+  odoo_sin_tabulador_reglas.py  Reglas manuales 1/2/nombre + literal de imagen
+  generar_rastro.py             Regenera rastro_capturas.json (139 capturas)
+  comparador_clientes.html      Interfaz web (pestaña Tabulador ERP)
+  servidor_comparador.py        Servidor local puerto 8766
+  iniciar_comparador.bat        Arranque rapido
+  rastro_capturas_ejemplo.json  Ejemplo de rastro (DOMUM, Ariel Diaz, etc.)
+
+DOCUMENTACION COMPLETA
+----------------------
+  ..\03_Documentacion\GUIA_COMPARADOR_EMPRESAS_VENDEDORES.txt
+    · Como se muestran empresa (direccion) vs vendedor -> empresa
+    · 24 empresas tabulador CON Odoo
+    · 26 empresas tabulador SOLO Excel (calculadora sin captura)
+    · 104 Odoo sin fila tabulador (solo contactos/clientes)
+
+  ..\04_Datos_muestra\listado_tabulador_odoo.json
+    · Listado exportable en JSON
+
+DATOS QUE DEBEN ESTAR EN ..\..\info\ (proyecto padre)
+-----------------------------------------------------
+  TABULADOR DE COTIZACION actualizado.xlsx
+  contactos_odoo.xlsx
+  SistemaContactos\CapturasOdoo\Screenshot*.png
+  rastro_capturas.json
+
+REGENERAR DESPUES DE CAMBIOS
+----------------------------
+  cd ..\..\info
+  python build_comparador.py
+
+  (Los .json generados quedan en info\; copiar a esta carpeta si trabajas offline)
+
+USO
+---
+  Doble clic: iniciar_comparador.bat
+  Navegador: http://127.0.0.1:8766/comparador_clientes.html
+
+  O desde raiz del proyecto:
+  ..\INICIAR_COMPARADOR.bat
+
+PESTAÑA "TABULADOR ERP"
+-----------------------
+  · Verde  Empresa (direccion)  = ficha empresa en Odoo
+  · Morado Vendedor -> empresa  = persona ligada a esa empresa tabulador
+  · # Odoo = numero de capturas vinculadas a la fila Excel

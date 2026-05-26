@@ -69,6 +69,42 @@
     border-color: var(--c-contact);
 }
 
+.filtro-empresa-grupo select {
+    min-width: 220px;
+    max-width: 360px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.filtro-empresa-grupo label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.empresa-filtro-hint {
+    margin: -12px 0 20px;
+    padding: 12px 18px;
+    background: #f3e5f5;
+    border: 1px solid #ce93d8;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #4a148c;
+}
+
+.empresa-filtro-hint strong {
+    font-weight: 800;
+}
+
 .vistas {
     display: flex;
     gap: 8px;
@@ -396,15 +432,44 @@
     flex: 1;
 }
 
-.panel-header-info h2 {
-    font-size: 24px;
-    font-weight: 800;
-    margin-bottom: 5px;
+.panel-title-input,
+.panel-subtitle-input {
+    display: block;
+    width: 100%;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
     color: var(--text-primary);
+    padding: 4px 8px;
+    margin-left: -8px;
+    transition: border-color 0.2s, background 0.2s;
 }
 
-.panel-header-info p {
+.panel-title-input {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.panel-subtitle-input {
+    font-size: 14px;
+    font-weight: 500;
     color: var(--text-secondary);
+}
+
+.panel-title-input:hover,
+.panel-subtitle-input:hover,
+.panel-title-input:focus,
+.panel-subtitle-input:focus {
+    border-color: var(--border);
+    background: var(--bg-panel);
+    outline: none;
+}
+
+.panel-title-input:focus,
+.panel-subtitle-input:focus {
+    border-color: var(--c-contact);
 }
 
 .panel-close {

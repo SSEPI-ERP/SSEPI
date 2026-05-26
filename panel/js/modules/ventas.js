@@ -72,6 +72,11 @@ const VentasModule = (function() {
     let mostrarCanceladas = false;  // Por defecto ocultar canceladas
     let vistaActual = 'kanban';
     let chartInstance = null;
+    let perfilUsuario = null;
+
+    function _esAdmin() {
+        return perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+    }
 
     function _normStr(s) {
         return (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
@@ -260,7 +265,7 @@ const VentasModule = (function() {
     }
 
     function _agregarManualSuministroVentas() {
-        const nombre = (document.getElementById('wizardBomManualNombre') || {}).value || '').trim();
+        const nombre = ((document.getElementById('wizardBomManualNombre') || {}).value || '').trim();
         const cantidad = parseFloat((document.getElementById('wizardBomManualCant') || {}).value) || 1;
         const precio = parseFloat((document.getElementById('wizardBomManualPrecio') || {}).value) || 0;
         if (!nombre) { _showToast('Escribe el nombre del componente', 'warning'); return; }
@@ -283,14 +288,21 @@ const VentasModule = (function() {
     async function _toggleWizardDeptFields() {
         const dept = document.getElementById('wizardDepartamentoSelect')?.value || '';
         const esSuministro = dept === 'Suministro';
+        const esEquipos = _deptUsaEquiposMulti(dept);
+        const esServicios = _deptUsaServiciosMulti(dept);
         const wrapBom = document.getElementById('wizardSuministroWrap');
         const wrapProducto = document.getElementById('wizardNombreProductoWrap');
+        const wrapEquipos = document.getElementById('wizardEquiposWrap');
+        const wrapServicios = document.getElementById('wizardServicioAutoWrap');
         const lblProd = wrapProducto?.querySelector('label');
         if (wrapBom) wrapBom.style.display = esSuministro ? 'block' : 'none';
-        if (wrapProducto) wrapProducto.style.display = esSuministro ? 'none' : 'block';
-        if (lblProd && !esSuministro) {
+        if (wrapEquipos) wrapEquipos.style.display = esEquipos ? 'block' : 'none';
+        if (wrapServicios) wrapServicios.style.display = esServicios ? 'block' : 'none';
+        if (wrapProducto) wrapProducto.style.display = (esSuministro || esEquipos) ? 'none' : 'block';
+        if (lblProd && !esSuministro && !esEquipos) {
             lblProd.innerHTML = 'Nombre del producto / Equipo <span style="color:#c62828;">*</span>';
         }
+        if (esEquipos) _syncWizardNombreProductoDesdeEquipos();
         const fallaEl = document.getElementById('wizardFallaReportada');
         if (fallaEl && esSuministro && !fallaEl.value.trim()) {
             fallaEl.placeholder = 'Notas de la solicitud (opcional si ya describiste los materiales arriba)';
@@ -378,14 +390,18 @@ const VentasModule = (function() {
     }
 
     function _collectPaso1Fields() {
+        const dept = (document.getElementById('wizardDepartamentoSelect') || {}).value || '';
         return {
             clienteId: (document.getElementById('wizardClienteSelect') || {}).value || '',
             fechaIngreso: (document.getElementById('wizardFechaIngreso') || {}).value || '',
-            nombreProducto: (document.getElementById('wizardNombreProducto') || {}).value || '',
+            nombreProducto: _wizardResolverNombreProducto(dept) || (document.getElementById('wizardNombreProducto') || {}).value || '',
             fallaReportada: (document.getElementById('wizardFallaReportada') || {}).value || '',
             prioridad: (document.getElementById('wizardPrioridadSelect') || {}).value || 'Normal',
-            departamento: (document.getElementById('wizardDepartamentoSelect') || {}).value || '',
-            servicio_automatizacion: (document.getElementById('wizardServicioAutoSelect') || {}).value || '',
+            departamento: dept,
+            equipos: _getWizardEquiposSeleccionados(),
+            equipo_otro: (document.getElementById('wizardEquipoOtro') || {}).value || '',
+            servicios_automatizacion: _getWizardServiciosSeleccionados(),
+            servicio_automatizacion: _wizardResolverServiciosAuto(),
         };
     }
 
@@ -449,10 +465,13 @@ const VentasModule = (function() {
         setv('wizardClienteSelect', f.clienteId);
         setv('wizardFechaIngreso', f.fechaIngreso);
         setv('wizardNombreProducto', f.nombreProducto);
+        setv('wizardNombreProductoVisible', f.nombreProducto);
         setv('wizardFallaReportada', f.fallaReportada);
         setv('wizardPrioridadSelect', f.prioridad);
         setv('wizardDepartamentoSelect', f.departamento);
-        // Llenar datos del cliente si se seleccionó
+        if (f.departamento && window.__onDeptChangeVentas) window.__onDeptChangeVentas();
+        _restoreWizardMultiSelects(f);
+        setv('wizardServicioAutoSelect', f.servicio_automatizacion);
         if (f.clienteId) {
             const sel = document.getElementById('wizardClienteSelect');
             const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
@@ -645,6 +664,13 @@ const VentasModule = (function() {
             bomManualBtn.addEventListener('click', _agregarManualSuministroVentas);
         }
 
+        const nombreVis = document.getElementById('wizardNombreProductoVisible');
+        if (nombreVis && !nombreVis._ssepiBound) {
+            nombreVis._ssepiBound = true;
+            nombreVis.addEventListener('input', () => { if (ventasAutosaveCtrl) ventasAutosaveCtrl.schedule(); });
+        }
+
+        _bindWizardEquiposServiciosEvents();
         _wizardActualizarAyudaFolio();
 
         // Si hay cliente pre-seleccionado (modo edición), disparar autofill
@@ -720,6 +746,9 @@ const VentasModule = (function() {
             : new Date().toISOString();
         const prioLine = 'Prioridad (Ventas): ' + (prioridad || 'Normal');
         const notasAlta = [prioLine, 'Alta desde Ventas (cerebro).'].join('\n');
+        const nombreProducto = _wizardResolverNombreProducto(dept);
+        const serviciosAuto = _wizardResolverServiciosAuto();
+        const resumenTrabajo = nombreProducto || serviciosAuto || '';
 
         try {
             if (dept === 'Laboratorio de Electrónica') {
@@ -730,7 +759,7 @@ const VentasModule = (function() {
                 } catch (e) {
                     folio = 'SP-E' + Date.now().toString(36).toUpperCase();
                 }
-                const nombreProducto = (document.getElementById('wizardNombreProducto') || {}).value || '';
+                const nombreProductoLab = nombreProducto || resumenTrabajo || '—';
                 const marca = (document.getElementById('wizardMarca') || {}).value || '';
                 const modelo = (document.getElementById('wizardModelo') || {}).value || '';
                 const serie = (document.getElementById('wizardSerie') || {}).value || '';
@@ -738,7 +767,7 @@ const VentasModule = (function() {
                 const row = {
                     folio,
                     cliente_nombre: clienteNombre,
-                    equipo: nombreProducto || '—',
+                    equipo: nombreProductoLab || '—',
                     marca: marca,
                     modelo: modelo,
                     serie: serie,
@@ -840,10 +869,11 @@ const VentasModule = (function() {
                 } catch (e) {
                     folio = 'SP-M' + Date.now().toString(36).toUpperCase();
                 }
+                const nombreEquipo = nombreProducto || resumenTrabajo || '—';
                 const row = {
                     folio,
                     cliente_nombre: clienteNombre,
-                    motor: '—',
+                    motor: nombreEquipo,
                     fecha_ingreso: fechaIso,
                     falla_reportada: falla,
                     estado: 'Nuevo',
@@ -929,13 +959,14 @@ const VentasModule = (function() {
                     folio = 'SP-A' + Date.now().toString(36).toUpperCase();
                 }
                 const nombre = dept === 'Proyectos' ? 'Proyecto (Ventas)' : 'Automatización (Ventas)';
+                const notasProy = [falla, serviciosAuto ? ('Servicios: ' + serviciosAuto) : '', prioLine].filter(Boolean).join('\n\n');
                 const row = {
                     folio,
                     nombre,
                     cliente: clienteNombre,
                     fecha: (fechaStr || new Date().toISOString().split('T')[0]),
                     vendedor: userName,
-                    notas_generales: [falla, prioLine].filter(Boolean).join('\n\n'),
+                    notas_generales: notasProy,
                     estado: 'pendiente'
                 };
 
@@ -1017,10 +1048,10 @@ const VentasModule = (function() {
                     folio: folioVisita,
                     fecha: now.toISOString().split('T')[0],
                     cliente: clienteNombre,
-                    equipo: nombreProducto || falla.substring(0, 80),
+                    equipo: resumenTrabajo || falla.substring(0, 80),
                     tecnico: userName,
                     departamento: 'Automatización',
-                    objetivo: falla,
+                    objetivo: [falla, serviciosAuto ? ('Servicios: ' + serviciosAuto) : ''].filter(Boolean).join('\n\n'),
                     estado: 'confirmacion',
                     origen: 'ventas'
                 };
@@ -1042,7 +1073,7 @@ const VentasModule = (function() {
                 }
                 const proyectoData = {
                     folio: folioProy,
-                    nombre: 'Soporte: ' + (nombreProducto || clienteNombre),
+                    nombre: 'Soporte: ' + (resumenTrabajo || clienteNombre),
                     cliente: clienteNombre,
                     fecha: now.toISOString().split('T')[0],
                     vendedor: userName,
@@ -1242,6 +1273,121 @@ const VentasModule = (function() {
         ]
     };
 
+    /** Catálogo alineado a ssepi_taller.html #inpEquipSelect */
+    const CATALOGO_EQUIPOS_LAB = [
+        'Tablero', 'HMI', 'PLC', 'Servos', 'Tarjeta Electrónica',
+        'Sensores', 'Chillers', 'Teach Pencil', 'Otro'
+    ];
+
+    function _deptUsaEquiposMulti(dept) {
+        return dept === 'Laboratorio de Electrónica' || dept === 'Taller Motores';
+    }
+
+    function _deptUsaServiciosMulti(dept) {
+        return dept === 'Automatización' || dept === 'Proyectos' || dept === 'Soporte en planta';
+    }
+
+    function _getWizardEquiposSeleccionados() {
+        const wrap = document.getElementById('wizardEquiposWrap');
+        if (!wrap) return [];
+        const list = Array.from(wrap.querySelectorAll('input[type=checkbox][data-equipo]:checked'))
+            .map((b) => b.dataset.equipo)
+            .filter(Boolean);
+        if (list.includes('Otro')) {
+            const otroTxt = (document.getElementById('wizardEquipoOtro') || {}).value?.trim() || '';
+            return list.filter((e) => e !== 'Otro').concat(otroTxt ? [otroTxt] : ['Otro']);
+        }
+        return list;
+    }
+
+    function _getWizardServiciosSeleccionados() {
+        const wrap = document.getElementById('wizardServiciosAutoWrap');
+        if (!wrap) return [];
+        return Array.from(wrap.querySelectorAll('input[type=checkbox][data-servicio-val]:checked'))
+            .map((b) => b.dataset.servicioVal)
+            .filter(Boolean);
+    }
+
+    function _wizardResolverNombreProducto(dept) {
+        if (_deptUsaEquiposMulti(dept)) {
+            const eq = _getWizardEquiposSeleccionados();
+            return eq.length ? eq.join(', ') : '';
+        }
+        const vis = document.getElementById('wizardNombreProductoVisible');
+        if (vis) return (vis.value || '').trim();
+        return (document.getElementById('wizardNombreProducto') || {}).value?.trim() || '';
+    }
+
+    function _wizardResolverServiciosAuto() {
+        const sel = _getWizardServiciosSeleccionados();
+        return sel.length ? sel.join(' | ') : '';
+    }
+
+    function _syncWizardNombreProductoDesdeEquipos() {
+        const dept = document.getElementById('wizardDepartamentoSelect')?.value || '';
+        const np = document.getElementById('wizardNombreProducto');
+        if (np && _deptUsaEquiposMulti(dept)) np.value = _wizardResolverNombreProducto(dept);
+    }
+
+    function _restoreWizardMultiSelects(f) {
+        if (!f) return;
+        (f.equipos || []).forEach((eq) => {
+            const cb = document.querySelector('#wizardEquiposWrap input[data-equipo="' + eq.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"]');
+            if (cb) {
+                cb.checked = true;
+                return;
+            }
+            const otroCb = document.querySelector('#wizardEquiposWrap input[data-equipo="Otro"]');
+            if (otroCb) {
+                otroCb.checked = true;
+                const ow = document.getElementById('wizardEquipoOtroWrap');
+                const oi = document.getElementById('wizardEquipoOtro');
+                if (ow) ow.style.display = 'block';
+                if (oi) oi.value = eq === 'Otro' ? (f.equipo_otro || '') : eq;
+            }
+        });
+        const servs = Array.isArray(f.servicios_automatizacion)
+            ? f.servicios_automatizacion
+            : (f.servicio_automatizacion ? String(f.servicio_automatizacion).split(' | ').map((s) => s.trim()).filter(Boolean) : []);
+        servs.forEach((sv) => {
+            document.querySelectorAll('#wizardServiciosAutoWrap input[data-servicio-val]').forEach((cb) => {
+                if (cb.dataset.servicioVal === sv) cb.checked = true;
+            });
+        });
+        _syncWizardNombreProductoDesdeEquipos();
+    }
+
+    function _bindWizardEquiposServiciosEvents() {
+        const wrapEq = document.getElementById('wizardEquiposWrap');
+        if (wrapEq && !wrapEq._ssepiBound) {
+            wrapEq._ssepiBound = true;
+            wrapEq.addEventListener('change', (e) => {
+                const t = e.target;
+                if (t && t.dataset && t.dataset.equipo === 'Otro') {
+                    const ow = document.getElementById('wizardEquipoOtroWrap');
+                    if (ow) ow.style.display = t.checked ? 'block' : 'none';
+                }
+                _syncWizardNombreProductoDesdeEquipos();
+                if (ventasAutosaveCtrl) ventasAutosaveCtrl.schedule();
+            });
+        }
+        const otroInp = document.getElementById('wizardEquipoOtro');
+        if (otroInp && !otroInp._ssepiBound) {
+            otroInp._ssepiBound = true;
+            otroInp.addEventListener('input', () => {
+                _syncWizardNombreProductoDesdeEquipos();
+                if (ventasAutosaveCtrl) ventasAutosaveCtrl.schedule();
+            });
+        }
+        const wrapSv = document.getElementById('wizardServiciosAutoWrap');
+        if (wrapSv && !wrapSv._ssepiBound) {
+            wrapSv._ssepiBound = true;
+            wrapSv.addEventListener('change', () => {
+                if (ventasAutosaveCtrl) ventasAutosaveCtrl.schedule();
+            });
+        }
+    }
+
     async function generarFolioCotizacion() {
         const { data, error } = await window.supabase
             .from('foliador_control')
@@ -1331,6 +1477,7 @@ const VentasModule = (function() {
     // ==================== INICIALIZACIÓN ====================
     async function init() {
         console.log('✅ [Ventas] Conectado');
+        try { perfilUsuario = await authService.getCurrentProfile(); } catch(e) {}
 
         // Cargar configuración de costos desde BD
         try {
@@ -1573,36 +1720,62 @@ const VentasModule = (function() {
     }
 
     async function _loadContactos() {
-        let rawContactos = [];
-        let tabuladorClientes = [];
-        try {
-            const allContactos = await contactosService.select({}, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 2000 }) || [];
-            rawContactos = allContactos.filter(c => c.tipo === 'client' || c.tipo === 'cliente');
-        } catch (e) { console.warn('[Ventas] contactos:', e); }
-        // Cargar clientes del tabulador
+        /** Clientes del wizard Ventas = solo las 50 empresas del tabulador Excel oficial. */
+        const normKey = (s) => (s || '').toString().toLowerCase().trim();
+        let tabRows = [];
         try {
             const { data, error } = await window.supabase
                 .from('clientes_tabulador')
-                .select('nombre_cliente, km, horas_viaje, activo')
+                .select('id, nombre_cliente, km, horas_viaje, rfc, activo, precio_lab_3pct, precio_mot_3pct, precio_sum_3pct, precio_auto_venta, orden')
                 .eq('activo', true)
-                .order('nombre_cliente');
-            if (!error && data) {
-                tabuladorClientes = data.filter(c => c.activo !== false && c.nombre_cliente).map(c => ({
-                    id: 'tab-' + c.nombre_cliente.replace(/\s+/g, '-').toLowerCase(),
-                    nombre: c.nombre_cliente.toUpperCase(),
-                    empresa: '',
-                    email: '',
-                    telefono: '',
-                    rfc: '',
-                    km: Number(c.km) || 0,
-                    horas_viaje: Number(c.horas_viaje) || 0,
-                    _fromTabulador: true
-                }));
-            }
+                .order('orden', { ascending: true });
+            if (!error && data) tabRows = data.filter((c) => c.activo !== false && c.nombre_cliente);
         } catch (e) { console.warn('[Ventas] clientes_tabulador:', e); }
-        // Merge sin duplicados por nombre
-        const vistos = new Set(rawContactos.map(c => (c.nombre || '').toString().toLowerCase().trim()));
-        contactos = [...rawContactos, ...tabuladorClientes.filter(c => !vistos.has((c.nombre || '').toString().toLowerCase().trim()))];
+
+        let contactosTab = [];
+        try {
+            const allContactos = await contactosService.select({}, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 2000 }) || [];
+            contactosTab = allContactos.filter((c) =>
+                c.es_tabulador === true || c.fuente === 'tabulador_excel_50' || (c.etiquetas || []).includes('tabulador_excel_50')
+            );
+        } catch (e) { console.warn('[Ventas] contactos tabulador:', e); }
+
+        const byTab = new Map(contactosTab.map((c) => [normKey(c.empresa_tabulador || c.nombre || c.empresa), c]));
+
+        if (tabRows.length) {
+            contactos = tabRows.map((t) => {
+                const nombre = (t.nombre_cliente || '').trim();
+                const key = normKey(nombre);
+                const c = byTab.get(key);
+                const base = {
+                    nombre: nombre.toUpperCase(),
+                    empresa: nombre.toUpperCase(),
+                    empresa_tabulador: nombre.toUpperCase(),
+                    tipo: 'client',
+                    tipo_ficha: 'empresa',
+                    rfc: t.rfc || '',
+                    km: Number(t.km) || 0,
+                    horas_viaje: Number(t.horas_viaje) || 0,
+                    precio_lab_3pct: t.precio_lab_3pct,
+                    precio_mot_3pct: t.precio_mot_3pct,
+                    precio_sum_3pct: t.precio_sum_3pct,
+                    precio_auto_venta: t.precio_auto_venta,
+                    es_tabulador: true,
+                    _fromTabulador: true
+                };
+                if (c) return { ...c, ...base, id: c.id };
+                return { ...base, id: 'tab-' + key.replace(/\s+/g, '-') };
+            });
+            console.log('[Ventas] Clientes tabulador (oficial):', contactos.length);
+            return;
+        }
+
+        // Respaldo si aún no corrió seed-tabulador-50
+        contactos = contactosTab.length
+            ? contactosTab
+            : (await contactosService.select({}, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 2000 }) || [])
+                .filter((c) => c.tipo === 'client' || c.tipo === 'cliente');
+        console.warn('[Ventas] Sin filas en clientes_tabulador — ejecuta: node ssepinext/seed-tabulador-50.mjs --replace-contactos');
     }
 
     async function _loadProyectos() {
@@ -2360,6 +2533,7 @@ const VentasModule = (function() {
      * Función asíncrona para poder consultar los folios vinculados.
      */
     async function _renderKanbanCardsAsync(items) {
+        const esAdminV = _esAdmin();
         if (items.length === 0) return '<div style="text-align:center; padding:20px; color:var(--text-muted);">Sin elementos</div>';
 
         // Precargar folios vinculados para todas las cotizaciones
@@ -2413,7 +2587,7 @@ const VentasModule = (function() {
                     ${etiquetaHtml ? `<div class="card-vinculacion">${etiquetaHtml}</div>` : ''}
                     <div class="card-body" onclick="ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')" style="cursor:pointer;">
                         <div class="cliente">${item.cliente_nombre || item.cliente || 'Cliente'}</div>
-                        <div class="total">$${(item.total || 0).toFixed(2)}</div>
+                        ${esAdminV ? `<div class="total">$${(item.total || 0).toFixed(2)}</div>` : ''}
                     </div>
                     <div class="card-footer">
                         <small>${item.fecha_cotizacion || item.fecha || item.fecha_creacion ? new Date(item.fecha_cotizacion || item.fecha || item.fecha_creacion).toLocaleDateString() : ''}</small>
@@ -2425,6 +2599,7 @@ const VentasModule = (function() {
     }
 
     function _renderKanbanCards(items) {
+        const esAdminV = _esAdmin();
         // Wrapper síncrono para compatibilidad - se llama desde _renderKanban
         // Para versión con folios vinculados, usar _renderKanbanCardsAsync
         if (items.length === 0) return '<div style="text-align:center; padding:20px; color:var(--text-muted);">Sin elementos</div>';
@@ -2449,7 +2624,7 @@ const VentasModule = (function() {
                     </div>
                     <div class="card-body" onclick="ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')" style="cursor:pointer;">
                         <div class="cliente">${item.cliente_nombre || item.cliente || 'Cliente'}</div>
-                        <div class="total">$${(item.total || 0).toFixed(2)}</div>
+                        ${esAdminV ? `<div class="total">$${(item.total || 0).toFixed(2)}</div>` : ''}
                     </div>
                     <div class="card-footer">
                         <small>${item.fecha_cotizacion || item.fecha || item.fecha_creacion ? new Date(item.fecha_cotizacion || item.fecha || item.fecha_creacion).toLocaleDateString() : ''}</small>
@@ -2461,6 +2636,7 @@ const VentasModule = (function() {
     }
 
     function _renderLista(items) {
+        const esAdminV = _esAdmin();
         const tbody = document.getElementById('tablaVentasBody');
         if (!tbody) return;
         if (items.length === 0) {
@@ -2485,7 +2661,7 @@ const VentasModule = (function() {
                     <td>${cliente}</td>
                     <td>${tipo}</td>
                     <td><span class="status-badge ${estatusClass}">${estatus}</span></td>
-                    <td>$${total.toFixed(2)}</td>
+                    <td>${esAdminV ? '$' + total.toFixed(2) : '—'}</td>
                     <td>
                         <button class="btn btn-sm btn-info" style="background:#0077b6;color:#fff;" onclick="event.stopPropagation(); ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')" title="Ver historial">
                             <i class="fas fa-history"></i>
@@ -2721,6 +2897,7 @@ const VentasModule = (function() {
     }
 
     function _updateKPIs(items) {
+        const esAdminV = _esAdmin();
         const now = new Date();
         const mesActual = now.getMonth();
         const añoActual = now.getFullYear();
@@ -2758,10 +2935,10 @@ const VentasModule = (function() {
         const elCotizPend = document.getElementById('kpiCotizacionesPendientes');
         const elMargen = document.getElementById('kpiMargenUtilidad');
         const elTicket = document.getElementById('kpiTicketPromedio');
-        if (elTotalVentas) elTotalVentas.innerHTML = '$' + totalVentasDinero.toLocaleString('es-MX', { minimumFractionDigits: 2 });
+        if (elTotalVentas) elTotalVentas.innerHTML = esAdminV ? '$' + totalVentasDinero.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '—';
         if (elCotizPend) elCotizPend.innerText = cotizacionesPendientesCount;
-        if (elMargen) elMargen.innerHTML = margenObjetivo + '%';
-        if (elTicket) elTicket.innerHTML = countVentasCerradas ? '$' + ticketPromedio.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '$0';
+        if (elMargen) elMargen.innerHTML = esAdminV ? margenObjetivo + '%' : '—';
+        if (elTicket) elTicket.innerHTML = countVentasCerradas ? (esAdminV ? '$' + ticketPromedio.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '—') : '$0';
     }
 
     function _pipelineRowForVentas(row, tabla, tipoUi) {
@@ -4304,10 +4481,21 @@ const VentasModule = (function() {
             const deptSel = document.getElementById('wizardDepartamentoSelect');
             if (clienteSel && calculadoraClienteActual?.id) clienteSel.value = calculadoraClienteActual.id;
             if (fechaIn) fechaIn.value = item.fecha || '';
-            if (nombreProd) nombreProd.value = item.cerebro_registro?.nombre_producto || item.cerebro_registro?.producto_servicio || '';
-            if (falla) falla.value = item.cerebro_registro?.falla_reportada || '';
-            if (prioridadSel) prioridadSel.value = item.cerebro_registro?.prioridad || 'Normal';
-            if (deptSel) deptSel.value = item.cerebro_registro?.departamento || '';
+            const cerebro = item.cerebro_registro || {};
+            const npVal = cerebro.nombre_producto || cerebro.producto_servicio || '';
+            if (nombreProd) nombreProd.value = npVal;
+            const nombreVis = document.getElementById('wizardNombreProductoVisible');
+            if (nombreVis) nombreVis.value = npVal;
+            if (falla) falla.value = cerebro.falla_reportada || '';
+            if (prioridadSel) prioridadSel.value = cerebro.prioridad || 'Normal';
+            if (deptSel) deptSel.value = cerebro.departamento || '';
+            if (window.__onDeptChangeVentas) window.__onDeptChangeVentas();
+            _restoreWizardMultiSelects({
+                equipos: cerebro.equipos,
+                servicios_automatizacion: cerebro.servicios_automatizacion,
+                servicio_automatizacion: cerebro.servicio_automatizacion,
+                nombreProducto: npVal
+            });
         }, 100);
 
         _showToast('Editando ' + (tipo || 'registro') + ': ' + (item.folio || ''), 'info');
@@ -4581,19 +4769,10 @@ const VentasModule = (function() {
         var body = document.getElementById('calculadoraBody');
         if (!body) return;
         if (paso === 1) {
-            // Recargar contactos desde BD para tener lista actualizada
-            if (window.supabase) {
-                try {
-                    const { data } = await window.supabase
-                        .from('contactos')
-                        .select('*')
-                        .in('tipo', ['client', 'cliente'])
-                        .order('nombre');
-                    if (data) contactos = data;
-                } catch (e) { console.warn('[Ventas] Error recargando contactos:', e); }
-            }
+            await _loadContactos();
             body.innerHTML = _renderWizardPaso1();
             _attachWizardPaso1();
+            _bindWizardEquiposServiciosEvents();
             _toggleWizardDeptFields();
         } else if (paso === 2) {
             let horasEst = 0;
@@ -4685,12 +4864,30 @@ const VentasModule = (function() {
         const prePrioridad = cerebro.prioridad || 'Normal';
         const preDepto = cerebro.departamento || '';
         const preServicio = cerebro.servicio_automatizacion || '';
+        const preEquipos = Array.isArray(cerebro.equipos)
+            ? cerebro.equipos
+            : (preProducto ? preProducto.split(',').map((s) => s.trim()).filter(Boolean) : []);
+        const preServicios = Array.isArray(cerebro.servicios_automatizacion)
+            ? cerebro.servicios_automatizacion
+            : (preServicio ? String(preServicio).split(' | ').map((s) => s.trim()).filter(Boolean) : []);
+        const preServSet = new Set(preServicios);
+        const showEquipos = preDepto === 'Laboratorio de Electrónica' || preDepto === 'Taller Motores';
+        const showServicios = preDepto === 'Automatización' || preDepto === 'Proyectos' || preDepto === 'Soporte en planta';
 
-        // Opciones de servicios para Automatización/Proyectos
-        const serviciosAutoOpts = tabuladorAutomatizacion.servicios.map((s, idx) => {
+        const equiposCheckboxesHtml = CATALOGO_EQUIPOS_LAB.map((eq) => {
+            const checked = preEquipos.includes(eq) ? ' checked' : '';
+            return '<label style="display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;">'
+                + '<input type="checkbox" data-equipo="' + eq + '" value="' + eq + '"' + checked + '> ' + eq + '</label>';
+        }).join('');
+
+        const serviciosCheckboxesHtml = tabuladorAutomatizacion.servicios.map((s) => {
             const val = s.area + ' | ' + s.servicio;
-            const sel = preServicio === val ? ' selected' : '';
-            return '<option value="' + val + '"' + sel + ' data-area="' + s.area + '" data-servicio="' + s.servicio + '" data-tipo="' + s.tipo + '" data-valor="' + s.valorAgregado + '" data-unidad="' + s.unidad + '">' + s.area + ' — ' + s.servicio + ' ($' + s.valorAgregado + '/' + s.unidad.replace('por ', '') + ')</option>';
+            const checked = preServSet.has(val) ? ' checked' : '';
+            const escVal = val.replace(/"/g, '&quot;');
+            return '<label style="display:flex;align-items:flex-start;gap:8px;padding:8px 6px;border-bottom:1px solid #eee;cursor:pointer;font-size:12px;">'
+                + '<input type="checkbox" data-servicio-val="' + escVal + '" value="' + escVal + '"' + checked + ' style="margin-top:3px;flex-shrink:0;">'
+                + '<span><strong>' + s.area + '</strong> — ' + s.servicio
+                + ' <span style="color:#64748b;">($' + s.valorAgregado + '/' + s.unidad.replace('por ', '') + ')</span></span></label>';
         }).join('');
 
         return `
@@ -4728,14 +4925,14 @@ const VentasModule = (function() {
                 <!-- Banner de adeudo (dinámico) -->
                 <div id="wizardAdeudoBanner" style="display:none; margin-top:12px;"></div>
 
-                <!-- SERVICIO AUTOMATIZACIÓN (solo visible para Automatización/Proyectos) -->
-                <div class="editor-item" id="wizardServicioAutoWrap" style="margin-top:14px; display:${(preDepto==='Automatización'||preDepto==='Proyectos')?'block':'none'};">
-                    <label>Servicio / Actividad <span style="color:#c62828;">*</span></label>
-                    <select id="wizardServicioAutoSelect" style="width:100%; padding:10px;">
-                        <option value="">-- Seleccionar servicio --</option>
-                        ${serviciosAutoOpts}
-                    </select>
-                    <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Selecciona el tipo de trabajo según el catálogo de automatización.</p>
+                <!-- SERVICIOS AUTOMATIZACIÓN / SOPORTE (multi-select) -->
+                <div class="editor-item" id="wizardServicioAutoWrap" style="margin-top:14px; display:${showServicios?'block':'none'};">
+                    <label>Servicios / Actividades <span style="color:#c62828;">*</span></label>
+                    <p style="font-size:12px; color:var(--text-secondary); margin:0 0 8px 0;">Selecciona uno o más servicios del catálogo de automatización.</p>
+                    <div id="wizardServiciosAutoWrap" style="max-height:220px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;background:#fff;padding:4px 8px;">
+                        ${serviciosCheckboxesHtml}
+                    </div>
+                    <select id="wizardServicioAutoSelect" style="display:none;"><option value=""></option></select>
                 </div>
 
                 <div class="editor-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px;">
@@ -4754,9 +4951,21 @@ const VentasModule = (function() {
                     </div>
                 </div>
 
-                <div class="editor-item" id="wizardNombreProductoWrap" style="margin-top:14px;">
+                <div class="editor-item" id="wizardEquiposWrap" style="margin-top:14px; display:${showEquipos?'block':'none'};">
+                    <label>Equipos a reparar / atender <span style="color:#c62828;">*</span></label>
+                    <p style="font-size:12px; color:var(--text-secondary); margin:0 0 8px 0;">Catálogo del Laboratorio (mismo que Taller SP-E). Puedes elegir varios.</p>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px;">
+                        ${equiposCheckboxesHtml}
+                    </div>
+                    <div id="wizardEquipoOtroWrap" style="display:${preEquipos.includes('Otro')?'block':'none'}; margin-top:8px;">
+                        <input type="text" id="wizardEquipoOtro" placeholder="Especificar otro equipo" style="width:100%; padding:8px;">
+                    </div>
+                    <input type="hidden" id="wizardNombreProducto" value="${preProducto.replace(/"/g, '&quot;')}">
+                </div>
+
+                <div class="editor-item" id="wizardNombreProductoWrap" style="margin-top:14px; display:${(showEquipos||preDepto==='Suministro')?'none':'block'};">
                     <label>Nombre del producto / Equipo <span style="color:#c62828;">*</span></label>
-                    <input type="text" id="wizardNombreProducto" value="${preProducto}" placeholder="Ej. Sistema de control, Motor trifásico, Tablero eléctrico..." style="width:100%; padding:10px;">
+                    <input type="text" id="wizardNombreProductoVisible" value="${preProducto.replace(/"/g, '&quot;')}" placeholder="Ej. Sistema de control, Motor trifásico, Tablero eléctrico..." style="width:100%; padding:10px;">
                     <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Requerido para generar la orden.</p>
                 </div>
 
@@ -4897,17 +5106,30 @@ const VentasModule = (function() {
             _wizardSetPaso1Error('');
             const clienteSelect = document.getElementById('wizardClienteSelect');
             const fechaIn = document.getElementById('wizardFechaIngreso');
-            const nombreProducto = document.getElementById('wizardNombreProducto')?.value?.trim() || '';
+            const dept = document.getElementById('wizardDepartamentoSelect')?.value || '';
+            let nombreProducto = _wizardResolverNombreProducto(dept);
             const falla = document.getElementById('wizardFallaReportada')?.value?.trim() || '';
             const prioridad = document.getElementById('wizardPrioridadSelect')?.value || 'Normal';
-            const dept = document.getElementById('wizardDepartamentoSelect')?.value || '';
             const clienteId = clienteSelect?.value;
 
             // VALIDACIÓN DE CAMPOS REQUERIDOS
             if (!clienteId) { _wizardSetPaso1Error('❌ Selecciona un cliente.'); return; }
             if (!fechaIn?.value) { _wizardSetPaso1Error('❌ Indica la fecha de ingreso.'); return; }
             const esSuministro = dept === 'Suministro';
-            if (!esSuministro && !nombreProducto) { _wizardSetPaso1Error('❌ Ingresa el nombre del producto (requerido para continuar).'); return; }
+            const esEquipos = _deptUsaEquiposMulti(dept);
+            const esServicios = _deptUsaServiciosMulti(dept);
+            if (!esSuministro && esEquipos) {
+                const eq = _getWizardEquiposSeleccionados();
+                if (!eq.length) { _wizardSetPaso1Error('❌ Selecciona al menos un equipo del catálogo.'); return; }
+                nombreProducto = eq.join(', ');
+                const np = document.getElementById('wizardNombreProducto');
+                if (np) np.value = nombreProducto;
+            } else if (!esSuministro && !nombreProducto) {
+                _wizardSetPaso1Error('❌ Ingresa el nombre del producto (requerido para continuar).'); return;
+            }
+            if (esServicios && !_getWizardServiciosSeleccionados().length) {
+                _wizardSetPaso1Error('❌ Selecciona al menos un servicio / actividad.'); return;
+            }
             if (esSuministro && calculadoraComponentes.length === 0) {
                 _wizardSetPaso1Error('❌ Agrega al menos un material del BOM o un componente manual.');
                 return;
@@ -5004,7 +5226,9 @@ const VentasModule = (function() {
                 }
             }
 
-            const servicioAuto = document.getElementById('wizardServicioAutoSelect')?.value || '';
+            const servicioAuto = _wizardResolverServiciosAuto();
+            const serviciosAuto = _getWizardServiciosSeleccionados();
+            const equiposSel = _getWizardEquiposSeleccionados();
             const fallaFinal = (document.getElementById('wizardFallaReportada') || {}).value?.trim() || falla;
             ventasWizardCerebro = {
                 fecha_ingreso: fechaIn.value,
@@ -5017,7 +5241,9 @@ const VentasModule = (function() {
                 tipo_vinculo: creado.tipo || null,
                 origen_cotizacion: origenCot,
                 nombre_producto: esSuministro ? ('Suministros (' + calculadoraComponentes.length + ' ítems)') : nombreProducto,
+                equipos: equiposSel.length ? equiposSel : undefined,
                 servicio_automatizacion: servicioAuto,
+                servicios_automatizacion: serviciosAuto.length ? serviciosAuto : undefined,
                 componentes_suministro: esSuministro ? calculadoraComponentes.slice() : undefined
             };
 
@@ -5107,13 +5333,8 @@ const VentasModule = (function() {
         // Handler global para cambio de departamento (llamado desde onchange del select)
         window.__onDeptChangeVentas = function () {
             const dept = document.getElementById('wizardDepartamentoSelect')?.value || '';
-            const wrap = document.getElementById('wizardServicioAutoWrap');
             const fallaLabel = document.getElementById('wizardFallaLabel');
             const fallaInput = document.getElementById('wizardFallaReportada');
-
-            if (wrap) {
-                wrap.style.display = (dept === 'Automatización' || dept === 'Proyectos' || dept === 'Soporte en planta') ? 'block' : 'none';
-            }
 
             if (fallaLabel) {
                 if (dept === 'Suministro') {
@@ -5197,15 +5418,22 @@ const VentasModule = (function() {
             if (!cliente) { _showToast('Falta el nombre del cliente.', 'warning'); return; }
 
             const fechaIn = document.getElementById('wizardFechaIngreso')?.value;
-            const nombreProducto = document.getElementById('wizardNombreProducto')?.value?.trim() || '';
+            const dept = document.getElementById('wizardDepartamentoSelect')?.value || '';
+            let nombreProducto = _wizardResolverNombreProducto(dept);
             const falla = document.getElementById('wizardFallaReportada')?.value?.trim() || '';
             const prioridad = document.getElementById('wizardPrioridadSelect')?.value || 'Normal';
-            const dept = document.getElementById('wizardDepartamentoSelect')?.value || '';
             const clienteId = document.getElementById('wizardClienteSelect')?.value;
 
             if (!clienteId) { _showToast('Selecciona un cliente.', 'warning'); return; }
             if (!fechaIn) { _showToast('Indica la fecha de ingreso.', 'warning'); return; }
-            if (!nombreProducto) { _showToast('Ingresa el nombre del producto.', 'warning'); return; }
+            if (_deptUsaEquiposMulti(dept)) {
+                const eq = _getWizardEquiposSeleccionados();
+                if (!eq.length) { _showToast('Selecciona al menos un equipo.', 'warning'); return; }
+                nombreProducto = eq.join(', ');
+            } else if (!nombreProducto) { _showToast('Ingresa el nombre del producto.', 'warning'); return; }
+            if (_deptUsaServiciosMulti(dept) && !_getWizardServiciosSeleccionados().length) {
+                _showToast('Selecciona al menos un servicio / actividad.', 'warning'); return;
+            }
             if (!falla) { _showToast('Describe la falla o requerimiento.', 'warning'); return; }
             if (!dept) { _showToast('Selecciona el departamento.', 'warning'); return; }
 
@@ -5256,7 +5484,10 @@ const VentasModule = (function() {
                 folio_operativo: creado.folio || null,
                 tipo_vinculo: creado.tipo || null,
                 origen_cotizacion: origenCot,
-                nombre_producto: nombreProducto
+                nombre_producto: nombreProducto,
+                equipos: _getWizardEquiposSeleccionados(),
+                servicio_automatizacion: _wizardResolverServiciosAuto(),
+                servicios_automatizacion: _getWizardServiciosSeleccionados()
             };
 
             // Crear cotización provisional (visible en lista de Ventas)

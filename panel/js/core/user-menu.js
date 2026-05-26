@@ -610,10 +610,17 @@
             }
             return after.then(function () {
                 closeConfigModal();
-                var userName = document.getElementById('userName');
-                var userAvatar = document.getElementById('userAvatar');
-                if (userName) userName.textContent = (nombre.trim() || 'Admin').split(' ')[0] || 'Admin';
-                if (userAvatar) userAvatar.textContent = (nombre.trim() || 'A').charAt(0).toUpperCase();
+                var auth = getAuth();
+                if (auth && typeof auth.getCurrentProfile === 'function') {
+                    auth.getCurrentProfile().then(function (p) {
+                        if (p && typeof auth.applyUserHeader === 'function') auth.applyUserHeader(p);
+                    });
+                } else {
+                    var userName = document.getElementById('userName');
+                    var userAvatar = document.getElementById('userAvatar');
+                    if (userName) userName.textContent = (nombre.trim() || 'Admin').split(' ')[0] || 'Admin';
+                    if (userAvatar) userAvatar.textContent = (nombre.trim() || 'A').charAt(0).toUpperCase();
+                }
                 alert('Perfil actualizado correctamente.');
             });
         }).catch(function (err) {
@@ -634,9 +641,30 @@
         if (pickBtn) pickBtn.addEventListener('click', function () { _pickBackupFolder(); });
     }
 
+    function applyUserHeaderFromAuth() {
+        var auth = getAuth();
+        if (!auth || typeof auth.getCurrentProfile !== 'function') return;
+        auth.getCurrentProfile().then(function (profile) {
+            if (!profile) return;
+            if (typeof auth.applyUserHeader === 'function') {
+                auth.applyUserHeader(profile);
+            } else {
+                var nameEl = document.getElementById('userName');
+                var avatarEl = document.getElementById('userAvatar');
+                var welcomeEl = document.getElementById('welcomeUser');
+                var full = profile.nombre || 'Usuario';
+                var first = full.split(/\s+/)[0] || full;
+                if (nameEl) nameEl.textContent = first;
+                if (avatarEl) avatarEl.textContent = (full.charAt(0) || 'U').toUpperCase();
+                if (welcomeEl) welcomeEl.textContent = full;
+            }
+        }).catch(function () {});
+    }
+
     function init() {
         createDropdown();
         createConfigModal();
+        applyUserHeaderFromAuth();
         var headerRight = document.querySelector('.header-right');
         /* Correo solo envío: no mostrar botón de bandeja de entrada */
         document.addEventListener('click', function (ev) {

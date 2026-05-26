@@ -222,9 +222,10 @@ const SuministrosModule = (function() {
 
     function _renderKPIs() {
         const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
         set('kpiTotalItems', catalogoUnificado.length);
         set('kpiCarritoItems', carrito.reduce((s, i) => s + i.qty, 0));
-        set('kpiCarritoTotal', '$' + carrito.reduce((s, i) => s + (i.precio || 0) * i.qty, 0).toLocaleString('es-MX', {minimumFractionDigits: 2}));
+        set('kpiCarritoTotal', verCostos ? '$' + carrito.reduce((s, i) => s + (i.precio || 0) * i.qty, 0).toLocaleString('es-MX', {minimumFractionDigits: 2}) : '—');
         set('kpiCotizaciones', cotizaciones ? cotizaciones.length : 0);
     }
 
@@ -406,19 +407,20 @@ const SuministrosModule = (function() {
             const stockWarn = (item.source === 'STOCK' || item.source === 'CONSUMIBLE') && item.stock !== null && item.qty > item.stock ?
                 ` <span style="color:#dc2626;font-size:.75rem">(stock:${item.stock})</span>` : '';
             const costoCompraStr = verCostos ? `$${(item.precio||0).toLocaleString('es-MX',{minimumFractionDigits:2})}` : '—';
+            const subtotalStr = verCostos ? `$${sub.toLocaleString('es-MX',{minimumFractionDigits:2})}` : '—';
             return `<tr>
                 <td>${badge}</td>
                 <td><strong>${_esc(item.codigo)}</strong> — ${_esc(item.descripcion.substring(0,40))}</td>
                 <td><input type="number" value="${item.qty}" min="1" style="width:55px" onchange="suministrosModule._updateCartQty(${idx},parseInt(this.value))">${stockWarn}</td>
-                <td>$${(item.precio||0).toLocaleString('es-MX',{minimumFractionDigits:2})}</td>
+                <td>${costoCompraStr}</td>
                 <td class="col-costo-compra">${costoCompraStr}</td>
-                <td><strong>$${sub.toLocaleString('es-MX',{minimumFractionDigits:2})}</strong></td>
+                <td><strong>${subtotalStr}</strong></td>
                 <td>${item.link ? `<a href="${item.link}" target="_blank" class="supplier-link"><i class="fas fa-external-link-alt"></i></a>` : '—'}</td>
                 <td><button class="btn-remove" onclick="suministrosModule._removeFromCart(${idx})">✖</button></td>
             </tr>`;
         }).join('');
         if (totalItems) totalItems.textContent = carrito.reduce((s,i)=>s+i.qty,0);
-        if (totalPrecio) totalPrecio.textContent = '$' + grandTotal.toLocaleString('es-MX',{minimumFractionDigits:2});
+        if (totalPrecio) totalPrecio.textContent = verCostos ? '$' + grandTotal.toLocaleString('es-MX',{minimumFractionDigits:2}) : '—';
     }
 
     // ==================== COTIZACIÓN ====================
@@ -428,7 +430,8 @@ const SuministrosModule = (function() {
         const utilidadPct = parseInt(document.getElementById('cotUtilidad')?.value) || 40;
         const proveedor = carrito.reduce((s, i) => s + (i.precio || 0) * i.qty, 0);
         const resultado = CostosEngine.calcularSuministros(dias, km, proveedor, utilidadPct / 100 + 1);
-        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = '$' + (val||0).toLocaleString('es-MX',{minimumFractionDigits:2}); };
+        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = verCostos ? '$' + (val||0).toLocaleString('es-MX',{minimumFractionDigits:2}) : '—'; };
         set('costoProveedor', resultado.proveedor);
         set('costoGasolina', resultado.gasolina);
         set('costoGastos', resultado.totalGasVentas + resultado.camioneta);
@@ -535,7 +538,7 @@ const SuministrosModule = (function() {
             folio: 'CMP-' + folio,
             proveedor_nombre: (carrito.find(i => i.proveedores?.length > 0)?.proveedores?.[0]?.nombre) || '',
             departamento: 'Suministro',
-            estado: 0, -- Borrador: esperando que Compras verifique stock/cotice
+            estado: 0, // Borrador: esperando que Compras verifique stock/cotice
             estado_interno: 'esperando_diagnostico',
             vinculacion: { tipo: 'cotizacion_suministro', folio, cliente },
             items: itemsCompra,
@@ -932,7 +935,7 @@ const SuministrosModule = (function() {
                 <div><span style="color:#9ca3af;font-size:.7rem;">Precorso</span><br><strong>${cr.precorso_importes || data.precorso_importes || '—'} / ${cr.precorso_importo || data.precorso_importo || '—'}</strong></div>
             </div>
 
-            <div class="costos-box">
+            ${verCostos ? `<div class="costos-box">
                 <div class="line"><span>Costo suministros</span><span>$${(data.subtotal||0).toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div>
                 <div class="line"><span>Gasolina</span><span>$${(cr.resultado?.gasolina || data.costo_gasolina || 0).toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div>
                 <div class="line"><span>Gastos generales</span><span>$${((cr.resultado?.totalGasVentas||0)+(cr.resultado?.camioneta||data.costo_camioneta||0)).toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div>
@@ -940,7 +943,7 @@ const SuministrosModule = (function() {
                 <div class="line"><span>Crédito (3%)</span><span>$${((cr.resultado?.credito||data.credito||0) - (cr.resultado?.utilidad||data.utilidad||0)).toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div>
                 <div class="line total"><span>IVA (16%)</span><span>$${(data.iva||0).toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div>
                 <div class="line gran-total"><span>GRAN TOTAL</span><span>$${(data.total||0).toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div>
-            </div>
+            </div>` : `<div class="costos-box"><div class="line gran-total"><span>TOTAL</span><span>$${(data.total||0).toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div></div>`}
 
             <table><thead><tr><th>Fuente</th><th>Código</th><th>Descripción</th><th>Cant</th>${headerCostos}<th>Precio Venta</th><th>Subtotal Venta</th></tr></thead><tbody>${filas}${totalesRow}</tbody></table>
             <p class="right" style="margin-top:16px;font-size:1.1rem"><strong>Total (con IVA): $${(data.total||0).toLocaleString('es-MX',{minimumFractionDigits:2})}</strong></p>
@@ -968,7 +971,7 @@ const SuministrosModule = (function() {
             folio: 'CMP-' + folio,
             proveedor_nombre: (data.componentes?.find(i => i.proveedores?.length > 0)?.proveedores?.[0]?.nombre) || '',
             departamento: 'Suministro',
-            estado: 0, -- Borrador: esperando que Compras verifique stock/cotice
+            estado: 0, // Borrador: esperando que Compras verifique stock/cotice
             estado_interno: 'esperando_diagnostico',
             vinculacion: { tipo: 'cotizacion_suministro', folio, cotizacion_id: cot.id, cliente: data.cliente_nombre || data.cliente },
             items: itemsCompra,

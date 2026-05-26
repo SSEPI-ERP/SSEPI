@@ -57,6 +57,20 @@ export function imagenesReporte(orden) {
   return [];
 }
 
+export function imagenesCaptura(orden) {
+  let list = orden.imagenes_erp;
+  if (list?.length) {
+    const cap = list.filter((u) => u && /screenshot|captura|erp|odoo/i.test(u));
+    if (cap.length) return cap.slice(0, 1);
+  }
+  list = orden.imagenes_servicio;
+  if (list?.length) {
+    const cap = list.filter((u) => u && /screenshot|captura|erp|odoo/i.test(u));
+    if (cap.length) return cap.slice(0, 1);
+  }
+  return [];
+}
+
 export function urlImagen(path) {
   const u = s(path);
   if (!u || u === 'null' || u === 'undefined') return '';

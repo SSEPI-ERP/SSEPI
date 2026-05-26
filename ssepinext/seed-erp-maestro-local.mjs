@@ -12,7 +12,9 @@ import { fileURLToPath } from 'url';
 import { canonicalExcelName, isGarbageName } from '../scripts/imports/erp-maestro-lib.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Preferir el paquete ERP (odooCatalog con tel/email) si existe.
 const DATOS_PATH = path.resolve(__dirname, '../simulaciones/escaner de imagenes/info/datos_comparador.json');
+const DATOS_EMBEBIDOS_JS = path.resolve(__dirname, '../simulaciones/SSEPI_Paquete_ERP/01_Comparador_Odoo_Excel/datos_embebidos.js');
 const REPLACE = process.argv.includes('--replace-contactos');
 
 function norm(s) {
@@ -25,9 +27,14 @@ async function seed() {
   const stmtContactos = await prepareStatement(db, 'local_contactos');
   const stmtTabulador = await prepareStatement(db, 'local_clientes_tabulador');
 
-  if (!fs.existsSync(DATOS_PATH)) {
+  const hasComparador = fs.existsSync(DATOS_PATH);
+  const hasEmbebidos = fs.existsSync(DATOS_EMBEBIDOS_JS);
+  if (!hasComparador && !hasEmbebidos) {
     setDeferPersist(false);
-    console.error('[ERP Maestro Local] Falta datos_comparador.json — ejecuta: cd scripts/imports && node build-erp-maestro.mjs');
+    console.error('[ERP Maestro Local] Falta fuente de datos. Esperado uno de:');
+    console.error(' -', DATOS_EMBEBIDOS_JS);
+    console.error(' -', DATOS_PATH);
+    console.error('[ERP Maestro Local] Si falta datos_comparador.json, ejecuta: cd scripts/imports && node build-erp-maestro.mjs');
     process.exit(1);
   }
 
@@ -36,17 +43,60 @@ async function seed() {
     console.log('[ERP Maestro Local] Contactos anteriores eliminados (--replace-contactos)');
   }
 
-  const raw = JSON.parse(fs.readFileSync(DATOS_PATH, 'utf8'));
-  const relacion = raw.relacionErp || raw.tabuladorErp?.relacionErp || [];
-  const odoo = raw.odoo || [];
+  let raw = {};
+  if (hasEmbebidos) {
+    const js = fs.readFileSync(DATOS_EMBEBIDOS_JS, 'utf8');
+    // datos_embebidos.js: window.DATOS_COMPARADOR = {...};
+    try {
+      const idx = js.indexOf('window.DATOS_COMPARADOR');
+      const start = js.indexOf('{', idx >= 0 ? idx : 0);
+      const end = js.lastIndexOf('}');
+      if (start >= 0 && end > start) {
+        raw = JSON.parse(js.slice(start, end + 1));
+        raw._source = 'datos_embebidos.js';
+      } else {
+        throw new Error('No se encontró bloque JSON en datos_embebidos.js');
+      }
+    } catch (e) {
+      console.warn('[ERP Maestro Local] No se pudo parsear datos_embebidos.js, usando datos_comparador.json si existe.', e?.message || e);
+      if (hasComparador) raw = JSON.parse(fs.readFileSync(DATOS_PATH, 'utf8'));
+    }
+  } else {
+    raw = JSON.parse(fs.readFileSync(DATOS_PATH, 'utf8'));
+  }
+  const relacion = raw.relacionErp || raw.tabuladorErp?.relacionErp || raw.relacion || [];
+  // Preferir el catálogo completo (odooCatalog) si existe.
+  const odoo = raw.odooCatalog || raw.odoo || [];
   const meta = raw.meta || raw.stats || {};
 
+  // Excel (RFC/dirección/km/horas): en algunos builds, `datos_embebidos.js` viene sin address.
+  // Si existe `datos_comparador.json`, usar SU sección excel como fuente de dirección.
+  let excelSource = raw.excel || [];
+  if (hasComparador) {
+    try {
+      const raw2 = JSON.parse(fs.readFileSync(DATOS_PATH, 'utf8'));
+      if (Array.isArray(raw2.excel) && raw2.excel.length) {
+        excelSource = raw2.excel;
+      }
+    } catch { /* ignore */ }
+  }
+
+  console.log(`[ERP Maestro Local] fuente: ${raw._source || (hasEmbebidos ? 'datos_embebidos.js' : 'datos_comparador.json')}`);
   console.log(`[ERP Maestro Local] odoo: ${odoo.length} capturas | relacionErp: ${relacion.length} empresas tabulador`);
   if (meta.totalImages) console.log(`[ERP Maestro Local] meta.totalImages: ${meta.totalImages}`);
 
   const contactoByNorm = new Map();
   const contactoByOdooId = new Map();
   const tabuladorByNorm = new Map();
+  const excelByNorm = new Map();
+  try {
+    const excel = excelSource || [];
+    for (const e of excel) {
+      const name = e?.nameExcel || e?.name || '';
+      if (!name) continue;
+      excelByNorm.set(norm(canonicalExcelName(name)), e);
+    }
+  } catch { /* ignore */ }
 
   // Cargar contactos existentes para idempotencia (segunda pasada sin --replace)
   if (!REPLACE) {
@@ -77,6 +127,7 @@ async function seed() {
   for (const o of odoo) {
     const tabRaw = o.excelMatch || o.empresaAsociada || '';
     const tab = tabRaw ? canonicalExcelName(tabRaw) : '';
+    const excel = tab ? (excelByNorm.get(norm(tab)) || null) : null;
     let nombre = '';
     let tipo_ficha = o.tipoFicha || 'contacto_solo';
     let empresa = tab || (o.empresaAsociada || '').toUpperCase();
@@ -109,7 +160,8 @@ async function seed() {
       puesto: o.puesto || (tipo_ficha === 'contacto_empresa' ? 'Vendedor' : ''),
       email: o.email || '',
       telefono: o.tel || '',
-      rfc: o.excel?.rfc || '',
+      rfc: o.excel?.rfc || excel?.rfc || '',
+      direccion: o.excel?.address || excel?.address || '',
       odoo_captura_id: odooKey,
       match_score: o.matchScore ?? null,
       etiquetas: ['erp_maestro_2026'],
@@ -138,6 +190,7 @@ async function seed() {
     const tabName = rel.empresaTabulador;
     if (!tabName) continue;
     const nTab = norm(tabName);
+    const excel = excelByNorm.get(norm(canonicalExcelName(tabName))) || null;
 
     const ex = contactoByNorm.get(nTab);
     const payload = {
@@ -149,7 +202,7 @@ async function seed() {
       rfc: rel.rfc || '',
       telefono: rel.telefono || '',
       email: rel.email || '',
-      direccion: rel.direccion || '',
+      direccion: rel.direccion || excel?.address || '',
       km: Number(rel.km || rel.viajeDani?.km || 0),
       horas_viaje: Number(rel.viajeDani?.horas || 0),
       etiquetas: ['erp_maestro_2026'],
@@ -201,29 +254,8 @@ async function seed() {
       }
     }
 
-    const exTab = tabuladorByNorm.get(nTab) || (await stmtTabulador.query("json_extract(data, '$.nombre_cliente') = ?", [tabName], 'id ASC', 1))[0];
-    const tabPayload = {
-      nombre_cliente: tabName,
-      empresa_tabulador: tabName,
-      rfc: rel.rfc || '',
-      km: Number(rel.km || rel.viajeDani?.km || 0),
-      horas_viaje: Number(rel.viajeDani?.horas || 0),
-      gasolina: Number(rel.viajeDani?.gasolina || 0),
-      total_viaje: Number(rel.viajeDani?.totalViaje || 0),
-      modulos_costo: rel.modulos || {},
-      tipo_servicio: 'taller',
-      activo: true,
-      etiquetas: ['erp_maestro_2026'],
-      updated_at: new Date().toISOString(),
-    };
-    if (exTab) {
-      await stmtTabulador.update(exTab.id, { ...exTab, ...tabPayload });
-      tabuladorActualizado++;
-    } else {
-      await stmtTabulador.insert(null, { ...tabPayload, created_at: new Date().toISOString() });
-      tabuladorInsertado++;
-    }
-    tabuladorByNorm.set(nTab, tabPayload);
+    // NOTA: Ya no se modifica local_clientes_tabulador aquí.
+    // La fuente única del tabulador (50 empresas) es `seed-tabulador-50.mjs`.
   }
 
   setDeferPersist(false);

@@ -65,6 +65,20 @@
     return [];
   }
 
+  function imagenesCaptura(orden) {
+    var list = orden.imagenes_erp;
+    if (list && list.length) {
+      var cap = list.filter(function (u) { return u && /screenshot|captura|erp|odoo/i.test(u); });
+      if (cap.length) return cap.slice(0, 1);
+    }
+    list = orden.imagenes_servicio;
+    if (list && list.length) {
+      var cap2 = list.filter(function (u) { return u && /screenshot|captura|erp|odoo/i.test(u); });
+      if (cap2.length) return cap2.slice(0, 1);
+    }
+    return [];
+  }
+
   function urlImagen(path) {
     var u = s(path);
     if (!u || u === 'null' || u === 'undefined') return '';
@@ -166,6 +180,7 @@
     normalizeList: normalizeList,
     emptyOrden: emptyOrden,
     urlImagen: urlImagen,
-    imagenesReporte: imagenesReporte
+    imagenesReporte: imagenesReporte,
+    imagenesCaptura: imagenesCaptura
   };
 })(typeof window !== 'undefined' ? window : globalThis);

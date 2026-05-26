@@ -50,10 +50,16 @@ const ComprasModule = (function() {
 
     // Suscripciones
     let subscriptions = [];
+    let perfilUsuario = null;
+
+    function _esAdmin() {
+        return perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+    }
 
     // ==================== INICIALIZACIÓN ====================
     async function init() {
         console.log('✅ [Compras] Conectado');
+        try { perfilUsuario = await authService.getCurrentProfile(); } catch(e) {}
         _bindEvents();
         await _initUI();
         try {
@@ -361,6 +367,7 @@ const ComprasModule = (function() {
     }
 
     function _renderKanban(ordenes) {
+        const esAdminC = _esAdmin();
         const container = document.getElementById('kanbanContainer');
         if (!container) return;
         const estados = [
@@ -381,7 +388,7 @@ const ComprasModule = (function() {
                         <span class="badge" style="background: ${estado.color};">${filtrados.length}</span>
                     </div>
                     <div class="kanban-cards">
-                        ${filtrados.map(c => _crearCardKanban(c)).join('')}
+                        ${filtrados.map(c => _crearCardKanban(c, esAdminC)).join('')}
                     </div>
                 </div>
             `;
@@ -392,7 +399,7 @@ const ComprasModule = (function() {
         });
     }
 
-    function _crearCardKanban(compra) {
+    function _crearCardKanban(compra, esAdminC) {
         const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(compra);
         const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
         return `
@@ -403,7 +410,7 @@ const ComprasModule = (function() {
                 </div>
                 <div class="card-body">
                     <div class="proveedor">${compra.proveedor || 'Proveedor'}</div>
-                    <div class="total">$${(compra.total || 0).toFixed(2)}</div>
+                    ${esAdminC ? `<div class="total">$${(compra.total || 0).toFixed(2)}</div>` : ''}
                 </div>
                 <div class="card-footer">
                     <small>${compra.fecha_requerida ? new Date(compra.fecha_requerida).toLocaleDateString() : ''}</small>
@@ -414,6 +421,7 @@ const ComprasModule = (function() {
     }
 
     function _renderLista(ordenes) {
+        const esAdminC = _esAdmin();
         const tbody = document.getElementById('comprasTableBody');
         if (!tbody) return;
         if (ordenes.length === 0) {
@@ -429,7 +437,7 @@ const ComprasModule = (function() {
                 <td>${c.proveedor || '—'}</td>
                 <td>${c.departamento || '—'}</td>
                 <td>${c.vinculacion ? `<span style="color:#0369a1;font-weight:600;">${c.vinculacion.folio_taller || c.vinculacion.folio || ''}</span>` : '—'}</td>
-                <td>$${(c.total || 0).toFixed(2)}</td>
+                <td>${esAdminC ? '$' + (c.total || 0).toFixed(2) : '—'}</td>
                 <td><span class="status-badge estado-${c.estado}">${_getEstadoLabel(c.estado)}</span></td>
             </tr>
             `;
@@ -627,6 +635,7 @@ const ComprasModule = (function() {
     }
 
     function _updateKPIs(ordenes) {
+        const esAdminC = _esAdmin();
         const now = new Date();
         const mesActual = now.getMonth();
         const añoActual = now.getFullYear();
@@ -637,7 +646,7 @@ const ComprasModule = (function() {
                 totalMes += c.total || 0;
             }
         });
-        document.getElementById('kpiComprasMes').innerHTML = `$${totalMes.toFixed(2)}`;
+        document.getElementById('kpiComprasMes').innerHTML = esAdminC ? `$${totalMes.toFixed(2)}` : '—';
         document.getElementById('kpiPendientes').innerText = ordenes.filter(c => c.estado < 4).length;
         document.getElementById('kpiCompletadas').innerText = ordenes.filter(c => c.estado === 5).length;
         document.getElementById('kpiProveedores').innerText = proveedores.length;
@@ -671,6 +680,7 @@ const ComprasModule = (function() {
     }
 
     async function _generarDetalleHTML(compra) {
+        const esAdminC = _esAdmin();
         // Obtener estatus de la orden operativa vinculada
         let estatusOrden = null;
         if (compra.vinculacion) {
@@ -799,7 +809,7 @@ const ComprasModule = (function() {
             <div class="detalle-section">
                 <h4><i class="fas fa-truck"></i> Materiales de Proveedores (${itemsProveedor.length})</h4>
                 <table class="items-table">
-                    <thead><tr><th>Producto</th><th>Cant.</th><th>Recibido</th><th>Facturado</th><th>Precio Unit.</th><th>Impuestos (16%)</th><th>Desc.%</th><th>Importe</th></tr></thead>
+                    <thead><tr><th>Producto</th><th>Cant.</th><th>Recibido</th><th>Facturado</th>${esAdminC ? '<th>Precio Unit.</th><th>Impuestos (16%)</th>' : ''}<th>Desc.%</th>${esAdminC ? '<th>Importe</th>' : ''}</tr></thead>
                     <tbody>
                         ${itemsProveedor.length ? itemsProveedor.map(item => {
                             const pu = Number(item.costo_unitario) || 0;
@@ -816,19 +826,18 @@ const ComprasModule = (function() {
                                 <td>${qty}</td>
                                 <td>${compra.estado >= 4 ? '✅ ' + (compra.fecha_recepcion ? new Date(compra.fecha_recepcion).toLocaleDateString() : '') : '—'}</td>
                                 <td>${compra.estado >= 5 ? '✅' : '—'}</td>
-                                <td>$${pu.toFixed(2)}</td>
-                                <td>$${iva.toFixed(2)}</td>
+                                ${esAdminC ? `<td>$${pu.toFixed(2)}</td><td>$${iva.toFixed(2)}</td>` : ''}
                                 <td>${desc > 0 ? desc + '%' : '—'}</td>
-                                <td>$${totalItem.toFixed(2)}</td>
+                                ${esAdminC ? `<td>$${totalItem.toFixed(2)}</td>` : ''}
                             </tr>`;
-                        }).join('') : '<tr><td colspan="8">No hay materiales de proveedores</td></tr>'}
+                        }).join('') : `<tr><td colspan="${esAdminC ? 8 : 4}">No hay materiales de proveedores</td></tr>`}
                     </tbody>
                 </table>
             </div>
             <div class="detalle-section">
                 <h4><i class="fas fa-warehouse"></i> Materiales de Inventario (${itemsInventario.length})</h4>
                 <table class="items-table">
-                    <thead><tr><th>Producto</th><th>Cant.</th><th>Recibido</th><th>Facturado</th><th>Precio Unit.</th><th>Impuestos (16%)</th><th>Desc.%</th><th>Importe</th></tr></thead>
+                    <thead><tr><th>Producto</th><th>Cant.</th><th>Recibido</th><th>Facturado</th>${esAdminC ? '<th>Precio Unit.</th><th>Impuestos (16%)</th>' : ''}<th>Desc.%</th>${esAdminC ? '<th>Importe</th>' : ''}</tr></thead>
                     <tbody>
                         ${itemsInventario.length ? itemsInventario.map(item => {
                             const pu = Number(item.costo_unitario) || 0;
@@ -845,20 +854,19 @@ const ComprasModule = (function() {
                                 <td>${qty}</td>
                                 <td>${compra.estado >= 4 ? '✅ ' + (compra.fecha_recepcion ? new Date(compra.fecha_recepcion).toLocaleDateString() : '') : '—'}</td>
                                 <td>${compra.estado >= 5 ? '✅' : '—'}</td>
-                                <td>$${pu.toFixed(2)}</td>
-                                <td>$${iva.toFixed(2)}</td>
+                                ${esAdminC ? `<td>$${pu.toFixed(2)}</td><td>$${iva.toFixed(2)}</td>` : ''}
                                 <td>${desc > 0 ? desc + '%' : '—'}</td>
-                                <td>$${totalItem.toFixed(2)}</td>
+                                ${esAdminC ? `<td>$${totalItem.toFixed(2)}</td>` : ''}
                             </tr>`;
-                        }).join('') : '<tr><td colspan="8">No hay materiales de inventario</td></tr>'}
+                        }).join('') : `<tr><td colspan="${esAdminC ? 8 : 4}">No hay materiales de inventario</td></tr>`}
                     </tbody>
                 </table>
-                <div class="total-final">
+                ${esAdminC ? `<div class="total-final">
                     <div><strong>Subtotal:</strong> $${(compra.subtotal || (compra.total ? compra.total / 1.16 : 0)).toFixed(2)}</div>
                     <div><strong>IVA (16%):</strong> $${(compra.iva || (compra.total ? compra.total - (compra.total / 1.16) : 0)).toFixed(2)}</div>
                     ${compra.descuento_general > 0 ? `<div><strong>Descuento general (${compra.descuento_general}%):</strong> -$${((compra.total || 0) * (compra.descuento_general / 100)).toFixed(2)}</div>` : ''}
                     <div style="font-size:18px; margin-top:8px;"><strong>TOTAL:</strong> $${(compra.total || 0).toFixed(2)}</div>
-                </div>
+                </div>` : ''}
             </div>
             ${compra.pasos ? `
             <div class="detalle-section">

@@ -7,7 +7,7 @@
     <link rel="shortcut icon" type="image/png" href="/panel/assets/logo-ssepi.png">
     <title>SSEPI · Contactos (Clientes y Proveedores)</title>
     <link rel="stylesheet" href="/panel/css/main.css">
-    <link rel="stylesheet" href="/panel/css/modules/contactos.css">
+    <link rel="stylesheet" href="/panel/css/modules/contactos.css?v=3">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -21,7 +21,7 @@
     <script src="/panel/js/core/user-menu.js?v=2"></script>
     <script src="/panel/js/core/nav-by-role.js?v=2"></script>
     <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
-    <script type="module" src="/panel/js/modules/contactos.js?v=2"></script>
+    <script type="module" src="/panel/js/modules/contactos.js?v=3"></script>
 </head>
 <body class="page-contactos nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -90,6 +90,12 @@
                 <button class="periodo-option" data-period="month">Este Mes</button>
                 <button class="periodo-option" data-period="year">Este Año</button>
             </div>
+            <div class="filtro-grupo filtro-empresa-grupo">
+                <label for="filtroEmpresa"><i class="fas fa-building"></i> Empresa</label>
+                <select id="filtroEmpresa" title="Filtrar por empresa y ver vendedores vinculados">
+                    <option value="">— Todas las empresas —</option>
+                </select>
+            </div>
             <div class="filtro-grupo search-box">
                 <i class="fas fa-search"></i>
                 <input type="text" id="searchInput" placeholder="Buscar por nombre, empresa, RFC, email...">
@@ -99,6 +105,7 @@
                 <button id="vistaLista"><i class="fas fa-table"></i> Lista</button>
             </div>
         </div>
+        <div id="empresaFiltroHint" class="empresa-filtro-hint" style="display:none;" aria-live="polite"></div>
 
         <!-- KPIs -->
         <div class="kpi-grid">
@@ -171,8 +178,8 @@
         <div class="panel-header">
             <div class="panel-avatar" id="panelAvatar">J</div>
             <div class="panel-header-info">
-                <h2 id="panelNombre">Jesus Bolaños</h2>
-                <p id="panelEmpresa">Pieles Azteca, S.A. de C.V.</p>
+                <input type="text" id="panelNombre" class="panel-title-input" placeholder="Nombre completo" autocomplete="off" spellcheck="false">
+                <input type="text" id="panelEmpresa" class="panel-subtitle-input" placeholder="Empresa" autocomplete="off" spellcheck="false">
             </div>
             <button class="panel-close">&times;</button>
         </div>
