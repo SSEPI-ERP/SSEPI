@@ -1,0 +1,25 @@
+COMPARADOR ODOO ↔ TABULADOR EXCEL
+=================================
+
+Archivos en esta carpeta (copia de referencia; fuente viva en ..\..\info\):
+
+  build_comparador.py      — Genera datos_comparador.json y datos_embebidos.js
+  generar_rastro.py        — Regenera rastro_capturas.json (139 capturas)
+  comparador_clientes.html — Interfaz web
+  servidor_comparador.py   — Servidor puerto 8766
+  iniciar_comparador.bat   — Arranque local
+
+Datos que DEBEN estar en ..\..\info\:
+  TABULADOR DE COTIZACIÓN actualizado.xlsx
+  SistemaContactos\CapturasOdoo\*.png
+  contactos_odoo.xlsx
+  rastro_capturas.json (generado)
+
+Uso:
+  Desde paquete: ..\INICIAR_COMPARADOR.bat
+  URL: http://TU_IP:8766/comparador_clientes.html
+
+Tras cambiar Excel:
+  cd ..\..\info
+  python generar_rastro.py
+  python build_comparador.py

@@ -6,6 +6,5 @@ import { getDb, persistDb } from './db.mjs';
 
 const db = await getDb();
 db.exec('DELETE FROM local_contactos');
-db.exec('DELETE FROM local_clientes_tabulador');
 persistDb();
-console.log('[limpiar] OK - Contactos y tabulador limpiados');
+console.log('[limpiar] OK - Contactos inventados eliminados (tabulador se conserva)');

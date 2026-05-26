@@ -124,18 +124,44 @@ const VentasModule = (function() {
     async function _loadBomCatalogoVentas() {
         if (bomVentasLoaded && bomCatalogoVentas.length) return bomCatalogoVentas;
         try {
-            const data = await bomServiceVentas.select({}, { orderBy: 'numero_item', ascending: true, page: 0, pageSize: 2000 });
-            bomCatalogoVentas = (data || []).map((b) => ({
-                id: b.id || b.numero_item,
+            // 1) BOM de automatización
+            const bomData = await bomServiceVentas.select({}, { orderBy: 'numero_item', ascending: true, page: 0, pageSize: 2000 });
+            const bomItems = (bomData || []).map((b) => ({
+                id: 'bom-' + (b.id || b.numero_item),
+                rawId: b.id || b.numero_item,
                 codigo: b.part_number || b.numero_parte || '',
                 descripcion: b.descripcion || b.description || b.part_number || '—',
                 categoria: b.categoria_original || b.categoria || '',
                 precio: Number(b.mejor_precio) || 0,
-                numero_item: b.numero_item || b.item || ''
+                numero_item: b.numero_item || b.item || '',
+                source: 'BOM'
             }));
+            // 2) Inventario (stock + consumibles)
+            const invData = await inventarioService.select({ activo: true }, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 2000 });
+            const invItems = (invData || []).map((i) => ({
+                id: 'inv-' + (i.id || i.codigo),
+                rawId: i.id || i.codigo,
+                codigo: i.codigo || i.sku || '',
+                descripcion: i.nombre || i.descripcion || i.codigo || '—',
+                categoria: i.categoria || '',
+                precio: Number(i.precio_venta || i.precio || i.costo || 0),
+                numero_item: i.codigo || i.sku || '',
+                source: 'STOCK',
+                stock: i.stock || 0
+            }));
+            // 3) Unificar sin duplicados por código
+            const seen = new Set();
+            bomCatalogoVentas = [];
+            for (const it of [...bomItems, ...invItems]) {
+                const key = (it.codigo || '').toLowerCase().trim();
+                if (key && seen.has(key)) continue;
+                if (key) seen.add(key);
+                bomCatalogoVentas.push(it);
+            }
             bomVentasLoaded = true;
+            console.log('[Ventas] Catálogo unificado cargado:', bomCatalogoVentas.length, '(BOM:', bomItems.length, 'Inv:', invItems.length + ')');
         } catch (e) {
-            console.warn('[Ventas] Error cargando BOM:', e);
+            console.warn('[Ventas] Error cargando catálogo unificado:', e);
             bomCatalogoVentas = [];
         }
         return bomCatalogoVentas;
@@ -145,7 +171,7 @@ const VentasModule = (function() {
         const tbody = document.getElementById('wizardBomSeleccionadosBody');
         if (!tbody) return;
         if (!calculadoraComponentes.length) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#64748b;">Sin materiales — agrega desde el BOM o manualmente</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#64748b;">Sin materiales — agrega desde el catálogo o manualmente</td></tr>';
             return;
         }
         tbody.innerHTML = calculadoraComponentes.map((c, idx) => `
@@ -153,6 +179,7 @@ const VentasModule = (function() {
                 <td>${(c.codigo || '—')}</td>
                 <td>${c.nombre}</td>
                 <td>${c.cantidad}</td>
+                <td>$${(Number(c.costo_unitario) || 0).toFixed(2)}</td>
                 <td><button type="button" class="btn-remove" onclick="ventasModule._eliminarComponente(${idx})">✖</button></td>
             </tr>
         `).join('');
@@ -173,17 +200,23 @@ const VentasModule = (function() {
         const max = 120;
         const slice = items.slice(0, max);
         if (!slice.length) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Sin resultados en BOM</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Sin resultados</td></tr>';
             return;
         }
-        tbody.innerHTML = slice.map((i) => `
+        tbody.innerHTML = slice.map((i) => {
+            const badge = i.source === 'STOCK'
+                ? `<span style="font-size:10px;background:#dcfce7;color:#166534;padding:1px 4px;border-radius:4px;">STOCK ${i.stock || 0}</span>`
+                : `<span style="font-size:10px;background:#e0e7ff;color:#3730a3;padding:1px 4px;border-radius:4px;">BOM</span>`;
+            return `
             <tr>
                 <td style="font-size:11px;">${i.numero_item || '—'}</td>
-                <td>${i.descripcion}</td>
+                <td>${i.descripcion} ${badge}</td>
                 <td>${i.codigo || '—'}</td>
+                <td style="font-size:11px;">$${(i.precio || 0).toFixed(2)}</td>
                 <td><button type="button" class="btn btn-sm btn-primary" data-bom-id="${String(i.id).replace(/"/g, '&quot;')}">+</button></td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
         tbody.querySelectorAll('button[data-bom-id]').forEach((btn) => {
             btn.addEventListener('click', () => {
                 const id = btn.getAttribute('data-bom-id');
@@ -192,27 +225,34 @@ const VentasModule = (function() {
             });
         });
         if (items.length > max) {
-            tbody.innerHTML += `<tr><td colspan="4" style="text-align:center;font-size:11px;color:#64748b;">Mostrando ${max} de ${items.length}. Refina la búsqueda.</td></tr>`;
+            tbody.innerHTML += `<tr><td colspan="5" style="text-align:center;font-size:11px;color:#64748b;">Mostrando ${max} de ${items.length}. Refina la búsqueda.</td></tr>`;
         }
     }
 
     function _agregarBomItemVentas(item) {
         const precio = Number(item.precio) || 0;
-        const existente = calculadoraComponentes.find((c) => c.bom_id && String(c.bom_id) === String(item.id));
+        const isStock = item.source === 'STOCK';
+        const rawId = item.rawId || item.id;
+        const existente = calculadoraComponentes.find((c) =>
+            (isStock && c.inv_id && String(c.inv_id) === String(rawId)) ||
+            (!isStock && c.bom_id && String(c.bom_id) === String(rawId))
+        );
         if (existente) {
             existente.cantidad = (Number(existente.cantidad) || 0) + 1;
             existente.subtotal = existente.cantidad * (Number(existente.costo_unitario) || 0);
         } else {
-            calculadoraComponentes.push({
-                bom_id: item.id,
+            const nuevo = {
                 codigo: item.codigo,
                 nombre: item.descripcion,
                 cantidad: 1,
                 costo_unitario: precio,
                 costo_compra: precio,
                 subtotal: precio,
-                source: 'BOM'
-            });
+                source: item.source || 'BOM'
+            };
+            if (isStock) nuevo.inv_id = rawId;
+            else nuevo.bom_id = rawId;
+            calculadoraComponentes.push(nuevo);
         }
         _renderWizardBomSeleccionados();
         if (ventasAutosaveCtrl) ventasAutosaveCtrl.schedule();
@@ -4726,8 +4766,8 @@ const VentasModule = (function() {
                     <input type="search" id="wizardBomBusqueda" placeholder="Buscar por descripción, código o ítem…" style="width:100%; padding:8px; margin-bottom:8px;">
                     <div style="max-height:220px; overflow:auto; border:1px solid #e2e8f0; border-radius:6px; background:#fff;">
                         <table class="componentes-table" style="width:100%; font-size:12px;">
-                            <thead><tr><th>Ítem</th><th>Descripción</th><th>Código</th><th></th></tr></thead>
-                            <tbody id="wizardBomListaBody"><tr><td colspan="4">Cargando BOM…</td></tr></tbody>
+                            <thead><tr><th>Ítem</th><th>Descripción</th><th>Código</th><th>Precio</th><th></th></tr></thead>
+                            <tbody id="wizardBomListaBody"><tr><td colspan="5">Cargando catálogo…</td></tr></tbody>
                         </table>
                     </div>
                     <div style="display:grid; grid-template-columns:2fr 80px 100px auto; gap:8px; margin-top:10px;">
@@ -4738,7 +4778,7 @@ const VentasModule = (function() {
                     </div>
                     <p style="font-size:12px; margin:10px 0 6px; font-weight:600;">Materiales seleccionados <span style="color:#c62828;">*</span></p>
                     <table class="componentes-table" style="width:100%; font-size:12px;">
-                        <thead><tr><th>Código</th><th>Descripción</th><th>Cant.</th><th></th></tr></thead>
+                        <thead><tr><th>Código</th><th>Descripción</th><th>Cant.</th><th>Precio</th><th></th></tr></thead>
                         <tbody id="wizardBomSeleccionadosBody"></tbody>
                     </table>
                 </div>

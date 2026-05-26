@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SSEPI — Laboratorio (preview import)</title>
+  <style>
+    :root { --bg:#0b0f14; --panel:#151b24; --border:#2a3548; --text:#e8edf4; --muted:#8b9cb3; --accent:#3b82f6; --ok:#22c55e; --warn:#f59e0b; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; }
+    .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+    .side { background: #0a0f15; border-right: 1px solid var(--border); padding: 18px 14px; }
+    .brand { font-weight: 700; letter-spacing: .04em; margin: 0 0 10px; }
+    .nav { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+    .nav a { text-decoration: none; color: var(--muted); padding: 10px 10px; border-radius: 10px; border: 1px solid transparent; }
+    .nav a.active { color: var(--text); background: #121a25; border-color: var(--border); }
+    .nav a:hover { background: #0f1722; }
+    .main { padding: 20px 24px 40px; }
+    h1 { font-size: 1.15rem; margin: 0 0 6px; }
+    .meta { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+    .stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+    .stat b { color: var(--accent); margin-right: 6px; }
+    .hint { background: #1a2744; border: 1px solid #2563eb; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 20px; }
+    .stack { display: flex; flex-direction: column; gap: 24px; max-width: 980px; }
+    .lab-modal { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,.35); }
+    .lab-modal-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 20px; border-bottom: 1px solid var(--border); background: #1a2230; }
+    .module-tag { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    .lab-modal-head h2 { margin: 0; font-family: ui-monospace, monospace; font-size: 1.15rem; }
+    .estado-pill { background: #243044; color: var(--ok); padding: 6px 12px; border-radius: 20px; font-size: 12px; white-space: nowrap; }
+    .timeline { display: flex; gap: 4px; padding: 12px 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .tl-step { flex: 1; min-width: 72px; text-align: center; opacity: .45; }
+    .tl-step.done, .tl-step.current { opacity: 1; }
+    .tl-step.current .tl-dot { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .tl-step.done .tl-dot { background: var(--ok); border-color: var(--ok); color: #fff; font-size: 11px; }
+    .tl-dot { width: 28px; height: 28px; margin: 0 auto 6px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+    .tl-label { font-size: 10px; color: var(--muted); line-height: 1.2; }
+    .lab-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 18px; }
+    .panel h3 { margin: 0 0 10px; font-size: 14px; color: #93c5fd; font-weight: 600; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+  @media (max-width: 640px) { .field-grid { grid-template-columns: 1fr; } }
+    .field-grid label span, .block > span { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
+    .inp { width: 100%; background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 9px 10px; font-size: 14px; color: var(--text); outline: none; }
+    .inp:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+    .ta { width: 100%; resize: vertical; background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 14px; line-height: 1.5; color: var(--text); outline: none; }
+    .ta:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+    .chip { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #334155; margin-left: 6px; }
+    .chip.warn { background: #78350f; color: #fcd34d; }
+    .chips { margin-top: 10px; }
+    .gallery { display: flex; flex-wrap: wrap; gap: 8px; }
+    .thumb img { width: 100px; height: 75px; object-fit: cover; border-radius: 6px; border: 2px solid var(--border); }
+    .thumb.err img { border-color: var(--warn); opacity: .35; }
+    .muted { color: var(--muted); font-size: 13px; }
+    code { background: #243044; padding: 2px 6px; border-radius: 4px; }
+    a { color: #93c5fd; }
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 72px 1fr; }
+      .brand { display: none; }
+      .nav a { font-size: 12px; padding: 10px 8px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="side">
+      <div class="brand">SSEPI</div>
+      <nav class="nav">
+        <a class="active" href="#">Laboratorio</a>
+        <a href="#">Ventas</a>
+        <a href="#">Inventario</a>
+        <a href="#">Contactos</a>
+        <a href="#">Vacaciones</a>
+      </nav>
+      <p class="muted" style="margin-top:14px; font-size:12px;">
+        Preview offline (solo UI).<br>
+        Encargado: Javier/Aron.<br>
+        Vendedor: Daniel/Carlos.
+      </p>
+    </aside>
+    <main class="main">
+      <h1>Laboratorio — Vista previa (como en el ERP)</h1>
+      <p class="meta">Generado: 26/5/2026, 10:33:21 a.m. · 6 órdenes · campos editables (solo visual)</p>
+      <div class="stats">
+        <div class="stat"><b>181</b> órdenes</div>
+        <div class="stat"><b>159</b> con fotos /uploads</div>
+        <div class="stat"><b>81</b> reparadas</div>
+        <div class="stat"><b>70</b> contactos</div>
+      </div>
+      <div class="hint">
+        Abre con <code>abrir-preview-lab.bat</code> o
+        <a href="http://localhost:3334/preview-lab-import.html">localhost:3334</a>.
+        Si cambias filtros, vuelve a correr <code>node importar-reportes-a-bd.mjs</code> y <code>node generar-preview-lab.mjs</code>.
+      </div>
+      <div class="stack">
+        <section class="lab-modal" data-folio="SP-E0557">
+    <div class="lab-modal-head">
+      <div>
+        <p class="module-tag">Laboratorio · Orden de reparación</p>
+        <h2>SP-E0557</h2>
+      </div>
+      <span class="estado-pill">Confirmado</span>
+    </div>
+    <div class="timeline"><div class="tl-step done"><div class="tl-dot">✓</div><div class="tl-label">Registrado</div></div><div class="tl-step done"><div class="tl-dot">✓</div><div class="tl-label">Diagnóstico</div></div><div class="tl-step done"><div class="tl-dot">✓</div><div class="tl-label">Esperando cotización</div></div><div class="tl-step current"><div class="tl-dot">4</div><div class="tl-label">Reparación</div></div><div class="tl-step "><div class="tl-dot">5</div><div class="tl-label">Entregado</div></div></div>
+    <div class="lab-body">
+      <div class="panel active" data-step="1">
+        <h3>Recepción</h3>
+        <div class="field-grid">
+          <label><span>Cliente</span><input class="inp" value="IK Plastic Compound México, S.A. de C.V."></label>
+          <label><span>Fecha ingreso</span><input class="inp" value="2026-05-26"></label>
+          <label><span>Equipo</span><input class="inp" value="my rece Sa"></label>
+          <label><span>Serie / componente</span><input class="inp" value="—"></label>
+          <label><span>Falla reportada</span><input class="inp" value="El cliente solicito el cambio del microcontrolador y un circuito opam. ( .. l'"></label>
+          <label><span>Recibió (encargado)</span><input class="inp" value="Javier Cruz"></label>
+          <label><span>Vendedor</span><input class="inp" value="—"></label>
+          <label><span>Garantía</span><input class="inp" value="No"></label>
+        </div>
+        <div class="chips"> </div>
+      </div>
+      <div class="panel active" data-step="2">
+        <h3>Diagnóstico</h3>
+        <label class="block"><span>Resumen técnico (sin nombres ni bitácora Odoo)</span>
+          <textarea class="ta" rows="4">El cliente solicito el cambio del microcontrolador y un circuito opam. ( .. l'</textarea>
+        </label>
+        <label class="block"><span>Solución</span><textarea class="ta" rows="3"></textarea></label>
+      </div>
+      <div class="panel">
+        <h3>Evidencia fotográfica</h3>
+        <div class="gallery"><a class="thumb" href="/uploads/reportes/SP-E0557/IMG_20250815_164320.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0557/IMG_20250815_164320.jpg" alt="IMG_20250815_164320.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0557/IMG_20250815_164416.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0557/IMG_20250815_164416.jpg" alt="IMG_20250815_164416.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0557/IMG_20250815_191237.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0557/IMG_20250815_191237.jpg" alt="IMG_20250815_191237.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0557/IMG_20250815_191255.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0557/IMG_20250815_191255.jpg" alt="IMG_20250815_191255.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0557/Screenshot_2026-05-15_093436.png" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0557/Screenshot_2026-05-15_093436.png" alt="Screenshot 2026-05-15 093436.png" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a></div>
+      </div>
+    </div>
+  </section>
+<section class="lab-modal" data-folio="SP-E0678">
+    <div class="lab-modal-head">
+      <div>
+        <p class="module-tag">Laboratorio · Orden de reparación</p>
+        <h2>SP-E0678</h2>
+      </div>
+      <span class="estado-pill">Reparado</span>
+    </div>
+    <div class="timeline"><div class="tl-step done"><div class="tl-dot">✓</div><div class="tl-label">Registrado</div></div><div class="tl-step done"><div class="tl-dot">✓</div><div class="tl-label">Diagnóstico</div></div><div class="tl-step done"><div class="tl-dot">✓</div><div class="tl-label">Esperando cotización</div></div><div class="tl-step current"><div class="tl-dot">4</div><div class="tl-label">Reparación</div></div><div class="tl-step "><div class="tl-dot">5</div><div class="tl-label">Entregado</div></div></div>
+    <div class="lab-body">
+      <div class="panel active" data-step="1">
+        <h3>Recepción</h3>
+        <div class="field-grid">
+          <label><span>Cliente</span><input class="inp" value="SADDLEBACK"></label>
+          <label><span>Fecha ingreso</span><input class="inp" value="2026-05-26"></label>
+          <label><span>Equipo</span><input class="inp" value="Equipo por identificar"></label>
+          <label><span>Serie / componente</span><input class="inp" value="—"></label>
+          <label><span>Falla reportada</span><input class="inp" value="Equipo por identificar"></label>
+          <label><span>Recibió (encargado)</span><input class="inp" value="—"></label>
+          <label><span>Vendedor</span><input class="inp" value="Daniel Zuñiga"></label>
+          <label><span>Garantía</span><input class="inp" value="No"></label>
+        </div>
+        <div class="chips"> <span class="chip">Daniel Zuñiga</span></div>
+      </div>
+      <div class="panel active" data-step="2">
+        <h3>Diagnóstico</h3>
+        <label class="block"><span>Resumen técnico (sin nombres ni bitácora Odoo)</span>
+          <textarea class="ta" rows="4">Folio: SP-E0678 Estado (paquete): Reparado Cliente: SADDLEBACK Equipo: Equipo por identificar Diagnóstico: Solución: Vendedor:   Encargado: (35): [img] 20260129040639.jpg [img] 20260129040655.jpg [img] 20260129040725.jpg [img] 20260129040744.jpg [img] 20260129040757.jpg [img] 20260129040815.jpg [img] 20260129040834.jpg [img] 20260129040846.jpg [img] 20260129040906.jpg [img] 20260129040926.jpg [img] 20260129040957.jpg [img] 20260129041007.jpg [img] 20260129041131.jpg [img] 20260203042735.jpg [img] 20260203042756.jpg [img] 20260203042818.jpg [img] 20260203042847.jpg [img] 20260203043039.jpg [img] 20260203043059.jpg [img] 20260203043116.jpg [img] 20260203043156.jpg [img] 20260203043234.jpg [img] 20260203043349.jpg [img] 20260203043414.jpg [img] 20260203044747.jpg [img]...</textarea>
+        </label>
+        <label class="block"><span>Solución</span><textarea class="ta" rows="3"></textarea></label>
+      </div>
+      <div class="panel">
+        <h3>Evidencia fotográfica</h3>
+        <div class="gallery"><a class="thumb" href="/uploads/reportes/SP-E0678/20260129040639.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0678/20260129040639.jpg" alt="20260129040639.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0678/20260129040655.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0678/20260129040655.jpg" alt="20260129040655.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0678/20260129040725.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0678/20260129040725.jpg" alt="20260129040725.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0678/20260129040744.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0678/20260129040744.jpg" alt="20260129040744.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0678/20260129040757.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0678/20260129040757.jpg" alt="20260129040757.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0678/20260129040815.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0678/20260129040815.jpg" alt="20260129040815.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0678/20260129040834.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0678/20260129040834.jpg" alt="20260129040834.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0678/20260129040846.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0678/20260129040846.jpg" alt="20260129040846.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a></div>
+      </div>
+    </div>
+  </section>
+<section class="lab-modal" data-folio="SP-E0627">
+    <div class="lab-modal-head">
+      <div>
+        <p class="module-tag">Laboratorio · Orden de reparación</p>
+        <h2>SP-E0627</h2>
+      </div>
+      <span class="estado-pill">Confirmado</span>
+    </div>
+    <div class="timeline"><div class="tl-step done"><div class="tl-dot">✓</div><div class="tl-label">Registrado</div></div><div class="tl-step done"><div class="tl-dot">✓</div><div class="tl-label">Diagnóstico</div></div><div class="tl-step done"><div class="tl-dot">✓</div><div class="tl-label">Esperando cotización</div></div><div class="tl-step current"><div class="tl-dot">4</div><div class="tl-label">Reparación</div></div><div class="tl-step "><div class="tl-dot">5</div><div class="tl-label">Entregado</div></div></div>
+    <div class="lab-body">
+      <div class="panel active" data-step="1">
+        <h3>Recepción</h3>
+        <div class="field-grid">
+          <label><span>Cliente</span><input class="inp" value="BOLSAS DE LOS ALTOS"></label>
+          <label><span>Fecha ingreso</span><input class="inp" value="2026-05-26"></label>
+          <label><span>Equipo</span><input class="inp" value="Equipo por identificar"></label>
+          <label><span>Serie / componente</span><input class="inp" value="—"></label>
+          <label><span>Falla reportada</span><input class="inp" value="queda sin cion por daño en las tarjetas principales"></label>
+          <label><span>Recibió (encargado)</span><input class="inp" value="—"></label>
+          <label><span>Vendedor</span><input class="inp" value="—"></label>
+          <label><span>Garantía</span><input class="inp" value="No"></label>
+        </div>
+        <div class="chips"> </div>
+      </div>
+      <div class="panel active" data-step="2">
+        <h3>Diagnóstico</h3>
+        <label class="block"><span>Resumen técnico (sin nombres ni bitácora Odoo)</span>
+          <textarea class="ta" rows="4">queda sin cion por daño en las tarjetas principales</textarea>
+        </label>
+        <label class="block"><span>Solución</span><textarea class="ta" rows="3"></textarea></label>
+      </div>
+      <div class="panel">
+        <h3>Evidencia fotográfica</h3>
+        <div class="gallery"><a class="thumb" href="/uploads/reportes/SP-E0627/20251113012416.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0627/20251113012416.jpg" alt="20251113012416.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0627/20251113012428.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0627/20251113012428.jpg" alt="20251113012428.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0627/20251113013258.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0627/20251113013258.jpg" alt="20251113013258.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0627/20251113013328.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0627/20251113013328.jpg" alt="20251113013328.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0627/20251114103515.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0627/20251114103515.jpg" alt="20251114103515.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0627/20251114103541.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0627/20251114103541.jpg" alt="20251114103541.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0627/20251114103556.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0627/20251114103556.jpg" alt="20251114103556.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0627/IMG_20251113_145700.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0627/IMG_20251113_145700.jpg" alt="IMG_20251113_145700.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a></div>
+      </div>
+    </div>
+  </section>
+<section class="lab-modal" data-folio="SP-E0580">
+    <div class="lab-modal-head">
+      <div>
+        <p class="module-tag">Laboratorio · Orden de reparación</p>
+        <h2>SP-E0580</h2>
+      </div>
+      <span class="estado-pill">Nuevo</span>
+    </div>
+    <div class="timeline"><div class="tl-step current"><div class="tl-dot">1</div><div class="tl-label">Registrado</div></div><div class="tl-step "><div class="tl-dot">2</div><div class="tl-label">Diagnóstico</div></div><div class="tl-step "><div class="tl-dot">3</div><div class="tl-label">Esperando cotización</div></div><div class="tl-step "><div class="tl-dot">4</div><div class="tl-label">Reparación</div></div><div class="tl-step "><div class="tl-dot">5</div><div class="tl-label">Entregado</div></div></div>
+    <div class="lab-body">
+      <div class="panel active" data-step="1">
+        <h3>Recepción</h3>
+        <div class="field-grid">
+          <label><span>Cliente</span><input class="inp" value="Conmigo E reparción &gt; eparado |"></label>
+          <label><span>Fecha ingreso</span><input class="inp" value="2026-05-26"></label>
+          <label><span>Equipo</span><input class="inp" value="sna es ae ee |"></label>
+          <label><span>Serie / componente</span><input class="inp" value="oo ee Aik"></label>
+          <label><span>Falla reportada</span><input class="inp" value="DE QUE NO ENCENDIA. TNE. PIZAS. 1 PIEZA. oo ee Aik. oe =DO. € = =. .... NEO. NA ad. E ¿f*. = s. a Y"></label>
+          <label><span>Recibió (encargado)</span><input class="inp" value="—"></label>
+          <label><span>Vendedor</span><input class="inp" value="—"></label>
+          <label><span>Garantía</span><input class="inp" value="No"></label>
+        </div>
+        <div class="chips"> </div>
+      </div>
+      <div class="panel active" data-step="2">
+        <h3>Diagnóstico</h3>
+        <label class="block"><span>Resumen técnico (sin nombres ni bitácora Odoo)</span>
+          <textarea class="ta" rows="4">DE QUE NO ENCENDIA. TNE. PIZAS. 1 PIEZA. oo ee Aik. oe =DO. € = =. .... NEO. NA ad. E ¿f*. = s. a Y</textarea>
+        </label>
+        <label class="block"><span>Solución</span><textarea class="ta" rows="3">=DO. € = =. .... NEO. NA ad. E ¿f*. = s. a Y</textarea></label>
+      </div>
+      <div class="panel">
+        <h3>Evidencia fotográfica</h3>
+        <div class="gallery"><a class="thumb" href="/uploads/reportes/SP-E0580/IMG_20250909_131802.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0580/IMG_20250909_131802.jpg" alt="IMG_20250909_131802.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0580/IMG_20250909_131807.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0580/IMG_20250909_131807.jpg" alt="IMG_20250909_131807.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0580/IMG_20250909_131811.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0580/IMG_20250909_131811.jpg" alt="IMG_20250909_131811.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0580/IMG_20250909_131819.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0580/IMG_20250909_131819.jpg" alt="IMG_20250909_131819.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0580/IMG_20250909_131823.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0580/IMG_20250909_131823.jpg" alt="IMG_20250909_131823.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0580/IMG_20250909_131826.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0580/IMG_20250909_131826.jpg" alt="IMG_20250909_131826.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0580/IMG_20250909_131956.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0580/IMG_20250909_131956.jpg" alt="IMG_20250909_131956.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0580/IMG_20250909_132020.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0580/IMG_20250909_132020.jpg" alt="IMG_20250909_132020.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a></div>
+      </div>
+    </div>
+  </section>
+<section class="lab-modal" data-folio="SP-E0598">
+    <div class="lab-modal-head">
+      <div>
+        <p class="module-tag">Laboratorio · Orden de reparación</p>
+        <h2>SP-E0598</h2>
+      </div>
+      <span class="estado-pill">Nuevo</span>
+    </div>
+    <div class="timeline"><div class="tl-step current"><div class="tl-dot">1</div><div class="tl-label">Registrado</div></div><div class="tl-step "><div class="tl-dot">2</div><div class="tl-label">Diagnóstico</div></div><div class="tl-step "><div class="tl-dot">3</div><div class="tl-label">Esperando cotización</div></div><div class="tl-step "><div class="tl-dot">4</div><div class="tl-label">Reparación</div></div><div class="tl-step "><div class="tl-dot">5</div><div class="tl-label">Entregado</div></div></div>
+    <div class="lab-body">
+      <div class="panel active" data-step="1">
+        <h3>Recepción</h3>
+        <div class="field-grid">
+          <label><span>Cliente</span><input class="inp" value="FE Movimientos de producto"></label>
+          <label><span>Fecha ingreso</span><input class="inp" value="2026-05-26"></label>
+          <label><span>Equipo</span><input class="inp" value="Equipo por identificar"></label>
+          <label><span>Serie / componente</span><input class="inp" value="—"></label>
+          <label><span>Falla reportada</span><input class="inp" value="Equipo por identificar"></label>
+          <label><span>Recibió (encargado)</span><input class="inp" value="Javier Cruz"></label>
+          <label><span>Vendedor</span><input class="inp" value="—"></label>
+          <label><span>Garantía</span><input class="inp" value="No"></label>
+        </div>
+        <div class="chips"> </div>
+      </div>
+      <div class="panel active" data-step="2">
+        <h3>Diagnóstico</h3>
+        <label class="block"><span>Resumen técnico (sin nombres ni bitácora Odoo)</span>
+          <textarea class="ta" rows="4">Folio: SP-E0598 Estado (paquete): Nuevo Cliente: FE Movimientos de producto Equipo: Equipo por identificar Diagnóstico: Solución: Vendedor: Encargado:   (28): [img] 20251016085413.jpg [img] IMG_20251014_131935.jpg [img] IMG_20251014_131939.jpg [img] IMG_20251014_131944.jpg [img] IMG_20251014_132609.jpg [img] IMG_20251014_132618.jpg [img] IMG_20251014_132622.jpg [img] IMG_20251014_140141.jpg [img] IMG_20251014_140146.jpg [img] IMG_20251014_140149.jpg [img] IMG_20251014_140205.jpg [img] IMG_20251014_140211.jpg [img] IMG_20251014_145545.jpg [img] IMG_20251014_145548.jpg [img] IMG_20251014_145610.jpg [img] IMG_20251014_160424.jpg [img] IMG_20251014_160428.jpg [img] IMG_20251014_162924.jpg [img] IMG_20251014_162928.jpg [img] IMG_20251014_162950.jpg [img] IMG_20251014_163011.jpg [img]...</textarea>
+        </label>
+        <label class="block"><span>Solución</span><textarea class="ta" rows="3"></textarea></label>
+      </div>
+      <div class="panel">
+        <h3>Evidencia fotográfica</h3>
+        <div class="gallery"><a class="thumb" href="/uploads/reportes/SP-E0598/20251016085413.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0598/20251016085413.jpg" alt="20251016085413.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0598/IMG_20251014_131935.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0598/IMG_20251014_131935.jpg" alt="IMG_20251014_131935.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0598/IMG_20251014_131939.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0598/IMG_20251014_131939.jpg" alt="IMG_20251014_131939.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0598/IMG_20251014_131944.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0598/IMG_20251014_131944.jpg" alt="IMG_20251014_131944.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0598/IMG_20251014_132609.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0598/IMG_20251014_132609.jpg" alt="IMG_20251014_132609.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0598/IMG_20251014_132618.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0598/IMG_20251014_132618.jpg" alt="IMG_20251014_132618.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0598/IMG_20251014_132622.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0598/IMG_20251014_132622.jpg" alt="IMG_20251014_132622.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0598/IMG_20251014_140141.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0598/IMG_20251014_140141.jpg" alt="IMG_20251014_140141.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a></div>
+      </div>
+    </div>
+  </section>
+<section class="lab-modal" data-folio="SP-E0686">
+    <div class="lab-modal-head">
+      <div>
+        <p class="module-tag">Laboratorio · Orden de reparación</p>
+        <h2>SP-E0686</h2>
+      </div>
+      <span class="estado-pill">Confirmado</span>
+    </div>
+    <div class="timeline"><div class="tl-step done"><div class="tl-dot">✓</div><div class="tl-label">Registrado</div></div><div class="tl-step done"><div class="tl-dot">✓</div><div class="tl-label">Diagnóstico</div></div><div class="tl-step done"><div class="tl-dot">✓</div><div class="tl-label">Esperando cotización</div></div><div class="tl-step current"><div class="tl-dot">4</div><div class="tl-label">Reparación</div></div><div class="tl-step "><div class="tl-dot">5</div><div class="tl-label">Entregado</div></div></div>
+    <div class="lab-body">
+      <div class="panel active" data-step="1">
+        <h3>Recepción</h3>
+        <div class="field-grid">
+          <label><span>Cliente</span><input class="inp" value="are"></label>
+          <label><span>Fecha ingreso</span><input class="inp" value="2026-05-26"></label>
+          <label><span>Equipo</span><input class="inp" value="ms — OE So"></label>
+          <label><span>Serie / componente</span><input class="inp" value="—"></label>
+          <label><span>Falla reportada</span><input class="inp" value="ms — OE So"></label>
+          <label><span>Recibió (encargado)</span><input class="inp" value="—"></label>
+          <label><span>Vendedor</span><input class="inp" value="—"></label>
+          <label><span>Garantía</span><input class="inp" value="No"></label>
+        </div>
+        <div class="chips"> </div>
+      </div>
+      <div class="panel active" data-step="2">
+        <h3>Diagnóstico</h3>
+        <label class="block"><span>Resumen técnico (sin nombres ni bitácora Odoo)</span>
+          <textarea class="ta" rows="4">Folio: SP-E0686 Estado (paquete): Confirmado Cliente: are Equipo: ms — OE So Diagnóstico: Solución: Vendedor: Encargado: (30): [img] 20260210031506.jpg [img] 20260210031520.jpg [img] 20260210031542.jpg [img] 20260210031618.jpg [img] 20260210031639.jpg [img] 20260210031650.jpg [img] 20260210031703.jpg [img] 20260210034530.jpg [img] 20260210034556.jpg [img] 20260210034608.jpg [img] 20260210034629.jpg [img] 20260210034707.jpg [img] 20260210034729.jpg [img] 20260210034751.jpg [img] 20260210034802.jpg [img] 20260210034825.jpg [img] 20260304084135.jpg [img] 20260304084200.jpg [img] 20260304084221.jpg [img] 20260304084849.jpg [img] 20260304084858.jpg [img] 20260304084910.jpg [img] 20260304085036.jpg [img] 20260304085140.jpg [img] 20260304085201.jpg [img] 20260304085213.jpg [img]...</textarea>
+        </label>
+        <label class="block"><span>Solución</span><textarea class="ta" rows="3"></textarea></label>
+      </div>
+      <div class="panel">
+        <h3>Evidencia fotográfica</h3>
+        <div class="gallery"><a class="thumb" href="/uploads/reportes/SP-E0686/20260210031506.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0686/20260210031506.jpg" alt="20260210031506.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0686/20260210031520.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0686/20260210031520.jpg" alt="20260210031520.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0686/20260210031542.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0686/20260210031542.jpg" alt="20260210031542.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0686/20260210031618.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0686/20260210031618.jpg" alt="20260210031618.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0686/20260210031639.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0686/20260210031639.jpg" alt="20260210031639.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0686/20260210031650.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0686/20260210031650.jpg" alt="20260210031650.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0686/20260210031703.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0686/20260210031703.jpg" alt="20260210031703.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a><a class="thumb" href="/uploads/reportes/SP-E0686/20260210034530.jpg" target="_blank" rel="noopener">
+        <img src="/uploads/reportes/SP-E0686/20260210034530.jpg" alt="20260210034530.jpg" loading="lazy" onerror="this.closest('.thumb').classList.add('err')">
+      </a></div>
+      </div>
+    </div>
+  </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

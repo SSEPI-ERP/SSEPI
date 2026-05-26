@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comparador Clientes — Odoo (139) vs Excel SSEPI</title>
+<script src="datos_embebidos.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1a1a1a;padding:16px 20px 40px}
+h1{font-size:20px;font-weight:600;margin-bottom:4px}
+.sub{font-size:13px;color:#546e7a;margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.stat{background:#fff;border-radius:8px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.stat-n{font-size:24px;font-weight:600}
+.stat-l{font-size:11px;color:#666;margin-top:2px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab{padding:8px 14px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:13px}
+.tab.active{background:#004ba0;color:#fff;border-color:#004ba0}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.controls input,.controls select{padding:8px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;background:#fff}
+.controls input{flex:1;min-width:200px}
+.tbl-wrap{overflow-x:auto;background:#fff;border-radius:8px;border:1px solid #ddd;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:9px 10px;text-align:left;background:#f8f9fa;font-weight:600;color:#555;position:sticky;top:0;z-index:2;border-bottom:1px solid #eee;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid #f0f0f0;vertical-align:top}
+tr:hover td{background:#fafbfc}
+.t-img{width:56px;height:42px;object-fit:cover;border-radius:4px;border:1px solid #ddd;cursor:pointer}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600}
+.b-ok{background:#e8f5e9;color:#2e7d32}
+.b-med{background:#fff3e0;color:#e65100}
+.b-bad{background:#ffebee;color:#c62828}
+.b-multi{background:#e3f2fd;color:#1565c0}
+.b-gray{background:#eee;color:#666}
+.contacts-mini{font-size:11px;color:#666;margin-top:4px;line-height:1.4}
+.group-header td{background:#e8eef5;font-weight:600}
+.hidden{display:none}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:100}
+.modal.show{display:flex}
+.modal img{max-width:95vw;max-height:90vh;border-radius:8px}
+.modal-close{position:absolute;top:16px;right:20px;color:#fff;font-size:28px;cursor:pointer}
+.rfc{font-family:Consolas,monospace;font-size:11px;color:#555}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.panel{display:none}
+.panel.active{display:block}
+.info-box{background:#e3f2fd;border:1px solid #90caf9;border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.5;margin-bottom:14px;color:#0d47a1}
+.info-box strong{color:#1565c0}
+.b-vend{background:#f3e5f5;color:#6a1b9a}
+.b-ficha{background:#e8f5e9;color:#2e7d32}
+.b-prov{background:#fff3e0;color:#e65100}
+.b-pend{background:#eceff1;color:#546e7a}
+.empresa-card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:14px 16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.empresa-card h2{font-size:18px;margin-bottom:8px;color:#004ba0}
+.empresa-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 16px;font-size:12px;color:#444}
+.empresa-meta dt{font-weight:600;color:#666;font-size:11px}
+.empresa-meta dd{margin:0 0 6px}
+.panel-empresa-hint{font-size:13px;color:#666;padding:24px;text-align:center}
+.tabulador-section{margin-bottom:20px}
+.tabulador-section h3{font-size:15px;margin:0 0 10px;color:#004ba0}
+.tabulador-actions{margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn-dl{padding:8px 14px;background:#2e7d32;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px}
+.btn-dl:hover{background:#1b5e20}
+.gastos-bar{display:flex;flex-wrap:wrap;gap:10px 18px;font-size:12px;margin:6px 0 10px;padding:8px 12px;background:#f8f9fa;border-radius:6px}
+.gastos-bar span strong{color:#1565c0}
+tr.tabulador-header td{background:#e3f2fd;font-weight:600;border-top:2px solid #90caf9}
+tr.tabulador-sub td{background:#fafafa}
+</style>
+</head>
+<body>
+
+<h1>Comparador Odoo (capturas + Excel contactos) ↔ Tabulador SSEPI</h1>
+<p class="sub" id="subtitle">Cargando datos…</p>
+
+<div class="info-box" id="infoBox"></div>
+<div class="stats" id="stats"></div>
+<div class="tabs">
+  <button class="tab active" data-tab="odoo">139 contactos (imágenes)</button>
+  <button class="tab" data-tab="contactos">Vendedores / contactos</button>
+  <button class="tab" data-tab="empresas">Por empresa Odoo</button>
+  <button class="tab" data-tab="tabulador">Tabulador ERP (50 empresas)</button>
+  <button class="tab" data-tab="excel">Solo Excel</button>
+  <button class="tab" data-tab="unmatched">Sin match Excel</button>
+</div>
+
+<div class="controls">
+  <input type="text" id="search" placeholder="Buscar empresa, persona, RFC, email, teléfono…">
+  <select id="filter">
+    <option value="all">Todos</option>
+    <option value="ok">Match ≥90%</option>
+    <option value="med">Match 70–89%</option>
+    <option value="low">Match &lt;70%</option>
+    <option value="nomatch">Sin match Excel</option>
+    <option value="multi">Empresas con 2+ contactos</option>
+  </select>
+</div>
+
+<div id="panel-odoo" class="panel active">
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Imagen</th><th>Tipo</th><th>Nombre en imagen</th><th>Empresa (campo Odoo)</th><th>Verif. %</th>
+        <th>Ubicación</th><th>Email / Tel (imagen)</th><th>RFC</th><th>Dirección</th><th>Puesto</th>
+        <th>Catálogo Odoo (ref.)</th>
+        <th>Lista Excel contactos</th><th>Nombre en catálogo</th>
+        <th>Tabulador (empresa)</th><th>Hojas / tablas Excel</th><th>% tab.</th>
+      </tr></thead>
+      <tbody id="tbody-odoo"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="panel-contactos" class="panel">
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Imagen</th><th>Tipo</th><th>Persona</th><th>Empresa Odoo</th>
+        <th>Cliente Excel</th><th>RFC</th><th>Dominio</th><th>Email</th><th>Tel</th>
+      </tr></thead>
+      <tbody id="tbody-contactos"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="panel-empresas" class="panel">
+  <div class="controls" style="margin-bottom:14px">
+    <select id="empresaSelect" style="flex:1;min-width:320px;max-width:100%">
+      <option value="">— Elija una empresa —</option>
+    </select>
+  </div>
+  <p class="panel-empresa-hint" id="empresaEmpty">Seleccione una empresa para ver su ficha y los vendedores vinculados (capturas + catálogo Excel Odoo).</p>
+  <div id="empresaDetalle" class="hidden">
+    <div class="empresa-card" id="empresaFicha"></div>
+    <p style="font-size:13px;font-weight:600;margin:8px 0 6px;color:#555">Vendedores y contactos de la empresa</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Origen</th><th>Imagen</th><th>Persona / nombre</th><th>Puesto</th>
+          <th>Email</th><th>Tel</th><th>RFC</th><th>Tabulador</th><th>%</th>
+        </tr></thead>
+        <tbody id="tbody-empresa-vend"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="panel-tabulador" class="panel">
+  <div class="tabulador-actions">
+    <button type="button" class="btn-dl" id="btnExportErp">Descargar relación ERP (JSON)</button>
+    <span class="contacts-mini" id="tabuladorResumen"></span>
+  </div>
+  <div class="tabulador-section">
+    <h3>En tabulador con capturas Odoo vinculadas</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Empresa tabulador</th><th>RFC</th><th>KM</th><th>Gasolina</th><th>Ventas/costo</th><th>Total</th>
+        <th># Odoo</th><th>Contactos Odoo (nombre · tipo · empresa)</th>
+      </tr></thead>
+      <tbody id="tbody-tabulador-ok"></tbody>
+    </table></div>
+  </div>
+  <div class="tabulador-section">
+    <h3>En tabulador sin captura Odoo (solo gastos Excel)</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Empresa tabulador</th><th>RFC</th><th>KM</th><th>Gasolina</th><th>Ventas</th><th>Total</th><th>Hojas</th>
+      </tr></thead>
+      <tbody id="tbody-tabulador-sin"></tbody>
+    </table></div>
+  </div>
+  <div class="tabulador-section">
+    <h3>Capturas Odoo sin fila en tabulador (sin km/gastos base)</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Imagen</th><th>Tipo</th><th>Nombre</th><th>Empresa Odoo</th><th>Sugerencia tabulador</th>
+      </tr></thead>
+      <tbody id="tbody-tabulador-odoo-sin"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<div id="panel-excel" class="panel">
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Empresa</th><th>RFC</th>
+        <th>Lab (3%)</th><th>Mot (3%)</th><th>Sum (3%)</th><th>Auto (venta)</th>
+        <th>Viaje Dani km</th>
+        <th>Contactos Odoo</th><th>Detalle módulos</th>
+      </tr></thead>
+      <tbody id="tbody-excel"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="panel-unmatched" class="panel">
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Imagen</th><th>Estado</th><th>Nombre</th><th>Empresa Odoo</th>
+        <th>Persona</th><th>RFC</th><th>Dominio</th><th>Email</th><th>Tel</th>
+        <th>Dirección</th><th>Sugerencia Excel</th><th>Motivo</th>
+      </tr></thead>
+      <tbody id="tbody-unmatched"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal" id="modal" onclick="closeModal()">
+  <span class="modal-close">&times;</span>
+  <img id="modalImg" src="" alt="">
+</div>
+
+<script>
+let DATA = null;
+
+function norm(s){return (s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9\s]/g,'').replace(/\s+/g,' ').trim()}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')}
+function badge(score){
+  if(score>=90) return `<span class="badge b-ok">${score}%</span>`;
+  if(score>=70) return `<span class="badge b-med">${score}%</span>`;
+  if(score>0) return `<span class="badge b-bad">${score}%</span>`;
+  return `<span class="badge b-gray">—</span>`;
+}
+function sheetsHtml(sheets){
+  if(!sheets||!sheets.length) return '—';
+  return sheets.slice(0,4).map(s=>`<span class="badge b-gray">${esc(s)}</span>`).join(' ')+(sheets.length>4?` +${sheets.length-4}`:'');
+}
+function rolBadge(rol){
+  const m={contacto_cliente:['b-vend','Vendedor/contacto'],ficha_cliente:['b-ficha','Ficha empresa'],
+    proveedor_persona:['b-prov','Proveedor/persona'],proveedor_rfc:['b-prov','RFC ajeno'],
+    solo_odoo:['b-prov','Solo Odoo'],pendiente_ocr:['b-pend','Pendiente OCR']};
+  const [c,t]=m[rol]||['b-gray',rol||'—'];
+  return `<span class="badge ${c}">${t}</span>`;
+}
+function tipoFichaBadge(tipo){
+  const m={empresa:['b-ficha','Empresa (dirección)'],contacto_empresa:['b-vend','Vendedor → empresa'],
+    contacto_solo:['b-gray','Contacto solo']};
+  const [c,t]=m[tipo]||['b-gray',tipo||'—'];
+  return `<span class="badge ${c}">${t}</span>`;
+}
+
+function openModal(src){document.getElementById('modalImg').src=src;document.getElementById('modal').classList.add('show')}
+function closeModal(){document.getElementById('modal').classList.remove('show')}
+
+function passesFilter(o, q, f){
+  if(q){
+    const sheets = (o.excel&&o.excel.sheets)||[];
+    const hay = [o.nombreContacto,o.nombreBase,o.empresaAsociada,o.empresaOdoo,o.tipoFicha,o.ubicacion,o.direccion,o.puesto,o.odooMatch,o.nombreEnListaOdoo,o.listaOdoo,o.listaTabulador,o.excelMatch,...sheets,o.email,o.tel,o.rfc,o.dominio].map(norm).join(' ');
+    if(!hay.includes(q)) return false;
+  }
+  const s = o.matchScore||0;
+  if(f==='ok' && s<90) return false;
+  if(f==='med' && (s<70||s>=90)) return false;
+  if(f==='low' && (s>=70||s===0)) return false;
+  if(f==='nomatch' && o.excelMatch) return false;
+  if(f==='multi'){
+    const cnt = DATA.odoo.filter(x=>x.excelMatch===o.excelMatch).length;
+    if(cnt<2) return false;
+  }
+  return true;
+}
+
+function verifBadge(pct){
+  if(pct>=80) return `<span class="badge b-ok">${pct}%</span>`;
+  if(pct>=50) return `<span class="badge b-med">${pct}%</span>`;
+  if(pct>0) return `<span class="badge b-bad">${pct}%</span>`;
+  return `<span class="badge b-gray">—</span>`;
+}
+function renderOdoo(){
+  const q=norm(document.getElementById('search').value);
+  const f=document.getElementById('filter').value;
+  const rows = DATA.odoo.filter(o=>passesFilter(o,q,f));
+  document.getElementById('tbody-odoo').innerHTML = rows.map(o=>{
+    const ex = o.excel;
+    const di = o.datosImagen||{};
+    const linea = di.nombreLineaCompleta||o.nombreContacto||'—';
+    const nom = o.nombreContacto||'—';
+    const refCat = o.odooMatch?`${esc(o.odooMatch)} ${badge(o.odooMatchScore||0)}${o.nombreCoincideCatalogo?'':(o.catalogoSoloEmail?'<span class="badge b-bad">solo email</span>':' <span class="badge b-bad">≠ imagen</span>')}`:'<span class="badge b-gray">—</span>';
+    return `<tr>
+      <td>${o.id}</td>
+      <td><img class="t-img" src="${esc(o.img)}" alt="" onclick="openModal('${esc(o.img)}')" title="${esc(o.file)}"></td>
+      <td>${tipoFichaBadge(o.tipoFicha)} ${rolBadge(o.rol)}</td>
+      <td><strong>${esc(nom)}</strong>
+        ${!o.nombreVerificado&&nom==='—'?'<span class="badge b-bad">Nombre no leído en imagen</span>':''}
+        ${o.fuenteDatos==='vision_manual'?'<span class="badge b-ok">Rastro visual</span>':(o.fuenteDatos==='ocr_validado'?'<span class="badge b-gray">OCR OK</span>':'')}
+        <div class="contacts-mini">${esc(linea)}</div>
+        ${o.sitioWeb?`<div class="contacts-mini">${esc(o.sitioWeb)}</div>`:''}
+      </td>
+      <td class="contacts-mini">${o.tipoFicha==='empresa'?'<span class="badge b-gray">— (es la empresa)</span>':(o.empresaAsociada?`<strong>${esc(o.empresaAsociada)}</strong>`:'<span class="badge b-gray">Sin empresa</span>')}</td>
+      <td>${verifBadge(o.completitudImagen||0)}</td>
+      <td class="contacts-mini">${esc(o.ubicacion||'—')}</td>
+      <td class="contacts-mini">${esc(o.email||'—')}<br>${esc(o.tel||'—')}</td>
+      <td class="rfc">${esc(o.rfc||'—')}</td>
+      <td class="contacts-mini">${esc(o.direccion||'—')}</td>
+      <td class="contacts-mini">${esc(o.puesto||'—')}</td>
+      <td class="contacts-mini">${refCat}</td>
+      <td class="contacts-mini">${o.enListaOdoo?`<span class="badge b-ok">Sí</span><br><span class="badge b-gray">${esc(o.listaOdoo||'Catálogo Odoo')}</span>`:'<span class="badge b-bad">No</span>'}</td>
+      <td>${o.enListaOdoo?`<strong>${esc(o.nombreEnListaOdoo||o.odooMatch||'—')}</strong>`:'—'}</td>
+      <td>${o.excelMatch?`<strong>${esc(o.excelMatch)}</strong>`:'<span class="badge b-bad">Sin tabulador</span>'}</td>
+      <td>${ex?sheetsHtml(ex.sheets):(o.enListaTabulador?`<span class="badge b-gray">${esc(o.listaTabulador)}</span>`:'—')}</td>
+      <td>${badge(o.matchScore)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="16" style="text-align:center;padding:24px;color:#888">Sin resultados</td></tr>';
+}
+
+function fmtMoney(n){
+  if(n==null||n===0||isNaN(n)) return '—';
+  return '$'+Number(n).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function contactoTabuladorHtml(c){
+  const nom = c.tipoFicha==='contacto_empresa'
+    ? (c.contactoPersona||c.person||c.nombreContacto)
+    : (c.nombreContacto||'?');
+  const emp = c.tipoFicha==='contacto_empresa' && c.empresaAsociada
+    ? ` <span class="badge b-gray">empresa: ${esc(c.empresaAsociada)}</span>` : '';
+  return `<div style="margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #eee">
+    <img class="t-img" style="width:40px;height:30px;vertical-align:middle;margin-right:6px" src="${esc(c.img)}" onclick="openModal('${esc(c.img)}')" alt="">
+    ${tipoFichaBadge(c.tipoFicha||'')} <strong>${esc(nom)}</strong>${emp}
+    ${c.email?`<br><span class="contacts-mini">${esc(c.email)}</span>`:''}
+    ${badge(c.matchScore||0)} <span class="contacts-mini">#${c.id}</span>
+  </div>`;
+}
+function filtraTabuladorEmpresa(e, q){
+  if(!q) return true;
+  if(norm(e.nombreExcel).includes(q)||norm(e.nombreEnHoja||'').includes(q)) return true;
+  return (e.contacts||[]).some(c=>{
+    const hay=[c.nombreContacto,c.contactoPersona,c.empresaAsociada,c.email,c.rfc].map(norm).join(' ');
+    return hay.includes(q);
+  });
+}
+function renderTabulador(){
+  const te = DATA.tabuladorErp || {empresas:[],conCapturasOdoo:[],sinCapturasOdoo:[],odooSinTabulador:[]};
+  const q = norm(document.getElementById('search').value);
+  const s = DATA.stats||{};
+  const res = document.getElementById('tabuladorResumen');
+  if(res) res.textContent = `${s.totalExcel||50} empresas tabulador · ${s.tabuladorConCapturas||0} con Odoo · ${s.tabuladorSinCapturas||0} solo Excel · ${s.odooSinTabulador||0} Odoo sin tabulador`;
+
+  let con = (te.conCapturasOdoo||te.empresas||[]).filter(e=>e.tieneCapturasOdoo!==false&&e.contactCount>0);
+  if(!con.length && te.empresas) con = te.empresas.filter(e=>e.contactCount>0);
+  con = con.filter(e=>filtraTabuladorEmpresa(e,q));
+
+  document.getElementById('tbody-tabulador-ok').innerHTML = con.map(e=>{
+    const g = e.gastos||{};
+    const contacts = (e.contacts||[]).map(contactoTabuladorHtml).join('') || '<span class="contacts-mini">—</span>';
+    return `<tr class="tabulador-header">
+      <td colspan="8"><strong>${esc(e.nombreExcel)}</strong>
+        <div class="gastos-bar">
+          <span>KM: <strong>${g.km||'—'}</strong></span>
+          <span>Gasolina: <strong>${fmtMoney(g.gasolina)}</strong></span>
+          <span>Ventas/costo: <strong>${fmtMoney(g.ventas)}</strong></span>
+          <span>Total: <strong>${fmtMoney(g.total)}</strong></span>
+          ${g.litros?`<span>Litros: <strong>${g.litros}</strong></span>`:''}
+        </div>
+      </td>
+    </tr>
+    <tr class="tabulador-sub">
+      <td><strong>${esc(e.nombreExcel)}</strong><div class="contacts-mini">${esc(e.nombreEnHoja||'')}</div></td>
+      <td class="rfc">${esc(e.rfc||'—')}</td>
+      <td class="num">${g.km||'—'}</td>
+      <td class="num">${fmtMoney(g.gasolina)}</td>
+      <td class="num">${fmtMoney(g.ventas)}</td>
+      <td class="num"><strong>${fmtMoney(g.total)}</strong></td>
+      <td><span class="badge b-multi">${e.contactCount}</span></td>
+      <td>${contacts}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" style="text-align:center;padding:20px;color:#888">Ninguna empresa con capturas (ajusta búsqueda o ejecuta build)</td></tr>';
+
+  let sin = te.sinCapturasOdoo||[];
+  if(!sin.length && te.empresas) sin = te.empresas.filter(e=>!e.contactCount);
+  sin = sin.filter(e=>filtraTabuladorEmpresa(e,q));
+  document.getElementById('tbody-tabulador-sin').innerHTML = sin.map(e=>{
+    const g = e.gastos||{};
+    const km = g.km>0 ? g.km : '—';
+    const origen = e.enHoja1 ? '<span class="badge b-ok">Hoja1</span>' : '<span class="badge b-gray">Sin Hoja1</span>';
+    const hered = e.gastosHeredadosDe ? ` <span class="badge b-med">${esc(e.gastosHeredadosDe)}</span>` : '';
+    const solo = '<span class="badge b-multi">Solo Excel</span>';
+    return `<tr>
+      <td><strong>${esc(e.nombreExcel)}</strong><div class="contacts-mini">${solo} · sin captura Odoo</div></td>
+      <td class="rfc">${esc(e.rfc||'—')}</td>
+      <td class="num">${km}</td>
+      <td class="num">${fmtMoney(g.gasolina)}</td>
+      <td class="num">${fmtMoney(g.ventas)}</td>
+      <td class="num"><strong>${fmtMoney(g.total)}</strong></td>
+      <td>${origen}${hered} ${sheetsHtml(e.sheets)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:16px;color:#888">Todas las empresas del tabulador tienen captura Odoo</td></tr>';
+
+  const odooSin = (te.odooSinTabulador||DATA.unmatched||[]).filter(o=>{
+    if(!q) return true;
+    const hay=[o.nombreContacto,o.empresaAsociada,o.person,o.email,o.sugerenciaExcel].map(norm).join(' ');
+    return hay.includes(q);
+  });
+  document.getElementById('tbody-tabulador-odoo-sin').innerHTML = odooSin.map(o=>`<tr>
+    <td><img class="t-img" src="${esc(o.img)}" onclick="openModal('${esc(o.img)}')"></td>
+    <td>${tipoFichaBadge(o.tipoFicha)}</td>
+    <td><strong>${esc(o.nombreContacto||o.contactoPersona||'?')}</strong></td>
+    <td class="contacts-mini">${o.tipoFicha==='contacto_empresa'?esc(o.empresaAsociada||'—'):'—'}</td>
+    <td>${o.sugerenciaExcel?`${esc(o.sugerenciaExcel)} ${badge(o.sugerenciaScore||0)}`:'<span class="badge b-bad">Sin match</span>'}</td>
+  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:16px;color:#888">Todas las capturas están en el tabulador</td></tr>';
+}
+function exportRelacionErp(){
+  const payload = {
+    generado: DATA.generated,
+    descripcion: 'Relación empresa tabulador SSEPI → gastos (km, gasolina, total) → contactos Odoo para ERP/calculadora',
+    empresas: DATA.relacionErp || (DATA.tabuladorErp&&DATA.tabuladorErp.relacionErp) || [],
+    odooSinTabulador: (DATA.tabuladorErp&&DATA.tabuladorErp.odooSinTabulador||[]).map(o=>({
+      id:o.id, nombre:o.nombreContacto, tipoFicha:o.tipoFicha, empresaAsociada:o.empresaAsociada
+    }))
+  };
+  const blob = new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'relacion_erp_tabulador_odoo.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function modPrecio(m){
+  if(!m) return '—';
+  const p = m.precioFinal || m.credito3 || m.totalVenta || 0;
+  return p>0 ? '$'+Number(p).toLocaleString('es-MX',{maximumFractionDigits:0}) : '—';
+}
+
+function modDetalleHtml(mods){
+  if(!mods || !Object.keys(mods).length) return '<span class="contacts-mini">Sin filas en tabulador</span>';
+  const lines = [];
+  const lab = mods.laboratorio;
+  if(lab) lines.push(`<strong>LAB</strong> gas ${fmtMoney(lab.gasolina)} · G.Gral ${fmtMoney(lab.gastosGenerales)} · util ${fmtMoney(lab.utilidad)} → ${modPrecio(lab)}`);
+  const mot = mods.motores;
+  if(mot) lines.push(`<strong>MOT</strong> gas ${fmtMoney(mot.gasolina)} · bec ${fmtMoney(mot.becerra)} · S/U ${fmtMoney(mot.gastosSinUtilidad)} → ${modPrecio(mot)}`);
+  const sum = mods.suministros;
+  if(sum) lines.push(`<strong>SUM</strong> gas ${fmtMoney(sum.gasolina)} · S/U ${fmtMoney(sum.gastosSinUtilidad)} → ${modPrecio(sum)}`);
+  const au = mods.automatizacion;
+  if(au) {
+    const svc = au.servicios && Object.keys(au.servicios).length
+      ? Object.entries(au.servicios).map(([k,v])=>`${esc(k)}:${fmtMoney(v)}`).join(', ')
+      : (au.totalServicios>0 ? 'servicios '+fmtMoney(au.totalServicios) : '');
+    lines.push(`<strong>AUTO</strong> ${svc||'—'} · venta ${modPrecio(au)}`);
+  }
+  const vd = mods._viaje || null;
+  return lines.map(l=>`<div class="contacts-mini">${l}</div>`).join('') || '—';
+}
+
+function origenGastosHtml(ex, cnt){
+  const parts = [];
+  if(ex.modulos && Object.keys(ex.modulos).length) parts.push('<span class="badge b-ok">Por módulo Excel</span>');
+  if(ex.viajeDani && ex.viajeDani.km) parts.push('<span class="badge b-gray">Hoja1 viaje Dani</span>');
+  if(ex.gastosHeredadosDe) parts.push(`<span class="badge b-med">Heredado: ${esc(ex.gastosHeredadosDe)}</span>`);
+  if(!cnt && ex.modulos && Object.keys(ex.modulos).length) parts.push('<span class="badge b-multi">Solo Excel</span>');
+  return parts.join(' ');
+}
+
+function renderExcel(){
+  const q=norm(document.getElementById('search').value);
+  const rows = DATA.excel.filter(ex=>{
+    if(!q) return true;
+    return norm(ex.name).includes(q) || norm(ex.nameExcel||'').includes(q);
+  });
+  document.getElementById('tbody-excel').innerHTML = rows.map(ex=>{
+    const linked = DATA.odoo.filter(o=>o.excelMatch===ex.name);
+    const cnt = linked.length;
+    const mini = linked.slice(0,3).map(c=>esc(c.nombreContacto||c.contactoPersona||'?')).join(', ') + (cnt>3?` +${cnt-3}`:'');
+    const mods = ex.modulos||{};
+    const vd = ex.viajeDani||{};
+    const kmDani = vd.km>0 ? vd.km.toFixed(1) : '—';
+    return `<tr>
+      <td>${ex.num}</td>
+      <td><strong>${esc(ex.name)}</strong>${ex.excelFuente?`<div class="contacts-mini">${esc(ex.excelFuente)}</div>`:''}</td>
+      <td class="rfc">${esc(ex.rfc||'—')}</td>
+      <td class="num">${modPrecio(mods.laboratorio)}</td>
+      <td class="num">${modPrecio(mods.motores)}</td>
+      <td class="num">${modPrecio(mods.suministros)}</td>
+      <td class="num">${modPrecio(mods.automatizacion)}</td>
+      <td class="num">${kmDani}</td>
+      <td>${cnt?`<span class="badge b-ok">${cnt}</span> ${mini}`:'<span class="badge b-gray">0</span>'}</td>
+      <td>${modDetalleHtml(mods)}${origenGastosHtml(ex,cnt)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function populateEmpresaSelect(){
+  const sel = document.getElementById('empresaSelect');
+  if(!sel || !DATA.empresasOdoo) return;
+  const cur = sel.value;
+  const q = norm(document.getElementById('search').value);
+  let list = DATA.empresasOdoo;
+  if(q){
+    list = list.filter(e=>{
+      if(norm(e.nombre).includes(q)) return true;
+      return (e.vendedores||[]).some(v=>{
+        const hay = [v.nombreContacto,v.contactoPersona,v.person,v.email,v.tel].map(norm).join(' ');
+        return hay.includes(q);
+      }) || (e.ficha && [e.ficha.nombreContacto,e.ficha.email,e.ficha.tel].map(norm).join(' ').includes(q));
+    });
+  }
+  sel.innerHTML = `<option value="">— Elija empresa (${list.length}) —</option>` +
+    list.map(e=>{
+      const nv = e.totalVendedores||0;
+      const nc = e.totalCapturas||0;
+      const extra = nv ? ` · ${nv} vendedor${nv!==1?'es':''}` : '';
+      const cap = nc ? ` · ${nc} captura${nc!==1?'s':''}` : '';
+      return `<option value="${esc(e.key)}">${esc(e.nombre)}${extra}${cap}</option>`;
+    }).join('');
+  if(cur && list.some(e=>e.key===cur)) sel.value = cur;
+}
+
+function renderEmpresa(){
+  populateEmpresaSelect();
+  const key = document.getElementById('empresaSelect').value;
+  const det = document.getElementById('empresaDetalle');
+  const empty = document.getElementById('empresaEmpty');
+  const fichaEl = document.getElementById('empresaFicha');
+  const tbody = document.getElementById('tbody-empresa-vend');
+  if(!key){
+    det.classList.add('hidden');
+    empty.classList.remove('hidden');
+    return;
+  }
+  const g = (DATA.empresasOdoo||[]).find(e=>e.key===key);
+  if(!g){
+    det.classList.add('hidden');
+    empty.textContent = 'Empresa no encontrada.';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  det.classList.remove('hidden');
+  const f = g.ficha;
+  if(f && !f.synthetic){
+    fichaEl.innerHTML = `
+      <h2>${esc(g.nombre)}</h2>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start">
+        ${f.img?`<img class="t-img" style="width:80px;height:60px" src="${esc(f.img)}" onclick="openModal('${esc(f.img)}')" alt="">`:''}
+        <dl class="empresa-meta" style="flex:1">
+          <div><dt>Email</dt><dd>${esc(f.email||'—')}</dd></div>
+          <div><dt>Teléfono</dt><dd>${esc(f.tel||'—')}</dd></div>
+          <div><dt>Dirección</dt><dd>${esc(f.direccion||f.ubicacion||'—')}</dd></div>
+          <div><dt>RFC</dt><dd class="rfc">${esc(f.rfc||'—')}</dd></div>
+          <div><dt>Tabulador SSEPI</dt><dd>${f.excelMatch?`<strong>${esc(f.excelMatch)}</strong> ${badge(f.matchScore)}`:'<span class="badge b-bad">Sin tabulador</span>'}</dd></div>
+          <div><dt>Catálogo Odoo</dt><dd>${f.odooMatch?esc(f.odooMatch):'—'}</dd></div>
+        </dl>
+      </div>
+      ${rolBadge(f.rol)} ${f.fuenteDatos==='vision_manual'?'<span class="badge b-ok">Rastro visual</span>':''}`;
+  } else {
+    fichaEl.innerHTML = `
+      <h2>${esc(g.nombre)}</h2>
+      <p class="contacts-mini">Sin captura de ficha empresa; solo contactos/vendedores vinculados (${g.totalCapturas} captura(s), ${g.totalVendedores} vendedor(es)).</p>`;
+  }
+  const vend = g.vendedores||[];
+  tbody.innerHTML = vend.map(v=>{
+    const persona = v.contactoPersona||v.person||(v.tipoFicha==='empresa'?'':v.nombreContacto)||'—';
+    const empV = v.empresaAsociada ? `<div class="contacts-mini">Empresa: ${esc(v.empresaAsociada)}</div>` : '';
+    const origen = v.synthetic
+      ? '<span class="badge b-gray">Catálogo Excel</span>'
+      : '<span class="badge b-ok">Captura</span>';
+    const img = v.img && !v.synthetic
+      ? `<img class="t-img" src="${esc(v.img)}" onclick="openModal('${esc(v.img)}')">`
+      : '—';
+    return `<tr>
+      <td>${origen}</td>
+      <td>${img}</td>
+      <td>${tipoFichaBadge(v.tipoFicha||'')}<strong>${esc(persona)}</strong> ${v.synthetic?'':rolBadge(v.rol)}${empV}</td>
+      <td class="contacts-mini">${esc(v.puesto||'—')}</td>
+      <td>${esc(v.email||'—')}</td>
+      <td>${esc(v.tel||'—')}</td>
+      <td class="rfc">${esc(v.rfc||'—')}</td>
+      <td>${v.excelMatch?`<strong>${esc(v.excelMatch)}</strong>`:'—'}</td>
+      <td>${v.synthetic?'—':badge(v.matchScore)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="9" style="text-align:center;padding:20px;color:#888">Sin vendedores registrados para esta empresa</td></tr>';
+}
+
+function renderContactos(){
+  const q=norm(document.getElementById('search').value);
+  const list = DATA.contactos || DATA.odoo.filter(o=>o.rol==='contacto_cliente');
+  const rows = list.filter(o=>passesFilter(o,q,'all'));
+  document.getElementById('tbody-contactos').innerHTML = rows.map(o=>`<tr>
+    <td><img class="t-img" src="${esc(o.img)}" onclick="openModal('${esc(o.img)}')"></td>
+    <td>${rolBadge(o.rol)}</td>
+    <td><strong>${esc(o.contactoPersona||o.person||'—')}</strong></td>
+    <td class="contacts-mini">${esc(o.nombreContacto||o.nombreBase||o.empresaOdoo||'—')}</td>
+    <td><strong>${esc(o.excelMatch||'—')}</strong></td>
+    <td class="rfc">${esc(o.rfc||'—')}</td>
+    <td>${esc(o.dominio||'—')}</td>
+    <td>${esc(o.email||'—')}</td>
+    <td>${esc(o.tel||'—')}</td>
+  </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;padding:24px;color:#888">Sin contactos</td></tr>';
+}
+
+function renderUnmatched(){
+  const q=norm(document.getElementById('search').value);
+  const rows = DATA.unmatched.filter(o=>passesFilter(o,q,'all'));
+  document.getElementById('tbody-unmatched').innerHTML = rows.map((o,i)=>`<tr>
+    <td>${i+1}</td>
+    <td><img class="t-img" src="${esc(o.img)}" onclick="openModal('${esc(o.img)}')"></td>
+    <td>${rolBadge(o.rol)}</td>
+    <td><strong>${esc(o.nombreContacto||o.displayName||'—')}</strong></td>
+    <td class="contacts-mini">${esc(o.empresaOdoo||'—')}</td>
+    <td>${esc(o.person||'—')}</td>
+    <td class="rfc">${esc(o.rfc||'—')}</td>
+    <td>${esc(o.dominio||'—')}</td>
+    <td>${esc(o.email||'—')}</td>
+    <td>${esc(o.tel||'—')}</td>
+    <td class="contacts-mini">${esc(o.direccion||'—')}</td>
+    <td>${o.sugerenciaExcel?`${esc(o.sugerenciaExcel)} ${badge(o.sugerenciaScore)}`:'—'}</td>
+    <td class="contacts-mini">${esc(o.motivo||'')}</td>
+  </tr>`).join('') || '<tr><td colspan="13" style="text-align:center;padding:24px">Todos vinculados al Excel</td></tr>';
+}
+
+function renderStats(){
+  const s = DATA.stats;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="stat-n">${s.totalImages}</div><div class="stat-l">Capturas Odoo</div></div>
+    <div class="stat"><div class="stat-n" style="color:#1565c0">${s.odooMatched55||0}</div><div class="stat-l">Nombre Excel Odoo</div></div>
+    <div class="stat"><div class="stat-n">${s.totalOdooExcel||140}</div><div class="stat-l">Catálogo contactos</div></div>
+    <div class="stat"><div class="stat-n">${s.totalExcel}</div><div class="stat-l">Empresas tabulador</div></div>
+    <div class="stat"><div class="stat-n" style="color:#004ba0">${s.totalEmpresasOdoo||0}</div><div class="stat-l">Empresas Odoo</div></div>
+    <div class="stat"><div class="stat-n" style="color:#6a1b9a">${s.contactosVendedores||0}</div><div class="stat-l">Vendedores</div></div>
+    <div class="stat"><div class="stat-n" style="color:#2e7d32">${s.tabuladorConCapturas||s.matched70||0}</div><div class="stat-l">Tabulador + Odoo</div></div>
+    <div class="stat"><div class="stat-n" style="color:#e65100">${s.odooSinTabulador||s.sinMatchExcel||0}</div><div class="stat-l">Odoo sin tabulador</div></div>
+  `;
+  const ib = document.getElementById('infoBox');
+  const odooOk = s.odooMatched55||0;
+  const odooCat = s.totalOdooExcel||140;
+  if(ib) ib.innerHTML = `<strong>Costos = tablas LAB / MOT / SUM / AUTO</strong> del Excel (precio con utilidad y 3% crédito). <strong>Hoja1</strong> solo referencia viaje/HR Dani (km). Fuente: <em>TABULADOR DE COTIZACIÓN actualizado.xlsx</em>. Regenerar: <code>python build_comparador.py</code>.`;
+  document.getElementById('subtitle').textContent = `Generado ${DATA.generated||''} · Catálogo Odoo + tabulador SSEPI`;
+  const tabs = document.querySelectorAll('.tab');
+  if(tabs[0]) tabs[0].textContent = `${s.totalImages} contactos (imágenes)`;
+  if(tabs[1]) tabs[1].textContent = `Vendedores (${s.contactosVendedores||0})`;
+  if(tabs[2]) tabs[2].textContent = `Por empresa Odoo (${s.totalEmpresasOdoo||0})`;
+  if(tabs[3]) tabs[3].textContent = `Tabulador ERP (${s.totalExcel||50})`;
+}
+
+function render(){
+  renderStats();
+  renderOdoo();
+  renderContactos();
+  renderEmpresa();
+  renderTabulador();
+  renderExcel();
+  renderUnmatched();
+}
+
+function setControlsForTab(tab){
+  const filt = document.getElementById('filter');
+  const search = document.getElementById('search');
+  const isEmp = tab === 'empresas';
+  const isTab = tab === 'tabulador';
+  if(filt) filt.style.display = (isEmp || isTab) ? 'none' : '';
+  if(search) search.placeholder = isEmp
+    ? 'Filtrar empresas o vendedores en la lista…'
+    : isTab
+      ? 'Filtrar empresas del tabulador o contactos…'
+      : 'Buscar empresa, persona, RFC, email, teléfono…';
+}
+
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+    setControlsForTab(btn.dataset.tab);
+    if(btn.dataset.tab==='empresas') renderEmpresa();
+    if(btn.dataset.tab==='tabulador') renderTabulador();
+  };
+});
+document.getElementById('search').oninput=render;
+document.getElementById('filter').onchange=render;
+const empresaSel = document.getElementById('empresaSelect');
+if(empresaSel) empresaSel.onchange = renderEmpresa;
+const btnErp = document.getElementById('btnExportErp');
+if(btnErp) btnErp.onclick = exportRelacionErp;
+
+async function init(){
+  try{
+  if(window.DATOS_COMPARADOR) DATA = window.DATOS_COMPARADOR;
+  else {
+    const r = await fetch('datos_comparador.json');
+    DATA = await r.json();
+  }
+  render();
+  }catch(e){
+    document.getElementById('subtitle').textContent = 'Error: ejecuta build_comparador.py para generar datos_embebidos.js';
+    console.error(e);
+  }
+}
+init();
+</script>
+</body>
+</html>

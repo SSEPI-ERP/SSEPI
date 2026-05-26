@@ -1263,7 +1263,6 @@ const MotoresModule = (function() {
         }
         if (paso === 2) {
             _renderDiagnosticoEnlaces();
-            _renderDiagnosticoInventario();
         }
         _renderRegistroTiempos();
 
@@ -1869,8 +1868,8 @@ const MotoresModule = (function() {
         const data = _recolectarDatos();
         if (!data.cliente_nombre) { alert('Seleccione cliente'); _irPaso(1); return; }
         if (!data.motor) { alert('Ingrese el motor'); _irPaso(1); return; }
-        if (diagnosticoEnlaces.length === 0 && diagnosticoInventario.length === 0) {
-            alert('Debe agregar al menos una refacción a comprar');
+        if (diagnosticoEnlaces.length === 0) {
+            alert('Debe agregar al menos una refacción a la lista');
             return;
         }
 
@@ -1898,21 +1897,24 @@ const MotoresModule = (function() {
                 orderId = ordenMotorId;
                 isNewOrder = false;
                 if (window.SSEPIStateMachine) {
-                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', ordenMotorId, 'cambio_estado', `Orden ${folioMotor}: solicitud de compra especial generada (pieza no en inventario)`, csrfToken);
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', ordenMotorId, 'cambio_estado', `Orden ${folioMotor}: lista de refacciones enviada a Compras para cotización`, csrfToken);
                 }
             } else {
                 data.estado = 'Esperando Cotización';
                 data.fecha_envio_compra = new Date().toISOString();
                 await ordenesService.update(orderId, data, csrfToken);
                 if (window.SSEPIStateMachine) {
-                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', orderId, 'cambio_estado', `Solicitud de compra especial generada (pieza no en inventario)`, csrfToken);
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'motor', orderId, 'cambio_estado', `Lista de refacciones enviada a Compras para cotización`, csrfToken);
                 }
             }
 
-            const itemsCompra = [
-                ...diagnosticoEnlaces.map(e => ({ nombre: e.nombre || '', sku: e.sku || '', descripcion: e.descripcion || '', cantidad: Number(e.cantidad) || 1, link: e.link || '' })),
-                ...diagnosticoInventario.map(i => ({ nombre: i.nombre || '', sku: i.sku || '', descripcion: i.descripcion || '', cantidad: Number(i.cantidad) || 1 }))
-            ];
+            const itemsCompra = diagnosticoEnlaces.map(e => ({
+                nombre: e.nombre || '',
+                sku: e.sku || '',
+                descripcion: e.descripcion || '',
+                cantidad: Number(e.cantidad) || 1,
+                link: e.link || ''
+            }));
             const itemsReserva = itemsCompra.filter((i) => i.sku);
             if (itemsReserva.length && window.supabase) {
                 try {
@@ -1952,13 +1954,13 @@ const MotoresModule = (function() {
                 compra_id: compraRef.id,
                 folio: nuevaCompra.folio,
                 cliente: data.cliente_nombre,
-                mensaje: `Solicitud de compra especial ${nuevaCompra.folio} desde Motores (pieza no disponible en inventario)`,
+                mensaje: `Nueva solicitud de cotización ${nuevaCompra.folio} desde Motores — lista de refacciones adjunta`,
                 leido: false,
                 fecha: new Date().toISOString()
             }, csrfToken);
 
-            _showSuccessAlert('✅ Solicitud de compra especial generada. La orden pasó a estado "Esperando Cotización".');
-            _addToFeed('🛒', `Compra especial creada para ${folioMotor}`);
+            _showSuccessAlert('✅ Lista de refacciones enviada a Compras. La orden pasó a estado "Esperando Cotización".');
+            _addToFeed('🛒', `Solicitud de cotización creada para ${folioMotor}`);
             _afterMotoresPersistOk();
 
         } catch (error) {
@@ -2581,11 +2583,11 @@ const MotoresModule = (function() {
         document.getElementById('saveOrderBtn').addEventListener('click', () => _guardarOrden(false));
         document.getElementById('completeOrderBtn').addEventListener('click', _completarEntrega);
         document.getElementById('sinReparacionBtn').addEventListener('click', _sinReparacion);
-        document.getElementById('generarCompraBtn').addEventListener('click', _enviarEstimacionAVentas);
+        document.getElementById('generarCompraBtn').addEventListener('click', _generarSolicitudCompra);
 
         // Botones del flujo comercial
         const btnCompraEspecial = document.getElementById('btnCompraEspecialMotores');
-        if (btnCompraEspecial) btnCompraEspecial.addEventListener('click', _generarSolicitudCompra);
+        if (btnCompraEspecial) btnCompraEspecial.addEventListener('click', _enviarEstimacionAVentas);
         const btnNotificarReparado = document.getElementById('btnNotificarVentasReparado');
         if (btnNotificarReparado) btnNotificarReparado.addEventListener('click', _notificarVentasReparado);
         const btnClienteConfirmado = document.getElementById('btnClienteConfirmadoMotores');

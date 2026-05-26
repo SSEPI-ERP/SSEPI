@@ -63,9 +63,10 @@ const notificacionesService = createDataService('notificaciones');
     function _estadoToPaso(estado) {
         const mapa = {
             'Nuevo': 1, 'Registrado': 1, 'pendiente': 1,
-            'Diagnóstico': 2, 'Garantía': 2, 'progreso': 2,
+            'Diagnóstico': 2, 'progreso': 2,
             'Esperando Cotización': 3,
             'Esperando Confirmación Cliente': 3,
+            'Garantía': 3,
             'Confirmado': 4, 'En ejecución': 4, 'Reparado / Listo': 4,
             'completado': 5, 'Completado': 5, 'Entregado': 5, 'Facturado': 5,
             'Cancelado': 0
@@ -1720,6 +1721,13 @@ const notificacionesService = createDataService('notificaciones');
             updated_at: new Date().toISOString()
         };
 
+        // Preservar datos de garantía si existen
+        if (currentProject?.es_garantia) {
+            data.es_garantia = currentProject.es_garantia;
+            data.folio_original = currentProject.folio_original || null;
+            data.iteracion_garantia = currentProject.iteracion_garantia || null;
+        }
+
         // Calcular rentabilidad y adeudo
         try {
             const costoPresupuestado = currentProject?.costo_presupuestado || currentProject?.costo_total || _calcularCostoActualServicios();
@@ -2220,6 +2228,66 @@ const notificacionesService = createDataService('notificaciones');
         }
     }
 
+    async function _activarGarantia() {
+        console.log('[Auto] Activando garantía para proyecto:', projectId);
+        if (!projectId || isNewProject) { alert('Primero guarde el proyecto'); return; }
+        if (!confirm('¿Activar garantía? Se creará una nueva iteración del proyecto reiniciando en Materiales/Esperando Cotización.')) return;
+
+        await _guardarProyecto();
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            const folioOriginal = document.getElementById('inpFolio').value;
+            const cliente = document.getElementById('paso1_cliente').value;
+            const nombre = document.getElementById('paso1_nombre').value;
+
+            // Contar iteraciones previas
+            let iteracion = 1;
+            try {
+                const { data: previas } = await window.supabase
+                    .from('proyectos_automatizacion')
+                    .select('iteracion_garantia')
+                    .eq('folio_original', folioOriginal)
+                    .order('iteracion_garantia', { ascending: false })
+                    .limit(1);
+                if (previas && previas.length > 0 && previas[0].iteracion_garantia) {
+                    iteracion = previas[0].iteracion_garantia + 1;
+                }
+            } catch (e) { /* ignore */ }
+
+            const nuevoFolio = folioOriginal + '-G' + iteracion;
+            const dataNuevo = {
+                folio: nuevoFolio,
+                nombre: nombre + ' (Garantía ' + iteracion + ')',
+                cliente: cliente,
+                estado: 'Esperando Cotización',
+                es_garantia: true,
+                folio_original: folioOriginal,
+                iteracion_garantia: iteracion,
+                fecha_creacion: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                materiales: materiales.slice(),
+                notas_internas: `[${new Date().toLocaleString('es-MX')}] Garantía activada desde proyecto ${folioOriginal}. Iteración ${iteracion}.\n---\n${document.getElementById('paso1_notasInternas')?.value || ''}`
+            };
+
+            const inserted = await proyectosService.insert(dataNuevo, csrfToken);
+
+            await notificacionesService.insert({
+                para: 'ventas', tipo: 'garantia_activada', orden_id: inserted.id, folio: nuevoFolio, cliente,
+                mensaje: `Garantía activada para ${folioOriginal} → ${nuevoFolio}. Reinicia en Materiales/Esperando Cotización.`,
+                leido: false, fecha: new Date().toISOString()
+            }, csrfToken);
+
+            _showSuccessAlert('✅ Garantía activada. Nueva iteración ' + nuevoFolio + ' creada en paso 3 (Materiales).');
+            _addToFeed('🔧', `Garantía activada: ${nuevoFolio}`);
+            _cerrarModal();
+            await _loadProjects();
+            _applyFilters();
+        } catch (error) {
+            console.error(error);
+            alert('Error al activar garantía: ' + error.message);
+        }
+    }
+
     async function _notificarVentasCompletado() {
         console.log('[Auto] Notificando a Ventas que proyecto está completado');
         if (!projectId) { alert('Primero guarde el proyecto'); return; }
@@ -2263,6 +2331,8 @@ const notificacionesService = createDataService('notificaciones');
 
         const btnClienteConfirmado = byId('btnClienteConfirmadoAuto');
         if (btnClienteConfirmado) btnClienteConfirmado.addEventListener('click', _marcarClienteConfirmado);
+        const btnActivarGarantia = byId('btnActivarGarantiaAuto');
+        if (btnActivarGarantia) btnActivarGarantia.addEventListener('click', _activarGarantia);
         if (byId('guardarPaso1')) byId('guardarPaso1').addEventListener('click', _guardarProyecto);
         if (byId('agregarActividad')) byId('agregarActividad').addEventListener('click', _agregarActividad);
         if (byId('generarCronograma')) byId('generarCronograma').addEventListener('click', _generarCronograma);

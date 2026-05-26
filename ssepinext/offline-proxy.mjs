@@ -110,10 +110,11 @@ const HEAVY_TABLES = new Set([
 
 function stripHeavyFields(row, localTable, select) {
   if (!HEAVY_TABLES.has(localTable)) return row;
-  const wantsImages =
+  const wantsFullBlob =
     typeof select === 'string' &&
-    (select.includes('reporte_imagenes') || select.includes('documentos_adjuntos'));
-  if (wantsImages) return row;
+    (select.includes('reporte_imagenes') || select.includes('documentos_adjuntos')) &&
+    select.includes('dataUrl');
+  if (wantsFullBlob) return row;
 
   const out = { ...row };
   for (const key of ['reporte_imagenes', 'documentos_adjuntos', 'historial_actividad']) {
@@ -123,8 +124,8 @@ function stripHeavyFields(row, localTable, select) {
         if (!item || typeof item !== 'object') return item;
         const copy = { ...item };
         if (typeof copy.dataUrl === 'string' && copy.dataUrl.length > 256) {
-          copy.dataUrl = null;
-          copy._omitted = true;
+          delete copy.dataUrl;
+          copy._dataUrlOmitted = true;
         }
         return copy;
       });

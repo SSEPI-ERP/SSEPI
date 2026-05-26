@@ -370,6 +370,16 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', mode: 'ssepi-offline', db_path: 'data/ssepi-local.db' });
 });
 
+app.get('/preview-lab-import.html', (_req, res) => {
+  const p = path.join(__dirname, 'preview-lab-import.html');
+  if (!fs.existsSync(p)) {
+    return res.status(404).send(
+      '<p>Genera primero: <code>cd ssepinext && node generar-preview-lab.mjs</code></p>'
+    );
+  }
+  res.sendFile(path.resolve(p));
+});
+
 // ========================================
 // REALTIME fallback (WebSocket no disponible offline)
 // ========================================

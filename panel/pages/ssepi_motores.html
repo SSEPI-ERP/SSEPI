@@ -335,24 +335,17 @@
 
                         <div id="motoresPrioritySuppliers" class="motores-prio-host" aria-label="Proveedores prioritarios"></div>
 
-                        <h4>Refacciones con enlace externo</h4>
+                        <h4>Refacciones necesarias</h4>
                         <table class="tabla-diagnostico" id="tablaEnlaces">
                             <thead><tr><th>Nombre</th><th>Descripción</th><th>SKU</th><th>Cantidad</th><th>Link</th><th></th></tr></thead>
                             <tbody id="diagnosticoEnlacesBody"></tbody>
                         </table>
-                        <button class="btn-add-row" id="addEnlaceBtn"><i class="fas fa-plus"></i> Agregar refacción con enlace</button>
-
-                        <h4>Refacciones desde inventario</h4>
-                        <table class="tabla-diagnostico">
-                            <thead><tr><th>SKU</th><th>Nombre</th><th>Descripción</th><th>Stock disp.</th><th>Cantidad</th><th></th></tr></thead>
-                            <tbody id="diagnosticoInventarioBody"></tbody>
-                        </table>
-                        <button class="btn-add-row" id="addInventarioBtn"><i class="fas fa-plus"></i> Agregar desde inventario</button>
+                        <button class="btn-add-row" id="addEnlaceBtn"><i class="fas fa-plus"></i> Agregar refacción</button>
 
                         <div style="display:flex; gap:15px; justify-content:flex-end; margin-top:30px; flex-wrap: wrap;">
                             <button class="btn-etapa" id="terminarEtapa2" data-etapa="2"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
-                            <button class="btn-primary" id="generarCompraBtn"><i class="fas fa-paper-plane"></i> Enviar Estimación a Ventas</button>
-                            <button class="btn-primary" id="btnCompraEspecialMotores" style="background:#6b7280;"><i class="fas fa-shopping-cart"></i> Compra Especial (pieza no en inventario)</button>
+                            <button class="btn-primary" id="generarCompraBtn"><i class="fas fa-paper-plane"></i> Enviar lista a Compras</button>
+                            <button class="btn-primary" id="btnCompraEspecialMotores" style="background:#6b7280;"><i class="fas fa-calculator"></i> Enviar estimación directa a Ventas</button>
                             <button class="btn-secondary" id="sinReparacionBtn" style="background:#f59e0b; color:white;"><i class="fas fa-ban"></i> Sin reparación</button>
                         </div>
                     </div>

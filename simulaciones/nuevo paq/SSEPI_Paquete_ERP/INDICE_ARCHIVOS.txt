@@ -1,0 +1,22 @@
+SSEPI_Paquete_ERP — Índice
+==========================
+
+LEEME_PRIMERO.txt
+INICIAR_AMBOS.bat | INICIAR_EDITOR.bat | INICIAR_COMPARADOR.bat | INICIAR_PRUEBA_LABORATORIO.bat
+
+03_Documentacion\
+  GUIA_USO_OPERATIVA.txt
+  BASE_DE_DATOS_Y_ARCHIVOS.txt
+  VINCULACION_EMPRESAS_Y_COSTOS.txt
+  GUIA_GERENTE_Y_DESARROLLO_FUTURO.txt   ← Para gerente / siguiente desarrollo
+
+01_Comparador_Odoo_Excel\   (scripts + HTML comparador)
+02_Editor_Ordenes\          (editor + servidor órdenes)
+04_Datos_muestra\           (JSON muestra órdenes + estructura comparador)
+05_Formato_Laboratorio_Import\  (copiar a otro sistema: JSON laboratorio-1 + importar_laboratorio.js)
+
+Datos completos (no duplicados aquí):
+  ..\info\datos_comparador.json
+  ..\info\TABULADOR DE COTIZACIÓN actualizado.xlsx
+  ..\info\SistemaContactos\CapturasOdoo\
+  ..\datos_ordenes_editables.json

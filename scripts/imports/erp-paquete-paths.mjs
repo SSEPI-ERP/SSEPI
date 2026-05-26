@@ -10,6 +10,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(__dirname, '../..');
 
 export const PAQUETE_ERP = path.join(REPO_ROOT, 'simulaciones', 'SSEPI_Paquete_ERP');
+export const PAQUETE_ERP_NUEVO = path.join(REPO_ROOT, 'simulaciones', 'nuevo paq', 'SSEPI_Paquete_ERP');
+export const FORMATO_LAB_IMPORT = path.join(PAQUETE_ERP_NUEVO, '05_Formato_Laboratorio_Import');
 export const COMPARADOR_PY_DIR = path.join(PAQUETE_ERP, '01_Comparador_Odoo_Excel');
 export const EDITOR_ORDENES_DIR = path.join(PAQUETE_ERP, '02_Editor_Ordenes');
 
@@ -39,6 +41,11 @@ export const PATHS = {
   datosComparador: path.join(ESCANER_INFO, 'datos_comparador.json'),
   datosReportesOcr: path.join(ESCANER_ROOT, 'datos_reportes_ocr.json'),
   datosOrdenesEditables: path.join(ESCANER_ROOT, 'datos_ordenes_editables.json'),
+  datosOrdenesEditablesPaqueteNuevo: path.join(PAQUETE_ERP_NUEVO, '04_Datos_muestra', 'datos_ordenes_editables.json'),
+  datosOrdenesEditablesPaquete: path.join(PAQUETE_ERP, '04_Datos_muestra', 'datos_ordenes_editables.json'),
+  datosReportesPaquete: path.join(FORMATO_LAB_IMPORT, 'datos_reportes_muestra_3.json'),
+  muestraFormatoLab: path.join(FORMATO_LAB_IMPORT, 'muestra_formato_laboratorio.json'),
+  importarLaboratorioJs: path.join(FORMATO_LAB_IMPORT, 'importar_laboratorio.js'),
   muestraComparador: path.join(PAQUETE_ERP, '04_Datos_muestra', 'muestra_comparador_estructura.json'),
   tabuladorJsonFallback: path.join(REPO_ROOT, 'ssepinext', 'data', 'master', 'clientes_tabulador.json'),
   importsOut: path.join(REPO_ROOT, 'scripts', 'imports', 'out'),
@@ -51,6 +58,22 @@ export function resolveFirstExisting(candidates) {
     if (p && fs.existsSync(p)) return p;
   }
   return null;
+}
+
+export function resolveDatosOrdenesEditables() {
+  return resolveFirstExisting([
+    PATHS.datosOrdenesEditables,
+    PATHS.datosOrdenesEditablesPaqueteNuevo,
+    PATHS.datosOrdenesEditablesPaquete,
+  ]);
+}
+
+export function resolveReportesLabDir() {
+  return resolveFirstExisting([
+    path.join(PAQUETE_ERP_NUEVO, 'reportes'),
+    path.join(PAQUETE_ERP, 'reportes'),
+    ESCANER_REPORTES,
+  ]);
 }
 
 export function resolveTabuladorXlsx() {
@@ -74,8 +97,9 @@ export function printPathsStatus() {
     ['Rastro capturas', fs.existsSync(PATHS.rastroCapturas) ? PATHS.rastroCapturas : null],
     ['Capturas dir', resolveCapturasDir()],
     ['datos_comparador.json', fs.existsSync(PATHS.datosComparador) ? PATHS.datosComparador : null],
-    ['datos_reportes_ocr.json', fs.existsSync(PATHS.datosReportesOcr) ? PATHS.datosReportesOcr : null],
-    ['Reportes lab', fs.existsSync(ESCANER_REPORTES) ? ESCANER_REPORTES : null],
+    ['datos_ordenes_editables.json', resolveDatosOrdenesEditables()],
+    ['Formato lab import', fs.existsSync(FORMATO_LAB_IMPORT) ? FORMATO_LAB_IMPORT : null],
+    ['Reportes lab', resolveReportesLabDir()],
   ];
   console.log('Rutas paquete ERP (simulaciones/):');
   for (const [label, p] of rows) {

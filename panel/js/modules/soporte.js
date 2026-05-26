@@ -23,6 +23,7 @@ const SoporteModule = (function() {
     let filtroBuscar = '';
     let vistaActual = 'kanban';
     let chartInstance = null;
+    let refaccionesSoporte = [];
 
     // Servicios de datos
     const visitasService = createDataService('soporte_visitas');
@@ -317,6 +318,8 @@ const SoporteModule = (function() {
         isNewVisit = true;
         currentVisit = null;
         visitId = null;
+        refaccionesSoporte = [];
+        _renderRefaccionesSoporte();
         _resetForm();
         _generarFolio();
         document.getElementById('wsModal').classList.add('active');
@@ -358,6 +361,98 @@ const SoporteModule = (function() {
         document.querySelectorAll('#actividadesCheckbox input').forEach(cb => {
             cb.checked = visita.actividades && visita.actividades.includes(cb.value);
         });
+
+        refaccionesSoporte = Array.isArray(visita.refacciones) ? visita.refacciones.slice() : [];
+        _renderRefaccionesSoporte();
+    }
+
+    // ==================== REFACCIONES (FLUJO DOS VISITAS) ====================
+    function _renderRefaccionesSoporte() {
+        const tbody = document.getElementById('refaccionesSoporteBody');
+        if (!tbody) return;
+        tbody.innerHTML = refaccionesSoporte.map((r, i) => `
+            <tr>
+                <td><input type="text" value="${r.nombre || ''}" onchange="SoporteModule._actualizarRefaccionSoporte(${i}, 'nombre', this.value)" style="width:100%;border:none;background:transparent;"></td>
+                <td><input type="text" value="${r.descripcion || ''}" onchange="SoporteModule._actualizarRefaccionSoporte(${i}, 'descripcion', this.value)" style="width:100%;border:none;background:transparent;"></td>
+                <td><input type="text" value="${r.sku || ''}" onchange="SoporteModule._actualizarRefaccionSoporte(${i}, 'sku', this.value)" style="width:100%;border:none;background:transparent;"></td>
+                <td><input type="number" value="${r.cantidad || 1}" min="1" onchange="SoporteModule._actualizarRefaccionSoporte(${i}, 'cantidad', parseInt(this.value)||1)" style="width:60px;border:none;background:transparent;"></td>
+                <td><input type="text" value="${r.link || ''}" onchange="SoporteModule._actualizarRefaccionSoporte(${i}, 'link', this.value)" style="width:100%;border:none;background:transparent;"></td>
+                <td><button type="button" onclick="SoporteModule._eliminarRefaccionSoporte(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;"><i class="fas fa-trash"></i></button></td>
+            </tr>
+        `).join('');
+    }
+
+    function _actualizarRefaccionSoporte(index, campo, valor) {
+        if (refaccionesSoporte[index]) {
+            refaccionesSoporte[index][campo] = valor;
+        }
+    }
+
+    function _agregarRefaccionSoporte() {
+        refaccionesSoporte.push({ nombre: '', descripcion: '', sku: '', cantidad: 1, link: '' });
+        _renderRefaccionesSoporte();
+    }
+
+    function _eliminarRefaccionSoporte(index) {
+        refaccionesSoporte.splice(index, 1);
+        _renderRefaccionesSoporte();
+    }
+
+    async function _enviarRefaccionesAComprasSoporte() {
+        if (!refaccionesSoporte.length) { alert('Agrega al menos una refacción'); return; }
+        if (!visitId && !isNewVisit) { alert('Primero guarde la visita'); return; }
+
+        await _guardarVisita();
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            const folio = document.getElementById('folio').value;
+            const cliente = document.getElementById('cliente').value;
+            const id = visitId || await _ensureVisitSavedForLinkage();
+            const itemsCompra = refaccionesSoporte.map(r => ({
+                nombre: r.nombre || '', sku: r.sku || '', descripcion: r.descripcion || '', cantidad: parseInt(r.cantidad) || 1, link: r.link || ''
+            }));
+
+            const compraFolio = `PO-SOP-${folio}`;
+            const nuevaCompra = {
+                folio: compraFolio, proveedor: 'Por asignar', departamento: 'Soporte de Planta',
+                fecha: new Date().toISOString(),
+                vinculacion: { tipo: 'soporte', id, nombre: cliente, folio_soporte: folio },
+                items: itemsCompra, estado: 1, estado_interno: 'esperando_cotizacion',
+                observaciones: 'Solicitud de cotización desde Soporte de Planta. Esperando precios de proveedores.',
+                created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+            };
+            const compraRef = await comprasService.insert(nuevaCompra, csrfToken);
+
+            await visitasService.update(id, { estado: 'Esperando Cotización', compra_vinculada: compraRef.id, compra_folio: compraFolio }, csrfToken);
+            document.getElementById('estadoVisita').value = 'Esperando Cotización';
+
+            await notificacionesService.insert({
+                para: 'compras', tipo: 'solicitud_cotizacion', orden_id: id, compra_id: compraRef.id,
+                folio: compraFolio, cliente,
+                mensaje: `Soporte de Planta envió lista de refacciones para cotización: ${compraFolio}. Cotice con proveedores y envíe precios a Ventas.`,
+                leido: false, fecha: new Date().toISOString()
+            }, csrfToken);
+
+            await notificacionesService.insert({
+                para: 'ventas', tipo: 'diagnostico_completado', orden_id: id, folio, cliente,
+                mensaje: `Soporte de Planta completó diagnóstico para ${folio}. Refacciones enviadas a Compras para cotización. Esperando precios de proveedores.`,
+                leido: false, fecha: new Date().toISOString()
+            }, csrfToken);
+
+            _showSuccessAlert('✅ Refacciones enviadas a Compras. La visita pasó a "Esperando Cotización".');
+            _addToFeed('📤', `Refacciones enviadas a Compras: ${folio}`);
+            await _loadVisits();
+            _applyFilters();
+        } catch (error) {
+            console.error(error);
+            alert('Error al enviar a Compras: ' + error.message);
+        }
+    }
+
+    async function _ensureVisitSavedForLinkage() {
+        if (visitId) return visitId;
+        await _guardarVisita();
+        return visitId;
     }
 
     async function _guardarVisita() {
@@ -379,6 +474,7 @@ const SoporteModule = (function() {
             pruebasRealizadas: document.getElementById('pruebasRealizadas').value,
             recomendaciones: document.getElementById('recomendaciones').value,
             observacionesCliente: document.getElementById('observacionesCliente').value,
+            refacciones: refaccionesSoporte,
             estado: document.getElementById('estadoVisita').value || 'Registrado'
         };
 
@@ -562,6 +658,11 @@ const SoporteModule = (function() {
         document.getElementById('confirmarVisitaBtn').addEventListener('click', _confirmarVisita);
         document.getElementById('cancelarVisitaEstadoBtn').addEventListener('click', _cancelarVisita);
 
+        const addRefBtn = document.getElementById('addRefaccionSoporteBtn');
+        if (addRefBtn) addRefBtn.addEventListener('click', _agregarRefaccionSoporte);
+        const enviarRefBtn = document.getElementById('enviarRefaccionesComprasSoporteBtn');
+        if (enviarRefBtn) enviarRefBtn.addEventListener('click', _enviarRefaccionesAComprasSoporte);
+
         document.getElementById('aplicarFiltrosBtn').addEventListener('click', () => {
             filtroFechaInicio = document.getElementById('filtroFechaInicio').valueAsDate;
             filtroFechaFin = document.getElementById('filtroFechaFin').valueAsDate;
@@ -622,7 +723,9 @@ const SoporteModule = (function() {
     // ==================== EXPOSICIÓN PÚBLICA ====================
     return {
         init,
-        _editarVisita
+        _editarVisita,
+        _actualizarRefaccionSoporte,
+        _eliminarRefaccionSoporte
     };
 })();
 
