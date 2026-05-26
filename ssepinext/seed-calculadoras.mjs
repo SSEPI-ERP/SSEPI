@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const db = await getDb();
 
 async function seedCalculadoras() {
+  setDeferPersist(true);
   const stmtCalc = await prepareStatement(db, 'local_calculadoras');
   const stmtCostos = await prepareStatement(db, 'local_calculadora_costos');
   const stmtCalcClientes = await prepareStatement(db, 'local_calculadora_clientes');
@@ -19,6 +20,7 @@ async function seedCalculadoras() {
   const calcs = [
     { nombre: 'Laboratorio (electrónica)', departamento: 'taller', tipo: 'electronica', funciones: 'Cotización SP-E: km, traslado, mano de obra, refacciones', activo: true },
     { nombre: 'Automatización', departamento: 'automatizacion', tipo: 'automatizacion', funciones: 'Cotización SP-A: tarifas por servicio, materiales, viáticos', activo: true },
+    { nombre: 'Motores', departamento: 'motores', tipo: 'motores', funciones: 'Cotización SP-M: refacciones, consumibles, mano de obra, pruebas', activo: true },
     { nombre: 'Cotización Taller SP-E', departamento: 'taller', tipo: 'laboratorio', funciones: 'Alias legacy taller', activo: true },
     { nombre: 'Cotización Automatización SP-A', departamento: 'automatizacion', tipo: 'proyecto', funciones: 'Alias legacy auto', activo: true },
   ];
@@ -52,6 +54,11 @@ async function seedCalculadoras() {
     { calculadora_id: calcIds['Automatización'], concepto: 'Ingeniería', costo: 120, unidad: '$/hr' },
     { calculadora_id: calcIds['Automatización'], concepto: 'PLC', costo: 15000, unidad: '$/unidad' },
     { calculadora_id: calcIds['Automatización'], concepto: 'HMI', costo: 6200, unidad: '$/unidad' },
+    { calculadora_id: calcIds['Motores'], concepto: 'Gasolina', costo: 30, unidad: '$/ltr' },
+    { calculadora_id: calcIds['Motores'], concepto: 'Técnico', costo: 90, unidad: '$/hr' },
+    { calculadora_id: calcIds['Motores'], concepto: 'Gastos fijos', costo: 161.85, unidad: '$/hr' },
+    { calculadora_id: calcIds['Motores'], concepto: 'Camioneta', costo: 52.67, unidad: '$/hr' },
+    { calculadora_id: calcIds['Motores'], concepto: 'Pruebas banco', costo: 250, unidad: '$/hr' },
   ].filter((c) => c.calculadora_id);
 
   for (const c of costosAll) {
@@ -78,6 +85,14 @@ async function seedCalculadoras() {
       { concepto: 'Materiales', formula_text: 'BOM', valor: 0, solo_valor: true },
       { concepto: 'Viáticos', formula_text: 'km + horas', valor: 0 },
       { concepto: 'Total proyecto', formula_text: 'subtotal + utilidad', valor: 0 },
+    ],
+    'Motores': [
+      { concepto: 'KM ida y vuelta', formula_text: 'km * tarifa_km', valor: 0 },
+      { concepto: 'Gasolina viaje', formula_text: 'litros * precio_gasolina', valor: 0 },
+      { concepto: 'Mano de obra', formula_text: 'horas * costo_hora', valor: 0 },
+      { concepto: 'Refacciones motor', formula_text: '', valor: 0, solo_valor: true },
+      { concepto: 'Pruebas banco', formula_text: 'horas * tarifa_pruebas', valor: 0 },
+      { concepto: 'Total cotización', formula_text: 'suma modulos', valor: 0 },
     ],
   };
   let hojaCount = 0;
@@ -138,6 +153,7 @@ async function seedCalculadoras() {
     console.log(`[Calculadoras] Clientes tabulador desde JSON: ${clientesRealesCount} insertados, ${tabuladorRecords.length} total en catálogo`);
 
     const calcLabId = calcIds['Laboratorio (electrónica)'] || calcIds['Cotización Taller SP-E'];
+    const calcMotId = calcIds['Motores'];
     let calcCliCount = 0;
     if (calcLabId) {
       for (const rec of tabuladorRecords) {
@@ -152,6 +168,32 @@ async function seedCalculadoras() {
         if (exists.length > 0) continue;
         await stmtCalcClientes.insert(null, {
           calculadora_id: calcLabId,
+          cliente_nombre: nom,
+          cliente_email: null,
+          datos_json: {
+            km: rec.km,
+            horas_viaje: rec.horas_viaje,
+            rfc: rec.rfc,
+            total: rec.total,
+            costo_gasolina: rec.costo_gasolina,
+          },
+        });
+        calcCliCount++;
+      }
+    }
+    if (calcMotId) {
+      for (const rec of tabuladorRecords) {
+        const nom = rec.nombre_cliente;
+        if (!nom) continue;
+        const exists = await stmtCalcClientes.query(
+          "json_extract(data, '$.calculadora_id') = ? AND json_extract(data, '$.cliente_nombre') = ?",
+          [String(calcMotId), nom],
+          'id ASC',
+          1
+        );
+        if (exists.length > 0) continue;
+        await stmtCalcClientes.insert(null, {
+          calculadora_id: calcMotId,
           cliente_nombre: nom,
           cliente_email: null,
           datos_json: {

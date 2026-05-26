@@ -23,9 +23,8 @@ export async function seedIfEmpty(db) {
     }
   }
 
-  if (count('local_contactos') < 20) {
-    console.warn('[SeedCheck] Pocos contactos — ejecuta manual: node seed-erp-maestro-local.mjs --replace-contactos');
-    // No correr seed-contactos-imagenes (obsoleto); el ERP maestro es la fuente única.
+  if (count('local_contactos') < 45 || count('local_clientes_tabulador') < 45) {
+    console.warn('[SeedCheck] Tabulador incompleto — ejecuta: node seed-tabulador-50.mjs --replace-contactos');
   }
   if (count('local_inventario') === 0) runSeed('seed-inventario.mjs');
   if (count('local_bom_automatizacion') === 0) runSeed('seed-bom.mjs');

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Editor de ordenes</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,sans-serif;background:#f0f2f5;color:#1a1a1a}
+    .top{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid #ddd;padding:12px 16px}
+    .top h1{font-size:1.1rem;margin-bottom:8px}
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    .toolbar input,.toolbar select{padding:8px 10px;border:1px solid #ccc;border-radius:8px;font-size:13px;min-width:160px}
+    .toolbar input[type=search]{flex:1;min-width:200px}
+    .btn{padding:8px 14px;border-radius:8px;border:1px solid #ccc;background:#fff;font-size:13px;cursor:pointer}
+    .btn:hover{background:#f5f5f5}
+    .btn.primary{background:#0C447C;color:#fff;border-color:#0C447C}
+    .btn.primary:hover{background:#09355f}
+    .btn.ok{background:#27500A;color:#fff;border-color:#27500A}
+    .stats{font-size:12px;color:#666;margin-top:6px}
+    .list{padding:12px 16px 40px;max-width:960px;margin:0 auto}
+    .orden{border:1px solid #ddd;border-radius:10px;background:#fff;margin-bottom:8px;overflow:hidden}
+    .orden.open{border-color:#0C447C;box-shadow:0 2px 8px rgba(12,68,124,.12)}
+    .head{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none}
+    .head:hover{background:#f8fafc}
+    .chev{width:20px;color:#888;transition:transform .2s;font-size:12px}
+    .orden.open .chev{transform:rotate(90deg)}
+    .ref{font-weight:600;font-size:14px;color:#0C447C;min-width:90px}
+    .meta{flex:1;font-size:13px;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .badge{font-size:11px;padding:2px 8px;border-radius:12px;background:#E6F1FB;color:#0C447C}
+    .badge.wh{background:#f0f0f0;color:#555}
+    .badge-estado{font-size:11px;padding:3px 10px;border-radius:12px;font-weight:500;white-space:nowrap}
+    .badge-estado.reparado{background:#EAF3DE;color:#27500A;border:1px solid #B8D4A0}
+    .badge-estado.cancelado{background:#FCEEEE;color:#9B1C1C;border:1px solid #F5B4B4}
+    .badge-estado.proceso{background:#FFF4E0;color:#9A5B00;border:1px solid #F5D9A8}
+    .badge-estado.otro{background:#F0F0F5;color:#444;border:1px solid #D8D8E0}
+    .badge-estado.vacio{background:#f5f5f5;color:#888;border:1px solid #e0e0e0}
+    .orden.st-reparado{border-left:4px solid #4A8F2A}
+    .orden.st-cancelado{border-left:4px solid #C42B2B}
+    .orden.st-proceso{border-left:4px solid #D97706}
+    .orden.st-otro{border-left:4px solid #888}
+    .orden.st-vacio{border-left:4px solid #ccc}
+    .leyenda{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:11px}
+    .leyenda span{display:inline-flex;align-items:center;gap:5px}
+    .leyenda i{width:10px;height:10px;border-radius:2px;display:inline-block}
+    .leyenda i.r{background:#4A8F2A}
+    .leyenda i.c{background:#C42B2B}
+    .leyenda i.p{background:#D97706}
+    .leyenda i.o{background:#888}
+    .leyenda i.s{background:#ccc}
+    .body{display:none;padding:0 14px 14px;border-top:1px solid #eee}
+    .orden.open .body{display:block}
+    .grid{display:grid;grid-template-columns:140px 1fr;gap:8px 12px;margin-top:12px}
+    .grid label{font-size:12px;color:#666;padding-top:8px}
+    .grid input,.grid textarea,.grid select{width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px;font-family:inherit}
+    .grid textarea{min-height:72px;resize:vertical}
+    .imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:12px}
+    .imgs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;border:1px solid #ddd}
+    .imgs a{display:block;text-decoration:none}
+    .imgs span{font-size:10px;color:#888;display:block;text-align:center;margin-top:2px}
+    .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+    .msg{font-size:12px;padding:6px 10px;border-radius:6px;display:none}
+    .msg.show{display:inline-block}
+    .msg.ok{background:#EAF3DE;color:#27500A}
+    .msg.err{background:#FCEEEE;color:#C42B2B}
+    .empty{padding:40px;text-align:center;color:#888}
+    .loading{padding:40px;text-align:center}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <h1>Editor de ordenes</h1>
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Buscar orden, cliente, equipo...">
+      <select id="grupo">
+        <option value="">Todas</option>
+        <option value="SP-E">SP-E</option>
+        <option value="WHRO">WHRO</option>
+      </select>
+      <select id="estadoCat" title="Filtro por tipo de estado">
+        <option value="">Estado: todos</option>
+        <option value="reparado">Reparado</option>
+        <option value="proceso">En proceso</option>
+        <option value="cancelado">Cancelado</option>
+        <option value="vacio">Sin estado</option>
+        <option value="otro">Otro</option>
+      </select>
+      <select id="estadoF">
+        <option value="">Texto exacto...</option>
+      </select>
+      <button type="button" class="btn" id="btnExpand">Expandir filtradas</button>
+      <button type="button" class="btn" id="btnCollapse">Colapsar todo</button>
+      <button type="button" class="btn primary" id="btnExport">Exportar JSON</button>
+    </div>
+    <p class="stats" id="stats"></p>
+    <div class="leyenda">
+      <span><i class="r"></i> Reparado</span>
+      <span><i class="p"></i> En proceso</span>
+      <span><i class="c"></i> Cancelado</span>
+      <span><i class="o"></i> Otro</span>
+      <span><i class="s"></i> Sin estado</span>
+    </div>
+  </div>
+  <div class="list" id="list"><div class="loading">Cargando datos...</div></div>
+
+<script>
+const FIELDS = [
+  ['referencia_reparacion','Referencia'],
+  ['estado_actual','Estado'],
+  ['numero_orden','Numero orden'],
+  ['tipo_orden','Tipo orden'],
+  ['cliente','Cliente'],
+  ['cliente_rfc','RFC'],
+  ['equipo','Equipo'],
+  ['componente','Componente'],
+  ['bajo_garantia','Bajo garantia'],
+  ['fecha_ingreso','Fecha ingreso'],
+  ['fecha','Fecha'],
+  ['encargado','Encargado'],
+  ['vendedor','Vendedor'],
+  ['materiales','Materiales'],
+  ['notas','Notas'],
+  ['diagnostico','Diagnostico'],
+  ['solucion','Solucion'],
+  ['descripcion','Descripcion'],
+  ['historial_actividad','Historial']
+];
+const LONG = new Set(['notas','diagnostico','solucion','descripcion','historial_actividad','materiales']);
+
+let data = [];
+let openRef = null;
+
+function esc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+}
+
+function grupo(ref){
+  if(/^WHRO/i.test(ref)) return 'WHRO';
+  if(/^SP-E/i.test(ref)) return 'SP-E';
+  return 'Otro';
+}
+
+function categoriaEstado(estado){
+  const lo = (estado || '').toLowerCase().trim();
+  if(!lo) return 'vacio';
+  if(/\bcancelad/.test(lo)) return 'cancelado';
+  if(/\breparad|\bentregad/.test(lo)) return 'reparado';
+  if(/\ben\s*reparaci|\bconfirmad|\bnuevo\b|\bdiagn[oó]stic|\bpendiente|\besperando|\brepuesto|\bproceso|\ben\s*curso/.test(lo)) return 'proceso';
+  return 'otro';
+}
+
+function etiquetaEstado(cat, estado){
+  if(cat === 'vacio') return 'Sin estado';
+  if(cat === 'reparado') return estado || 'Reparado';
+  if(cat === 'cancelado') return estado || 'Cancelado';
+  if(cat === 'proceso') return estado || 'En proceso';
+  return estado || 'Otro';
+}
+
+function resumen(d){
+  const p = [];
+  if(d.cliente) p.push(d.cliente);
+  if(d.equipo) p.push(d.equipo.slice(0,40));
+  return p.join(' · ') || '(sin datos)';
+}
+
+function buildEstadoFilter(){
+  const set = new Set();
+  data.forEach(d => { if(d.estado_actual) set.add(d.estado_actual); });
+  const sel = document.getElementById('estadoF');
+  [...set].sort().forEach(e => {
+    const o = document.createElement('option');
+    o.value = e; o.textContent = e;
+    sel.appendChild(o);
+  });
+}
+
+function filtered(){
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const g = document.getElementById('grupo').value;
+  const cat = document.getElementById('estadoCat').value;
+  const est = document.getElementById('estadoF').value;
+  return data.filter(d => {
+    const ref = d.referencia_reparacion || '';
+    if(g && !ref.toUpperCase().startsWith(g)) return false;
+    if(cat && categoriaEstado(d.estado_actual) !== cat) return false;
+    if(est && d.estado_actual !== est) return false;
+    if(!q) return true;
+    const blob = FIELDS.map(([k]) => d[k]).join(' ').toLowerCase();
+    return blob.includes(q) || ref.toLowerCase().includes(q);
+  });
+}
+
+function renderImgs(d){
+  let h = '';
+  const add = (urls, label) => {
+    (urls||[]).forEach((u,i) => {
+      const url = typeof u === 'string' ? u : (u.url||'');
+      if(!url) return;
+      h += '<a href="'+esc(url)+'" target="_blank"><img src="'+esc(url)+'" alt=""><span>'+esc(label+' '+(i+1))+'</span></a>';
+    });
+  };
+  add(d.imagenes_erp, 'ERP');
+  add(d.imagenes_servicio, 'Servicio');
+  (d.archivos_pdf||[]).forEach(p => {
+    const url = p.url || p;
+    const nombre = p.nombre || 'PDF';
+    h += '<a href="'+esc(url)+'" target="_blank"><span style="display:block;padding:20px;background:#eee;border-radius:6px;text-align:center">'+esc(nombre)+'</span></a>';
+  });
+  return h ? '<div class="imgs">'+h+'</div>' : '';
+}
+
+function renderFields(d, idx){
+  return FIELDS.map(([k,label]) => {
+    const v = d[k] || '';
+    const el = LONG.has(k)
+      ? '<textarea data-k="'+k+'" data-i="'+idx+'">'+esc(v)+'</textarea>'
+      : '<input data-k="'+k+'" data-i="'+idx+'" value="'+esc(v)+'">';
+    return '<label>'+label+'</label>'+el;
+  }).join('');
+}
+
+function render(){
+  const rows = filtered();
+  document.getElementById('stats').textContent =
+    rows.length + ' de ' + data.length + ' ordenes';
+
+  if(!rows.length){
+    document.getElementById('list').innerHTML = '<div class="empty">No hay ordenes con ese filtro.</div>';
+    return;
+  }
+
+  document.getElementById('list').innerHTML = rows.map(d => {
+    const ref = d.referencia_reparacion || '';
+    const idx = data.indexOf(d);
+    const isOpen = openRef === ref;
+    const g = grupo(ref);
+    const cat = categoriaEstado(d.estado_actual);
+    const estLabel = etiquetaEstado(cat, d.estado_actual);
+    return '<article class="orden st-'+cat+(isOpen?' open':'')+'" data-ref="'+esc(ref)+'" data-i="'+idx+'">'+
+      '<div class="head" data-toggle="'+esc(ref)+'">'+
+        '<span class="chev">▶</span>'+
+        '<span class="ref">'+esc(ref)+'</span>'+
+        '<span class="badge-estado '+cat+'">'+esc(estLabel)+'</span>'+
+        '<span class="meta">'+esc(resumen(d))+'</span>'+
+        '<span class="badge'+(g==='WHRO'?' wh':'')+'">'+esc(g)+'</span>'+
+      '</div>'+
+      '<div class="body">'+
+        '<div class="grid">'+renderFields(d, idx)+'</div>'+
+        renderImgs(d)+
+        '<div class="actions">'+
+          '<button type="button" class="btn ok" data-save="'+idx+'">Guardar esta orden</button>'+
+          '<span class="msg" id="msg-'+idx+'"></span>'+
+        '</div>'+
+      '</div></article>';
+  }).join('');
+}
+
+function collect(idx){
+  const card = document.querySelector('.orden[data-i="'+idx+'"]');
+  if(!card) return null;
+  const row = Object.assign({}, data[idx]);
+  card.querySelectorAll('[data-k]').forEach(el => {
+    row[el.dataset.k] = el.value.trim();
+  });
+  return row;
+}
+
+async function guardar(idx, btn){
+  const row = collect(idx);
+  if(!row) return;
+  const msg = document.getElementById('msg-'+idx);
+  btn.disabled = true;
+  msg.className = 'msg';
+  msg.textContent = 'Guardando...';
+  msg.classList.add('show');
+  try{
+    const r = await fetch('/api/guardar-orden', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(row)
+    });
+    const j = await r.json();
+    if(j.ok){
+      data[idx] = row;
+      msg.textContent = 'Guardado en datos_ordenes_editables.json';
+      msg.classList.add('ok','show');
+    } else {
+      throw new Error(j.error || 'Error');
+    }
+  }catch(e){
+    msg.textContent = 'Error: '+e.message;
+    msg.classList.add('err','show');
+  }
+  btn.disabled = false;
+}
+
+document.getElementById('list').addEventListener('click', e => {
+  const head = e.target.closest('[data-toggle]');
+  if(head){
+    const ref = head.dataset.toggle;
+    openRef = openRef === ref ? null : ref;
+    render();
+    return;
+  }
+  const save = e.target.closest('[data-save]');
+  if(save) guardar(+save.dataset.save, save);
+});
+
+document.getElementById('q').addEventListener('input', () => { openRef = null; render(); });
+document.getElementById('grupo').addEventListener('change', () => { openRef = null; render(); });
+document.getElementById('estadoCat').addEventListener('change', () => {
+  openRef = null;
+  document.getElementById('estadoF').value = '';
+  render();
+});
+document.getElementById('estadoF').addEventListener('change', () => { openRef = null; render(); });
+
+document.getElementById('btnCollapse').onclick = () => { openRef = null; render(); };
+document.getElementById('btnExpand').onclick = () => {
+  const rows = filtered();
+  if(rows[0]) openRef = rows[0].referencia_reparacion;
+  render();
+};
+
+document.getElementById('btnExport').onclick = () => {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'datos_ordenes_editables_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+};
+
+fetch('datos_ordenes_editables.json')
+  .then(r => {
+    if(!r.ok) throw new Error('No se encontro datos_ordenes_editables.json. Ejecuta 4_limpiar_datos.bat');
+    return r.json();
+  })
+  .then(j => {
+    data = j;
+    buildEstadoFilter();
+    render();
+  })
+  .catch(e => {
+    document.getElementById('list').innerHTML =
+      '<div class="empty">'+esc(e.message)+'</div>';
+  });
+</script>
+</body>
+</html>

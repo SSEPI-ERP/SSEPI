@@ -20,6 +20,8 @@ const ContactosModule = (function() {
     let _ensuringPrioritySuppliers = false;
     let filtroTipo = 'all';
     let busqueda = '';
+    let filtroEmpresaKey = '';
+    let empresaGrupos = [];
     let periodo = 'all';
     let vistaActual = 'kanban';
     let contactoSeleccionado = null;
@@ -29,11 +31,21 @@ const ContactosModule = (function() {
 
     function _supabase() { return window.supabase; }
 
+    function _normalizarDedupe(str) {
+        if (!str) return '';
+        return String(str)
+            .toLowerCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/[^a-z0-9\s]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
     /** Evita duplicar la misma persona al fusionar `clientes` con `contactos` (misma clave = una sola fila). */
     function _claveDedupeContacto(c) {
         const email = (c.email || '').toString().toLowerCase().trim();
-        const nom = (c.nombre || '').toString().toLowerCase().trim();
-        const emp = (c.empresa || '').toString().toLowerCase().trim();
+        const nom = _normalizarDedupe(c.nombre);
+        const emp = _normalizarDedupe(c.empresa);
         // Correo compartido (administración, ventas) ≠ una sola persona.
         if (email) return 'e:' + email + '|' + nom + '|' + emp;
         const tel = (c.telefono || '').toString().replace(/\D/g, '');
@@ -84,6 +96,104 @@ const ContactosModule = (function() {
         const keys = Object.keys(rows[0] || {});
         const joined = keys.join('\u0000').toLowerCase();
         return joined.includes('nombre completo') && (joined.includes('correo') || joined.includes('teléfono') || joined.includes('telefono'));
+    }
+
+    /** Nombre de empresa para agrupar (tabulador / Odoo / campo empresa). */
+    function _nombreEmpresaDisplay(c) {
+        if (!c) return '';
+        if (c.tipo_ficha === 'empresa' || c.categoria === 'empresa') {
+            return (c.empresa_tabulador || c.nombre || c.empresa || '').trim();
+        }
+        return (c.empresa_tabulador || c.empresa || '').trim();
+    }
+
+    function _buildEmpresaGrupos() {
+        const map = new Map();
+        for (const c of contactos) {
+            const label = _nombreEmpresaDisplay(c);
+            if (!label) continue;
+            const key = _normalizarDedupe(label);
+            if (!key) continue;
+            if (!map.has(key)) {
+                map.set(key, { key, label: label.toUpperCase(), vendedores: 0, empresaId: null });
+            }
+            const g = map.get(key);
+            if (c.tipo_ficha === 'empresa' || c.categoria === 'empresa') {
+                g.empresaId = c.id;
+            } else if (
+                c.tipo_ficha === 'contacto_empresa' ||
+                (c.categoria !== 'empresa' && (c.empresa || c.empresa_tabulador))
+            ) {
+                g.vendedores++;
+            }
+        }
+        return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, 'es'));
+    }
+
+    function _perteneceAEmpresa(c, empresaKey) {
+        if (!empresaKey) return true;
+        const g = empresaGrupos.find(x => x.key === empresaKey);
+        if (g && g.empresaId && c.empresa_padre_id === g.empresaId) return true;
+        const label = _nombreEmpresaDisplay(c);
+        if (_normalizarDedupe(label) === empresaKey) return true;
+        const campos = [c.empresa, c.empresa_tabulador];
+        if (c.tipo_ficha !== 'contacto_empresa' && c.categoria !== 'empresa') campos.push(c.nombre);
+        return campos.some(v => v && _normalizarDedupe(v) === empresaKey);
+    }
+
+    function _populateEmpresaSelect() {
+        const sel = document.getElementById('filtroEmpresa');
+        if (!sel) return;
+        const cur = filtroEmpresaKey;
+        let list = empresaGrupos;
+        if (busqueda) {
+            const q = busqueda;
+            list = list.filter(g => {
+                if (g.label.toLowerCase().includes(q)) return true;
+                return contactos.some(c =>
+                    _perteneceAEmpresa(c, g.key) && (
+                        (c.nombre && c.nombre.toLowerCase().includes(q)) ||
+                        (c.email && c.email.toLowerCase().includes(q)) ||
+                        (c.puesto && c.puesto.toLowerCase().includes(q))
+                    )
+                );
+            });
+        }
+        sel.innerHTML = '<option value="">— Todas las empresas —</option>' +
+            list.map(g => {
+                const nv = g.vendedores || 0;
+                const extra = nv ? ` · ${nv} vendedor${nv !== 1 ? 'es' : ''}` : '';
+                return `<option value="${g.key}">${g.label}${extra}</option>`;
+            }).join('');
+        if (cur && list.some(g => g.key === cur)) sel.value = cur;
+        else if (cur) {
+            sel.value = '';
+            filtroEmpresaKey = '';
+        }
+    }
+
+    function _rebuildEmpresaGrupos() {
+        empresaGrupos = _buildEmpresaGrupos();
+        _populateEmpresaSelect();
+    }
+
+    function _renderEmpresaFiltroHint(filtered) {
+        const el = document.getElementById('empresaFiltroHint');
+        if (!el) return;
+        if (!filtroEmpresaKey) {
+            el.style.display = 'none';
+            el.innerHTML = '';
+            return;
+        }
+        const g = empresaGrupos.find(x => x.key === filtroEmpresaKey);
+        const vend = filtered.filter(c =>
+            c.tipo_ficha === 'contacto_empresa' ||
+            (c.categoria !== 'empresa' && c.tipo_ficha !== 'empresa' && (c.empresa || c.empresa_tabulador))
+        ).length;
+        const label = g ? g.label : filtroEmpresaKey;
+        const vendTxt = vend ? ` · ${vend} vendedor${vend !== 1 ? 'es' : ''}` : '';
+        el.style.display = 'block';
+        el.innerHTML = `<i class="fas fa-building"></i> <strong>${label}</strong> — ${filtered.length} contacto(s) mostrado(s)${vendTxt}. <span style="opacity:0.85">Incluye ficha empresa y personas vinculadas.</span>`;
     }
 
     // Suscripciones
@@ -198,6 +308,12 @@ const ContactosModule = (function() {
 
         if (byId('searchInput')) byId('searchInput').addEventListener('input', function(e) {
             busqueda = e.target.value.toLowerCase();
+            _populateEmpresaSelect();
+            _renderView();
+        });
+
+        if (byId('filtroEmpresa')) byId('filtroEmpresa').addEventListener('change', function(e) {
+            filtroEmpresaKey = e.target.value || '';
             _renderView();
         });
 
@@ -212,6 +328,39 @@ const ContactosModule = (function() {
         if (byId('btnWhatsApp')) byId('btnWhatsApp').addEventListener('click', _enviarWhatsApp);
         if (byId('updateContactBtn')) byId('updateContactBtn').addEventListener('click', _updateContactData);
         if (byId('panelLogoUrl')) byId('panelLogoUrl').addEventListener('input', _updateAvatarPreview);
+        if (byId('panelNombre')) byId('panelNombre').addEventListener('input', _updateAvatarPreview);
+
+        // Delegación de clicks para kanban y lista (sin inline onclick — CSP-safe)
+        const kanbanContainer = document.getElementById('kanbanContainer');
+        if (kanbanContainer) {
+            kanbanContainer.addEventListener('click', function(e) {
+                const card = e.target.closest('.contact-card');
+                if (card) {
+                    const id = card.dataset.id;
+                    if (id) abrirDetalle(id);
+                }
+            });
+        }
+        const listTableBody = document.getElementById('listTableBody');
+        if (listTableBody) {
+            listTableBody.addEventListener('click', function(e) {
+                const row = e.target.closest('tr[data-id]');
+                if (row) {
+                    const id = row.dataset.id;
+                    if (id) abrirDetalle(id);
+                }
+            });
+        }
+        const sidePanel = document.getElementById('sidePanel');
+        if (sidePanel) {
+            sidePanel.addEventListener('click', function(e) {
+                const row = e.target.closest('.related-person-row');
+                if (row) {
+                    const id = row.dataset.id;
+                    if (id) abrirDetalle(id);
+                }
+            });
+        }
     }
 
     function _toggleMenu() {
@@ -261,12 +410,15 @@ const ContactosModule = (function() {
         // Solo contactos reales en BD — tabulador es tabla aparte (calculadoras/taller)
         const vistos = new Set();
         contactos = rawContactos.filter(c => {
+            // Descartar filas vacías / sin identidad usable
+            if (!c.nombre && !c.empresa && !c.email && !c.telefono) return false;
             const k = _claveDedupeContacto(c);
             if (vistos.has(k)) return false;
             vistos.add(k);
             return true;
         });
         console.log('[Contactos] Total después de dedupe:', contactos.length);
+        _rebuildEmpresaGrupos();
         // Proveedores de catálogo PRIORITY desactivados — solo contactos reales
         // if (!skipPriorityEnsure && !_ensuringPrioritySuppliers) {
         //     _ensuringPrioritySuppliers = true;
@@ -346,6 +498,12 @@ const ContactosModule = (function() {
             });
         }
 
+        if (filtroEmpresaKey) {
+            filtered = filtered.filter(c => _perteneceAEmpresa(c, filtroEmpresaKey));
+        }
+
+        _renderEmpresaFiltroHint(filtered);
+
         ultimaVistaFiltrada = filtered.slice();
 
         const totalEl = document.getElementById('totalCount');
@@ -375,7 +533,7 @@ const ContactosModule = (function() {
             const catClass = (c.categoria === 'empresa') ? 'empresa' : 'persona';
             const catText = (c.categoria === 'empresa') ? 'EMPRESA' : 'PERSONA';
             return `
-                <div class="contact-card" data-id="${c.id}" onclick="contactosModule.abrirDetalle('${c.id}')">
+                <div class="contact-card" data-id="${c.id}">
                     <div class="avatar-box" style="${estiloAvatar}">${c.logo_url ? '' : inicial}</div>
                     <div class="info">
                         <h3>${c.nombre || 'Sin nombre'}</h3>
@@ -411,7 +569,7 @@ const ContactosModule = (function() {
                 ? `<img src="${c.logo_url}" class="list-avatar-img" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px;">`
                 : `<span class="list-avatar-letter" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,${c.color || '#00a09d'},${c.color || '#008a87'});color:#fff;font-size:12px;font-weight:700;vertical-align:middle;margin-right:8px;">${(c.nombre || '?').charAt(0).toUpperCase()}</span>`;
             return `
-            <tr onclick="contactosModule.abrirDetalle('${c.id}')">
+            <tr data-id="${c.id}">
                 <td>${avatarHtml}<strong>${c.nombre || ''}</strong></td>
                 <td>${c.empresa_tabulador ? '<span title="Tabulador">' + c.empresa_tabulador + '</span>' : (c.empresa || '')}</td>
                 <td>${c.email || ''}</td>
@@ -451,7 +609,8 @@ const ContactosModule = (function() {
 
     // ==================== PANEL DE DETALLE ====================
     async function abrirDetalle(id) {
-        const contacto = ultimaVistaFiltrada.find(c => c.id === id) || contactos.find(c => c.id === id);
+        const sid = String(id);
+        const contacto = ultimaVistaFiltrada.find(c => String(c.id) === sid) || contactos.find(c => String(c.id) === sid);
         if (!contacto) return;
         contactoSeleccionado = contacto;
         const backdrop = document.getElementById('backdrop');
@@ -461,8 +620,8 @@ const ContactosModule = (function() {
 
         const panelNombre = document.getElementById('panelNombre');
         const panelEmpresa = document.getElementById('panelEmpresa');
-        if (panelNombre) panelNombre.innerText = contacto.nombre || 'Sin nombre';
-        if (panelEmpresa) panelEmpresa.innerText = contacto.empresa || '—';
+        if (panelNombre) panelNombre.value = contacto.nombre || '';
+        if (panelEmpresa) panelEmpresa.value = contacto.empresa || contacto.empresa_tabulador || '';
         _updateAvatarFromContact(contacto);
 
         const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
@@ -525,7 +684,7 @@ const ContactosModule = (function() {
                     const avatar = r.logo_url
                         ? `<img src="${r.logo_url}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px;">`
                         : `<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,${r.color || '#00a09d'},${r.color || '#008a87'});color:#fff;font-size:11px;font-weight:700;vertical-align:middle;margin-right:6px;">${(r.nombre || '?').charAt(0).toUpperCase()}</span>`;
-                    return `<div style="padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.05);cursor:pointer;" onclick="contactosModule.abrirDetalle('${r.id}')">${avatar}<strong>${r.nombre}</strong> <span style="color:#888;font-size:12px;">${r.puesto || ''}</span></div>`;
+                    return `<div class="related-person-row" data-id="${r.id}" style="padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.05);cursor:pointer;">${avatar}<strong>${r.nombre}</strong> <span style="color:#888;font-size:12px;">${r.puesto || ''}</span></div>`;
                 }).join('');
                 const sectionHtml = `
                     <div class="detail-section" id="panelRelatedPeople">
@@ -570,16 +729,20 @@ const ContactosModule = (function() {
     }
 
     function _updateAvatarPreview() {
-        const logoUrl = document.getElementById('panelLogoUrl').value;
+        const logoUrl = document.getElementById('panelLogoUrl')?.value;
         const avatarDiv = document.getElementById('panelAvatar');
+        if (!avatarDiv) return;
         if (logoUrl) {
             avatarDiv.style.background = `url('${logoUrl}') center / cover no-repeat`;
             avatarDiv.innerHTML = '';
-        } else if (contactoSeleccionado) {
-            const inicial = (contactoSeleccionado.nombre || '?').charAt(0).toUpperCase();
-            avatarDiv.style.background = `linear-gradient(135deg, ${contactoSeleccionado.color || '#00a09d'}, ${contactoSeleccionado.color || '#008a87'})`;
-            avatarDiv.innerHTML = inicial;
+            return;
         }
+        const nombreInput = document.getElementById('panelNombre')?.value?.trim();
+        const base = nombreInput || contactoSeleccionado?.nombre || '?';
+        const color = contactoSeleccionado?.color || '#00a09d';
+        const inicial = base.charAt(0).toUpperCase();
+        avatarDiv.style.background = `linear-gradient(135deg, ${color}, ${color})`;
+        avatarDiv.innerHTML = inicial;
     }
 
     async function _updateContactData() {
@@ -588,7 +751,15 @@ const ContactosModule = (function() {
             showNotification('Proveedor de catálogo: cree un contacto nuevo para guardar en la base.', 'error');
             return;
         }
+        const nombreRaw = document.getElementById('panelNombre')?.value?.trim() || '';
+        const empresaRaw = document.getElementById('panelEmpresa')?.value?.trim() || '';
+        if (!nombreRaw && !empresaRaw) {
+            showNotification('Indique al menos nombre o empresa', 'error');
+            return;
+        }
         const updatedData = {
+            nombre: (nombreRaw || empresaRaw).toUpperCase(),
+            empresa: empresaRaw.toUpperCase(),
             puesto: document.getElementById('panelPuesto').value.trim() || '',
             telefono: document.getElementById('panelTelefono').value.trim() || '',
             email: document.getElementById('panelEmail').value.trim() || '',
@@ -599,12 +770,21 @@ const ContactosModule = (function() {
             etiquetas: document.getElementById('panelEtiquetas').value.trim() || '',
             direccion: document.getElementById('panelDireccion').value.trim() || '',
             logo_url: document.getElementById('panelLogoUrl').value.trim() || '',
+            avatar: (nombreRaw || empresaRaw).charAt(0).toUpperCase(),
             updated_at: new Date().toISOString()
         };
 
         const csrfToken = sessionStorage.getItem('csrfToken');
         try {
             await contactosService.update(id, updatedData, csrfToken);
+            const idx = contactos.findIndex(c => String(c.id) === String(id));
+            if (idx >= 0) Object.assign(contactos[idx], updatedData);
+            if (contactoSeleccionado && String(contactoSeleccionado.id) === String(id)) {
+                Object.assign(contactoSeleccionado, updatedData);
+            }
+            _rebuildEmpresaGrupos();
+            _renderView();
+            _updateAvatarFromContact(contactoSeleccionado || updatedData);
             await _agregarActividad(id, 'nota', 'Contacto actualizado');
             showNotification('✅ Contacto actualizado', 'success');
         } catch (e) {

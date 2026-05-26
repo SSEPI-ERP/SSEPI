@@ -1,0 +1,52 @@
+================================================================================
+  PAC CONTACTOS — Odoo, tabulador Excel y vinculacion empresa / vendedores
+================================================================================
+
+Paquete con el comparador de contactos Odoo, documentacion y herramientas
+relacionadas (editor de ordenes y formato laboratorio en subcarpetas).
+
+  Carpeta raiz del proyecto:
+  c:\Users\norbe\Documents\robot_mecanum_esp32_v3\escaner de imagenes\
+
+  Este paquete:
+  ...\escaner de imagenes\Pac_Contactos\
+
+--------------------------------------------------------------------------------
+INICIO RAPIDO — COMPARADOR DE CONTACTOS
+--------------------------------------------------------------------------------
+
+  1) Doble clic: INICIAR_COMPARADOR.bat
+     Puerto 8766 → Comparador Odoo / Excel / Tabulador
+
+  2) Navegador:
+     http://127.0.0.1:8766/comparador_clientes.html
+
+  (Opcional: INICIAR_AMBOS.bat abre tambien el editor de ordenes en 8765)
+
+--------------------------------------------------------------------------------
+DOCUMENTACION PRINCIPAL (contactos)
+--------------------------------------------------------------------------------
+
+  03_Documentacion\GUIA_COMPARADOR_EMPRESAS_VENDEDORES.txt
+      → Empresa vs vendedor, tabulador calculadora vs solo contactos Odoo
+
+  01_Comparador_Odoo_Excel\LEEME.txt
+      → Scripts y regeneracion de datos
+
+  04_Datos_muestra\listado_tabulador_odoo.json
+      → Listado 24 + 26 + 104 en JSON
+
+  03_Documentacion\VINCULACION_EMPRESAS_Y_COSTOS.txt
+      → Costos modulos LAB / MOT / SUM para calculadora
+
+--------------------------------------------------------------------------------
+ACTUALIZAR DATOS (capturas o Excel)
+--------------------------------------------------------------------------------
+
+  cd "...\escaner de imagenes\info"
+  python generar_rastro.py
+  python build_comparador.py
+
+  Luego copiar scripts actualizados a 01_Comparador_Odoo_Excel\ si hace falta.
+
+================================================================================

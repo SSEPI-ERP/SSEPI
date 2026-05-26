@@ -1,0 +1,65 @@
+[
+  {
+    "formato": "laboratorio-1",
+    "referencia_reparacion": "WH/RO/00105",
+    "numero_orden_wh": "WH/RO/00105",
+    "etapa_actual": 4,
+    "etapas": [
+      {"n": 1, "nombre": "Registrado", "fecha": "20-may, 10:00 a.m.", "estado": "completado"},
+      {"n": 2, "nombre": "Diagnóstico", "fecha": "22-may, 02:15 p.m.", "estado": "completado"},
+      {"n": 3, "nombre": "Esperando Cotización / Confirmación", "fecha": "24-may, 09:30 a.m.", "estado": "completado"},
+      {"n": 4, "nombre": "Reparación / Reparado", "fecha": "26-may, 08:26 a.m.", "estado": "en_curso"},
+      {"n": 5, "nombre": "Entregado / Facturado", "fecha": "", "estado": "pendiente"}
+    ],
+    "datos_recepcion": {
+      "cliente": "NHK Spring México, S.A. de C.V.",
+      "marca": "",
+      "serie": "",
+      "condiciones": "",
+      "equipo": "Equipo por identificar",
+      "modelo": "",
+      "falla": "Falla por documentar"
+    },
+    "resumen_diagnostico": "Orden de reparación creada. Cliente: NHK Spring México, S.A. de C.V. - NSM130527779. Equipo. Modelo. componente",
+    "notas_reparacion": "",
+    "reporte_tecnico": "Orden de reparación creada. Cliente: NHK Spring México, S.A. de C.V. - NSM130527779. Equipo. Modelo. componente",
+    "imagenes_reporte": [],
+    "componentes_extras": [
+      {
+        "nombre": "Fusible",
+        "descripcion": "10A 250V",
+        "cantidad": 2,
+        "costo_unitario": 45.0,
+        "subtotal": 90.0
+      }
+    ],
+    "componentes_inventario": [
+      {
+        "sku": "INV-001",
+        "nombre": "Relevador",
+        "descripcion": "24VDC",
+        "solicitado": 1,
+        "usado": 1
+      }
+    ],
+    "componentes_compra": [
+      {
+        "nombre": "Capacitor electrolítico",
+        "descripcion": "470uF 25V",
+        "sku": "COM-882",
+        "recibido": 2,
+        "usado": 2
+      }
+    ],
+    "consumibles_usados": [],
+    "bitacora": {
+      "notas": ["Revisión inicial completada."],
+      "registro": ["26-may, 08:26 a.m. — Etapa 4 en curso"]
+    },
+    "estado_actual": "En reparación",
+    "cliente": "NHK Spring México, S.A. de C.V.",
+    "cliente_rfc": "NSM130527779",
+    "equipo": "Equipo por identificar",
+    "fecha_ingreso": "26/5/2026"
+  }
+]

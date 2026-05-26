@@ -54,13 +54,17 @@ echo  IMPORTANTE: La base es local (SQLite).
 echo  Si faltan tablas nuevas, el servidor las
 echo  crea automaticamente al arrancar.
 echo.
-echo  Login local:
-echo    norbertomoro4@gmail.com  /  Ssepi2025!
-echo    ventas1@ssepi.org       /  Ssepi2025!
-echo    laboratorio1@ssepi.org  /  Ssepi2025!
-echo    motores1@ssepi.org      /  Ssepi2025!
-echo    automatizacion1         /  Ssepi2025!
-echo    ivang.ssepi@gmail.com   /  Ssepi2025!
-echo    administracion@ssepi.org /  Ssepi2025!
+  echo  Login local (contraseña: Ssepi2025!):
+  echo    norbertomoro4@gmail.com     — Norberto Moro
+  echo    ventas1@ssepi.org           — Carlos Calderon
+  echo    ventas@ssepi.org            — Daniel Zuniga
+  echo    laboratorio1@ssepi.org      — Javier
+  echo    electronica@ssepi.org       — Javier
+  echo    electronica.ssepi@gmail.com — Aron
+  echo    motores1@ssepi.org          — Becerra
+  echo    automatizacion1@ssepi.org   — Tecnico
+  echo    ivang.ssepi@gmail.com       — Ivan
+  echo    administracion@ssepi.org    — Administracion
+  echo    automatizacion@ssepi.org    — Arturo
 echo =========================================
 pause

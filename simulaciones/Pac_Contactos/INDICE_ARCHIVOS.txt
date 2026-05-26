@@ -1,0 +1,22 @@
+Pac_Contactos — Indice
+======================
+
+LEEME_PRIMERO.txt
+INICIAR_COMPARADOR.bat | INICIAR_EDITOR.bat | INICIAR_AMBOS.bat
+
+03_Documentacion\
+  GUIA_COMPARADOR_EMPRESAS_VENDEDORES.txt   ← Empresa vs vendedor, tabulador vs contactos
+  GUIA_USO_OPERATIVA.txt
+  BASE_DE_DATOS_Y_ARCHIVOS.txt
+  VINCULACION_EMPRESAS_Y_COSTOS.txt
+  GUIA_GERENTE_Y_DESARROLLO_FUTURO.txt
+
+01_Comparador_Odoo_Excel\   Comparador contactos (codigo + HTML + reglas manuales)
+02_Editor_Ordenes\          Editor ordenes reparacion (opcional)
+04_Datos_muestra\           listado_tabulador_odoo.json + muestras
+05_Formato_Laboratorio_Import\  Formato laboratorio (opcional)
+
+Datos completos (proyecto padre):
+  ..\info\datos_comparador.json
+  ..\info\TABULADOR DE COTIZACION actualizado.xlsx
+  ..\info\SistemaContactos\CapturasOdoo\

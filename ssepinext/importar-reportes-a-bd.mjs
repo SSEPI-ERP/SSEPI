@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { getDb, persistDb, prepareStatement, setDeferPersist } from './db.mjs';
 import { sanitizeReporteRecord, folderCandidates, normalizeFolioRef } from './reportes-sanitize.mjs';
-import { normalizeLabOrder, imagenesReporte, urlImagen } from '../scripts/imports/laboratorio-import.mjs';
+import { normalizeLabOrder, imagenesReporte, imagenesCaptura, urlImagen } from '../scripts/imports/laboratorio-import.mjs';
 import {
   PAQUETE_ERP,
   PAQUETE_ERP_NUEVO,
@@ -73,22 +73,16 @@ function parseFechaToIso(str) {
   return null;
 }
 
-/** Estados compatibles con KANBAN_STAGES en panel/js/modules/taller.js */
+/** Estados compatibles con KANBAN_STAGES en panel/js/modules/taller.js.
+ *  Para importaciones históricas del paquete ERP: todo es Reparado o Cancelado.
+ */
 function normalizeEstado(est) {
   if (ESTADO_OVERRIDE) return ESTADO_OVERRIDE;
-  if (!est) return 'Nuevo';
+  if (!est) return 'Reparado';
   const lo = String(est).toLowerCase();
   if (lo.includes('cancel')) return 'Cancelado';
-  if (lo.includes('entreg') || lo.includes('factur')) return 'Entregado';
-  if (lo.includes('reparado') || lo.includes('listo')) return 'Reparado';
-  if (lo.includes('reparaci')) return 'En reparación';
-  if (lo.includes('confirm')) return 'Confirmado';
-  if (lo.includes('cotiz')) return 'Esperando Cotización';
-  if (lo.includes('esperando') && lo.includes('confirm')) return 'Esperando Confirmación Cliente';
-  if (lo.includes('diagn')) return 'Diagnóstico';
-  if (lo.includes('garant')) return 'Garantía';
-  if (lo.includes('nuevo') || lo.includes('registr')) return 'Nuevo';
-  return 'Nuevo';
+  // Historial cerrado: cualquier otro estado se trata como Reparado
+  return 'Reparado';
 }
 
 function classifyModule(rec, folio) {
@@ -252,12 +246,14 @@ function buildBaseOrder(rec, reporteImagenes, documentosAdjuntos, resumenCarpeta
   const imgsLab = imagenesReporte(lab).map(urlImagen).filter(Boolean);
   return {
     folio,
+    origen: 'import_erp',
     formato: lab.formato || 'laboratorio-1',
     etapa_actual: lab.etapa_actual || 1,
     etapas: lab.etapas || [],
     datos_recepcion: lab.datos_recepcion || recp,
     resumen_diagnostico: lab.resumen_diagnostico || rec.diagnostico || '',
     imagenes_reporte: imgsLab,
+    imagen_captura_orden: imagenesCaptura(lab).map(urlImagen).filter(Boolean)[0] || null,
     estado: normalizeEstado(rec.estado_actual),
     resumen_carpeta: resumenCarpeta || '',
     cliente_nombre: recp.cliente || rec.cliente || 'Cliente por identificar',
@@ -420,6 +416,7 @@ async function main() {
 
   setDeferPersist(true);
   for (let idx = 0; idx < records.length; idx++) {
+    if (idx > 0 && idx % 20 === 0) console.log(`[Import] Progreso ${idx}/${records.length}...`);
     const rec = records[idx];
     const folio = (rec.referencia_reparacion || '').toUpperCase().trim();
     if (!folio) { skipped++; continue; }

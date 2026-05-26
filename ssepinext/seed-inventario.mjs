@@ -1,4 +1,4 @@
-import { getDb, persistDb, prepareStatement } from './db.mjs';
+import { getDb, persistDb, prepareStatement, setDeferPersist } from './db.mjs';
 
 const db = await getDb();
 
@@ -140,6 +140,7 @@ async function importarInventario() {
   let insertados = 0;
   let totalPiezas = 0;
   let valorTotal = 0;
+  setDeferPersist(true);
 
   for (const item of INVENTARIO) {
     const categoria = categorizar(item.descripcion, item.codigo);

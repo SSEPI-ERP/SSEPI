@@ -291,8 +291,12 @@
                         if (window.applyNavByRole) await window.applyNavByRole(profile);
                     }
                     document.getElementById('welcomeUser').innerText = profile?.nombre || user.email;
-                    document.getElementById('userName').innerText = profile?.nombre?.split(' ')[0] || user.email?.split('@')[0] || 'Usuario';
-                    document.getElementById('userAvatar').innerText = (profile?.nombre?.[0] || user.email?.[0] || 'U').toUpperCase();
+                    if (window.authService && typeof window.authService.applyUserHeader === 'function') {
+                        window.authService.applyUserHeader(profile, user);
+                    } else {
+                        document.getElementById('userName').innerText = profile?.nombre?.split(' ')[0] || user.email?.split('@')[0] || 'Usuario';
+                        document.getElementById('userAvatar').innerText = (profile?.nombre?.[0] || user.email?.[0] || 'U').toUpperCase();
+                    }
                     document.body.classList.remove('nav-loading');
                     document.body.classList.add('nav-ready');
                     if (window.indexCore) window.indexCore.init();

@@ -1,4 +1,4 @@
-import { getDb, persistDb, prepareStatement } from './db.mjs';
+import { getDb, persistDb, prepareStatement, setDeferPersist } from './db.mjs';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -117,6 +117,8 @@ async function importarBOM() {
 
     const categoria = CATEGORIA_MAP[item.category] || 'refaccion';
     const status = (item.status || '').toUpperCase().includes('ACTUALIZADO') ? 'ACTUALIZADO' : 'NO ACTUALIZADO';
+
+    if (idx === 0) setDeferPersist(true);
 
     try {
       await stmtBom.insert(null, {

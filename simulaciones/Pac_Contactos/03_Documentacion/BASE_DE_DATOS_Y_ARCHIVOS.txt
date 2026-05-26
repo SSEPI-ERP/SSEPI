@@ -1,0 +1,96 @@
+================================================================================
+BASE DE DATOS Y ARCHIVOS — Lo que ya está cargado
+================================================================================
+
+Todo vive bajo:
+  c:\Users\norbe\Documents\robot_mecanum_esp32_v3\escaner de imagenes\
+
+Este documento describe la "base de datos" actual (archivos JSON + Excel).
+No es una base SQL; es archivos que las herramientas leen en el navegador.
+
+--------------------------------------------------------------------------------
+1. TABULADOR SSEPI (costos por empresa y módulo)
+--------------------------------------------------------------------------------
+
+Archivo principal:
+  info\TABULADOR DE COTIZACIÓN actualizado.xlsx
+
+Hojas:
+  Hoja1          → Viaje / HR Dani (km, gasolina viaje, $ Dani). SOLO REFERENCIA.
+  LABORATORIO    → Gasolina, ventas (reparación en visita), gastos generales,
+                   utilidad 45%, CREDITO 3% (precio final al cliente).
+  MOTORES        → Gasolina, BECERRA, GASTOS S/U, utilidad, CREDITO 3%.
+  SUMINISTROS    → Gasolina, proveedor, GASTOS S/U, utilidad, CREDITO 3%.
+  AUTOMATIZACIÓN → Servicios por columna (PLC, tablero, etc.) o TOTAL VENTA.
+
+Generado por el comparador:
+  info\datos_comparador.json      (JSON completo, ~MB)
+  info\datos_embebidos.js         (mismo contenido para el HTML)
+  info\rastro_capturas.json       (139 capturas, datos fiables por imagen)
+
+Catálogo contactos Odoo (Excel export):
+  info\contactos_odoo.xlsx
+
+Capturas pantalla Odoo:
+  info\SistemaContactos\CapturasOdoo\Screenshot*.png  (139 archivos)
+
+--------------------------------------------------------------------------------
+2. ÓRDENES DE REPARACIÓN (editor)
+--------------------------------------------------------------------------------
+
+Salida del pipeline de reportes:
+  datos_ordenes_editables.json    ← El editor LEE y GUARDA aquí
+  datos_reportes_ocr.json         ← OCR bruto de carpetas reportes\
+  datos_reportes.json             ← Agregado intermedio
+  contactos_odoo.json             ← Nombres contactos (raíz)
+
+Imágenes de órdenes:
+  reportes\SP-E-...\  y  reportes\WHRO-...\
+
+--------------------------------------------------------------------------------
+3. JSON DEL COMPARADOR (estructura resumida)
+--------------------------------------------------------------------------------
+
+datos_comparador.json contiene:
+
+  excel[]           — 50 empresas tabulador, cada una con:
+                      name, rfc, modulos { laboratorio, motores, suministros,
+                      automatizacion }, viajeDani { km, gasolina, ... }
+
+  odoo[]            — 139 registros (una por captura) con:
+                      nombreContacto, empresaAsociada, tipoFicha (empresa /
+                      contacto_empresa / contacto_solo), excelMatch, matchScore
+
+  tabuladorErp      — 50 empresas con gastos + contactos Odoo vinculados
+
+  relacionErp[]     — Lista plana para exportar a calculadora:
+                      empresaTabulador, modulos, contactosOdoo[]
+
+  empresasOdoo[]    — Agrupación empresa → ficha + vendedores
+
+  unmatched[]       — Capturas sin fila en tabulador
+
+--------------------------------------------------------------------------------
+4. SCRIPTS QUE REGENERAN DATOS
+--------------------------------------------------------------------------------
+
+Comparador:
+  info\generar_rastro.py      → rastro_capturas.json
+  info\build_comparador.py    → datos_comparador.json + datos_embebidos.js
+
+Editor:
+  limpiar_datos.py            → datos_ordenes_editables.json
+  scan_reportes.py / easyocr  → datos_reportes_ocr.json (si hay nuevos reportes)
+
+--------------------------------------------------------------------------------
+5. COPIAS EN ESTE PAQUETE
+--------------------------------------------------------------------------------
+
+  01_Comparador_Odoo_Excel\  — copia de scripts/HTML (referencia)
+  02_Editor_Ordenes\         — copia editor + servidor + limpiar_datos
+  04_Datos_muestra\          — muestra pequeña de JSON (si existe)
+
+La fuente de verdad sigue siendo las carpetas info\ y la raíz escaner de imagenes.
+Tras editar código, copie manualmente a este paquete o trabaje directo en info\.
+
+================================================================================

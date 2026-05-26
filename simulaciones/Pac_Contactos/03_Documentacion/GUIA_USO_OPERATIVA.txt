@@ -1,0 +1,86 @@
+================================================================================
+GUÍA DE USO OPERATIVA — Comparador + Editor de órdenes
+================================================================================
+
+OBJETIVO DEL CONJUNTO
+---------------------
+1) Comparador: cruzar capturas Odoo (139 imágenes) con el tabulador Excel SSEPI
+   (50 empresas, costos por módulo LAB / MOT / SUM / AUTO).
+
+2) Editor de órdenes: ver y editar órdenes de reparación ya extraídas de reportes
+   (fotos/PDF en carpeta reportes\), con cliente, equipo, estado, imágenes.
+
+Juntos permiten: saber QUÉ empresa es en Odoo, CUÁNTO cobra cada módulo, y
+vincular eso a la SIGUIENTE cotización u orden.
+
+--------------------------------------------------------------------------------
+A) COMPARADOR ODOO ↔ EXCEL (puerto 8766)
+--------------------------------------------------------------------------------
+
+Cómo abrir:
+  INICIAR_COMPARADOR.bat  (o INICIAR_AMBOS.bat)
+  URL: http://TU_IP:8766/comparador_clientes.html
+
+Pestañas importantes:
+  - Tabulador ERP (50 empresas)
+      Empresas con captura Odoo + desglose km/gastos por contacto vinculado.
+  - Solo Excel
+      Las 50 filas del tabulador con precios por módulo (Lab, Mot, Sum, Auto).
+      Columna "Viaje Dani km" = solo referencia Hoja1 (viaje), NO es el precio del módulo.
+  - Por empresa Odoo
+      Ficha empresa + vendedores (capturas + catálogo Excel contactos).
+  - Sin match Excel
+      Capturas que no encajan con ninguna fila del tabulador.
+
+Botón "Descargar relación ERP (JSON)":
+  Genera relacion_erp_tabulador_odoo.json con:
+    - empresaTabulador, rfc, modulos { laboratorio, motores, suministros, automatizacion }
+    - contactosOdoo vinculados (nombre, email, tipo ficha)
+  Ese archivo es la entrada para la calculadora / ERP futuro.
+
+Regenerar si cambió Excel o capturas:
+  cd "...\escaner de imagenes\info"
+  python generar_rastro.py
+  python build_comparador.py
+  Recargar navegador con Ctrl+F5.
+
+Excel fuente de costos:
+  info\TABULADOR DE COTIZACIÓN actualizado.xlsx
+  (Hojas: LABORATORIO, MOTORES, SUMINISTROS, AUTOMATIZACIÓN — no usar Hoja1 como precio de módulo)
+
+--------------------------------------------------------------------------------
+B) EDITOR DE ÓRDENES (puerto 8765)
+--------------------------------------------------------------------------------
+
+Cómo abrir:
+  INICIAR_EDITOR.bat  (o INICIAR_AMBOS.bat)
+  URL: http://TU_IP:8765/editor_ordenes.html
+
+Qué hace:
+  - Lista órdenes desde datos_ordenes_editables.json (~cientos de registros).
+  - Buscar por referencia, cliente, equipo, almacén (SP-E / WHRO).
+  - Editar campos y GUARDAR (escribe en datos_ordenes_editables.json vía API).
+
+Primera vez o tras nuevos reportes escaneados:
+  cd "...\escaner de imagenes"
+  python limpiar_datos.py
+  (o 4_limpiar_datos.bat)
+
+Datos origen:
+  - reportes\  (carpetas SP-E-xxx, WHRO-xxx con fotos)
+  - datos_reportes_ocr.json (texto leído de pantallas)
+  - contactos_odoo.json (catálogo nombres, opcional)
+
+--------------------------------------------------------------------------------
+C) USAR AMBOS EN LA MISMA SESIÓN
+--------------------------------------------------------------------------------
+
+  1. Abrir comparador → buscar empresa (ej. FAMO ALIMENTOS).
+  2. Anotar precios: Lab (crédito 3%), Mot, Sum, Auto según el servicio de la orden.
+  3. Abrir editor → buscar órdenes de ese cliente (nombre puede variar: normalizar).
+  4. Exportar JSON del comparador para pasar a calculadora Odoo.
+
+  NO usar dos servidores en el puerto 8765 a la vez.
+  Comparador = 8766 | Editor = 8765.
+
+================================================================================

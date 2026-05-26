@@ -230,12 +230,17 @@ const ActividadesModule = (function() {
             if (Object.keys(userMap).length === 0 && userIds.length > 0) {
                 const fallback = {
                     'user-001': { nombre: 'Norberto Moro', email: 'norbertomoro4@gmail.com' },
-                    'user-002': { nombre: 'Ventas 1', email: 'ventas1@ssepi.org' },
-                    'user-003': { nombre: 'Laboratorio 1', email: 'laboratorio1@ssepi.org' },
-                    'user-004': { nombre: 'Motores 1', email: 'motores1@ssepi.org' },
-                    'user-005': { nombre: 'Automatizacion 1', email: 'automatizacion1@ssepi.org' },
-                    'user-006': { nombre: 'Ivan Garcia', email: 'ivang.ssepi@gmail.com' },
-                    'user-007': { nombre: 'Admin SSEPI', email: 'administracion@ssepi.org' }
+                    'user-002': { nombre: 'Carlos Calderon', email: 'ventas1@ssepi.org' },
+                    'user-003': { nombre: 'Daniel Zuniga', email: 'ventas@ssepi.org' },
+                    'user-004': { nombre: 'Itzel', email: 'compras@ssepi.org' },
+                    'user-005': { nombre: 'Becerra', email: 'motores1@ssepi.org' },
+                    'user-006': { nombre: 'Tecnico', email: 'automatizacion1@ssepi.org' },
+                    'user-007': { nombre: 'Ivan', email: 'ivang.ssepi@gmail.com' },
+                    'user-008': { nombre: 'Administracion', email: 'administracion@ssepi.org' },
+                    'user-009': { nombre: 'Arturo', email: 'automatizacion@ssepi.org' },
+                    'user-010': { nombre: 'Javier', email: 'electronica@ssepi.org' },
+                    'user-011': { nombre: 'Aron', email: 'electronica.ssepi@gmail.com' },
+                    'user-012': { nombre: 'Javier', email: 'laboratorio1@ssepi.org' },
                 };
                 userIds.forEach(id => { if (fallback[id]) userMap[id] = fallback[id]; });
             }

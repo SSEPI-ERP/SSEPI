@@ -1,0 +1,122 @@
+================================================================================
+VINCULACIÓN DE EMPRESAS, CLIENTES Y COSTOS (para la calculadora)
+================================================================================
+
+PROBLEMA QUE RESUELVE EL COMPARADOR
+-----------------------------------
+En Odoo hay tres tipos de ficha (campo tipoFicha):
+
+  empresa          → La captura ES la empresa (tiene dirección propia).
+  contacto_empresa → Persona/vendedor; el nombre de EMPRESA va en empresaAsociada.
+  contacto_solo    → Persona sin empresa en el campo (no se fuerza al tabulador).
+
+En el Excel del tabulador hay ~50 nombres canónicos (ANGUIPLAST, FAMO ALIMENTOS…)
+con alias (ANGUIPALST → ANGUIPLAST, DI CENTRAL → DI-CENTRAL).
+
+La vinculación captura → fila Excel exige:
+  - matchScore >= 78
+  - Mismo norm(nombre empresa) que la fila del tabulador
+  - No agrupar contactos sueltos por coincidencia débil de RFC
+
+Clave de unión en código: norm("NOMBRE EMPRESA")  (mayúsculas, sin acentos)
+
+--------------------------------------------------------------------------------
+NOMBRES: CÓMO CRUZAR ORDEN ↔ TABULADOR ↔ ODOO
+--------------------------------------------------------------------------------
+
+1) Nombre en ORDEN (editor): campo cliente / texto OCR del reporte.
+   Puede decir "Famo", "FAMO ALIMENTOS SA de CV", etc.
+
+2) Nombre en TABULADOR (Excel): fila EMPRESA en hoja LABORATORIO (y resto).
+
+3) Nombre en ODOO (captura): nombreContacto o empresaAsociada según tipo ficha.
+
+Regla práctica:
+  - Buscar en comparador por texto (pestaña Solo Excel o Tabulador ERP).
+  - Usar el nombre canónico del tabulador (columna Empresa) como ID en calculadora.
+  - Guardar alias en EXCEL_ALIASES en build_comparador.py si hace falta.
+
+Export JSON (relacionErp): campo empresaTabulador = nombre canónico.
+
+--------------------------------------------------------------------------------
+COSTOS POR MÓDULO — DÓNDE SUMAR EL SIGUIENTE COSTO EXTRA
+--------------------------------------------------------------------------------
+
+Cada orden de reparación debe clasificarse en UNO o MÁS módulos de servicio SSEPI:
+
+  laboratorio   → Hoja LABORATORIO del Excel
+  motores       → Hoja MOTORES
+  suministros   → Hoja SUMINISTROS
+  automatizacion → Hoja AUTOMATIZACIÓN (por servicio / TOTAL VENTA)
+
+En el JSON exportado, cada módulo trae (ejemplo):
+
+  laboratorio:
+    gasolina              → Costo viaje combustible (módulo)
+    ventas                → Reparación / refacciones en esa visita (LAB)
+    gastosGenerales       → Camioneta + tiempo invertido + fijos (sin utilidad)
+    utilidad              → UTLIDAD 45%
+    precioFinal           → CREDITO 3%  ← PRECIO AL CLIENTE LAB
+
+  motores / suministros:
+    gasolina
+    becerra (solo motores) / proveedor (suministros)
+    gastosSinUtilidad     → GASTOS S/U
+    utilidad
+    precioFinal           → CREDITO 3%
+
+  automatizacion:
+    servicios             → { "PROGRAMACIÓN PLC HMI": 650, ... } si hay filas
+    totalServicios        → Suma servicios
+    gasolina
+    totalVenta            → Precio final AUTO (cuando no hay desglose por servicio)
+
+DÓNDE PONER UN "COSTO EXTRA" EN LA SIGUIENTE ORDEN
+-------------------------------------------------
+
+  Si el extra es VIÁJE / HR Dani (ej. otro viaje del técnico):
+    → NO sumar al módulo LAB/MOT; usar referencia viajeDani (Hoja1) aparte
+      o línea de viáticos en automatización.
+
+  Si el extra es REFACCIÓN / piezas en laboratorio:
+    → Sumar al módulo laboratorio.ventas (o línea refacciones en ERP).
+
+  Si el extra es BECERRA (motores):
+    → Sumar a modulos.motores.becerra.
+
+  Si el extra es PROVEEDOR (suministros):
+    → Sumar a modulos.suministros.proveedor.
+
+  Si el extra es SERVICIO AUTO (programación PLC, tablero, etc.):
+    → Sumar en modulos.automatizacion.servicios["NOMBRE COLUMNA EXCEL"]
+    → Recalcular totalServicios y totalVenta.
+
+  Si el extra es MARGEN / utilidad:
+    → Ya está en utilidad 45% del Excel; no duplicar salvo política comercial nueva.
+
+  Si el extra es FINANCIAMIENTO 3%:
+    → Ya en precioFinal (CREDITO 3%); aplicar sobre subtotal del módulo correcto.
+
+CALCULADORA (siguiente paso en Odoo)
+------------------------------------
+  Entrada recomendada: relacion_erp_tabulador_odoo.json
+
+  Por cada nueva orden:
+    1) Identificar empresaTabulador (match nombre cliente orden).
+    2) Elegir módulo(s) según tipo de trabajo (lab/mot/sum/auto).
+    3) Tomar precioFinal del módulo como base O desglosar gasolina + gastos + extra.
+    4) Los "extras" se suman ANTES de utilidad si son costos directos;
+       si son precio al cliente, sumar después de utilidad según regla comercial.
+
+  contactosOdoo[] en el JSON indica qué capturas pertenecen a esa empresa
+  (para facturación o envío de cotización).
+
+--------------------------------------------------------------------------------
+HOJA1 — NO MEZCLAR CON MÓDULOS
+--------------------------------------------------------------------------------
+
+  Hoja1 = ejemplo "cuánto cobrar por ir" (km × 2, $ Dani).
+  Los precios en pestaña Solo Excel (Lab/Mot/Sum/Auto) vienen de las otras hojas.
+  En una cotización completa pueden ir: precio módulo + viaje Dani (si aplica).
+
+================================================================================

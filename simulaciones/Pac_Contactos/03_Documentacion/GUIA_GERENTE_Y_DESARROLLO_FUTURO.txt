@@ -1,0 +1,99 @@
+================================================================================
+GUÍA PARA GERENCIA Y DESARROLLO — Actualizar calculadora y funcionamiento
+================================================================================
+
+PARA QUIÉN ES ESTE DOCUMENTO
+----------------------------
+Gerente, dueño del proceso o desarrollador que integrará esto en Odoo /
+calculadora de cotizaciones. Resume qué está hecho, qué datos hay y qué falta.
+
+--------------------------------------------------------------------------------
+QUÉ TENEMOS HOY (mayo 2026)
+--------------------------------------------------------------------------------
+
+1) Comparador Odoo ↔ Tabulador Excel (herramienta web local)
+   - 139 capturas de contactos/empresas en Odoo.
+   - 50 empresas en tabulador con costos por 4 módulos de servicio.
+   - Cruce automático con reglas estrictas (evita mezclar personas sueltas).
+   - Export JSON listo para otro sistema.
+
+2) Editor de órdenes de reparación
+   - Órdenes extraídas de reportes (fotos en carpeta reportes).
+   - Edición y guardado en JSON local.
+   - No está aún fusionado automáticamente con el comparador (mismo cliente,
+     distinto nombre → hay que buscar manualmente o unificar nombres).
+
+3) Base "de datos" = archivos en disco (ver BASE_DE_DATOS_Y_ARCHIVOS.txt)
+   - No hay servidor central; cada PC corre Python + navegador.
+
+--------------------------------------------------------------------------------
+PRIORIDADES PARA LA CALCULADORA EN ODOO (siguiente fase)
+--------------------------------------------------------------------------------
+
+FASE A — Leer precios base (YA EXPORTABLE)
+  - Importar relacion_erp_tabulador_odoo.json.
+  - Por empresa: modulos.laboratorio.precioFinal, motores, suministros, automatizacion.
+  - Mostrar desglose gasolina / gastos S/U / utilidad si se requiere transparencia.
+
+FASE B — Nueva orden / cotización
+  - Usuario elige: Empresa (lista 50 del tabulador + búsqueda alias).
+  - Usuario elige: Módulo(s) LAB, MOT, SUM, AUTO.
+  - Sistema carga precio base del módulo desde JSON o tabla sincronizada Excel.
+  - Campos "costo extra" por tipo (ver VINCULACION_EMPRESAS_Y_COSTOS.txt).
+
+FASE C — Unificar nombres orden ↔ tabulador
+  - Tabla de alias (cliente en orden → empresaTabulador).
+  - Sugerencia automática desde comparador (matchScore, sugerenciaExcel).
+
+FASE D — Sincronización Excel
+  - Cuando cambie TABULADOR DE COTIZACIÓN actualizado.xlsx:
+    ejecutar build_comparador.py y republicar JSON en Odoo o carpeta compartida.
+
+--------------------------------------------------------------------------------
+REGLAS DE NEGOCIO A RESPETAR EN CÓDIGO
+--------------------------------------------------------------------------------
+
+  - Hoja1 del Excel NO es el precio del módulo; es viaje/HR Dani.
+  - LAB: precio al cliente = CREDITO 3%; costo operativo ≈ GASTOS GENERALES.
+  - MOT/SUM: incluir BECERRA o PROVEEDOR cuando aplique.
+  - AUTO: puede ser solo gasolina + TOTAL VENTA si no hay servicios desglosados.
+  - Algunos clientes tienen números solo en AUTO (ej. DI CENTRAL); no forzar LAB.
+
+  - No sumar el mismo viaje dos veces (módulo gasolina + Hoja1 km).
+
+--------------------------------------------------------------------------------
+ARCHIVOS QUE EL DESARROLLADOR DEBE CONOCER
+--------------------------------------------------------------------------------
+
+  info\build_comparador.py     — Lógica de cruce y lectura Excel por módulo
+  info\comparador_clientes.html — UI
+  comparador: EXCEL_ALIASES, GASTOS_HEREDAR, contacto_vinculado_a_tabulador()
+
+  servidor_local.py            — API guardar-orden
+  limpiar_datos.py             — Pipeline órdenes
+  editor_ordenes.html
+
+  Excel maestro:
+  info\TABULADOR DE COTIZACIÓN actualizado.xlsx
+
+--------------------------------------------------------------------------------
+CÓMO PROBAR CAMBIOS
+--------------------------------------------------------------------------------
+
+  1. Editar Excel o capturas.
+  2. python build_comparador.py (en info).
+  3. Abrir comparador :8766 → pestaña Solo Excel → verificar empresa (ej. FAMO).
+  4. Descargar JSON → validar modulos y precioFinal.
+  5. Documentar alias nuevos en EXCEL_ALIASES si el nombre en Odoo no coincide.
+
+--------------------------------------------------------------------------------
+CONTACTO / MANTENIMIENTO
+--------------------------------------------------------------------------------
+
+  Paquete de entrega: Pac_Contactos\
+  Inicio: LEEME_PRIMERO.txt + INICIAR_AMBOS.bat
+
+  Si solo necesita editor: puerto 8765, iniciar_servidor.bat (carpeta padre).
+  Si solo comparador: puerto 8766, info\iniciar_comparador.bat.
+
+================================================================================

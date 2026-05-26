@@ -99,6 +99,10 @@ const notificacionesService = createDataService('notificaciones');
     let serviciosDraftSessionKey = null;
     let perfilUsuario = null;
 
+    function _esAdmin() {
+        return perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+    }
+
     // ==================== INICIALIZACIÓN ====================
     async function init() {
         console.log('✅ [Automatización] Conectado');
@@ -446,6 +450,7 @@ const notificacionesService = createDataService('notificaciones');
     function _renderPanelRentabilidad() {
         const panel = document.getElementById('panelRentabilidad');
         if (!panel) return;
+        const esAdminS = _esAdmin();
         const costoPresupuestado = currentProject?.costo_presupuestado || currentProject?.costo_total || 0;
         const costoReal = _calcularCostoActualServicios();
         const estado = CostosEngine.determinarRentabilidad(costoPresupuestado, costoReal);
@@ -463,10 +468,10 @@ const notificacionesService = createDataService('notificaciones');
             badge.className = estado === 'verde' ? 'badge-rentabilidad-verde' : 'badge-rentabilidad-rojo';
             badge.textContent = estado === 'verde' ? 'Proyecto rentable' : 'Números rojos';
         }
-        if (presEl) presEl.textContent = '$' + (costoPresupuestado || 0).toFixed(2);
-        if (realEl) realEl.textContent = '$' + (costoReal || 0).toFixed(2);
-        if (adeudoRow) adeudoRow.style.display = adeudo > 0 ? 'flex' : 'none';
-        if (adeudoEl) adeudoEl.textContent = '$' + (adeudo || 0).toFixed(2);
+        if (presEl) presEl.textContent = esAdminS ? '$' + (costoPresupuestado || 0).toFixed(2) : '—';
+        if (realEl) realEl.textContent = esAdminS ? '$' + (costoReal || 0).toFixed(2) : '—';
+        if (adeudoRow) adeudoRow.style.display = (esAdminS && adeudo > 0) ? 'flex' : 'none';
+        if (adeudoEl) adeudoEl.textContent = esAdminS ? '$' + (adeudo || 0).toFixed(2) : '—';
     }
 
     async function _loadProjects() {
@@ -673,9 +678,12 @@ const notificacionesService = createDataService('notificaciones');
         const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(proyecto);
         const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
 
+        const esAdminS = _esAdmin();
         let badgeRentabilidad = '';
         if (proyecto.rentabilidad_estado === 'rojo') {
-            badgeRentabilidad = `<span class="badge-rentabilidad-rojo badge-rentabilidad-inline" title="Adeudo $${(proyecto.adeudo_generado||0).toFixed(2)}">🔴 $${(proyecto.adeudo_generado||0).toFixed(0)}</span>`;
+            badgeRentabilidad = esAdminS
+                ? `<span class="badge-rentabilidad-rojo badge-rentabilidad-inline" title="Adeudo $${(proyecto.adeudo_generado||0).toFixed(2)}">🔴 $${(proyecto.adeudo_generado||0).toFixed(0)}</span>`
+                : `<span class="badge-rentabilidad-rojo badge-rentabilidad-inline" title="Rentabilidad baja"></span>`;
         } else if (proyecto.rentabilidad_estado === 'verde') {
             badgeRentabilidad = `<span class="badge-rentabilidad-verde badge-rentabilidad-inline">🟢 OK</span>`;
         }
@@ -739,7 +747,7 @@ const notificacionesService = createDataService('notificaciones');
                 <td>${proceso}</td>
                 <td><small>${linea}</small></td>
                 <td><span class="status-badge" style="background:${(function(){ const s=_normEstadoProyecto(p.estado); if(s==='pendiente') return '#ff9800'; if(s==='esperando_cotizacion'||s==='esperando_confirmacion') return '#9c27b0'; if(s==='progreso'||s==='garantia') return '#2196f3'; if(s==='cancelado') return '#f44336'; return '#4caf50'; })()}; color:white;">${p.estado}</span> · ${proceso}</td>
-                <td>${p.rentabilidad_estado === 'rojo' ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(p.adeudo_generado||0).toFixed(0)}</span>` : (p.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—')}</td>
+                <td>${p.rentabilidad_estado === 'rojo' ? (esAdminS ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(p.adeudo_generado||0).toFixed(0)}</span>` : `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;" title="Rentabilidad baja"></span>`) : (p.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—')}</td>
             </tr>`;
         });
         html += '</tbody></table>';

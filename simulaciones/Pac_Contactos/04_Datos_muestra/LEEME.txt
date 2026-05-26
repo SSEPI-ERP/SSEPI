@@ -1,0 +1,13 @@
+MUESTRAS DE LA BASE DE DATOS
+============================
+
+  datos_ordenes_editables.json
+      Copia de las órdenes que usa el editor (~200+ registros).
+      El archivo activo está en la carpeta padre escaner de imagenes\.
+
+  muestra_comparador_estructura.json
+      Solo 2 empresas de ejemplo + stats. El JSON completo del comparador
+      está en ..\..\info\datos_comparador.json (muy grande para duplicar).
+
+Para exportar relación completa para calculadora:
+  Abrir comparador → Tabulador ERP → "Descargar relación ERP (JSON)".

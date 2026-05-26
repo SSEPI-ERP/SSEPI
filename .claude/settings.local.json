@@ -184,7 +184,11 @@
       "PowerShell(node -c \"E:\\\\SSEPI\\\\panel\\\\js\\\\modules\\\\contactos.js\" 2>&1)",
       "PowerShell(cd \"E:\\\\SSEPI\\\\ssepinext\"; $env:PORT=\"3333\"; Start-Process -WindowStyle Hidden -FilePath \"node\" -ArgumentList \"offline-server.mjs\")",
       "Bash(pkill -f \"node.*offline-server\")",
-      "Bash(echo \"EXIT CODE: $?\")"
+      "Bash(echo \"EXIT CODE: $?\")",
+      "Bash(findstr -i \"contacto cliente empresa datos\")",
+      "PowerShell(cmd /c \"E:\\\\SSEPI\\\\reiniciar-ssepi.bat\")",
+      "PowerShell(node seed-calculadoras.mjs)",
+      "PowerShell(Measure-Command *)"
     ]
   }
 }

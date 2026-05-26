@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url';
 import { getDb, persistDb } from './db.mjs';
 import { createOfflineProxyRouter } from './offline-proxy.mjs';
 import { loginOfflineUser, verifyOfflineToken, getOfflineUserById, registerOfflineUser, listOfflineUsers, updateOfflineUser, changeOfflinePassword, signOfflineToken } from './offline-auth.mjs';
+import { SSEPI_USERS } from './users-catalog.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -21,21 +22,27 @@ const db = await getDb();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Catálogo de pruebas (VPS local / túnel): se crean si no existen en offline_usuarios.
-// El túnel Cloudflare no filtra por usuario; el login es siempre contra esta SQLite vía /api/auth/login.
-const OFFLINE_USERS_CATALOG = [
-  { id: 'user-001', email: 'norbertomoro4@gmail.com', password: 'Ssepi2025!', nombre: 'Norberto Moro', rol: 'superadmin', departamento: 'Administracion' },
-  { id: 'user-002', email: 'ventas1@ssepi.org', password: 'Ssepi2025!', nombre: 'Ventas 1', rol: 'ventas', departamento: 'Ventas' },
-  { id: 'user-003', email: 'laboratorio1@ssepi.org', password: 'Ssepi2025!', nombre: 'Laboratorio 1', rol: 'admin', departamento: 'Laboratorio' },
-  { id: 'user-004', email: 'motores1@ssepi.org', password: 'Ssepi2025!', nombre: 'Motores 1', rol: 'admin', departamento: 'Motores' },
-  { id: 'user-005', email: 'automatizacion1@ssepi.org', password: 'Ssepi2025!', nombre: 'Automatizacion 1', rol: 'automatizacion', departamento: 'Automatizacion' },
-  { id: 'user-006', email: 'ivang.ssepi@gmail.com', password: 'Ssepi2025!', nombre: 'Ivan Garcia', rol: 'automatizacion', departamento: 'Automatizacion' },
-  { id: 'user-007', email: 'administracion@ssepi.org', password: 'Ssepi2025!', nombre: 'Admin SSEPI', rol: 'admin', departamento: 'Administracion' },
-  { id: 'user-008', email: 'automatizacion@ssepi.org', password: 'Ssepi2025!', nombre: 'Automatización', rol: 'admin', departamento: 'Automatizacion' },
-  { id: 'user-009', email: 'ventas@ssepi.org', password: 'Ssepi2025!', nombre: 'Ventas Admin', rol: 'admin', departamento: 'Ventas' },
-  { id: 'user-010', email: 'electronica@ssepi.org', password: 'Ssepi2025!', nombre: 'Electrónica Admin', rol: 'admin', departamento: 'Electrónica' },
-  { id: 'user-011', email: 'electronica.ssepi@gmail.com', password: 'Ssepi2025!', nombre: 'Ventas SSEPI', rol: 'ventas_sin_compras', departamento: 'Ventas' },
-];
+// Catálogo oficial (ssepinext/users-catalog.mjs). Solo INSERT si el correo no existe — no pisar nombres en cada arranque.
+const OFFLINE_USERS_CATALOG = SSEPI_USERS;
+
+async function syncCatalogUser(u) {
+  const check = db.prepare(`SELECT id, nombre FROM offline_usuarios WHERE email = ?`);
+  check.bind([u.email]);
+  let row = null;
+  if (check.step()) row = check.getAsObject();
+  check.free();
+  if (!row) {
+    await registerOfflineUser(u.email, u.password, u.nombre, u.rol, u.departamento, u.id);
+    console.log(`[offline-server] Usuario creado: ${u.email} → ${u.nombre} (${u.rol})`);
+    return;
+  }
+  await updateOfflineUser(row.id, { nombre: u.nombre, rol: u.rol, departamento: u.departamento });
+  if (row.nombre !== u.nombre) {
+    console.log(`[offline-server] Usuario actualizado: ${u.email} → ${u.nombre} (${u.rol})`);
+  } else {
+    console.log(`[offline-server] Usuario OK: ${u.email} → ${u.nombre} (${u.rol})`);
+  }
+}
 
 // Seed inicial si la tabla está vacía + asegurar filas del catálogo (idempotente)
 (async function seedDefaultUsers() {
@@ -47,21 +54,12 @@ const OFFLINE_USERS_CATALOG = [
     if (count === 0) {
       console.log('[offline-server] offline_usuarios vacia. Creando usuarios por defecto...');
       for (const u of OFFLINE_USERS_CATALOG) {
-        try {
-          await registerOfflineUser(u.email, u.password, u.nombre, u.rol, u.departamento, u.id);
-        } catch (e) { /* ya existe o error */ }
+        try { await syncCatalogUser(u); } catch (e) { console.warn('[offline-server]', u.email, e.message || e); }
       }
       console.log('[offline-server] Usuarios por defecto creados.');
     } else {
       for (const u of OFFLINE_USERS_CATALOG) {
-        try {
-          await registerOfflineUser(u.email, u.password, u.nombre, u.rol, u.departamento, u.id);
-          console.log('[offline-server] Usuario de catálogo añadido:', u.email);
-        } catch (e) {
-          if (!String(e.message || e).includes('ya existe')) {
-            console.warn('[offline-server] Catálogo usuario', u.email, e.message || e);
-          }
-        }
+        try { await syncCatalogUser(u); } catch (e) { console.warn('[offline-server]', u.email, e.message || e); }
       }
     }
   } catch (e) {

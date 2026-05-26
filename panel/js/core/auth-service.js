@@ -198,27 +198,85 @@ export class AuthService {
     return null;
   }
 
+  /** Etiquetas de departamento/rol — no usar como nombre visible en header. */
+  _looksLikeDepartmentLabel(nombre) {
+    const n = String(nombre || '').trim().toLowerCase();
+    if (!n) return true;
+    if (/^(laboratorio|motores|ventas|automatizaci[oó]n|administraci[oó]n|compras|electr[oó]nica|admin)(\s+\d+)?(\s+admin)?$/.test(n)) return true;
+    if (/\badmin ssepi\b|\bventas ssepi\b|\belectr[oó]nica admin\b/.test(n)) return true;
+    return false;
+  }
+
+  /** Nombre de persona para UI (nunca departamento). */
+  resolveDisplayName(profile, user) {
+    const email = (profile?.email || user?.email || '').trim().toLowerCase();
+    const candidates = [
+      profile?.nombre,
+      user?.user_metadata?.nombre,
+    ].filter(Boolean);
+    for (const raw of candidates) {
+      const n = String(raw).trim();
+      if (n && !this._looksLikeDepartmentLabel(n)) return n;
+    }
+    if (email) {
+      const local = email.split('@')[0] || '';
+      if (local.includes('electronica')) return local.includes('ssepi@gmail') ? 'Aron' : 'Javier';
+      if (local === 'laboratorio1') return 'Javier';
+      if (local.includes('ventas')) return local === 'ventas1' ? 'Carlos Calderon' : 'Daniel Zuniga';
+      if (local.includes('norberto')) return 'Norberto Moro';
+    }
+    const fallback = candidates[0] || email.split('@')[0] || 'Usuario';
+    return String(fallback).trim() || 'Usuario';
+  }
+
+  /** Actualiza #userName, #userAvatar y #welcomeUser en la página actual. */
+  applyUserHeader(profile, user) {
+    const full = this.resolveDisplayName(profile, user);
+    const first = full.split(/\s+/)[0] || full;
+    const initial = (full.charAt(0) || 'U').toUpperCase();
+    const nameEl = document.getElementById('userName');
+    const avatarEl = document.getElementById('userAvatar');
+    const welcomeEl = document.getElementById('welcomeUser');
+    if (nameEl) nameEl.textContent = first;
+    if (avatarEl) avatarEl.textContent = initial;
+    if (welcomeEl) welcomeEl.textContent = full;
+  }
+
   // ==================== OBTENER PERFIL DEL USUARIO ACTUAL ====================
   async getCurrentProfile() {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) return null;
 
-    // Modo SSEPI-NEXT-LOCAL (offline): el user_metadata ya tiene rol/nombre/departamento
+    // Modo SSEPI-NEXT-LOCAL (offline): refrescar desde auth API + tabla usuarios
     var isLocal = window.location.port === '3333' || window.location.port === '3443' || window.location.hostname.endsWith('.trycloudflare.com') || window.__SSEPI_NEXT_MODE__;
-    if (isLocal && user.user_metadata) {
-      var rol = user.user_metadata.rol || 'ventas';
-      var perfil = {
+    if (isLocal) {
+      let metaNombre = user.user_metadata?.nombre;
+      let metaRol = user.user_metadata?.rol || 'ventas';
+      let metaDepto = user.user_metadata?.departamento || null;
+      try {
+        const { data: usuarioRow } = await this.supabase
+          .from('usuarios')
+          .select('nombre, rol, telefono, departamento, email')
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+        if (usuarioRow) {
+          if (usuarioRow.nombre && !this._looksLikeDepartmentLabel(usuarioRow.nombre)) metaNombre = usuarioRow.nombre;
+          if (usuarioRow.rol) metaRol = usuarioRow.rol;
+          if (usuarioRow.departamento) metaDepto = usuarioRow.departamento;
+        }
+      } catch (e) { /* local_usuarios opcional */ }
+      var perfilLocal = {
         id: user.id,
         email: user.email,
-        nombre: user.user_metadata.nombre || user.email,
-        rol: rol,
-        departamento: user.user_metadata.departamento || null,
+        nombre: this.resolveDisplayName({ nombre: metaNombre, email: user.email }, user),
+        rol: metaRol,
+        departamento: metaDepto,
         auth_user_id: user.id,
-        ver_costos: (rol === 'admin' || rol === 'superadmin')
+        ver_costos: (metaRol === 'admin' || metaRol === 'superadmin')
       };
-      try { sessionStorage.setItem('ssepi_rol', rol); } catch (e) {}
-      try { sessionStorage.setItem('ssepi_profile', JSON.stringify(perfil)); } catch (e) {}
-      return perfil;
+      try { sessionStorage.setItem('ssepi_rol', metaRol); } catch (e) {}
+      try { sessionStorage.setItem('ssepi_profile', JSON.stringify(perfilLocal)); } catch (e) {}
+      return perfilLocal;
     }
 
     // Intentar primero usuarios/users (tu proyecto no usa tabla profiles)
@@ -234,7 +292,7 @@ export class AuthService {
         id: user.id,
         usuarios_id: usuarioData.id, // ID local de la tabla usuarios (para FKs)
         email: user.email || usuarioData.email,
-        nombre: usuarioData.nombre ?? usuarioData.email ?? user.email?.split('@')[0] ?? 'Usuario',
+        nombre: this.resolveDisplayName({ nombre: usuarioData.nombre, email: user.email || usuarioData.email }, user),
         rol: usuarioData.rol || 'ventas',
         telefono: usuarioData.telefono ?? null,
         auth_user_id: usuarioData.auth_user_id,
@@ -258,7 +316,7 @@ export class AuthService {
       const perfil = {
         id: user.id,
         email: user.email || usersData.email,
-        nombre: usersData.nombre ?? usersData.email ?? user.email?.split('@')[0] ?? 'Usuario',
+        nombre: this.resolveDisplayName({ nombre: usersData.nombre, email: user.email || usersData.email }, user),
         rol: usersData.rol || 'ventas',
         telefono: usersData.telefono ?? null,
         auth_user_id: usersData.auth_user_id,
