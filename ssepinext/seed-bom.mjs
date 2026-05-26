@@ -92,6 +92,7 @@ async function importarBOM() {
   let valorTotal = 0;
   const proveedoresSet = new Set();
 
+  let idx = 0;
   for (const item of BOM_DATA) {
     // Proveedores normalizados
     const suppliers = (item.suppliers || [])
@@ -137,6 +138,7 @@ async function importarBOM() {
     } catch (e) {
       console.warn(`[BOM] Error item ${item.item}: ${e.message}`);
     }
+    idx++;
   }
 
   persistDb();

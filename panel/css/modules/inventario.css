@@ -35,6 +35,14 @@
   color: #fff;
 }
 
+/* Links de compra */
+.col-links { text-align: center; white-space: nowrap; }
+.link-buy { display:inline-block; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:600; text-decoration:none; margin:0 2px; line-height:1.2; }
+.link-buy:hover { opacity:0.85; }
+.link-o { background:#e8f5e9; color:#2e7d32; }
+.link-dk { background:#f3e5f5; color:#7b1fa2; }
+.link-m { background:#fff3e0; color:#ef6c00; }
+
 /* Mostrar solo la vista activa (Grid, Tabla o Gráfica) */
 .page-inventario .view-container {
   display: none;
