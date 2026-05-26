@@ -87,6 +87,13 @@ const InventarioModule = (function() {
         const t = String(s);
         return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+    function _linksCompraHtml(p) {
+        const links = [];
+        if (p.link_octopart) links.push(`<a href="${_escapeHtml(p.link_octopart)}" target="_blank" class="link-buy link-o" onclick="event.stopPropagation()">O</a>`);
+        if (p.link_digikey) links.push(`<a href="${_escapeHtml(p.link_digikey)}" target="_blank" class="link-buy link-dk" onclick="event.stopPropagation()">DK</a>`);
+        if (p.link_mouser) links.push(`<a href="${_escapeHtml(p.link_mouser)}" target="_blank" class="link-buy link-m" onclick="event.stopPropagation()">M</a>`);
+        return links.join('') || '—';
+    }
     function _detectarColumnas(headerRow) {
         if (!headerRow || !Array.isArray(headerRow)) return null;
         const map = {};
@@ -488,6 +495,7 @@ const InventarioModule = (function() {
                 <td class="col-num">${_fmtMoney(p.costo)}</td>
                 <td class="col-num">${_fmtMoney(p.precio_venta)}</td>
                 <td class="col-num">${_fmtMoney(valor)}</td>
+                <td class="col-links">${_linksCompraHtml(p)}</td>
             </tr>
             `;
             } else {
@@ -502,6 +510,7 @@ const InventarioModule = (function() {
                 <td class="col-num">${_fmtInt(p.stock)}</td>
                 <td class="col-num">${_fmtInt(p.minimo)}</td>
                 <td class="col-num">${_fmtMoney(p.precio_venta)}</td>
+                <td class="col-links">${_linksCompraHtml(p)}</td>
             </tr>
             `;
             }
