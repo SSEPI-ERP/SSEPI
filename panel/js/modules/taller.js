@@ -520,7 +520,10 @@ const TallerModule = (function() {
             tabuladorClientes = (data || []).map(c => ({
                 nombre: c.nombre_cliente,
                 km: Number(c.km) || 0,
-                horas: Number(c.horas_viaje) || 0
+                horas: Number(c.horas_viaje) || 0,
+                gasolina: Number(c.gasolina) || 0,
+                total_viaje: Number(c.total_viaje) || 0,
+                rfc: c.rfc || ''
             }));
             console.log('[Taller] clientes_tabulador cargados:', tabuladorClientes.length);
         } catch (e) {
@@ -560,29 +563,84 @@ const TallerModule = (function() {
     function _populateClientSelect() {
         const sel = document.getElementById('selClient');
         if (!sel) return;
-        sel.innerHTML = '<option value="">-- Seleccionar --</option>';
-        // Combinar contactos + clientes del tabulador (sin duplicados)
-        const nombres = new Set();
+        sel.innerHTML = '<option value="">-- Seleccionar empresa / contacto --</option>';
+
+        // Agrupar contactos por empresa
+        const grupos = {};
+        const sueltos = [];
         clients.forEach(c => {
-            const nombre = c.nombre || c.empresa;
-            if (nombre && !nombres.has(nombre)) {
-                nombres.add(nombre);
-                const opt = document.createElement('option');
-                opt.value = nombre;
-                opt.textContent = nombre;
-                sel.appendChild(opt);
+            const emp = (c.empresa || c.nombre || '').trim();
+            const nom = (c.nombre || '').trim();
+            if (!nom) return;
+            if (emp && emp !== nom) {
+                if (!grupos[emp]) grupos[emp] = [];
+                grupos[emp].push(c);
+            } else {
+                sueltos.push(c);
             }
         });
+
+        // 1) Optgroups por empresa (ordenadas alfabéticamente)
+        const empresasSorted = Object.keys(grupos).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        empresasSorted.forEach(emp => {
+            const arr = grupos[emp];
+            // Buscar datos del tabulador para esta empresa
+            const tab = tabuladorClientes.find(tc => tc.nombre && tc.nombre.toLowerCase().trim() === emp.toLowerCase().trim());
+            const km = tab ? tab.km : 0;
+            const hrs = tab ? tab.horas : 0;
+            const gas = tab ? tab.gasolina : 0;
+            let label = emp;
+            if (km || hrs || gas) {
+                label += `  (KM:${km}  Hrs:${hrs}  Gas:$${Math.round(gas || 0)})`;
+            }
+            const og = document.createElement('optgroup');
+            og.label = label;
+            // Dentro de la empresa: primero la ficha empresa, luego contactos
+            const empresas = arr.filter(c => (c.tipo_ficha || c.tipo) === 'empresa');
+            const contactos = arr.filter(c => (c.tipo_ficha || c.tipo) !== 'empresa');
+            [...empresas, ...contactos].forEach(c => {
+                const tipo = c.tipo_ficha || c.tipo || 'contacto';
+                const tipoLabel = tipo === 'empresa' ? '[Empresa]' : (tipo === 'contacto_empresa' ? '[Contacto]' : '[Solo]');
+                const opt = document.createElement('option');
+                opt.value = c.nombre;
+                opt.textContent = `${tipoLabel} ${c.nombre}`;
+                opt.dataset.empresa = emp;
+                opt.dataset.tipo = tipo;
+                og.appendChild(opt);
+            });
+            sel.appendChild(og);
+        });
+
+        // 2) Contactos sueltos (sin empresa asignada)
+        if (sueltos.length > 0) {
+            const ogSuelto = document.createElement('optgroup');
+            ogSuelto.label = 'Contactos sin empresa';
+            sueltos.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.nombre;
+                opt.textContent = c.nombre;
+                opt.dataset.tipo = c.tipo_ficha || c.tipo || 'contacto';
+                ogSuelto.appendChild(opt);
+            });
+            sel.appendChild(ogSuelto);
+        }
+
+        // 3) Empresas del tabulador que no tengan contactos cargados
+        const empresasConContactos = new Set(empresasSorted);
         tabuladorClientes.forEach(tc => {
-            if (tc.nombre && !nombres.has(tc.nombre)) {
-                nombres.add(tc.nombre);
+            if (tc.nombre && !empresasConContactos.has(tc.nombre)) {
+                const og = document.createElement('optgroup');
+                og.label = `${tc.nombre}  (KM:${tc.km}  Hrs:${tc.horas}  Gas:$${Math.round(tc.gasolina || 0)})`;
                 const opt = document.createElement('option');
                 opt.value = tc.nombre;
-                opt.textContent = tc.nombre;
-                sel.appendChild(opt);
+                opt.textContent = `[Empresa] ${tc.nombre}`;
+                opt.dataset.tipo = 'empresa';
+                og.appendChild(opt);
+                sel.appendChild(og);
             }
         });
-        // Precargar KM/horas desde clientes_tabulador al cambiar cliente
+
+        // Precargar KM/horas + info panel al cambiar cliente
         sel.removeEventListener('change', _onSelClientChange);
         sel.addEventListener('change', _onSelClientChange);
     }
@@ -590,12 +648,34 @@ const TallerModule = (function() {
     function _onSelClientChange() {
         const sel = document.getElementById('selClient');
         const nombre = sel ? sel.value : '';
-        if (!nombre) return;
-        const encontrado = tabuladorClientes.find(tc => tc.nombre && tc.nombre.toLowerCase().trim() === nombre.toLowerCase().trim());
+        const infoPanel = document.getElementById('clientInfoPanel');
+        if (!nombre) {
+            if (infoPanel) infoPanel.style.display = 'none';
+            return;
+        }
+        // Buscar en contactos
+        const contacto = clients.find(c => c.nombre === nombre);
+        const emp = contacto ? (contacto.empresa || nombre) : nombre;
+        const tab = tabuladorClientes.find(tc => tc.nombre && tc.nombre.toLowerCase().trim() === emp.toLowerCase().trim());
         const kmEl = document.getElementById('tallerKmIda');
         const hrsEl = document.getElementById('tallerHorasViaje');
-        if (kmEl) kmEl.value = encontrado ? encontrado.km : 0;
-        if (hrsEl) hrsEl.value = encontrado ? encontrado.horas : 0;
+        if (kmEl) kmEl.value = tab ? tab.km : 0;
+        if (hrsEl) hrsEl.value = tab ? tab.horas : 0;
+
+        // Mostrar info panel
+        if (infoPanel) {
+            const tipo = contacto ? (contacto.tipo_ficha || contacto.tipo || 'contacto') : 'empresa';
+            const tipoLabel = tipo === 'empresa' ? 'Empresa' : (tipo === 'contacto_empresa' ? 'Contacto de empresa' : 'Contacto solo');
+            let html = `<strong>${nombre}</strong> <span style="color:#1565c0">${tipoLabel}</span>`;
+            if (tab) {
+                html += `<br>KM: ${tab.km}  |  Horas: ${tab.horas}  |  Gasolina: $${Math.round(tab.gasolina || 0)}`;
+            }
+            if (contacto && contacto.email) html += `<br>Email: ${contacto.email}`;
+            if (contacto && contacto.telefono) html += `<br>Tel: ${contacto.telefono}`;
+            if (contacto && contacto.empresa && contacto.empresa !== nombre) html += `<br>Empresa: ${contacto.empresa}`;
+            infoPanel.innerHTML = html;
+            infoPanel.style.display = 'block';
+        }
     }
 
     function _populateTecnicosFilter() {
