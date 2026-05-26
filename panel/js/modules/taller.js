@@ -59,6 +59,7 @@ const TallerModule = (function() {
     let filtroEstado = 'todos';
     let filtroBuscar = '';
     let filtroEquipo = 'todos';
+    let filtroOrigen = 'todos';
     let vistaActual = 'kanban';
     let graficaModo = 'estados';
     let chartInstance = null;
@@ -307,6 +308,23 @@ const TallerModule = (function() {
         }
     }
 
+    async function _cargarEncargadosRecepcion() {
+        try {
+            const encargados = (await authService.getUsersByRol(['taller', 'electronica', 'admin', 'superadmin']))
+                .filter(t => t.departamento === 'Laboratorio de Electronica' || t.rol === 'superadmin');
+            const select = document.getElementById('inpReceptionBy');
+            if (!select) return;
+            const valActual = select.value;
+            select.innerHTML = '<option value="">Seleccionar</option>' +
+                encargados.map(function(t) {
+                    return '<option value="' + (t.nombre || t.email) + '">' + (t.nombre || t.email) + '</option>';
+                }).join('');
+            if (valActual) select.value = valActual;
+        } catch (e) {
+            console.error('[Taller] Error cargando encargados recepción:', e);
+        }
+    }
+
     async function _cargarVendedores() {
         try {
             let vendedores = (await authService.getUsersByRol(['ventas', 'admin', 'superadmin']))
@@ -357,6 +375,7 @@ const TallerModule = (function() {
         _initExportButton();
         _cargarTecnicos();
         _cargarVendedores();
+        _cargarEncargadosRecepcion();
         console.log('✅ Módulo taller iniciado');
     }
 
@@ -461,6 +480,15 @@ const TallerModule = (function() {
             orders = [];
             throw e;
         }
+        orders = orders.map(o => {
+            // Normalizar datos de importación laboratorio-1 para que Kanban/lista muestren bien
+            if (o.origen !== 'panel') {
+                o = _applyLaboratorioImport(o);
+            }
+            // Garantizar campo origen para separar viejas vs nuevas
+            if (!o.origen) o.origen = 'legacy';
+            return o;
+        });
         // Enriquecer órdenes legacy/demo que no tengan rentabilidad calculada
         orders.forEach(o => {
             if (!o.rentabilidad_estado && o.costo_total) {
@@ -807,6 +835,9 @@ const TallerModule = (function() {
         if (filtroEquipo !== 'todos') {
             filtered = filtered.filter(o => (o.equipo || '').trim() === filtroEquipo);
         }
+        if (filtroOrigen !== 'todos') {
+            filtered = filtered.filter(o => o.origen === filtroOrigen);
+        }
         if (filtroBuscar) {
             const term = filtroBuscar.toLowerCase();
             filtered = filtered.filter(o => 
@@ -885,6 +916,16 @@ const TallerModule = (function() {
             </div>`;
         }
 
+        // Badge origen: importada / nueva / legacy
+        let badgeOrigen = '';
+        if (orden.origen === 'import_erp') {
+            badgeOrigen = `<span class="badge-origen badge-origen-import" title="Orden importada del paquete ERP">📦 Importada</span>`;
+        } else if (orden.origen === 'panel') {
+            badgeOrigen = `<span class="badge-origen badge-origen-panel" title="Orden creada desde el panel">🆕 Nueva</span>`;
+        } else if (orden.origen === 'legacy') {
+            badgeOrigen = `<span class="badge-origen badge-origen-legacy" title="Orden legacy (sin origen definido)">📁 Legacy</span>`;
+        }
+
         return `
             <div class="kanban-card ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${orden.id}">
                 <div class="card-header">
@@ -892,6 +933,7 @@ const TallerModule = (function() {
                         <span class="folio">${orden.folio || orden.id.slice(-6)}</span>
                         ${badgeRentabilidad}
                     </div>
+                    <div class="origen-line">${badgeOrigen}</div>
                     <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
                         ${badgeCompra}
                         ${badgeCuarentena}
@@ -933,7 +975,11 @@ const TallerModule = (function() {
             const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(o);
             const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(o) ?? true;
             const cells = [];
-            if (vis.folio !== false) cells.push(`<td>${o.folio || o.id.slice(-6)} ${compraInfo ? '🛒' : ''}</td>`);
+            let badgeOrigenLista = '';
+            if (o.origen === 'import_erp') badgeOrigenLista = '<span class="badge-origen badge-origen-import">📦</span>';
+            else if (o.origen === 'panel') badgeOrigenLista = '<span class="badge-origen badge-origen-panel">🆕</span>';
+            else if (o.origen === 'legacy') badgeOrigenLista = '<span class="badge-origen badge-origen-legacy">📁</span>';
+            if (vis.folio !== false) cells.push(`<td>${o.folio || o.id.slice(-6)} ${badgeOrigenLista} ${compraInfo ? '🛒' : ''}</td>`);
             if (vis.cliente !== false) cells.push(`<td>${o.cliente_nombre || ''}</td>`);
             if (vis.equipo !== false) cells.push(`<td>${o.equipo || ''}</td>`);
             if (vis.tecnico !== false) cells.push(`<td>${o.tecnico_responsable || ''}</td>`);
@@ -3181,6 +3227,7 @@ const TallerModule = (function() {
             notas_generales: document.getElementById('generalNotes').value,
             // Formato laboratorio-1 (carpeta 05_Formato_Laboratorio_Import)
             formato: 'laboratorio-1',
+            origen: 'panel',
             datos_recepcion: {
                 cliente: document.getElementById('selClient').value,
                 marca: document.getElementById('inpBrand').value,
@@ -3843,6 +3890,8 @@ ${printScript}
             filtroEstado = document.getElementById('filtroEstado').value;
             const fe = document.getElementById('filtroEquipo');
             filtroEquipo = fe ? fe.value : 'todos';
+            const fo = document.getElementById('filtroOrigen');
+            filtroOrigen = fo ? fo.value : 'todos';
             filtroBuscar = document.getElementById('filtroBuscar').value.trim();
             _applyFilters();
         });
