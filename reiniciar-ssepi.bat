@@ -202,6 +202,16 @@ if %errorlevel% neq 0 echo      (Error contactos ERP — ejecuta build-erp-maest
 
 
 
+:: [3j2] Contactos manuales (lista usuario 2026)
+
+echo [3j2] Contactos manuales (lista usuario)...
+
+node seed-contactos-manual.mjs
+
+if %errorlevel% neq 0 echo      (Aviso contactos manuales)
+
+
+
 :: [3k] Importar ordenes desde SSEPI_Paquete_ERP (JSON + carpetas reportes/)
 
 echo [3k] Importando desde simulaciones\SSEPI_Paquete_ERP (datos_ordenes_editables + reportes/)...
