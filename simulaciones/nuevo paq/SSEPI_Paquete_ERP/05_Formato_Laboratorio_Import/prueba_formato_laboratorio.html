@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba — formato laboratorio-1</title>
+<style>
+:root{--blue:#0C447C;--blue-light:#e8f0fa;--ok:#1a7f37;--warn:#c67600;--bg:#f4f6f9;--card:#fff;--border:#dde3ec;--text:#1a1a1a;--muted:#6b7280}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Segoe UI,system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}
+.top{background:var(--card);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;flex-wrap:wrap;align-items:center;gap:12px;position:sticky;top:0;z-index:20}
+.top h1{font-size:15px;font-weight:600;color:var(--blue)}
+.top select{padding:8px 12px;border:1px solid var(--border);border-radius:8px;min-width:220px;font-size:13px}
+.badge{font-size:11px;background:var(--blue-light);color:var(--blue);padding:4px 10px;border-radius:20px}
+.wrap{max-width:920px;margin:0 auto;padding:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden}
+.card-h{padding:14px 18px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.card-b{padding:16px 18px}
+.head-title{font-size:20px;font-weight:600;margin-bottom:4px}
+.head-ref{color:var(--muted);font-size:14px}
+.stepper{display:flex;gap:0;margin:16px 0 8px;overflow-x:auto}
+.step{flex:1;min-width:100px;text-align:center;position:relative;padding-top:36px}
+.step::before{content:attr(data-n);position:absolute;top:0;left:50%;transform:translateX(-50%);width:28px;height:28px;border-radius:50%;background:#e5e7eb;color:var(--muted);font-size:13px;font-weight:600;line-height:28px}
+.step.done::before{background:var(--blue);color:#fff;content:"✓"}
+.step.active::before{background:var(--blue);color:#fff}
+.step-label{font-size:10px;color:var(--muted);line-height:1.2;padding:0 4px}
+.step-meta{font-size:10px;color:var(--warn);margin-top:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+.field .val{font-size:14px;min-height:20px;word-break:break-word}
+.field .val.empty{color:#bbb;font-style:italic}
+.text-block{background:#fafbfc;border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;min-height:80px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border:1px solid var(--border);padding:8px 10px;text-align:left}
+th{background:#f8fafc;font-size:11px;text-transform:uppercase;color:var(--muted)}
+.empty-row td{color:var(--muted);font-style:italic;text-align:center}
+.imgs{display:flex;flex-wrap:wrap;gap:10px}
+.imgs img{width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
+.imgs .ph{width:100px;height:100px;border:2px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);text-align:center;padding:8px}
+.err{padding:20px;color:#b91c1c;background:#fef2f2;border-radius:8px;margin:20px}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Prueba visual — formato laboratorio-1</h1>
+  <span class="badge" id="fmtBadge">cargando…</span>
+  <label>
+    <select id="ordenSelect" aria-label="Elegir orden"></select>
+  </label>
+</header>
+<main class="wrap" id="app"></main>
+<script>
+const FUENTES = [
+  { url: 'muestra_formato_laboratorio.json', label: 'Muestra WH/RO/00105' },
+  { url: 'datos_reportes.json', label: 'datos_reportes.json (179)' }
+];
+let todas = [];
+
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function val(v){return v?esc(v):'<span class="empty">—</span>';}
+
+function renderOrden(o){
+  const rec = o.datos_recepcion || {};
+  const ea = o.etapa_actual || 1;
+  const steps = (o.etapas || []).map(e => {
+    const done = e.n < ea || e.estado === 'completado';
+    const active = e.n === ea;
+    const cls = (done && !active ? 'done' : '') + (active ? ' active' : '');
+    const meta = e.fecha ? esc(e.fecha) + (e.estado === 'en_curso' ? ' · En curso' : '') : '';
+    return `<div class="step${cls}" data-n="${active||done?'':e.n}"><div class="step-label">${esc(e.nombre)}</div>${meta?`<div class="step-meta">${meta}</div>`:''}</div>`;
+  }).join('');
+
+  const imgs = (o.imagenes_reporte || []).slice(0, 5);
+  const gal = imgs.length
+    ? imgs.map(u => `<a href="${esc(u)}" target="_blank"><img src="${esc(u)}" alt="" onerror="this.parentElement.innerHTML='<div class=ph>Error</div>'"></a>`).join('')
+    : '<div class="ph">Máx. 5 imágenes (JPG/PNG)<br>Sin archivos</div>';
+
+  const extras = o.componentes_extras || [];
+  const inv = o.componentes_inventario || [];
+  const comp = o.componentes_compra || [];
+
+  return `
+  <div class="card">
+    <div class="card-b">
+      <div class="head-title">Laboratorio · Orden de reparación</div>
+      <div class="head-ref">${val(o.referencia_reparacion)} ${o.numero_orden_wh ? ' · '+esc(o.numero_orden_wh) : ''}</div>
+      <div class="stepper">${steps}</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-h">Datos de recepción</div>
+    <div class="card-b grid2">
+      <div class="field"><label>Cliente</label><div class="val">${val(rec.cliente || o.cliente)}</div></div>
+      <div class="field"><label>Equipo</label><div class="val">${val(rec.equipo || o.equipo)}</div></div>
+      <div class="field"><label>Marca</label><div class="val">${val(rec.marca)}</div></div>
+      <div class="field"><label>Modelo</label><div class="val">${val(rec.modelo)}</div></div>
+      <div class="field"><label>Serie</label><div class="val">${val(rec.serie)}</div></div>
+      <div class="field"><label>Condiciones</label><div class="val">${val(rec.condiciones)}</div></div>
+      <div class="field" style="grid-column:1/-1"><label>Falla</label><div class="val">${val(rec.falla)}</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-h">Resumen diagnóstico / trabajo realizado (PDF)</div>
+    <div class="card-b"><div class="text-block">${(o.resumen_diagnostico || o.reporte_tecnico || o.descripcion) ? esc(o.resumen_diagnostico || o.reporte_tecnico || o.descripcion) : '<span class="empty">—</span>'}</div></div>
+  </div>
+  <div class="card">
+    <div class="card-h">Imágenes para reporte</div>
+    <div class="card-b"><div class="imgs">${gal}</div></div>
+  </div>
+  <div class="card">
+    <div class="card-h">Componentes extras (costo adicional)</div>
+    <div class="card-b"><table><thead><tr><th>Nombre</th><th>Descripción</th><th>Cantidad</th><th>Costo unitario ($)</th><th>Subtotal ($)</th></tr></thead>
+    <tbody>${extras.length ? extras.map(r=>`<tr><td>${val(r.nombre)}</td><td>${val(r.descripcion)}</td><td>${val(r.cantidad)}</td><td>${val(r.costo_unitario)}</td><td>${val(r.subtotal)}</td></tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin extras</td></tr>'}</tbody></table></div>
+  </div>
+  <div class="card">
+    <div class="card-h">Componentes usados desde inventario</div>
+    <div class="card-b"><table><thead><tr><th>SKU</th><th>Nombre</th><th>Descripción</th><th>Solicitado</th><th>Usado</th></tr></thead>
+    <tbody>${inv.length ? inv.map(r=>`<tr><td>${val(r.sku)}</td><td>${val(r.nombre)}</td><td>${val(r.descripcion)}</td><td>${val(r.solicitado)}</td><td>${val(r.usado)}</td></tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin registros</td></tr>'}</tbody></table></div>
+  </div>
+  <div class="card">
+    <div class="card-h">Componentes desde compra</div>
+    <div class="card-b"><table><thead><tr><th>Nombre</th><th>Descripción</th><th>SKU</th><th>Recibido</th><th>Usado</th></tr></thead>
+    <tbody>${comp.length ? comp.map(r=>`<tr><td>${val(r.nombre)}</td><td>${val(r.descripcion)}</td><td>${val(r.sku)}</td><td>${val(r.recibido)}</td><td>${val(r.usado)}</td></tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin registros</td></tr>'}</tbody></table></div>
+  </div>`;
+}
+
+function llenarSelect(){
+  const sel = document.getElementById('ordenSelect');
+  sel.innerHTML = todas.map((o,i) => `<option value="${i}">${esc(o.referencia_reparacion || 'Orden '+(i+1))}</option>`).join('');
+  sel.onchange = () => mostrar(+sel.value);
+}
+
+function mostrar(i){
+  const o = todas[i];
+  if(!o) return;
+  document.getElementById('fmtBadge').textContent = o.formato || 'sin formato';
+  document.getElementById('app').innerHTML = renderOrden(o);
+}
+
+async function init(){
+  try{
+    let data = [];
+    for (const f of FUENTES){
+      try{
+        const r = await fetch(f.url + '?t=' + Date.now());
+        if(!r.ok) continue;
+        const j = await r.json();
+        if(Array.isArray(j)) data = data.concat(j);
+      }catch(e){}
+    }
+    if(!data.length) throw new Error('No se pudo cargar JSON. Inicia el servidor local (puerto 8765).');
+    const seen = new Set();
+    todas = data.filter(o => {
+      const k = o.referencia_reparacion;
+      if(seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }catch(e){
+    document.getElementById('app').innerHTML = '<div class="err">'+esc(e.message)+'<br><br>Ejecuta: <code>python abrir_prueba_formato.py</code></div>';
+    return;
+  }
+  llenarSelect();
+  const idx = todas.findIndex(o => o.referencia_reparacion === 'WH/RO/00105');
+  mostrar(idx >= 0 ? idx : 0);
+}
+
+init();
+</script>
+</body>
+</html>

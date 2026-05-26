@@ -63,6 +63,69 @@ export function extractRfcFromBlob(blob) {
   return m ? m[1] : '';
 }
 
+/** Solo estos técnicos son encargado de laboratorio (incl. abreviados OCR) */
+const ENCARGADOS = [
+  { label: 'Javier Cruz', re: /\bjavier\s*(?:cruz|cuz|gr)\b/i },
+  { label: 'Aron', re: /\bar[oó]n(?:\s+garc[ií]a)?\b/i },
+];
+
+/** Solo estos nombres son vendedores */
+const VENDEDORES = [
+  // OCR: zuniga, zuñiga, zufiga, zufiiga + número opcional
+  { label: 'Daniel Zuñiga', re: /\bdaniel\s+zu(?:ñ|n|f)(?:i|í|l|n|ñ|g|f)*a\b(?:\s*\d+)?/i },
+  // Carlos es ambiguo (puede ser parte de razón social). Mantener conservador.
+  { label: 'Carlos', re: /\bcarlos\b(?:\s*\d+)?(?!\s+(plastic|sa|de|c\.v))/i },
+];
+
+/** Rastro Odoo actividad / chat (nombres abreviados + fechas + "pt") */
+const ACTIVITY_NOISE_RE = [
+  /\b(?:en\s+)?[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{2,12}\s+[A-ZÁÉÍÓÚÑ][a-z]{1,4}\s+\d{1,2}\s+pt\s+\d{4}[^.]*?(?:\d+\s*m\.?)?/gi,
+  /\bEn\s+E\.?\s*[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{2,12}\s+[A-ZÁÉÍÓÚÑ][a-z]{1,4}\s+\d{1,2}\s+[a-z]{2,4}\s+\d{4}\s+\d{1,3}\s*m\.?/gi,
+  /\b\d{1,2}\s+pt\s+20\d{2,4}[^.]{0,80}/gi,
+  /\blag\s+[A-Z][a-z]+\s+Gr\b/gi,
+  /\b—\s*\(\s*\)\s*\.?\s*En\s+E\./gi,
+  /\bactividad\s*\d*\s*n[°º]?\s*\d*/gi,
+];
+
+function matchStaff(text, list) {
+  if (!text) return '';
+  for (const p of list) {
+    if (p.re.test(text)) return p.label;
+  }
+  return '';
+}
+
+function extractStaffFromBlob(blob) {
+  let encargado = '';
+  let vendedor = '';
+  for (const p of ENCARGADOS) {
+    if (p.re.test(blob)) {
+      encargado = p.label;
+      break;
+    }
+  }
+  for (const p of VENDEDORES) {
+    if (p.re.test(blob)) {
+      vendedor = p.label;
+      break;
+    }
+  }
+  return { encargado, vendedor };
+}
+
+function stripStaffNamesFromText(text, encargado, vendedor) {
+  let t = text || '';
+  for (const p of ENCARGADOS) {
+    t = t.replace(p.re, ' ');
+  }
+  for (const p of VENDEDORES) {
+    t = t.replace(p.re, ' ');
+  }
+  if (encargado) t = t.replace(new RegExp(encargado.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), ' ');
+  if (vendedor) t = t.replace(new RegExp(vendedor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), ' ');
+  return t;
+}
+
 function stripUiFromDiagnostico(d) {
   let t = cleanText(d, 2000);
   if (!t || isOdooUiGarbage(t)) return '';
@@ -72,6 +135,16 @@ function stripUiFromDiagnostico(d) {
   );
   t = t.replace(/enviar\s*mensaje[^.]*?actividad/gi, ' ');
   t = t.replace(/wh\/?ro\/\d+/gi, ' ');
+  for (const re of ACTIVITY_NOISE_RE) {
+    t = t.replace(re, ' ');
+  }
+  t = t.replace(/\b(bajo\s+garant[ií]a)\b/gi, ' '); // va en checkbox, no en diagnóstico
+  t = t.replace(/^\d+\s*\.\s*reporte\s*[—\-:.]*\s*/i, ' ');
+  t = t.replace(/\blag\s+[^.]{0,60}/gi, ' ');
+  t = t.replace(/\ben\s+e\.?\s*/gi, ' ');
+  t = t.replace(/[—\-]\s*\(\s*\)\s*\.?/g, ' ');
+  t = t.replace(/\(\s*[^)]{0,20}\)\s*/g, ' ');
+  t = t.replace(/[,.]\s*$/g, '').replace(/^\s*[,.]\s*/, '');
   t = t.replace(/\s+/g, ' ').trim();
   if (isOdooUiGarbage(t)) return '';
   return t;
@@ -82,14 +155,14 @@ function detectBajoGarantia(rec) {
   return /bajo\s*garant[ií]a|es\s+de\s+garant[ií]a|ya\s+que\s+es\s+de\s+garant/i.test(blob);
 }
 
-function cleanVendedor(v) {
-  const t = cleanText(v, 80);
-  if (!t) return '';
-  if (/bajo\s*garant[ií]a/i.test(t)) return t;
-  if (isOdooUiGarbage(t)) return '';
-  if (/^daniel\s+zu[nñ]iga/i.test(t)) return t;
-  if (t.split(' ').length <= 5 && t.length >= 4 && /[a-záéíóú]/i.test(t)) return t;
-  return '';
+function cleanVendedor(v, blobForFallback = '') {
+  const blob = [v, blobForFallback].filter(Boolean).join(' ');
+  if (/bajo\s*garant[ií]a/i.test(blob) && !matchStaff(blob, VENDEDORES)) return '';
+  return matchStaff(v, VENDEDORES) || matchStaff(blobForFallback, VENDEDORES);
+}
+
+function cleanEncargado(v, blobForFallback = '') {
+  return matchStaff(v, ENCARGADOS) || matchStaff(blobForFallback, ENCARGADOS);
 }
 
 function cleanSerie(componente, equipo) {
@@ -101,15 +174,34 @@ function cleanSerie(componente, equipo) {
   return c;
 }
 
-function shortFalla(equipo, diagnostico, notas) {
-  const eq = cleanEquipo(equipo) || cleanText(equipo, 120);
-  if (eq && !EQUIPO_ES_DIAGNOSTICO_RE.test(eq)) return eq.slice(0, 200);
-  const d = stripUiFromDiagnostico(diagnostico);
+function parseComponenteFalla(componente) {
+  const c = cleanText(componente, 120);
+  if (!c) return { serie: '', fallaExtra: '' };
+  if (/^falla\b/i.test(c)) {
+    return { serie: '', fallaExtra: c.replace(/^falla\s*/i, '').trim() };
+  }
+  return { serie: cleanSerie(c), fallaExtra: '' };
+}
+
+function shortFalla(equipo, diagnostico, notas, fallaExtra) {
+  if (fallaExtra && fallaExtra.trim().length >= 5) return fallaExtra.trim().slice(0, 200);
+  const eq0 = cleanEquipo(equipo) || cleanText(equipo, 120);
+  const eq = stripStaffNamesFromText(eq0, '', '');
+  if (
+    eq
+    && eq !== 'Equipo por identificar'
+    && !EQUIPO_ES_DIAGNOSTICO_RE.test(eq)
+    && !matchStaff(eq, VENDEDORES)
+    && !matchStaff(eq, ENCARGADOS)
+  ) {
+    return eq.slice(0, 200);
+  }
+  const d = stripUiFromDiagnostico(stripStaffNamesFromText(diagnostico, '', ''));
   if (d) {
     const first = d.split(/[.!?]\s+/)[0];
     if (first && first.length >= 10 && !isOdooUiGarbage(first)) return first.slice(0, 200);
   }
-  const n = stripUiFromDiagnostico(notas);
+  const n = stripUiFromDiagnostico(stripStaffNamesFromText(notas, '', ''));
   if (n) return n.slice(0, 200);
   return 'Falla por documentar';
 }
@@ -120,6 +212,22 @@ function shortFalla(equipo, diagnostico, notas) {
 export function sanitizeReporteRecord(rec) {
   const folio = normalizeFolioRef(rec.referencia_reparacion || rec._folder || '');
   const folder = rec._folder || folio.replace(/\//g, '-').replace(/^SP-E/, 'SP-') || folio;
+
+  const staffBlob = [
+    rec.diagnostico,
+    rec.descripcion,
+    rec.notas,
+    rec.historial_actividad,
+    rec.encargado,
+    rec.vendedor,
+    rec.equipo,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const staff = extractStaffFromBlob(staffBlob);
+  let encargado = cleanEncargado(rec.encargado, staffBlob) || staff.encargado;
+  let vendedor = cleanVendedor(rec.vendedor, staffBlob) || staff.vendedor;
 
   let cliente = cleanCliente(rec.cliente);
   if (!cliente || isOdooUiGarbage(cliente)) {
@@ -134,14 +242,26 @@ export function sanitizeReporteRecord(rec) {
   if (equipo && /vendedor\s+daniel/i.test(equipo)) {
     equipo = equipo.replace(/vendedor\s+daniel\s+zu[nñ]iga.*/i, '').trim() || 'Equipo por identificar';
   }
+  if (equipo && matchStaff(equipo, ENCARGADOS)) {
+    equipo = 'Equipo por identificar';
+  }
+  if (equipo && matchStaff(equipo, VENDEDORES)) {
+    equipo = 'Equipo por identificar';
+  }
 
-  const diagnostico = stripUiFromDiagnostico(rec.diagnostico || rec.descripcion);
+  let diagnosticoRaw = [rec.diagnostico, rec.descripcion].filter(Boolean).join(' ');
+  diagnosticoRaw = stripStaffNamesFromText(diagnosticoRaw, encargado, vendedor);
+  const diagnostico = stripUiFromDiagnostico(diagnosticoRaw);
+
+  const compParts = parseComponenteFalla(rec.componente);
+  const componente = compParts.serie;
+
   const solucion = cleanText(rec.solucion, 1500);
-  const historial = cleanText(rec.historial_actividad, 3000);
-  const notas = cleanText(rec.notas, 800);
+  let historial = cleanText(rec.historial_actividad, 3000);
+  historial = stripStaffNamesFromText(historial, encargado, vendedor);
+  let notas = cleanText(rec.notas, 800);
+  notas = stripStaffNamesFromText(notas, encargado, vendedor);
   const bajoGarantia = detectBajoGarantia(rec);
-  const vendedor = cleanVendedor(rec.vendedor);
-  const encargado = cleanText(rec.encargado, 80);
   const rfc = (rec.cliente_rfc || '').trim() || extractRfcFromBlob(`${rec.cliente} ${rec.notas} ${rec.diagnostico}`);
 
   let estado = mapEstadoOdoo(rec.estado_actual);
@@ -163,7 +283,7 @@ export function sanitizeReporteRecord(rec) {
     cliente: cliente || 'Cliente por identificar',
     cliente_rfc: rfc,
     equipo: equipo || 'Equipo por identificar',
-    componente: cleanSerie(rec.componente, rec.equipo),
+    componente,
     bajo_garantia: bajoGarantia,
     fecha_ingreso: rec.fecha_ingreso || rec.fecha || '',
     fecha: rec.fecha || '',
@@ -176,7 +296,7 @@ export function sanitizeReporteRecord(rec) {
     historial_actividad: historial,
     descripcion: cleanText(rec.descripcion, 1500),
     referencia_odoo: referenciaOdoo,
-    falla_corta: shortFalla(rec.equipo, diagnostico, notas),
+    falla_corta: shortFalla(rec.equipo, diagnostico, notas, compParts.fallaExtra),
     _sanitized: true,
   };
 }

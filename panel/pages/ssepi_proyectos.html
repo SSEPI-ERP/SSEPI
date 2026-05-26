@@ -276,6 +276,18 @@
                     </div>
                 </div>
                 <div class="form-section">
+                    <div class="section-title-form"><i class="fas fa-tools"></i> Refacciones Necesarias (Visita 1 → Compras)</div>
+                    <table class="tabla-diagnostico" id="tablaRefaccionesSoporte">
+                        <thead><tr><th>Nombre</th><th>Descripción</th><th>SKU</th><th>Cantidad</th><th>Link</th><th></th></tr></thead>
+                        <tbody id="refaccionesSoporteBody"></tbody>
+                    </table>
+                    <button class="btn-add-row" id="addRefaccionSoporteBtn"><i class="fas fa-plus"></i> Agregar refacción</button>
+                    <div style="display:flex; justify-content:flex-end; margin-top:15px;">
+                        <button class="btn-primary" id="enviarRefaccionesComprasSoporteBtn" style="background:#3b82f6;"><i class="fas fa-paper-plane"></i> Enviar refacciones a Compras</button>
+                    </div>
+                </div>
+
+                <div class="form-section">
                     <div class="section-title-form"><i class="fas fa-file-alt"></i> Descripción y Observaciones</div>
                     <div class="input-group"><label>Descripción de Actividades</label><textarea id="descripcionActividades" rows="4"></textarea></div>
                     <div class="input-group"><label>Pruebas Realizadas</label><textarea id="pruebasRealizadas" rows="3"></textarea></div>

@@ -3,15 +3,23 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { getDb, persistDb, prepareStatement, setDeferPersist } from './db.mjs';
 import { sanitizeReporteRecord, folderCandidates, normalizeFolioRef } from './reportes-sanitize.mjs';
+import { normalizeLabOrder, imagenesReporte, urlImagen } from '../scripts/imports/laboratorio-import.mjs';
+import {
+  PAQUETE_ERP,
+  PAQUETE_ERP_NUEVO,
+  resolveDatosOrdenesEditables,
+  resolveReportesLabDir,
+} from '../scripts/imports/erp-paquete-paths.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ================================================================
-// CONFIG — Fuente única: SSEPI_Paquete_ERP
+// CONFIG — Paquete ERP (nuevo paq primero, luego legacy)
 // ================================================================
-const PAQUETE_DIR = path.join(__dirname, '..', 'simulaciones', 'SSEPI_Paquete_ERP');
+const PAQUETE_DIR = fs.existsSync(PAQUETE_ERP_NUEVO) ? PAQUETE_ERP_NUEVO : PAQUETE_ERP;
 const SOURCE_DIR = PAQUETE_DIR;
-const REPORTES_JSON_EDITABLES = path.join(PAQUETE_DIR, '04_Datos_muestra', 'datos_ordenes_editables.json');
+const REPORTES_JSON_EDITABLES = resolveDatosOrdenesEditables();
+const REPORTES_DIR = resolveReportesLabDir();
 const UPLOADS_DIR = path.join(__dirname, 'uploads', 'reportes');
 
 const IMG_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif']);
@@ -35,15 +43,11 @@ function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-function toDataUrl(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
-  let mime = 'application/octet-stream';
-  if (IMG_EXTS.has(ext)) mime = ext === '.png' ? 'image/png' : 'image/jpeg';
-  else if (ext === '.pdf') mime = 'application/pdf';
-  const buf = fs.readFileSync(filePath);
-  const b64 = buf.toString('base64');
-  return `data:${mime};base64,${b64}`;
-}
+const ESTADO_OVERRIDE = process.argv.includes('--todo-cancelado')
+  ? 'Cancelado'
+  : process.argv.includes('--todo-reparado')
+    ? 'Reparado'
+    : null;
 
 function parseFechaToIso(str) {
   if (!str) return null;
@@ -69,29 +73,21 @@ function parseFechaToIso(str) {
   return null;
 }
 
+/** Estados compatibles con KANBAN_STAGES en panel/js/modules/taller.js */
 function normalizeEstado(est) {
+  if (ESTADO_OVERRIDE) return ESTADO_OVERRIDE;
   if (!est) return 'Nuevo';
-  const lo = est.toLowerCase();
-  const map = {
-    'reparado': 'Reparado',
-    'en reparacion': 'En reparacion',
-    'en reparación': 'En reparacion',
-    'confirmado': 'Confirmado',
-    'nuevo': 'Nuevo',
-    'cancelado': 'Cancelado',
-    'entregado': 'Entregado',
-    'en diagnostico': 'En diagnostico',
-    'en diagnóstico': 'En diagnostico',
-    'diagnosticado': 'Diagnosticado',
-    'pendiente': 'Pendiente',
-    'esperando repuesto': 'Esperando repuesto',
-    'esperando repuestos': 'Esperando repuesto',
-  };
-  for (const [k, v] of Object.entries(map)) {
-    if (lo.includes(k)) return v;
-  }
-  const words = est.trim().split(/\s+/).filter(w => w.length > 2);
-  if (words.length) return words[0].charAt(0).toUpperCase() + words[0].slice(1).toLowerCase();
+  const lo = String(est).toLowerCase();
+  if (lo.includes('cancel')) return 'Cancelado';
+  if (lo.includes('entreg') || lo.includes('factur')) return 'Entregado';
+  if (lo.includes('reparado') || lo.includes('listo')) return 'Reparado';
+  if (lo.includes('reparaci')) return 'En reparación';
+  if (lo.includes('confirm')) return 'Confirmado';
+  if (lo.includes('cotiz')) return 'Esperando Cotización';
+  if (lo.includes('esperando') && lo.includes('confirm')) return 'Esperando Confirmación Cliente';
+  if (lo.includes('diagn')) return 'Diagnóstico';
+  if (lo.includes('garant')) return 'Garantía';
+  if (lo.includes('nuevo') || lo.includes('registr')) return 'Nuevo';
   return 'Nuevo';
 }
 
@@ -126,9 +122,14 @@ function mergeRecord(base, extra, overwrite = false) {
 function loadRecords() {
   const byFolio = new Map();
 
-  // Fuente única: datos_ordenes_editables.json del paquete ERP
+  // Fuente: datos_ordenes_editables.json (escáner o paquete nuevo)
+  if (!REPORTES_JSON_EDITABLES) {
+    console.error('[Import] No se encontró datos_ordenes_editables.json');
+    return [];
+  }
+  console.log('[Import] JSON órdenes:', REPORTES_JSON_EDITABLES);
   const sources = [
-    { data: readJson(REPORTES_JSON_EDITABLES), name: 'ordenes_editables', priority: 100 },
+    { data: readJson(REPORTES_JSON_EDITABLES), name: path.basename(REPORTES_JSON_EDITABLES), priority: 100 },
   ].filter((s) => s.data?.length);
 
   for (const src of sources) {
@@ -161,56 +162,121 @@ function loadRecords() {
 // ================================================================
 // FILE SCANNER
 // ================================================================
+function resolvePaquetePath(relPath) {
+  if (!relPath) return null;
+  const clean = String(relPath).replace(/^\.?[\\/]+/, '').replace(/\//g, path.sep);
+  const candidates = [
+    path.join(PAQUETE_DIR, clean),
+    path.join(PAQUETE_DIR, 'reportes', path.basename(clean)),
+    REPORTES_DIR ? path.join(REPORTES_DIR, path.basename(path.dirname(clean)), path.basename(clean)) : null,
+    REPORTES_DIR ? path.join(REPORTES_DIR, path.basename(clean)) : null,
+    path.join(__dirname, '..', 'simulaciones', 'escaner de imagenes', clean),
+  ].filter(Boolean);
+  for (const p of candidates) {
+    if (fs.existsSync(p) && fs.statSync(p).isFile()) return p;
+  }
+  return null;
+}
+
 function getFilesInFolder(rec) {
   const names = folderCandidates(rec);
   let folderPath = null;
   for (const name of names) {
-    const p = path.join(SOURCE_DIR, 'reportes', name);
-    if (fs.existsSync(p)) {
-      folderPath = p;
-      break;
+    const dirs = [
+      path.join(SOURCE_DIR, 'reportes', name),
+      REPORTES_DIR ? path.join(REPORTES_DIR, name) : null,
+    ].filter(Boolean);
+    for (const p of dirs) {
+      if (fs.existsSync(p)) {
+        folderPath = p;
+        break;
+      }
     }
+    if (folderPath) break;
   }
-  if (!folderPath) return { images: [], documents: [] };
-  const files = fs.readdirSync(folderPath);
   const images = [];
   const documents = [];
-  for (const f of files) {
-    const ext = path.extname(f).toLowerCase();
-    const full = path.join(folderPath, f);
-    const stat = fs.statSync(full);
-    if (!stat.isFile()) continue;
-    if (IMG_EXTS.has(ext)) images.push(full);
-    else if (DOC_EXTS.has(ext)) documents.push(full);
+  if (folderPath) {
+    const files = fs.readdirSync(folderPath);
+    for (const f of files) {
+      const ext = path.extname(f).toLowerCase();
+      const full = path.join(folderPath, f);
+      if (!fs.statSync(full).isFile()) continue;
+      if (IMG_EXTS.has(ext)) images.push(full);
+      else if (DOC_EXTS.has(ext)) documents.push(full);
+    }
   }
-  return { images, documents };
+  if (images.length === 0 && documents.length === 0) {
+    const relPaths = [
+      ...(rec.imagenes_erp || []),
+      ...(rec.imagenes_servicio || []),
+      ...(rec.archivos_pdf || []),
+    ];
+    for (const rel of relPaths) {
+      const abs = resolvePaquetePath(rel);
+      if (!abs) continue;
+      const ext = path.extname(abs).toLowerCase();
+      if (IMG_EXTS.has(ext)) images.push(abs);
+      else if (DOC_EXTS.has(ext)) documents.push(abs);
+    }
+  }
+  return { images, documents, folderPath };
+}
+
+function buildResumenCarpeta(rec, imageNames, docNames) {
+  const lines = [
+    `Folio: ${rec.referencia_reparacion || ''}`,
+    `Estado (paquete): ${rec.estado_actual || ''}`,
+    `Cliente: ${rec.cliente || ''}`,
+    `Equipo: ${rec.equipo || ''}`,
+    `Diagnóstico: ${rec.diagnostico || ''}`,
+    `Solución: ${rec.solucion || ''}`,
+    `Vendedor: ${rec.vendedor || ''}`,
+    `Encargado: ${rec.encargado || ''}`,
+    '',
+    `Archivos (${imageNames.length + docNames.length}):`,
+    ...imageNames.map((n) => `  [img] ${n}`),
+    ...docNames.map((n) => `  [pdf] ${n}`),
+  ];
+  return lines.filter(Boolean).join('\n').trim();
 }
 
 // ================================================================
 // BUILD ORDER DATA
 // ================================================================
-function buildBaseOrder(rec, reporteImagenes, documentosAdjuntos) {
+function buildBaseOrder(rec, reporteImagenes, documentosAdjuntos, resumenCarpeta) {
+  const lab = normalizeLabOrder(rec);
+  const recp = lab.datos_recepcion || {};
   const fechaIso = parseFechaToIso(rec.fecha_ingreso || rec.fecha);
   const folio = rec.referencia_reparacion || rec._folder || 'SIN-FOLIO';
+  const imgsLab = imagenesReporte(lab).map(urlImagen).filter(Boolean);
   return {
     folio,
+    formato: lab.formato || 'laboratorio-1',
+    etapa_actual: lab.etapa_actual || 1,
+    etapas: lab.etapas || [],
+    datos_recepcion: lab.datos_recepcion || recp,
+    resumen_diagnostico: lab.resumen_diagnostico || rec.diagnostico || '',
+    imagenes_reporte: imgsLab,
     estado: normalizeEstado(rec.estado_actual),
-    cliente_nombre: rec.cliente || 'Cliente por identificar',
+    resumen_carpeta: resumenCarpeta || '',
+    cliente_nombre: recp.cliente || rec.cliente || 'Cliente por identificar',
     cliente_id: null,
-    referencia: rec.referencia_odoo || '',
-    equipo: rec.equipo || 'Equipo por identificar',
-    marca: '',
-    modelo: '',
-    serie: rec.componente || '',
-    falla_reportada: rec.falla_corta || rec.equipo || 'Por diagnosticar',
-    condiciones_fisicas: '',
-    notas_internas: rec.diagnostico || rec.notas || '',
-    notas_generales: [rec.historial_actividad, rec.notas].filter(Boolean).join('\n').trim(),
-    reparacion_resumen_diagnostico: rec.diagnostico || '',
-    diagnostico: rec.diagnostico || '',
+    referencia: rec.referencia_odoo || lab.numero_orden_wh || '',
+    equipo: recp.equipo || rec.equipo || 'Equipo por identificar',
+    marca: recp.marca || '',
+    modelo: recp.modelo || '',
+    serie: recp.serie || rec.componente || '',
+    falla_reportada: recp.falla || rec.falla_corta || 'Por diagnosticar',
+    condiciones_fisicas: recp.condiciones || '',
+    notas_internas: lab.resumen_diagnostico || rec.diagnostico || rec.notas || '',
+    notas_generales: resumenCarpeta || [rec.solucion, rec.historial_actividad].filter(Boolean).join('\n').trim(),
+    reparacion_resumen_diagnostico: lab.resumen_diagnostico || rec.diagnostico || '',
+    diagnostico: lab.resumen_diagnostico || rec.diagnostico || '',
     solucion: rec.solucion || '',
     historial_actividad: rec.historial_actividad || '',
     vendedor_externo: rec.vendedor || '',
+    recibido_por: rec.vendedor || '',
     bajo_garantia: !!rec.bajo_garantia,
     cliente_rfc: rec.cliente_rfc || '',
     tecnico_responsable: rec.encargado || 'Por asignar',
@@ -368,45 +434,47 @@ async function main() {
     const folioDir = path.join(UPLOADS_DIR, folio.replace(/[^a-zA-Z0-9_-]/g, '_'));
     ensureDir(folioDir);
 
-    // Copiar archivos y generar dataUrls
+    const folioSlug = folio.replace(/[^a-zA-Z0-9_-]/g, '_');
     const reporteImagenes = [];
-    for (const imgPath of images) {
-      const baseName = path.basename(imgPath).replace(/[^a-zA-Z0-9._-]/g, '_');
-      const destPath = path.join(folioDir, baseName);
+    const imageNames = [];
+    for (let i = 0; i < images.length; i++) {
+      const imgPath = images[i];
+      const baseName = path.basename(imgPath);
+      const safeName = baseName.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const destPath = path.join(folioDir, safeName);
       fs.copyFileSync(imgPath, destPath);
-      try {
-        const dataUrl = toDataUrl(imgPath);
-        reporteImagenes.push({
-          id: 'img-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9) + '-' + idx,
-          nombre: baseName,
-          dataUrl: dataUrl,
-        });
-      } catch (e) {
-        console.error(`[Import] Error convirtiendo imagen ${imgPath}:`, e.message);
-      }
+      const url = `/uploads/reportes/${folioSlug}/${encodeURIComponent(safeName)}`;
+      reporteImagenes.push({
+        id: `img-${folioSlug}-${i}`,
+        nombre: baseName,
+        url,
+      });
+      imageNames.push(baseName);
     }
 
     const documentosAdjuntos = [];
-    for (const docPath of documents) {
-      const baseName = path.basename(docPath).replace(/[^a-zA-Z0-9._-]/g, '_');
-      const destPath = path.join(folioDir, baseName);
+    const docNames = [];
+    for (let i = 0; i < documents.length; i++) {
+      const docPath = documents[i];
+      const baseName = path.basename(docPath);
+      const safeName = baseName.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const destPath = path.join(folioDir, safeName);
       fs.copyFileSync(docPath, destPath);
-      try {
-        const dataUrl = toDataUrl(docPath);
-        documentosAdjuntos.push({
-          id: 'doc-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9) + '-' + idx,
-          nombre: baseName,
-          dataUrl: dataUrl,
-          tipo: 'pdf',
-        });
-      } catch (e) {
-        console.error(`[Import] Error convirtiendo PDF ${docPath}:`, e.message);
-      }
+      const url = `/uploads/reportes/${folioSlug}/${encodeURIComponent(safeName)}`;
+      documentosAdjuntos.push({
+        id: `doc-${folioSlug}-${i}`,
+        nombre: baseName,
+        url,
+        tipo: 'pdf',
+      });
+      docNames.push(baseName);
     }
+
+    const resumenCarpeta = buildResumenCarpeta(rec, imageNames, docNames);
 
     if (modulo === 'taller') {
       const existing = await stmtTaller.query("json_extract(data, '$.folio') = ?", [folio], 'id ASC', 1);
-      const data = buildBaseOrder(rec, reporteImagenes, documentosAdjuntos);
+      const data = buildBaseOrder(rec, reporteImagenes, documentosAdjuntos, resumenCarpeta);
       if (existing.length > 0) {
         const localId = existing[0].local_id || existing[0].id;
         await stmtTaller.update(localId, data);

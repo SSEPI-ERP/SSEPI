@@ -1,0 +1,97 @@
+================================================================================
+  FORMATO laboratorio-1 — COPIAR A TU OTRO SISTEMA (SSEPI / taller.js)
+================================================================================
+
+Copia TODA esta carpeta:
+  05_Formato_Laboratorio_Import\
+
+a tu proyecto (junto a taller.js, panel, carpeta reportes\, etc.).
+
+--------------------------------------------------------------------------------
+1) VER LA MISMA VISTA QUE EN LABORATORIO (prueba local)
+--------------------------------------------------------------------------------
+
+  Requisitos: Python 3 instalado.
+
+  a) Copia también (o genera) un JSON de órdenes:
+     - muestra_formato_laboratorio.json  (1 orden ejemplo WH/RO/00105)
+     - datos_reportes.json               (todas las carpetas escaneadas)
+
+  b) Si tienes fotos, copia la carpeta reportes\ al mismo nivel que este HTML
+     (rutas del JSON: reportes/SP-E0513/foto.jpg).
+
+  c) Doble clic: INICIAR_PRUEBA_FORMATO.bat
+     Abre: http://127.0.0.1:8765/prueba_formato_laboratorio.html
+
+  Eso es solo PREVIEW. Tu ERP real usa taller.js (paso 2).
+
+--------------------------------------------------------------------------------
+2) EN TU SISTEMA SSEPI (localhost:3333 / taller.js)
+--------------------------------------------------------------------------------
+
+  Archivo clave: importar_laboratorio.js (incluido aquí).
+
+  a) Incluir el script ANTES de taller.js en el HTML del panel:
+     <script src="importar_laboratorio.js"></script>
+     <script src="taller.js"></script>
+
+  b) Al importar JSON o cargar una orden desde API, normalizar:
+     orden = LaboratorioImport.normalize(orden);
+
+  c) Al pintar imágenes del reporte (_renderReporteImagenes), usar SOLO:
+     orden.imagenes_reporte   (máx. 5 URLs válidas, no null)
+     Cada URL debe ser ruta absoluta o relativa al sitio, ej.:
+       /reportes/SP-E0687/foto.jpg
+     NO uses capturas ERP (Screenshot/Odoo) en imagenes_reporte.
+
+  d) Campos que debe leer el modal de Laboratorio:
+
+     CABECERA
+       referencia_reparacion, numero_orden_wh
+       etapa_actual (1-5), etapas[]
+
+     DATOS DE RECEPCIÓN  →  orden.datos_recepcion
+       cliente, marca, serie, condiciones, equipo, modelo, falla
+
+     TEXTOS PDF
+       resumen_diagnostico  (apartado "Trabajo realizado")
+       notas_reparacion
+
+     TABLAS
+       componentes_extras[]      → nombre, descripcion, cantidad, costo_unitario, subtotal
+       componentes_inventario[]  → sku, nombre, descripcion, solicitado, usado
+       componentes_compra[]      → nombre, descripcion, sku, recibido, usado
+       consumibles_usados[]
+
+     BITÁCORA
+       bitacora.notas[], bitacora.registro[]
+
+  e) Compatibilidad con JSON viejo (plano):
+     El normalizador convierte automáticamente cliente, equipo, diagnostico, etc.
+
+--------------------------------------------------------------------------------
+3) GENERAR datos_reportes.json EN EL ESCANER (origen)
+--------------------------------------------------------------------------------
+
+  En la PC donde están las carpetas reportes\SP-E0xxx\:
+
+    python scan_reportes.py          → datos_reportes.json (formato nuevo)
+    python limpiar_datos.py          → datos_ordenes_editables.json (con OCR)
+    python prueba_lectura_formato.py → validar
+
+  Copia datos_reportes.json (y opcional reportes\) a tu otro sistema.
+
+--------------------------------------------------------------------------------
+4) ARCHIVOS DE ESTA CARPETA
+--------------------------------------------------------------------------------
+
+  formato_laboratorio.py          Esquema Python (migrar/validar)
+  importar_laboratorio.js         Mismo esquema para taller.js
+  prueba_formato_laboratorio.html Vista previa visual
+  abrir_prueba_formato.py         Servidor + abre navegador
+  prueba_lectura_formato.py         Validación por consola
+  scan_reportes.py                  Genera JSON desde carpetas
+  muestra_formato_laboratorio.json  Ejemplo completo
+  INTEGRACION_EN_TU_SISTEMA.txt     Resumen corto para desarrollador
+
+================================================================================

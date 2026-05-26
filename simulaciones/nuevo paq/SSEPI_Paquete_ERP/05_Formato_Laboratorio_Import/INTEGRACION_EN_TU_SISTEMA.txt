@@ -1,0 +1,21 @@
+RESUMEN RÁPIDO — qué usar para que se vea como Laboratorio
+=========================================================
+
+COPIAR:
+  • Carpeta 05_Formato_Laboratorio_Import\ (completa)
+  • datos_reportes.json (desde escáner) o muestra_formato_laboratorio.json
+  • Carpeta reportes\ (fotos, mismas rutas que en el JSON)
+
+EN EL NAVEGADOR (prueba):
+  • INICIAR_PRUEBA_FORMATO.bat → prueba_formato_laboratorio.html
+
+EN TU ERP (taller.js):
+  1. <script src="importar_laboratorio.js"></script>
+  2. Tras cargar JSON:  orden = LaboratorioImport.normalize(orden);
+  3. Galería PDF:       LaboratorioImport.imagenesReporte(orden)
+                        (nunca pasar null a img.src)
+  4. Texto PDF:         orden.resumen_diagnostico
+  5. Recepción:         orden.datos_recepcion.cliente, .equipo, .falla, etc.
+  6. Stepper:           orden.etapa_actual + orden.etapas
+
+FORMATO JSON:  "formato": "laboratorio-1"

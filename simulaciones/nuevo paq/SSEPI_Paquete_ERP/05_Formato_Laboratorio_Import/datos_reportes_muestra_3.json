@@ -1,0 +1,282 @@
+[
+  {
+    "referencia_reparacion": "SP-E0513",
+    "numero_orden_wh": "",
+    "etapa_actual": 1,
+    "etapas": [
+      {
+        "n": 1,
+        "nombre": "Registrado",
+        "fecha": "",
+        "estado": "en_curso"
+      },
+      {
+        "n": 2,
+        "nombre": "Diagnóstico",
+        "fecha": "",
+        "estado": "pendiente"
+      },
+      {
+        "n": 3,
+        "nombre": "Esperando Cotización / Confirmación",
+        "fecha": "",
+        "estado": "pendiente"
+      },
+      {
+        "n": 4,
+        "nombre": "Reparación / Reparado",
+        "fecha": "",
+        "estado": "pendiente"
+      },
+      {
+        "n": 5,
+        "nombre": "Entregado / Facturado",
+        "fecha": "",
+        "estado": "pendiente"
+      }
+    ],
+    "datos_recepcion": {
+      "cliente": "",
+      "marca": "",
+      "serie": "",
+      "condiciones": "",
+      "equipo": "",
+      "modelo": "",
+      "falla": ""
+    },
+    "resumen_diagnostico": "",
+    "notas_reparacion": "",
+    "reporte_tecnico": "",
+    "imagenes_reporte": [
+      "reportes/SP-E0513/20250731034901.jpg",
+      "reportes/SP-E0513/20250731034919.jpg"
+    ],
+    "componentes_extras": [],
+    "componentes_inventario": [],
+    "componentes_compra": [],
+    "consumibles_usados": [],
+    "bitacora": {
+      "notas": [],
+      "registro": []
+    },
+    "estado_actual": "Registrado",
+    "numero_orden": "",
+    "tipo_orden": "",
+    "cliente": "",
+    "cliente_rfc": "",
+    "equipo": "",
+    "componente": "",
+    "bajo_garantia": "",
+    "fecha_ingreso": "",
+    "fecha": "",
+    "encargado": "",
+    "vendedor": "",
+    "materiales": "",
+    "descripcion": "",
+    "notas": "",
+    "diagnostico": "",
+    "solucion": "",
+    "historial_actividad": "",
+    "imagenes_erp": [],
+    "imagenes_servicio": [
+      "reportes/SP-E0513/20250731034901.jpg",
+      "reportes/SP-E0513/20250731034919.jpg"
+    ],
+    "archivos_pdf": [],
+    "formato": "laboratorio-1",
+    "_source_images": [
+      "C:\\Users\\norbe\\Documents\\robot_mecanum_esp32_v3\\escaner de imagenes\\reportes\\SP-E0513\\20250731034901.jpg",
+      "C:\\Users\\norbe\\Documents\\robot_mecanum_esp32_v3\\escaner de imagenes\\reportes\\SP-E0513\\20250731034919.jpg",
+      "C:\\Users\\norbe\\Documents\\robot_mecanum_esp32_v3\\escaner de imagenes\\reportes\\SP-E0513\\Screenshot 2026-05-14 122827.png"
+    ]
+  },
+  {
+    "referencia_reparacion": "SP-E0524",
+    "numero_orden_wh": "",
+    "etapa_actual": 1,
+    "etapas": [
+      {
+        "n": 1,
+        "nombre": "Registrado",
+        "fecha": "",
+        "estado": "en_curso"
+      },
+      {
+        "n": 2,
+        "nombre": "Diagnóstico",
+        "fecha": "",
+        "estado": "pendiente"
+      },
+      {
+        "n": 3,
+        "nombre": "Esperando Cotización / Confirmación",
+        "fecha": "",
+        "estado": "pendiente"
+      },
+      {
+        "n": 4,
+        "nombre": "Reparación / Reparado",
+        "fecha": "",
+        "estado": "pendiente"
+      },
+      {
+        "n": 5,
+        "nombre": "Entregado / Facturado",
+        "fecha": "",
+        "estado": "pendiente"
+      }
+    ],
+    "datos_recepcion": {
+      "cliente": "",
+      "marca": "",
+      "serie": "",
+      "condiciones": "",
+      "equipo": "",
+      "modelo": "",
+      "falla": ""
+    },
+    "resumen_diagnostico": "",
+    "notas_reparacion": "",
+    "reporte_tecnico": "",
+    "imagenes_reporte": [
+      "reportes/SP-E0524/20251114043811.jpg",
+      "reportes/SP-E0524/20251114043959.jpg",
+      "reportes/SP-E0524/20251226082536.jpg",
+      "reportes/SP-E0524/20251226082547.jpg"
+    ],
+    "componentes_extras": [],
+    "componentes_inventario": [],
+    "componentes_compra": [],
+    "consumibles_usados": [],
+    "bitacora": {
+      "notas": [],
+      "registro": []
+    },
+    "estado_actual": "Registrado",
+    "numero_orden": "",
+    "tipo_orden": "",
+    "cliente": "",
+    "cliente_rfc": "",
+    "equipo": "",
+    "componente": "",
+    "bajo_garantia": "",
+    "fecha_ingreso": "",
+    "fecha": "",
+    "encargado": "",
+    "vendedor": "",
+    "materiales": "",
+    "descripcion": "",
+    "notas": "",
+    "diagnostico": "",
+    "solucion": "",
+    "historial_actividad": "",
+    "imagenes_erp": [],
+    "imagenes_servicio": [
+      "reportes/SP-E0524/20251114043811.jpg",
+      "reportes/SP-E0524/20251114043959.jpg",
+      "reportes/SP-E0524/20251226082536.jpg",
+      "reportes/SP-E0524/20251226082547.jpg"
+    ],
+    "archivos_pdf": [],
+    "formato": "laboratorio-1",
+    "_source_images": [
+      "C:\\Users\\norbe\\Documents\\robot_mecanum_esp32_v3\\escaner de imagenes\\reportes\\SP-E0524\\20251114043811.jpg",
+      "C:\\Users\\norbe\\Documents\\robot_mecanum_esp32_v3\\escaner de imagenes\\reportes\\SP-E0524\\20251114043959.jpg",
+      "C:\\Users\\norbe\\Documents\\robot_mecanum_esp32_v3\\escaner de imagenes\\reportes\\SP-E0524\\20251226082536.jpg",
+      "C:\\Users\\norbe\\Documents\\robot_mecanum_esp32_v3\\escaner de imagenes\\reportes\\SP-E0524\\20251226082547.jpg",
+      "C:\\Users\\norbe\\Documents\\robot_mecanum_esp32_v3\\escaner de imagenes\\reportes\\SP-E0524\\Orden de reparación.pdf",
+      "C:\\Users\\norbe\\Documents\\robot_mecanum_esp32_v3\\escaner de imagenes\\reportes\\SP-E0524\\Screenshot 2026-05-14 121237.png"
+    ]
+  },
+  {
+    "referencia_reparacion": "SP-E0525",
+    "numero_orden_wh": "",
+    "etapa_actual": 1,
+    "etapas": [
+      {
+        "n": 1,
+        "nombre": "Registrado",
+        "fecha": "",
+        "estado": "en_curso"
+      },
+      {
+        "n": 2,
+        "nombre": "Diagnóstico",
+        "fecha": "",
+        "estado": "pendiente"
+      },
+      {
+        "n": 3,
+        "nombre": "Esperando Cotización / Confirmación",
+        "fecha": "",
+        "estado": "pendiente"
+      },
+      {
+        "n": 4,
+        "nombre": "Reparación / Reparado",
+        "fecha": "",
+        "estado": "pendiente"
+      },
+      {
+        "n": 5,
+        "nombre": "Entregado / Facturado",
+        "fecha": "",
+        "estado": "pendiente"
+      }
+    ],
+    "datos_recepcion": {
+      "cliente": "",
+      "marca": "",
+      "serie": "",
+      "condiciones": "",
+      "equipo": "",
+      "modelo": "",
+      "falla": ""
+    },
+    "resumen_diagnostico": "",
+    "notas_reparacion": "",
+    "reporte_tecnico": "",
+    "imagenes_reporte": [
+      "reportes/SP-E0525/20250729035303.jpg",
+      "reportes/SP-E0525/20250729035319.jpg"
+    ],
+    "componentes_extras": [],
+    "componentes_inventario": [],
+    "componentes_compra": [],
+    "consumibles_usados": [],
+    "bitacora": {
+      "notas": [],
+      "registro": []
+    },
+    "estado_actual": "Registrado",
+    "numero_orden": "",
+    "tipo_orden": "",
+    "cliente": "",
+    "cliente_rfc": "",
+    "equipo": "",
+    "componente": "",
+    "bajo_garantia": "",
+    "fecha_ingreso": "",
+    "fecha": "",
+    "encargado": "",
+    "vendedor": "",
+    "materiales": "",
+    "descripcion": "",
+    "notas": "",
+    "diagnostico": "",
+    "solucion": "",
+    "historial_actividad": "",
+    "imagenes_erp": [],
+    "imagenes_servicio": [
+      "reportes/SP-E0525/20250729035303.jpg",
+      "reportes/SP-E0525/20250729035319.jpg"
+    ],
+    "archivos_pdf": [],
+    "formato": "laboratorio-1",
+    "_source_images": [
+      "C:\\Users\\norbe\\Documents\\robot_mecanum_esp32_v3\\escaner de imagenes\\reportes\\SP-E0525\\20250729035303.jpg",
+      "C:\\Users\\norbe\\Documents\\robot_mecanum_esp32_v3\\escaner de imagenes\\reportes\\SP-E0525\\20250729035319.jpg",
+      "C:\\Users\\norbe\\Documents\\robot_mecanum_esp32_v3\\escaner de imagenes\\reportes\\SP-E0525\\Screenshot 2026-05-14 121436.png"
+    ]
+  }
+]

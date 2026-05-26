@@ -1,0 +1,70 @@
+================================================================================
+  SSEPI — PAQUETE ERP (Comparador contactos + Editor de órdenes)
+================================================================================
+
+Este paquete reúne las DOS herramientas que ya tienen datos cargados y explica
+cómo usarlas juntas para la calculadora / siguiente orden de reparación.
+
+  Carpeta raíz del proyecto:
+  c:\Users\norbe\Documents\robot_mecanum_esp32_v3\escaner de imagenes\
+
+  Esta carpeta (paquete):
+  ...\escaner de imagenes\SSEPI_Paquete_ERP\
+
+--------------------------------------------------------------------------------
+INICIO RÁPIDO (dos servidores a la vez)
+--------------------------------------------------------------------------------
+
+  1) Doble clic: INICIAR_AMBOS.bat
+     - Puerto 8765 → Editor de órdenes
+     - Puerto 8766 → Comparador Odoo / Excel
+
+  2) En el navegador:
+     Editor:     http://127.0.0.1:8765/editor_ordenes.html
+     Comparador: http://127.0.0.1:8766/comparador_clientes.html
+     (En red: cambie 127.0.0.1 por la IP de su PC, ej. 192.168.101.14)
+
+--------------------------------------------------------------------------------
+DOCUMENTACIÓN (lea en este orden)
+--------------------------------------------------------------------------------
+
+  03_Documentacion\GUIA_USO_OPERATIVA.txt
+      → Uso diario: qué hace cada programa, pasos, URLs.
+
+  03_Documentacion\BASE_DE_DATOS_Y_ARCHIVOS.txt
+      → Qué JSON/Excel ya están cargados y dónde viven.
+
+  03_Documentacion\VINCULACION_EMPRESAS_Y_COSTOS.txt
+      → Nombres empresa/cliente, módulos LAB/MOT/SUM/AUTO, siguiente costo.
+
+  03_Documentacion\GUIA_GERENTE_Y_DESARROLLO_FUTURO.txt
+      → Para gerencia / quien actualice la calculadora en Odoo o código.
+
+--------------------------------------------------------------------------------
+ARCHIVOS PRINCIPALES (copia de referencia en este paquete)
+--------------------------------------------------------------------------------
+
+  01_Comparador_Odoo_Excel\     → scripts y HTML del comparador
+  02_Editor_Ordenes\            → editor + servidor + limpieza de datos
+  05_Formato_Laboratorio_Import\ → formato laboratorio-1 + vista previa + taller.js
+
+  INICIAR_PRUEBA_LABORATORIO.bat  → abre la prueba visual del formato (puerto 8765)
+
+  Los datos GRANDES (capturas PNG, JSON generado) siguen en las carpetas
+  originales (info\ y raíz). Los .bat de este paquete apuntan ahí.
+
+--------------------------------------------------------------------------------
+ACTUALIZAR DATOS DESPUÉS DE CAMBIAR EXCEL O CAPTURAS
+--------------------------------------------------------------------------------
+
+  Comparador (desde carpeta info):
+    cd "...\escaner de imagenes\info"
+    python generar_rastro.py
+    python build_comparador.py
+
+  Editor (desde carpeta raíz escaner de imagenes):
+    cd "...\escaner de imagenes"
+    python limpiar_datos.py
+    (luego reiniciar iniciar_servidor.bat)
+
+================================================================================

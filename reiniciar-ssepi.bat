@@ -202,21 +202,9 @@ if %errorlevel% neq 0 echo      (Error contactos ERP — ejecuta build-erp-maest
 
 
 
-:: [3k-pre] OCR limpio para reportes
+:: [3k] Importar ordenes desde SSEPI_Paquete_ERP (JSON + carpetas reportes/)
 
-echo [3k-pre] scan-lab-reportes --write...
-
-cd /d "%~dp0scripts\imports"
-
-node scan-lab-reportes.mjs --write
-
-cd /d "%~dp0ssepinext"
-
-
-
-:: [3k] Importar 179 ordenes + imagenes/PDFs (puede tardar varios minutos)
-
-echo [3k] Importando reportes escaneados (ordenes taller/motores/auto)...
+echo [3k] Importando desde simulaciones\SSEPI_Paquete_ERP (datos_ordenes_editables + reportes/)...
 
 echo      Log: %LOGFILE%
 
@@ -281,6 +269,16 @@ echo [3o] Proyectos automatizacion ejemplo...
 node seed-proyectos-automatizacion.mjs
 
 if %errorlevel% neq 0 echo      (Aviso proyectos auto)
+
+
+
+:: [3p] Soporte de planta (si no hay del import)
+
+echo [3p] Soporte de planta ejemplo...
+
+node seed-proyectos-soporte-planta.mjs
+
+if %errorlevel% neq 0 echo      (Aviso soporte planta)
 
 
 

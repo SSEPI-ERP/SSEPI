@@ -43,7 +43,14 @@ const TallerModule = (function() {
     let componentesInventario = [];
     let componentesCompra = [];
     let componentesExtras = []; // Array de { descripcion, cantidad, costo_unitario, subtotal }
-    let reporteImagenes = []; // Array de { id, dataUrl, nombre } para imágenes del reporte PDF
+    let reporteImagenes = []; // { id, nombre, url?, dataUrl? }
+
+    function _imagenReporteSrc(img) {
+        if (!img) return '';
+        if (img.url) return img.url;
+        if (img.dataUrl) return img.dataUrl;
+        return '';
+    }
 
     // Filtros
     let filtroFechaInicio = null;
@@ -270,6 +277,16 @@ const TallerModule = (function() {
         history.replaceState({}, document.title, window.location.pathname);
     }
 
+    // ==================== NORMALIZACIÓN DE NOMBRES (ñ → n, acentos → plano) ====================
+    function _normalizarTexto(str) {
+        if (!str) return '';
+        return String(str)
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/ñ/gi, 'n')
+            .replace(/[^a-zA-Z0-9\s\-_.,@]/g, '')
+            .trim();
+    }
+
     // ==================== CARGAR TÉCNICOS ====================
     async function _cargarTecnicos() {
         try {
@@ -292,18 +309,25 @@ const TallerModule = (function() {
 
     async function _cargarVendedores() {
         try {
-            const vendedores = (await authService.getUsersByRol(['ventas', 'admin', 'superadmin']))
+            let vendedores = (await authService.getUsersByRol(['ventas', 'admin', 'superadmin']))
                 .filter(v => {
                     return v.departamento === 'Ventas' || v.rol === 'superadmin';
                 });
+            // Normalizar nombres para consistencia (ñ → n, acentos planos)
+            vendedores = vendedores.map(function(v) {
+                return Object.assign({}, v, { nombre: _normalizarTexto(v.nombre) || v.nombre });
+            });
             const select = document.getElementById('recibidoPorSelect');
             if (!select) return;
-            const valActual = select.value;
+            const valActual = _normalizarTexto(select.value);
             select.innerHTML = '<option value="">Seleccionar</option>' +
                 vendedores.map(function(v) {
                     return '<option value="' + (v.nombre || v.email) + '" data-id="' + v.id + '">' + (v.nombre || v.email) + '</option>';
                 }).join('');
-            if (valActual) select.value = valActual;
+            if (valActual) {
+                const opt = Array.from(select.options).find(function(o) { return _normalizarTexto(o.value) === valActual; });
+                if (opt) select.value = opt.value;
+            }
         } catch (e) {
             console.error('[Taller] Error cargando vendedores:', e);
         }
@@ -1456,7 +1480,79 @@ const TallerModule = (function() {
         }).join('');
     }
 
+    function _erpOrdenToLabRaw(orden) {
+        return {
+            formato: orden.formato,
+            referencia_reparacion: orden.folio,
+            estado_actual: orden.estado,
+            numero_orden_wh: orden.referencia,
+            cliente: orden.cliente_nombre,
+            marca: orden.marca,
+            modelo: orden.modelo,
+            serie: orden.serie,
+            componente: orden.serie,
+            condiciones: orden.condiciones_fisicas,
+            equipo: orden.equipo,
+            falla: orden.falla_reportada,
+            diagnostico: orden.diagnostico || orden.notas_internas,
+            descripcion: orden.reparacion_resumen_diagnostico,
+            resumen_diagnostico: orden.resumen_diagnostico || orden.reparacion_resumen_diagnostico || orden.diagnostico,
+            notas: orden.notas_generales,
+            encargado: orden.tecnico_responsable || orden.encargado_recepcion,
+            vendedor: orden.vendedor_externo || orden.recibido_por,
+            bajo_garantia: orden.bajo_garantia,
+            fecha_ingreso: orden.fecha_ingreso,
+            imagenes_servicio: (orden.reporte_imagenes || []).map(function (i) { return i.url || i.ruta; }).filter(Boolean),
+            imagenes_reporte: orden.imagenes_reporte,
+            datos_recepcion: orden.datos_recepcion,
+            etapas: orden.etapas,
+            etapa_actual: orden.etapa_actual,
+            componentes_extras: orden.componentes_extras,
+            componentes_inventario: orden.componentes_inventario,
+            componentes_compra: orden.componentes_compra,
+            consumibles_usados: orden.consumibles_usados,
+            bitacora: orden.bitacora
+        };
+    }
+
+    /** Aplica formato laboratorio-1 (importar_laboratorio.js) sin mezclar vendedor/técnico en equipo/falla */
+    function _applyLaboratorioImport(orden) {
+        if (!orden || typeof window.LaboratorioImport === 'undefined') return orden;
+        var LI = window.LaboratorioImport;
+        var norm = LI.normalize(_erpOrdenToLabRaw(orden));
+        var rec = norm.datos_recepcion || {};
+        var imgs = LI.imagenesReporte(norm).map(function (u) { return LI.urlImagen(u); }).filter(Boolean).map(function (url, i) {
+            return { nombre: url.split('/').pop() || ('imagen-' + (i + 1)), url: url };
+        });
+        var vendedor = norm.vendedor || orden.vendedor_externo || orden.recibido_por || '';
+        var encargado = norm.encargado || orden.tecnico_responsable || orden.encargado_recepcion || '';
+        return Object.assign({}, orden, {
+            formato: norm.formato,
+            etapa_actual: norm.etapa_actual,
+            etapas: norm.etapas,
+            datos_recepcion: norm.datos_recepcion,
+            cliente_nombre: rec.cliente || norm.cliente || orden.cliente_nombre,
+            equipo: rec.equipo || norm.equipo || orden.equipo,
+            marca: rec.marca || orden.marca,
+            modelo: rec.modelo || orden.modelo,
+            serie: rec.serie || norm.componente || orden.serie,
+            falla_reportada: rec.falla || orden.falla_reportada,
+            condiciones_fisicas: rec.condiciones || orden.condiciones_fisicas,
+            vendedor_externo: vendedor,
+            recibido_por: vendedor,
+            tecnico_responsable: encargado,
+            encargado_recepcion: encargado,
+            reparacion_resumen_diagnostico: norm.resumen_diagnostico,
+            resumen_diagnostico: norm.resumen_diagnostico,
+            diagnostico: norm.resumen_diagnostico || norm.diagnostico,
+            notas_internas: norm.resumen_diagnostico || norm.diagnostico || orden.notas_internas,
+            reporte_imagenes: imgs.length ? imgs : (orden.reporte_imagenes || []),
+            imagenes_reporte: norm.imagenes_reporte
+        });
+    }
+
     function _cargarDatosEnModal(orden) {
+        orden = _applyLaboratorioImport(orden);
         const folioNorm = _normalizarFolioLab(orden.folio || '');
         document.getElementById('inpFolio').value = folioNorm;
         document.getElementById('selClient').value = orden.cliente_nombre || '';
@@ -1479,9 +1575,10 @@ const TallerModule = (function() {
         if (resumenDiagEl) resumenDiagEl.value = orden.reparacion_resumen_diagnostico || orden.notas_internas || '';
         document.getElementById('horasEstimadas').value = orden.horas_estimadas || 0;
         const recibidoPorEl = document.getElementById('recibidoPorSelect');
-        if (recibidoPorEl && orden.recibido_por) {
-            _ensureSelectOption(recibidoPorEl, orden.recibido_por, orden.recibido_por);
-            recibidoPorEl.value = orden.recibido_por;
+        const vendedorVal = orden.recibido_por || orden.vendedor_externo || '';
+        if (recibidoPorEl && vendedorVal) {
+            _ensureSelectOption(recibidoPorEl, vendedorVal, vendedorVal);
+            recibidoPorEl.value = vendedorVal;
         } else if (recibidoPorEl) {
             recibidoPorEl.value = '';
         }
@@ -1997,7 +2094,7 @@ const TallerModule = (function() {
             ? '<p style="color:var(--text-secondary); font-size:13px;">No hay imágenes cargadas</p>'
             : reporteImagenes.map((img, idx) => `
                 <div style="position:relative; width:120px; height:120px; border-radius:8px; overflow:hidden; border:1px solid var(--border);">
-                    <img src="${img.dataUrl}" style="width:100%; height:100%; object-fit:cover;" title="${img.nombre}">
+                    <img src="${_imagenReporteSrc(img)}" style="width:100%; height:100%; object-fit:cover;" title="${img.nombre || ''}" loading="lazy">
                     <button onclick="tallerModule._eliminarImagenReporte(${idx})" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:24px; height:24px; cursor:pointer; font-size:12px;">✖</button>
                 </div>
             `).join('');
@@ -2323,6 +2420,107 @@ const TallerModule = (function() {
         }
     }
 
+    // ==================== FLUJO COMERCIAL: ENVIAR ESTIMACION A VENTAS ====================
+    async function _enviarEstimacionAVentas() {
+        console.log('[Taller] Enviando estimación a Ventas');
+        if (!orderId && !isNewOrder) {
+            _showToast('Primero guarde la orden de taller', 'warning');
+            return;
+        }
+
+        await _guardarOrden(true);
+
+        const data = _recolectarDatos();
+        if (!data.cliente_nombre) { _showToast('Seleccione cliente', 'warning'); _irPaso(1); return; }
+        if (!data.equipo) { _showToast('Ingrese el equipo', 'warning'); _irPaso(1); return; }
+        if (diagnosticoInventario.length === 0 && diagnosticoEnlaces.length === 0) {
+            _showToast('Debe agregar al menos una refacción del inventario o enlace', 'warning');
+            return;
+        }
+
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            let ordenTallerId = orderId;
+            let folioTaller = data.folio;
+
+            // Calcular costo estimado con CostosEngine + materiales de inventario
+            let costoEstimado = 0;
+            try {
+                await CostosEngine.loadFromDatabase('laboratorio');
+                const desglose = CostosEngine.calcularLaboratorio(
+                    data.tiempo_entrega_dias || 0,
+                    data.km_distancia || 0,
+                    data.horas_invertido || 0,
+                    data.refacciones || 0,
+                    data.utilidad_factor || 1.4
+                );
+                costoEstimado = desglose.credito || 0;
+            } catch (ce) {
+                console.warn('[SSEPI-COSTOS] Error calculando costos para estimación:', ce);
+            }
+
+            // Sumar costo de materiales de inventario seleccionados
+            const costoMaterialesInv = diagnosticoInventario.reduce((sum, i) => sum + ((Number(i.costo_unitario) || 0) * (Number(i.cantidad) || 1)), 0);
+            const costoMaterialesEnlaces = diagnosticoEnlaces.reduce((sum, e) => sum + ((Number(e.costo_unitario) || 0) * (Number(e.cantidad) || 1)), 0);
+            costoEstimado += costoMaterialesInv + costoMaterialesEnlaces;
+
+            if (isNewOrder) {
+                const folioElRef = document.getElementById('inpFolio');
+                folioTaller = _normalizarFolioLab(folioElRef ? folioElRef.value : '');
+                if (folioElRef) folioElRef.value = folioTaller;
+                const nuevaOrden = {
+                    ...data,
+                    folio: folioTaller,
+                    estado: 'Esperando Confirmación Cliente',
+                    fecha_ingreso: new Date().toISOString(),
+                    fecha_inicio: fechaInicioOrden,
+                    fechas_etapas: fechasEtapas,
+                    costo_estimado: costoEstimado,
+                    espera_confirmacion_cliente: true
+                };
+                const fotoInput = document.getElementById('productImage');
+                if (fotoInput && fotoInput.files.length > 0) {
+                    nuevaOrden.fotos_ingreso = await _subirFotos(Array.from(fotoInput.files), 'uploads/taller/nueva/imagenes');
+                }
+                const inserted = await ordenesService.insert(nuevaOrden, csrfToken);
+                ordenTallerId = inserted.id;
+                orderId = ordenTallerId;
+                isNewOrder = false;
+                if (window.SSEPIStateMachine) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', ordenTallerId, 'cambio_estado', `Diagnóstico completado. Estimación enviada a Ventas. Esperando confirmación del cliente.`, csrfToken);
+                }
+            } else {
+                data.estado = 'Esperando Confirmación Cliente';
+                data.costo_estimado = costoEstimado;
+                data.espera_confirmacion_cliente = true;
+                await ordenesService.update(orderId, data, csrfToken);
+                if (window.SSEPIStateMachine) {
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', orderId, 'cambio_estado', `Diagnóstico completado. Estimación enviada a Ventas. Esperando confirmación del cliente.`, csrfToken);
+                }
+            }
+
+            // Notificar a Ventas con la estimación
+            await notificacionesService.insert({
+                para: 'ventas',
+                tipo: 'diagnostico_completado',
+                orden_id: ordenTallerId,
+                folio: folioTaller,
+                cliente: data.cliente_nombre,
+                mensaje: `Laboratorio completó diagnóstico para ${folioTaller}. Costo estimado: $${costoEstimado.toFixed(2)}. Esperando cálculo de precio final y confirmación del cliente.`,
+                leido: false,
+                fecha: new Date().toISOString()
+            }, csrfToken);
+
+            _showSuccessAlert('✅ Estimación enviada a Ventas. La orden queda en "Esperando Confirmación Cliente".');
+            _addToFeed('📤', `Estimación enviada a Ventas para ${folioTaller}`);
+            _afterTallerPersistOk();
+
+        } catch (error) {
+            console.error(error);
+            _showToast('Error: ' + error.message, 'error');
+        }
+    }
+
     // ==================== FLUJO COMERCIAL: ENVIAR LISTA DE REFACCIONES A COMPRAS ====================
     async function _enviarListaRefaccionesACompras() {
         console.log('[Taller] Enviando lista de refacciones a Compras');
@@ -2336,8 +2534,8 @@ const TallerModule = (function() {
         const data = _recolectarDatos();
         if (!data.cliente_nombre) { _showToast('Seleccione cliente', 'warning'); _irPaso(1); return; }
         if (!data.equipo) { _showToast('Ingrese el equipo', 'warning'); _irPaso(1); return; }
-        if (diagnosticoEnlaces.length === 0 && diagnosticoInventario.length === 0) {
-            _showToast('Debe agregar al menos una refacción', 'warning');
+        if (diagnosticoEnlaces.length === 0) {
+            _showToast('Debe agregar al menos una refacción con enlace (faltante de inventario)', 'warning');
             return;
         }
 
@@ -2367,21 +2565,24 @@ const TallerModule = (function() {
                 orderId = ordenTallerId;
                 isNewOrder = false;
                 if (window.SSEPIStateMachine) {
-                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', ordenTallerId, 'cambio_estado', `Diagnóstico completado. Lista de refacciones enviada a Compras para cotización.`, csrfToken);
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', ordenTallerId, 'cambio_estado', `Diagnóstico completado. Faltantes de inventario enviados a Compras para cotización.`, csrfToken);
                 }
             } else {
                 data.estado = 'Esperando Cotización';
                 data.fecha_envio_compra = new Date().toISOString();
                 await ordenesService.update(orderId, data, csrfToken);
                 if (window.SSEPIStateMachine) {
-                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', orderId, 'cambio_estado', `Lista de refacciones enviada a Compras para cotización`, csrfToken);
+                    await SSEPIStateMachine.actualizarEstadoOrden(window.supabase, 'taller', orderId, 'cambio_estado', `Faltantes de inventario enviados a Compras para cotización`, csrfToken);
                 }
             }
 
-            const itemsCompra = [
-                ...diagnosticoEnlaces.map(e => ({ nombre: e.nombre || '', sku: e.sku || '', descripcion: e.descripcion || '', cantidad: Number(e.cantidad) || 1, link: e.link || '' })),
-                ...diagnosticoInventario.map(i => ({ nombre: i.nombre || '', sku: i.sku || '', descripcion: i.descripcion || '', cantidad: Number(i.cantidad) || 1 }))
-            ];
+            const itemsCompra = diagnosticoEnlaces.map(e => ({
+                nombre: e.nombre || '',
+                sku: e.sku || '',
+                descripcion: e.descripcion || '',
+                cantidad: Number(e.cantidad) || 1,
+                link: e.link || ''
+            }));
 
             // 0. Buscar si ya existe preregistro de esta orden (CMP- desde Ventas)
             let compraExistente = null;
@@ -2425,7 +2626,7 @@ const TallerModule = (function() {
                     items: itemsCompra,
                     estado: 1,
                     estado_interno: 'esperando_cotizacion',
-                    observaciones: 'Solicitud de cotización desde Laboratorio. Esperando precios de proveedores.',
+                    observaciones: 'Solicitud de cotización de faltantes desde Laboratorio. Esperando precios de proveedores.',
                     updated_at: new Date().toISOString()
                 }, csrfToken);
                 compraRef = { id: compraExistente.id };
@@ -2443,7 +2644,7 @@ const TallerModule = (function() {
                     items: itemsCompra,
                     estado: 1,
                     estado_interno: 'esperando_cotizacion',
-                    observaciones: 'Solicitud de cotización desde Laboratorio. Esperando precios de proveedores.',
+                    observaciones: 'Solicitud de cotización de faltantes desde Laboratorio. Esperando precios de proveedores.',
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 };
@@ -2484,7 +2685,7 @@ const TallerModule = (function() {
                 compra_id: compraRef.id,
                 folio: compraFolio,
                 cliente: data.cliente_nombre,
-                mensaje: `Laboratorio envió lista de refacciones para cotización: ${compraFolio}. Cotice con proveedores y envíe precios a Ventas.`,
+                mensaje: `Laboratorio envió faltantes de inventario para cotización: ${compraFolio}. Cotice con proveedores y envíe precios a Ventas.`,
                 leido: false,
                 fecha: new Date().toISOString()
             }, csrfToken);
@@ -2496,13 +2697,13 @@ const TallerModule = (function() {
                 orden_id: ordenTallerId,
                 folio: folioTaller,
                 cliente: data.cliente_nombre,
-                mensaje: `Laboratorio completó diagnóstico para ${folioTaller}. Lista de refacciones enviada a Compras para cotización. Esperando precios de proveedores.`,
+                mensaje: `Laboratorio completó diagnóstico para ${folioTaller}. Faltantes de inventario enviados a Compras para cotización. Esperando precios de proveedores.`,
                 leido: false,
                 fecha: new Date().toISOString()
             }, csrfToken);
 
-            _showSuccessAlert('✅ Lista de refacciones enviada a Compras para cotización. La orden queda en "Esperando Cotización".');
-            _addToFeed('📤', `Lista de refacciones enviada a Compras: ${folioTaller}`);
+            _showSuccessAlert('✅ Faltantes de inventario enviados a Compras para cotización. La orden queda en "Esperando Cotización".');
+            _addToFeed('📤', `Faltantes de inventario enviados a Compras: ${folioTaller}`);
             _afterTallerPersistOk();
 
         } catch (error) {
@@ -2722,6 +2923,8 @@ const TallerModule = (function() {
         data.reporte_imagenes = reporteImagenes;
         const resumenDiagVal = document.getElementById('reparacionResumenDiagnostico');
         data.reparacion_resumen_diagnostico = resumenDiagVal ? resumenDiagVal.value : '';
+        // Mantener equivalencia con formato laboratorio-1 (texto PDF / trabajo realizado)
+        data.resumen_diagnostico = data.reparacion_resumen_diagnostico || data.resumen_diagnostico || '';
         data.fecha_inicio = fechaInicioOrden;
         data.fechas_etapas = fechasEtapas;
         var vendedorSel = document.getElementById('recibidoPorSelect');
@@ -2729,6 +2932,7 @@ const TallerModule = (function() {
         data.recibido_por = vendedorSel ? vendedorSel.value : '';
         data.vendedor_id = vendedorOpt ? (vendedorOpt.dataset.id || null) : null;
         data.vendedor_nombre = data.recibido_por;
+        data.vendedor_externo = data.recibido_por;
 
         // Calcular costos vía CostosEngine (Laboratorio)
         try {
@@ -2958,6 +3162,8 @@ const TallerModule = (function() {
         const now = new Date().toISOString();
         var vendedorSel2 = document.getElementById('recibidoPorSelect');
         var vendedorOpt2 = vendedorSel2 ? vendedorSel2.options[vendedorSel2.selectedIndex] : null;
+        const resumenDiagEl = document.getElementById('reparacionResumenDiagnostico');
+        const resumenDiag = resumenDiagEl ? resumenDiagEl.value : '';
         return {
             cliente_nombre: document.getElementById('selClient').value,
             referencia: document.getElementById('inpClientRef').value,
@@ -2973,6 +3179,19 @@ const TallerModule = (function() {
             tecnico_responsable: document.getElementById('techSelect').value,
             notas_internas: document.getElementById('internalNotes').value,
             notas_generales: document.getElementById('generalNotes').value,
+            // Formato laboratorio-1 (carpeta 05_Formato_Laboratorio_Import)
+            formato: 'laboratorio-1',
+            datos_recepcion: {
+                cliente: document.getElementById('selClient').value,
+                marca: document.getElementById('inpBrand').value,
+                serie: document.getElementById('inpSerial').value,
+                condiciones: document.getElementById('inpCond').value,
+                equipo: _obtenerEquipo(),
+                modelo: document.getElementById('inpModel').value,
+                falla: document.getElementById('inpFail').value,
+            },
+            resumen_diagnostico: resumenDiag || document.getElementById('internalNotes').value || '',
+            vendedor_externo: vendedorSel2 ? vendedorSel2.value : '',
             horas_estimadas: parseFloat(document.getElementById('horasEstimadas').value) || 0,
             fecha_entrega: nullIfEmpty(document.getElementById('fechaEntrega').value) || null,
             recibe_nombre: document.getElementById('recibeNombre').value,
@@ -3501,7 +3720,10 @@ ${printScript}
         // Recopilar imágenes para el reporte (nuevo módulo + legacy previewEntrega)
         const imgs = [];
         if (reporteImagenes && reporteImagenes.length > 0) {
-            reporteImagenes.forEach(img => { if (img.dataUrl) imgs.push(img.dataUrl); });
+            reporteImagenes.forEach(img => {
+                const src = _imagenReporteSrc(img);
+                if (src) imgs.push(src);
+            });
         }
         const previewEntrega = document.getElementById('previewEntrega');
         if (previewEntrega) {
@@ -3583,6 +3805,8 @@ ${printScript}
         document.getElementById('completeOrderBtn').addEventListener('click', _completarEntrega);
         document.getElementById('sinReparacionBtn').addEventListener('click', _sinReparacion);
         document.getElementById('generarCompraBtn').addEventListener('click', _enviarListaRefaccionesACompras);
+        const btnEnviarEstimacionVentas = document.getElementById('btnEnviarEstimacionVentas');
+        if (btnEnviarEstimacionVentas) btnEnviarEstimacionVentas.addEventListener('click', _enviarEstimacionAVentas);
 
         // Botones del flujo comercial
         const btnNotificarReparado = document.getElementById('btnNotificarVentasReparado');
