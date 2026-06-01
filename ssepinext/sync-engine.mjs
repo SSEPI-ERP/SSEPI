@@ -1,7 +1,11 @@
 import { prepareStatement, getSyncState, setSyncState, getPendingOps, removePendingOp, incrementRetry } from './db.mjs';
 import { createClient } from '@supabase/supabase-js';
 
+// Tablas sincronizadas bidireccionalmente con Supabase cloud.
+// Las 15 tablas agregadas el 2026-06-01 cierran la brecha de visibilidad
+// (auth/permisos/auditoria/calculadoras) — antes solo existian en local.
 const TABLES_TO_SYNC = [
+  // === Operativas (27 originales) ===
   'ventas','compras','ordenes_taller','ordenes_motores',
   'proyectos_automatizacion','cotizaciones','facturas',
   'inventario','contactos','orden_historial','coi_sync_queue',
@@ -10,7 +14,18 @@ const TABLES_TO_SYNC = [
   'soporte_visitas','ingresos_contabilidad','bom_automatizacion',
   'calculadoras','calculadora_costos','servicios_automatizacion',
   'parametros_costos','clientes_tabulador','estado_pipeline_unificado',
-  'pagos_nomina'
+  'pagos_nomina',
+  // === Auth + permisos + auditoria (5) ===
+  'usuarios','role_permissions','users_ver_costos','user_module_permissions',
+  'audit_logs','auth_logs',
+  // === Seguridad + comunicacion (2) ===
+  'security_alerts','inbound_emails',
+  // === Integraciones (3) ===
+  'eventos_contables_coi','n8n_heartbeat','n8n_insights',
+  // === Catalogo + politicas (2) ===
+  'politicas_modulos','movimientos_inventario',
+  // === Calculadoras avanzado (2) ===
+  'calculadora_clientes','calculadora_hoja_filas'
 ];
 
 export class SyncEngine {
