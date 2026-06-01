@@ -75,6 +75,28 @@
 .source-badge-stock { background: #d1fae5; color: #065f46; }
 .source-badge-consumible { background: #fef3c7; color: #92400e; }
 
+/* ===== HISTORIAL COTIZACIONES ===== */
+.historial-count { font-size: .8rem; font-weight: 600; color: var(--text-secondary, #6b7280); }
+.historial-filtros-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px 14px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    background: var(--bg-tertiary, #f9fafb);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 10px;
+}
+.historial-filtro { display: flex; flex-direction: column; gap: 4px; min-width: 130px; }
+.historial-filtro label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary, #6b7280); }
+.historial-filtro .form-control { padding: 7px 10px; font-size: .82rem; border-radius: 8px; border: 1px solid var(--border, #e5e7eb); }
+.historial-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border, #e5e7eb); }
+.historial-table .col-historial-pdf { white-space: nowrap; }
+.historial-table .btn-pdf-hist { margin: 0 2px; padding: 5px 8px; }
+.historial-acciones { white-space: nowrap; }
+.historial-creador { font-size: .78rem; color: var(--text-secondary, #6b7280); max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+
 /* ===== TABLE ===== */
 .data-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .data-table th { background: var(--bg-tertiary, #f3f4f6); padding: 8px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border, #e5e7eb); white-space: nowrap; }
@@ -83,6 +105,89 @@
 
 .total-row td, .total-row th { font-weight: 700; background: var(--bg-tertiary, #f3f4f6); }
 .carrito-empty { text-align: center; padding: 20px; color: var(--text-muted, #9ca3af); }
+
+/* ===== PIPELINE SUMINISTROS ===== */
+.suministros-pipeline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    background: var(--bg-tertiary, #f9fafb);
+    border-radius: 10px;
+    border: 1px solid var(--border, #e5e7eb);
+}
+.sum-pipe-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border, #e5e7eb);
+    background: var(--card-bg, #fff);
+    font-size: .8rem;
+    color: var(--text-secondary, #6b7280);
+}
+.sum-pipe-step.active {
+    border-color: var(--primary, #0052cc);
+    background: #eff6ff;
+    color: var(--primary, #0052cc);
+    font-weight: 700;
+}
+.sum-pipe-step.done {
+    border-color: #10b981;
+    color: #065f46;
+    background: #ecfdf5;
+}
+.sum-pipe-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--border, #e5e7eb);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .72rem;
+    font-weight: 800;
+}
+.sum-pipe-step.active .sum-pipe-num { background: var(--primary, #0052cc); color: #fff; }
+.sum-pipe-step.done .sum-pipe-num { background: #10b981; color: #fff; }
+
+.cotizacion-layout {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 20px;
+    align-items: start;
+}
+.cotizacion-resumen-panel {
+    position: sticky;
+    top: 16px;
+    background: linear-gradient(160deg, #eff6ff 0%, #f8fafc 100%);
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+    padding: 16px 18px;
+}
+.cotizacion-resumen-panel h3 {
+    margin: 0 0 12px;
+    font-size: .95rem;
+    color: var(--primary, #0052cc);
+}
+.cotizacion-resumen-panel p {
+    margin: 0 0 10px;
+    font-size: .82rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.cotizacion-resumen-panel p span {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-muted, #9ca3af);
+    font-weight: 600;
+}
+.cotizacion-resumen-panel strong { font-size: .95rem; color: var(--text-primary, #111827); }
+.cot-resumen-total strong { color: var(--primary, #0052cc); font-size: 1.1rem; }
 
 /* ===== COTIZACION FORM ===== */
 .cotizacion-form { display: flex; flex-direction: column; gap: 16px; }
@@ -138,4 +243,6 @@
     .filtro-search-wrap { min-width: 100%; }
     .filtro-chips { justify-content: center; }
     .form-row { flex-direction: column; }
+    .cotizacion-layout { grid-template-columns: 1fr; }
+    .cotizacion-resumen-panel { position: static; }
 }

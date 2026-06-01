@@ -41,6 +41,50 @@ const ContactosModule = (function() {
             .trim();
     }
 
+    /** Lookup tabulador Excel → RFC / dirección fiscal en memoria. */
+    let _tabuladorEnriquecimiento = null;
+    async function _getTabuladorEnriquecimiento() {
+        if (_tabuladorEnriquecimiento) return _tabuladorEnriquecimiento;
+        const map = new Map();
+        const supabase = _supabase();
+        if (!supabase) {
+            _tabuladorEnriquecimiento = map;
+            return map;
+        }
+        try {
+            const { data } = await supabase.from('clientes_tabulador').select('nombre_cliente,rfc,direccion_fiscal,contacto_referencia,km');
+            (data || []).forEach((r) => {
+                const key = _normalizarDedupe(r.nombre_cliente);
+                if (key) map.set(key, r);
+            });
+        } catch (e) {
+            console.warn('[Contactos] clientes_tabulador enriquecimiento:', e?.message || e);
+        }
+        _tabuladorEnriquecimiento = map;
+        return map;
+    }
+
+    function _aplicarEnriquecimientoTabulador(c, tabMap) {
+        if (!tabMap || !tabMap.size) return c;
+        const keys = [
+            _normalizarDedupe(c.empresa_tabulador),
+            _normalizarDedupe(c.empresa),
+            _normalizarDedupe(c.nombre),
+        ].filter(Boolean);
+        let row = null;
+        for (const k of keys) {
+            if (tabMap.has(k)) { row = tabMap.get(k); break; }
+        }
+        if (!row) return c;
+        return {
+            ...c,
+            rfc: (c.rfc || row.rfc || '').trim(),
+            direccion: (c.direccion || row.direccion_fiscal || '').trim(),
+            puesto: c.puesto || row.contacto_referencia || c.puesto,
+            km: c.km ?? row.km,
+        };
+    }
+
     /** Evita duplicar la misma persona al fusionar `clientes` con `contactos` (misma clave = una sola fila). */
     function _claveDedupeContacto(c) {
         const email = (c.email || '').toString().toLowerCase().trim();
@@ -98,47 +142,68 @@ const ContactosModule = (function() {
         return joined.includes('nombre completo') && (joined.includes('correo') || joined.includes('teléfono') || joined.includes('telefono'));
     }
 
-    /** Nombre de empresa para agrupar (tabulador / Odoo / campo empresa). */
-    function _nombreEmpresaDisplay(c) {
+    /** Clave de grupo empresa (Pac_Contactos: solo ficha empresa o vendedor bajo empresa). */
+    function _empresaGrupoKey(c) {
         if (!c) return '';
-        if (c.tipo_ficha === 'empresa' || c.categoria === 'empresa') {
-            return (c.empresa_tabulador || c.nombre || c.empresa || '').trim();
+        const tipo = c.tipo_ficha || '';
+        if (tipo === 'empresa' || c.categoria === 'empresa') {
+            const base = (c.empresa_tabulador || c.nombre || c.empresa || '').trim();
+            return base ? _normalizarDedupe(base) : '';
         }
-        return (c.empresa_tabulador || c.empresa || '').trim();
+        if (tipo === 'contacto_empresa') {
+            const base = (c.empresa_tabulador || c.empresa || '').trim();
+            if (!base) return '';
+            const nomEmp = _normalizarDedupe(c.nombre);
+            const keyEmp = _normalizarDedupe(base);
+            if (nomEmp && nomEmp === keyEmp) return '';
+            return keyEmp;
+        }
+        return '';
+    }
+
+    function _labelEmpresaGrupo(key, fallback) {
+        const g = empresaGrupos.find(x => x.key === key);
+        if (g) return g.label;
+        return (fallback || key || '').toUpperCase();
     }
 
     function _buildEmpresaGrupos() {
         const map = new Map();
         for (const c of contactos) {
-            const label = _nombreEmpresaDisplay(c);
-            if (!label) continue;
-            const key = _normalizarDedupe(label);
+            const key = _empresaGrupoKey(c);
             if (!key) continue;
             if (!map.has(key)) {
-                map.set(key, { key, label: label.toUpperCase(), vendedores: 0, empresaId: null });
+                map.set(key, { key, label: '', vendedores: 0, empresaId: null, tieneFicha: false });
             }
             const g = map.get(key);
-            if (c.tipo_ficha === 'empresa' || c.categoria === 'empresa') {
+            const tipo = c.tipo_ficha || '';
+            if (tipo === 'empresa' || c.categoria === 'empresa') {
                 g.empresaId = c.id;
-            } else if (
-                c.tipo_ficha === 'contacto_empresa' ||
-                (c.categoria !== 'empresa' && (c.empresa || c.empresa_tabulador))
-            ) {
+                g.tieneFicha = true;
+                g.label = (c.empresa_tabulador || c.nombre || c.empresa || key).toUpperCase();
+            } else if (tipo === 'contacto_empresa') {
                 g.vendedores++;
+                if (!g.label) g.label = (c.empresa_tabulador || c.empresa || key).toUpperCase();
             }
         }
-        return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, 'es'));
+        for (const g of map.values()) {
+            if (!g.label) g.label = g.key.toUpperCase();
+        }
+        return Array.from(map.values()).sort((a, b) => {
+            const dv = (b.vendedores || 0) - (a.vendedores || 0);
+            if (dv !== 0) return dv;
+            return a.label.localeCompare(b.label, 'es');
+        });
     }
 
     function _perteneceAEmpresa(c, empresaKey) {
         if (!empresaKey) return true;
         const g = empresaGrupos.find(x => x.key === empresaKey);
         if (g && g.empresaId && c.empresa_padre_id === g.empresaId) return true;
-        const label = _nombreEmpresaDisplay(c);
-        if (_normalizarDedupe(label) === empresaKey) return true;
-        const campos = [c.empresa, c.empresa_tabulador];
-        if (c.tipo_ficha !== 'contacto_empresa' && c.categoria !== 'empresa') campos.push(c.nombre);
-        return campos.some(v => v && _normalizarDedupe(v) === empresaKey);
+        const key = _empresaGrupoKey(c);
+        if (key === empresaKey) return true;
+        if ((c.tipo_ficha === 'empresa' || c.categoria === 'empresa') && _normalizarDedupe(c.nombre) === empresaKey) return true;
+        return false;
     }
 
     function _populateEmpresaSelect() {
@@ -186,10 +251,7 @@ const ContactosModule = (function() {
             return;
         }
         const g = empresaGrupos.find(x => x.key === filtroEmpresaKey);
-        const vend = filtered.filter(c =>
-            c.tipo_ficha === 'contacto_empresa' ||
-            (c.categoria !== 'empresa' && c.tipo_ficha !== 'empresa' && (c.empresa || c.empresa_tabulador))
-        ).length;
+        const vend = filtered.filter(c => c.tipo_ficha === 'contacto_empresa').length;
         const label = g ? g.label : filtroEmpresaKey;
         const vendTxt = vend ? ` · ${vend} vendedor${vend !== 1 ? 'es' : ''}` : '';
         el.style.display = 'block';
@@ -407,6 +469,7 @@ const ContactosModule = (function() {
         }
 
         console.log('[Contactos] local_contactos devueltos:', rawContactos.length);
+        const tabMap = await _getTabuladorEnriquecimiento();
         // Solo contactos reales en BD — tabulador es tabla aparte (calculadoras/taller)
         const vistos = new Set();
         contactos = rawContactos.filter(c => {
@@ -416,7 +479,7 @@ const ContactosModule = (function() {
             if (vistos.has(k)) return false;
             vistos.add(k);
             return true;
-        });
+        }).map((c) => _aplicarEnriquecimientoTabulador(c, tabMap));
         console.log('[Contactos] Total después de dedupe:', contactos.length);
         _rebuildEmpresaGrupos();
         // Proveedores de catálogo PRIORITY desactivados — solo contactos reales
@@ -630,11 +693,11 @@ const ContactosModule = (function() {
         setVal('panelTelefono', contacto.telefono);
         setVal('panelEmail', contacto.email);
         setVal('panelRfc', contacto.rfc);
+        setVal('panelDireccion', contacto.direccion);
         setVal('panelSitio', contacto.sitio_web);
         setVal('panelCategoria', contacto.categoria || 'persona');
         setVal('panelTipo', contacto.tipo || 'client');
         setVal('panelEtiquetas', contacto.etiquetas);
-        setVal('panelDireccion', contacto.direccion);
         setVal('panelLogoUrl', contacto.logo_url);
 
         const existingErp = document.getElementById('panelErpMaestro');
@@ -921,6 +984,50 @@ const ContactosModule = (function() {
         setTimeout(() => notif.classList.remove('show'), 3000);
     }
 
+    function _isTabuladorCotizacionSheet(rows) {
+        if (!rows || !rows.length) return false;
+        const keys = Object.keys(rows[0] || {}).map((k) => k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+        return keys.some((k) => k.includes('empresa')) && keys.some((k) => k.includes('rfc') || k.includes('direccion'));
+    }
+
+    function _pickCol(obj, patterns) {
+        for (const [k, v] of Object.entries(obj || {})) {
+            const kl = k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            if (patterns.some((p) => kl.includes(p))) return String(v != null ? v : '').trim();
+        }
+        return '';
+    }
+
+    function _rowFromTabuladorSheet(obj) {
+        const empresa = (_pickCol(obj, ['empresa', 'cliente']) || '').toUpperCase();
+        if (!empresa || empresa === 'EMPRESA') return null;
+        const rfc = _pickCol(obj, ['rfc']).toUpperCase();
+        const direccion = _pickCol(obj, ['direccion fiscal', 'direccion', 'domicilio']);
+        const contactoRef = _pickCol(obj, ['contacto', 'puesto', 'referencia']);
+        return {
+            nombre: empresa,
+            empresa,
+            empresa_tabulador: empresa,
+            tipo_ficha: 'empresa',
+            categoria: 'empresa',
+            tipo: 'client',
+            rfc,
+            direccion,
+            puesto: contactoRef,
+            email: '',
+            telefono: '',
+            avatar: empresa.charAt(0),
+            color: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
+            etiquetas: ['tabulador_excel_import'],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        };
+    }
+
+    function _claveEmpresaTabulador(row) {
+        return 'emp:' + _normalizarDedupe(row.empresa || row.nombre);
+    }
+
     // ==================== IMPORTACIÓN CSV / EXCEL / PDF ====================
     async function _handleFileImport(e) {
         const file = e.target.files[0];
@@ -945,27 +1052,63 @@ const ContactosModule = (function() {
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const csrfToken = sessionStorage.getItem('csrfToken');
                     let imported = 0;
+                    let updated = 0;
                     let skipped = 0;
                     const keySeen = new Set();
                     let existingKeys = new Set();
+                    let existList = [];
                     try {
-                        const exist = await contactosService.select({}, { orderBy: 'nombre', ascending: true });
-                        existingKeys = new Set((exist || []).map(_claveDedupeContacto));
+                        existList = await contactosService.select({}, { orderBy: 'nombre', ascending: true }) || [];
+                        existingKeys = new Set(existList.map(_claveDedupeContacto));
                     } catch (err) {
                         console.warn('[Contactos] No se pudieron leer contactos existentes para omitir duplicados:', err);
                     }
 
-                    const tryInsert = async (row) => {
-                        const k = _claveDedupeContacto(row);
-                        if (!k || k === 'id:') return;
-                        if (keySeen.has(k) || existingKeys.has(k)) {
-                            skipped++;
+                    const tryInsert = async (row, opts) => {
+                        const isTabuladorEmpresa = opts && opts.tabuladorEmpresa;
+                        const k = isTabuladorEmpresa ? _claveEmpresaTabulador(row) : _claveDedupeContacto(row);
+                        if (!k || k === 'id:' || k === 'emp:') return;
+                        if (keySeen.has(k)) { skipped++; return; }
+
+                        const empKey = _normalizarDedupe(row.empresa || row.nombre);
+                        const existing = existList.find((c) => {
+                            const ck = _normalizarDedupe(c.empresa_tabulador || c.empresa || c.nombre);
+                            return ck && ck === empKey;
+                        });
+
+                        if (existing) {
+                            const patch = {
+                                ...existing,
+                                rfc: (row.rfc || existing.rfc || '').trim(),
+                                direccion: (row.direccion || existing.direccion || '').trim(),
+                                puesto: row.puesto || existing.puesto,
+                                empresa_tabulador: existing.empresa_tabulador || row.empresa_tabulador || row.empresa,
+                                updated_at: new Date().toISOString(),
+                            };
+                            if (isTabuladorEmpresa) {
+                                patch.tipo_ficha = patch.tipo_ficha || 'empresa';
+                                patch.categoria = patch.categoria || 'empresa';
+                            }
+                            if (patch.rfc !== existing.rfc || patch.direccion !== existing.direccion) {
+                                try {
+                                    await contactosService.update(existing.id, patch, csrfToken);
+                                    updated++;
+                                    keySeen.add(k);
+                                } catch (err) {
+                                    console.error('Error actualizando fila:', err);
+                                }
+                            } else {
+                                skipped++;
+                            }
                             return;
                         }
+
+                        if (existingKeys.has(k)) { skipped++; return; }
                         try {
                             await contactosService.insert(row, csrfToken);
                             keySeen.add(k);
                             existingKeys.add(k);
+                            existList.push(row);
                             imported++;
                         } catch (err) {
                             console.error('Error importando fila:', err);
@@ -973,7 +1116,13 @@ const ContactosModule = (function() {
                     };
 
                     const objectRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-                    if (_isOdooPartnerSheet(objectRows)) {
+                    if (_isTabuladorCotizacionSheet(objectRows)) {
+                        for (const obj of objectRows) {
+                            const row = _rowFromTabuladorSheet(obj);
+                            if (!row) continue;
+                            await tryInsert(row, { tabuladorEmpresa: true });
+                        }
+                    } else if (_isOdooPartnerSheet(objectRows)) {
                         for (const obj of objectRows) {
                             const row = _rowFromOdooExport(obj);
                             if (!row) continue;
@@ -1002,9 +1151,12 @@ const ContactosModule = (function() {
                             await tryInsert(row);
                         }
                     }
-                    const msg = skipped
-                        ? `✅ ${imported} importados · ${skipped} omitidos (ya en BD o repetidos en el archivo)`
-                        : `✅ ${imported} contactos importados desde Excel`;
+                    const msg = updated
+                        ? `✅ ${imported} nuevos · ${updated} actualizados (RFC/dirección) · ${skipped} sin cambios`
+                        : skipped
+                            ? `✅ ${imported} importados · ${skipped} omitidos (ya en BD o repetidos en el archivo)`
+                            : `✅ ${imported} contactos importados desde Excel`;
+                    _tabuladorEnriquecimiento = null;
                     showNotification(msg, 'success');
                 } catch (ex) {
                     console.error(ex);

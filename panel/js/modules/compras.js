@@ -10,6 +10,7 @@ import { createDataService } from '../core/data-service.js';
 import { notifyCompraIfEligible } from '../core/coi-sync-engine.js';
 import { mergePriorityProvidersFirst } from '../core/ssepi-runtime/priority-suppliers-merge.js';
 import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
+import { filterOrdenesOperativas } from '../core/ssepi-runtime/lab-order-filter.js';
 
 const ComprasModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -214,8 +215,8 @@ const ComprasModule = (function() {
     }
 
     async function _loadTaller() {
-        // Misma amplitud que Laboratorio/Ventas: órdenes fuera de Nuevo/Diagnóstico/En espera siguen siendo vinculables en pruebas
-        ordenesTaller = await tallerService.select({}, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 });
+        const raw = await tallerService.select({}, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 });
+        ordenesTaller = filterOrdenesOperativas(raw || []);
         _renderOperativasComprasList();
     }
 

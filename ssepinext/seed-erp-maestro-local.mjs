@@ -137,9 +137,10 @@ async function seed() {
       empresa = nombre.toUpperCase();
     } else if (tipo_ficha === 'contacto_empresa') {
       nombre = o.nombreContacto || o.contactoPersona || o.nombreBase || '';
+      empresa = (tab || (o.empresaAsociada || '')).toUpperCase();
     } else {
       nombre = o.nombreContacto || o.nombreBase || o.contactoPersona || '';
-      if (tab) empresa = tab.toUpperCase();
+      empresa = tab ? tab.toUpperCase() : '';
     }
 
     nombre = (nombre || '').trim();
@@ -151,9 +152,13 @@ async function seed() {
     let ex = odooKey && contactoByOdooId.get(odooKey);
     if (!ex) ex = contactoByNorm.get(norm(nombre));
 
+    const empresaFinal = tipo_ficha === 'empresa'
+      ? (nombre || empresa || '').toUpperCase()
+      : (empresa || '').toUpperCase();
+
     const payload = {
       nombre: nombre.toUpperCase(),
-      empresa: empresa || nombre.toUpperCase(),
+      empresa: empresaFinal,
       empresa_tabulador: tab || null,
       tipo_ficha,
       tipo: 'client',

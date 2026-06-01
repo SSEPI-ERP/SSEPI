@@ -16,6 +16,7 @@ import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordin
 import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
 import { purgeDraftRecordKeys } from '../core/ssepi-runtime/draft-purge-keys.js';
 import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
+import { filterOrdenesOperativas } from '../core/ssepi-runtime/lab-order-filter.js';
 
 const VentasModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -1783,7 +1784,10 @@ const VentasModule = (function() {
     }
 
     async function _loadTaller() {
-        try { taller = await tallerService.select({}, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 }) || []; } catch (e) { console.warn('[Ventas] taller:', e); taller = []; }
+        try {
+            const raw = await tallerService.select({}, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 }) || [];
+            taller = filterOrdenesOperativas(raw);
+        } catch (e) { console.warn('[Ventas] taller:', e); taller = []; }
     }
 
     async function _loadMotores() {
@@ -4884,10 +4888,10 @@ const VentasModule = (function() {
             const val = s.area + ' | ' + s.servicio;
             const checked = preServSet.has(val) ? ' checked' : '';
             const escVal = val.replace(/"/g, '&quot;');
-            return '<label style="display:flex;align-items:flex-start;gap:8px;padding:8px 6px;border-bottom:1px solid #eee;cursor:pointer;font-size:12px;">'
-                + '<input type="checkbox" data-servicio-val="' + escVal + '" value="' + escVal + '"' + checked + ' style="margin-top:3px;flex-shrink:0;">'
-                + '<span><strong>' + s.area + '</strong> — ' + s.servicio
-                + ' <span style="color:#64748b;">($' + s.valorAgregado + '/' + s.unidad.replace('por ', '') + ')</span></span></label>';
+            return '<label class="wizard-servicio-row">'
+                + '<input type="checkbox" data-servicio-val="' + escVal + '" value="' + escVal + '"' + checked + '>'
+                + '<span class="wizard-servicio-text"><strong>' + s.area + '</strong> — ' + s.servicio
+                + ' <span class="wizard-servicio-meta">($' + s.valorAgregado + '/' + s.unidad.replace('por ', '') + ')</span></span></label>';
         }).join('');
 
         return `
@@ -4926,10 +4930,10 @@ const VentasModule = (function() {
                 <div id="wizardAdeudoBanner" style="display:none; margin-top:12px;"></div>
 
                 <!-- SERVICIOS AUTOMATIZACIÓN / SOPORTE (multi-select) -->
-                <div class="editor-item" id="wizardServicioAutoWrap" style="margin-top:14px; display:${showServicios?'block':'none'};">
+                <div class="editor-item editor-item-full" id="wizardServicioAutoWrap" style="margin-top:14px; display:${showServicios?'block':'none'};">
                     <label>Servicios / Actividades <span style="color:#c62828;">*</span></label>
                     <p style="font-size:12px; color:var(--text-secondary); margin:0 0 8px 0;">Selecciona uno o más servicios del catálogo de automatización.</p>
-                    <div id="wizardServiciosAutoWrap" style="max-height:220px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;background:#fff;padding:4px 8px;">
+                    <div id="wizardServiciosAutoWrap" class="wizard-servicios-list">
                         ${serviciosCheckboxesHtml}
                     </div>
                     <select id="wizardServicioAutoSelect" style="display:none;"><option value=""></option></select>
