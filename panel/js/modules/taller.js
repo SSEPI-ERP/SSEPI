@@ -570,10 +570,20 @@ const TallerModule = (function() {
     }
 
     async function _loadInventory() {
-        inventory = await inventarioService.select(
-            { categoria: ['refaccion', 'consumible'] },
+        const raw = await inventarioService.select(
+            { departamento: 'taller' },
             { orderBy: 'sku', ascending: true, page: 0, pageSize: 2000 }
         );
+        inventory = (raw || []).filter(p =>
+            (p.tipo_inventario === 'electronica' || !p.tipo_inventario) && p.activo !== false
+        );
+        if (inventory.length < 50) {
+            const fallback = await inventarioService.select(
+                { tipo_inventario: 'electronica' },
+                { orderBy: 'sku', ascending: true, page: 0, pageSize: 2000 }
+            );
+            if ((fallback || []).length > inventory.length) inventory = fallback || [];
+        }
     }
 
     async function _loadComprasVinculadas() {

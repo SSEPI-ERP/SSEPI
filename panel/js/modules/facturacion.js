@@ -12,6 +12,7 @@ import { ContactosFormulas } from '../core/contactos-formulas.js';
 import { notifyVentaIfEligible } from '../core/coi-sync-engine.js';
 import { enqueueCoiJob } from '../core/coi-queue.js';
 import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
+import { filterOrdenesOperativas } from '../core/ssepi-runtime/lab-order-filter.js';
 
 const FacturacionModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -316,7 +317,7 @@ const FacturacionModule = (function() {
             .order('fecha_reparacion', { ascending: false });
         if (error) console.error(error);
         else {
-            ordenesTaller = data.map(d => ({ ...d, tipoOrigen: 'taller' }));
+            ordenesTaller = filterOrdenesOperativas(data || []).map(d => ({ ...d, tipoOrigen: 'taller' }));
             _actualizarTodo();
         }
     }

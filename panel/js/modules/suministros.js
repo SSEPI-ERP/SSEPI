@@ -19,12 +19,23 @@ const SuministrosModule = (function() {
     let catalogoUnificado = [];
     let carrito = [];
     let cotizaciones = [];
+    let cotizacionesFiltradas = [];
     let contactos = [];
+    let historialFiltros = { desde: '', hasta: '', estado: '', vendedorId: '', compradorId: '', autoId: '' };
+    let historialUsuarios = { ventas: [], compras: [], automatizacion: [] };
     let vistaActual = 'grid';
     let paginaActual = 1;
     const ITEMS_POR_PAGINA = 48;
     let editingCotizacionId = null;
+    let cotEstadoActual = 'cotizacion';
     let suministrosAutosaveCtrl = null;
+
+    const SUMINISTROS_PIPELINE = [
+        { id: 'cotizacion', label: 'Cotización' },
+        { id: 'en_compra', label: 'En compras' },
+        { id: 'aprobada', label: 'Aprobada' },
+        { id: 'entregada', label: 'Entregada' }
+    ];
 
     // Servicios
     const bomService = createDataService('bom_automatizacion');
@@ -94,6 +105,114 @@ const SuministrosModule = (function() {
         _aplicarVisibilidadCostos();
         _renderCarrito();
         _renderKPIs();
+        await _ensureCotFolio();
+        _renderSuministrosPipeline();
+        await _initHistorialFiltros();
+    }
+
+    function _esAdminSuministros() {
+        const rol = (perfilUsuario?.rol || document.body.dataset.rol || '').toLowerCase();
+        return ['admin', 'superadmin', 'contabilidad'].includes(rol);
+    }
+
+    async function _initHistorialFiltros() {
+        const admin = _esAdminSuministros();
+        ['histFiltroVendedorWrap', 'histFiltroCompradorWrap', 'histFiltroAutoWrap'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.hidden = !admin;
+        });
+        if (!admin) return;
+        try {
+            const [ventas, compras, auto] = await Promise.all([
+                authService.getUsersByRol(['ventas', 'ventas_sin_compras', 'facturacion', 'administracion']),
+                authService.getUsersByRol(['compras', 'administracion']),
+                authService.getUsersByRol(['automatizacion', 'motores', 'taller']),
+            ]);
+            historialUsuarios = { ventas: ventas || [], compras: compras || [], automatizacion: auto || [] };
+            _fillHistorialSelect('histVendedor', historialUsuarios.ventas);
+            _fillHistorialSelect('histComprador', historialUsuarios.compras);
+            _fillHistorialSelect('histAutomatizacion', historialUsuarios.automatizacion);
+        } catch (e) {
+            console.warn('[Suministros] Filtros usuarios admin:', e);
+        }
+    }
+
+    function _fillHistorialSelect(id, users) {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">Todos</option>' + (users || []).map((u) => {
+            const label = (u.nombre || u.email || u.id || '').trim();
+            return `<option value="${u.id}">${label}</option>`;
+        }).join('');
+        if (cur) sel.value = cur;
+    }
+
+    function _cotData(c) {
+        return c.data || c;
+    }
+
+    function _cotCreadorId(data) {
+        return data.creado_por_id || data.usuario_id || '';
+    }
+
+    function _aplicarFiltrosHistorial() {
+        let list = cotizaciones.slice();
+        const { desde, hasta, estado, vendedorId, compradorId, autoId } = historialFiltros;
+        if (desde) {
+            list = list.filter((c) => {
+                const d = (_cotData(c).created_at || '').substring(0, 10);
+                return d && d >= desde;
+            });
+        }
+        if (hasta) {
+            list = list.filter((c) => {
+                const d = (_cotData(c).created_at || '').substring(0, 10);
+                return d && d <= hasta;
+            });
+        }
+        if (estado) {
+            list = list.filter((c) => (_cotData(c).estado || 'cotizacion') === estado);
+        }
+        if (vendedorId) {
+            list = list.filter((c) => _cotCreadorId(_cotData(c)) === vendedorId);
+        }
+        if (compradorId) {
+            list = list.filter((c) => {
+                const data = _cotData(c);
+                return data.comprador_id === compradorId || data.asignado_compras_id === compradorId;
+            });
+        }
+        if (autoId) {
+            list = list.filter((c) => {
+                const data = _cotData(c);
+                return data.automatizacion_id === autoId || data.tecnico_id === autoId;
+            });
+        }
+        cotizacionesFiltradas = list.length ? list : (desde || hasta || estado || vendedorId || compradorId || autoId ? [] : cotizaciones.slice());
+    }
+
+    function _onHistorialFiltroChange() {
+        historialFiltros = {
+            desde: document.getElementById('histFechaDesde')?.value || '',
+            hasta: document.getElementById('histFechaHasta')?.value || '',
+            estado: document.getElementById('histEstado')?.value || '',
+            vendedorId: document.getElementById('histVendedor')?.value || '',
+            compradorId: document.getElementById('histComprador')?.value || '',
+            autoId: document.getElementById('histAutomatizacion')?.value || '',
+        };
+        _aplicarFiltrosHistorial();
+        _renderCotizaciones();
+    }
+
+    function _limpiarHistorialFiltros() {
+        ['histFechaDesde', 'histFechaHasta', 'histEstado', 'histVendedor', 'histComprador', 'histAutomatizacion'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        historialFiltros = { desde: '', hasta: '', estado: '', vendedorId: '', compradorId: '', autoId: '' };
+        _aplicarFiltrosHistorial();
+        _renderCotizaciones();
     }
 
     function _aplicarVisibilidadCostos() {
@@ -101,19 +220,67 @@ const SuministrosModule = (function() {
         document.querySelectorAll('.col-costo-compra').forEach(el => { el.style.display = verCostos ? '' : 'none'; });
     }
 
+    async function _loadClientesSuministros() {
+        const normKey = (s) => (s || '').toString().toLowerCase().trim();
+        let tabRows = [];
+        try {
+            if (window.supabase) {
+                const { data, error } = await window.supabase
+                    .from('clientes_tabulador')
+                    .select('id, nombre_cliente, km, rfc, activo, orden')
+                    .eq('activo', true)
+                    .order('orden', { ascending: true });
+                if (!error && data) tabRows = data.filter((c) => c.nombre_cliente);
+            }
+        } catch (e) { console.warn('[Suministros] clientes_tabulador:', e); }
+
+        let all = [];
+        try {
+            const c1 = await contactoService.select({ tipo: 'client' }, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 500 }) || [];
+            const c2 = await contactoService.select({ tipo: 'cliente' }, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 200 }) || [];
+            const seen = new Set();
+            for (const c of [...c1, ...c2]) {
+                const k = String(c.id || c.nombre);
+                if (!seen.has(k)) { seen.add(k); all.push(c); }
+            }
+        } catch (e) { console.warn('[Suministros] contactos:', e); }
+
+        if (tabRows.length) {
+            contactos = tabRows.map((t) => {
+                const nombre = (t.nombre_cliente || '').trim().toUpperCase();
+                const key = normKey(nombre);
+                const match = all.find((c) => normKey(c.empresa_tabulador || c.nombre || c.empresa) === key);
+                return {
+                    id: match?.id || ('tab-' + key.replace(/\s+/g, '-')),
+                    nombre,
+                    empresa: nombre,
+                    empresa_tabulador: nombre,
+                    tipo: 'client',
+                    rfc: t.rfc || match?.rfc || '',
+                    km: Number(t.km) || 0,
+                    _fromTabulador: true
+                };
+            });
+            return;
+        }
+        contactos = all.filter((c) =>
+            c.tipo === 'client' || c.tipo === 'cliente' || c.empresa_tabulador || c.es_tabulador
+        );
+    }
+
     async function _loadData() {
         try {
-            const [bom, inv, cont] = await Promise.all([
+            const [bom, inv] = await Promise.all([
                 bomService.select({}, { orderBy: 'numero_item', ascending: true, page: 0, pageSize: 500 }),
-                inventarioService.select({}, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 500 }),
-                contactoService.select({ tipo: 'cliente' }, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 200 })
+                inventarioService.select({}, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 500 })
             ]);
             bomItems = (bom || []).map(i => ({ ...i, _source: 'BOM' }));
             inventarioItems = (inv || []).map(i => ({ ...i, _source: i.tipo_inventario === 'consumible' ? 'CONSUMIBLE' : 'STOCK' }));
-            contactos = cont || [];
+            await _loadClientesSuministros();
         } catch (e) {
             console.warn('[Suministros] Supabase error, intentando offline:', e);
             await _tryOfflineLoad();
+            await _loadClientesSuministros();
         }
         _buildCatalogo();
         _populateCategorias();
@@ -440,6 +607,29 @@ const SuministrosModule = (function() {
         set('costoIva', resultado.credito * 0.16);
         set('costoGranTotal', resultado.credito * 1.16);
         const u = document.getElementById('utilidadPct'); if (u) u.textContent = utilidadPct;
+        _updateCotResumen(resultado.credito * 1.16);
+    }
+
+    function _updateCotResumen(totalEst) {
+        const folioEl = document.getElementById('cotResumenFolio');
+        const clienteEl = document.getElementById('cotResumenCliente');
+        const itemsEl = document.getElementById('cotResumenItems');
+        const totalEl = document.getElementById('cotResumenTotal');
+        const estadoEl = document.getElementById('cotResumenEstado');
+        const folioIn = document.getElementById('cotFolio');
+        const clienteSel = document.getElementById('cotCliente');
+        if (folioEl && folioIn) folioEl.textContent = folioIn.value.trim() || '—';
+        if (clienteEl && clienteSel) {
+            clienteEl.textContent = clienteSel.selectedIndex > 0
+                ? clienteSel.options[clienteSel.selectedIndex].text
+                : '—';
+        }
+        if (itemsEl) itemsEl.textContent = String(carrito.reduce((s, i) => s + i.qty, 0));
+        if (totalEl) totalEl.textContent = '$' + (totalEst || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 });
+        if (estadoEl) {
+            const step = SUMINISTROS_PIPELINE.find(s => s.id === cotEstadoActual);
+            estadoEl.textContent = step ? step.label : cotEstadoActual;
+        }
     }
 
     async function _guardarCotizacion() {
@@ -485,9 +675,12 @@ const SuministrosModule = (function() {
             folio,
             cliente_nombre: cliente.nombre || '',
             cliente_id: cliente.id || cliente.nombre,
-            estado: 'registrado',
+            estado: cotEstadoActual || 'cotizacion',
             origen: 'suministro',
             departamento: 'Suministro',
+            creado_por_id: perfilUsuario?.id || perfilUsuario?.auth_user_id || '',
+            creado_por_nombre: perfilUsuario?.nombre || sessionStorage.getItem('ssepi_nombre') || '',
+            creado_por_rol: perfilUsuario?.rol || sessionStorage.getItem('ssepi_rol') || '',
             subtotal: resultado.proveedor,
             iva: resultado.credito * 0.16,
             total: totalVenta,
@@ -511,6 +704,8 @@ const SuministrosModule = (function() {
                 _showToast(`Cotización ${folio} guardada`, 'success');
             }
             document.getElementById('cotFolio').value = folio;
+            cotEstadoActual = cotizacionData.estado;
+            _renderSuministrosPipeline();
             _limpiarCot();
             _loadCotizaciones();
         } catch (e) {
@@ -584,6 +779,15 @@ const SuministrosModule = (function() {
             try {
                 await enqueueCoiJob({ erp_source: 'compra', erp_id: compraData.folio, folio: compraData.folio, idempotency_key: `compra:suministro:${folio}`, payload_json: compraData });
             } catch (coiErr) { console.warn('[Suministros] COI compra error:', coiErr?.message || coiErr); }
+            cotEstadoActual = 'en_compra';
+            _renderSuministrosPipeline();
+            try {
+                const cot = cotizaciones.find(c => (c.folio || (c.data && c.data.folio)) === folio);
+                const cotId = cot?.id || editingCotizacionId;
+                if (cotId) {
+                    await cotizacionService.update(cotId, { estado: 'en_compra', folio });
+                }
+            } catch (upErr) { console.warn('[Suministros] Actualizar estado cotización:', upErr); }
             _showToast(`Orden de compra ${compraData.folio} creada como borrador. Esperando stock/cotización de Compras.`, 'success');
             _addToFeed('📤', `Suministros envió ${folio} a Compras como borrador`);
         } catch (e) {
@@ -610,12 +814,34 @@ const SuministrosModule = (function() {
         return deducidos;
     }
 
+    async function _ensureCotFolio() {
+        const el = document.getElementById('cotFolio');
+        if (!el || el.value.trim()) {
+            const folio = await _generateFolio();
+            if (el) el.value = folio;
+        }
+    }
+
+    function _renderSuministrosPipeline() {
+        const host = document.getElementById('suministrosPipeline');
+        if (!host) return;
+        const idx = SUMINISTROS_PIPELINE.findIndex(s => s.id === cotEstadoActual);
+        host.innerHTML = SUMINISTROS_PIPELINE.map((s, i) => {
+            const done = i < idx;
+            const active = s.id === cotEstadoActual;
+            const cls = active ? 'sum-pipe-step active' : (done ? 'sum-pipe-step done' : 'sum-pipe-step');
+            return `<div class="${cls}" data-step="${s.id}"><span class="sum-pipe-num">${i + 1}</span><span class="sum-pipe-label">${s.label}</span></div>`;
+        }).join('');
+    }
+
     function _limpiarCot() {
         carrito = [];
         _limpiarCarritoPersistido();
         _renderCatalogo(); _renderCarrito();
         document.getElementById('cotCliente').value = '';
-        document.getElementById('cotFolio').value = '';
+        cotEstadoActual = 'cotizacion';
+        _renderSuministrosPipeline();
+        _ensureCotFolio();
         document.getElementById('cotDias').value = '1';
         document.getElementById('cotKm').value = '0';
         document.getElementById('cotUtilidad').value = '40';
@@ -643,34 +869,51 @@ const SuministrosModule = (function() {
     // ==================== COTIZACIONES / HISTORIAL ====================
     async function _loadCotizaciones() {
         try {
-            cotizaciones = await cotizacionService.select({ origen: 'suministro' }, { orderBy: 'created_at', ascending: false, page: 0, pageSize: 50 });
+            cotizaciones = await cotizacionService.select({ origen: 'suministro' }, { orderBy: 'created_at', ascending: false, page: 0, pageSize: 200 });
         } catch(e) { cotizaciones = []; }
+        _aplicarFiltrosHistorial();
         _renderCotizaciones();
         _renderKPIs();
     }
 
     function _renderCotizaciones() {
         const tbody = document.getElementById('cotizacionesBody');
+        const countEl = document.getElementById('historialCount');
+        const list = cotizacionesFiltradas;
+        if (countEl) {
+            countEl.textContent = list.length === cotizaciones.length
+                ? `${list.length} órdenes`
+                : `${list.length} de ${cotizaciones.length} órdenes`;
+        }
         if (!tbody) return;
-        if (!cotizaciones || cotizaciones.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:20px;">Sin cotizaciones de suministro</td></tr>';
+        if (!list || list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:20px;">Sin cotizaciones que coincidan con los filtros</td></tr>';
             return;
         }
-        tbody.innerHTML = cotizaciones.map(c => {
-            const data = c.data || c;
+        tbody.innerHTML = list.map(c => {
+            const data = _cotData(c);
+            const folio = data.folio || '—';
             const estado = data.estado || 'cotizacion';
+            const estadoLabel = { cotizacion: 'Cotización', en_compra: 'En compras', aprobada: 'Aprobada', entregada: 'Entregada', cancelada: 'Cancelada' }[estado] || estado;
             const estadoClass = { cotizacion:'estado-cotizacion', aprobada:'estado-aprobada', cancelada:'estado-cancelada', en_compra:'estado-en-compra', entregada:'estado-entregada' }[estado] || 'estado-cotizacion';
             const comps = data.componentes || [];
+            const creador = data.creado_por_nombre || '—';
+            const folioEsc = _esc(folio).replace(/'/g, "\\'");
             return `<tr>
-                <td><strong>${data.folio || '—'}</strong></td>
-                <td>${data.cliente_nombre || '—'}</td>
+                <td><strong>${_esc(folio)}</strong></td>
+                <td>${_esc(data.cliente_nombre || '—')}</td>
                 <td>${comps.length}</td>
                 <td>$${(data.total||0).toLocaleString('es-MX',{minimumFractionDigits:2})}</td>
-                <td><span class="estado-badge ${estadoClass}">${estado}</span></td>
+                <td><span class="estado-badge ${estadoClass}">${estadoLabel}</span></td>
                 <td>${(data.created_at||'').substring(0,10)}</td>
-                <td>
-                    <button class="btn btn-sm btn-outline" onclick="suministrosModule._verCotizacion('${data.folio}')" title="Ver"><i class="fas fa-eye"></i></button>
-                    <button class="btn btn-sm btn-outline" onclick="suministrosModule._editarCotizacion('${data.folio}')" title="Editar"><i class="fas fa-edit"></i></button>
+                <td class="historial-creador">${_esc(creador)}</td>
+                <td class="col-historial-pdf">
+                    <button type="button" class="btn btn-sm btn-outline btn-pdf-hist" onclick="suministrosModule._generarPDF('${folioEsc}', true)" title="Vista previa PDF"><i class="fas fa-file-pdf"></i></button>
+                    <button type="button" class="btn btn-sm btn-primary btn-pdf-hist" onclick="suministrosModule._generarPDF('${folioEsc}', false)" title="Descargar PDF"><i class="fas fa-download"></i></button>
+                </td>
+                <td class="historial-acciones">
+                    <button type="button" class="btn btn-sm btn-outline" onclick="suministrosModule._verCotizacion('${folioEsc}')" title="Ver detalle"><i class="fas fa-eye"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="suministrosModule._editarCotizacion('${folioEsc}')" title="Editar"><i class="fas fa-edit"></i></button>
                 </td>
             </tr>`;
         }).join('');
@@ -1080,6 +1323,12 @@ const SuministrosModule = (function() {
         ['cotDias', 'cotKm', 'cotUtilidad'].forEach(id => {
             document.getElementById(id)?.addEventListener('input', _recalcularCostos);
         });
+        document.getElementById('cotCliente')?.addEventListener('change', () => _updateCotResumen());
+        document.getElementById('cotFolio')?.addEventListener('input', () => _updateCotResumen());
+        ['histFechaDesde', 'histFechaHasta', 'histEstado', 'histVendedor', 'histComprador', 'histAutomatizacion'].forEach((id) => {
+            document.getElementById(id)?.addEventListener('change', _onHistorialFiltroChange);
+        });
+        document.getElementById('histLimpiarFiltros')?.addEventListener('click', _limpiarHistorialFiltros);
     }
 
     function _goToPage(p) { paginaActual = p; _renderCatalogo(); }
@@ -1094,7 +1343,12 @@ const SuministrosModule = (function() {
     function _populateClientes() {
         const sel = document.getElementById('cotCliente');
         if (!sel) return;
-        sel.innerHTML = '<option value="">-- Seleccionar cliente --</option>' + contactos.map(c => `<option value="${c.id || c.nombre}">${c.nombre}</option>`).join('');
+        const opts = contactos.map(c => {
+            const label = (c.empresa_tabulador || c.empresa || c.nombre || '').trim();
+            const sub = (c.nombre && label !== c.nombre) ? ` — ${c.nombre}` : '';
+            return `<option value="${c.id || c.nombre}">${label}${sub}</option>`;
+        }).join('');
+        sel.innerHTML = '<option value="">-- Seleccionar cliente (tabulador) --</option>' + opts;
     }
 
     // ==================== UTILS ====================

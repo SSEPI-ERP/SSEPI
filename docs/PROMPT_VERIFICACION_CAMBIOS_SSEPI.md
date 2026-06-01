@@ -4,7 +4,7 @@ Copia el bloque **“Prompt actualizado (mayo 2026)”** al final de este archiv
 
 ---
 
-## Prompt actualizado (mayo 2026) — incluye equipos y servicios en Ventas
+## Prompt actualizado (mayo 2026) — contactos tabulador, suministros historial, servicios Ventas
 
 ```
 # Verificación SSEPI-NEXT-LOCAL — cambios realizados vs pendientes
@@ -12,97 +12,101 @@ Copia el bloque **“Prompt actualizado (mayo 2026)”** al final de este archiv
 Modo: SSEPI-NEXT-LOCAL (localhost:3333), BD ssepinext/data/ssepi-local.db.
 Lee archivos reales; no asumas. Reporta ✅/❌ por ítem.
 
-## 1. BUGS ARREGLADOS
+## 0. COMANDOS DE DATOS (ejecutar antes de probar UI)
 
-### 1.1 Ventas SyntaxError (ventas.js ~268)
-Fix: const nombre = ((document.getElementById('wizardBomManualNombre') || {}).value || '').trim();
-Verificar: ventasModule carga; wizard paso 1 sin error consola.
+cd ssepinext
+node sync-tabulador-direcciones-contactos.mjs
+node seed-tabulador-50.mjs
+node repair-contactos-empresa-grupos.mjs
 
-### 1.2 Header usuario "Laboratorio" → nombre real
-Archivos: ssepinext/users-catalog.mjs (laboratorio1@ssepi.org → Javier)
-panel/js/core/auth-service.js (resolveDisplayName, _looksLikeDepartmentLabel)
-panel/js/core/user-menu.js, ssepinext/seed-usuarios.mjs
-Prueba: logout+login → header "Javier".
+Ctrl+F5 en Contactos (?v=4), Suministros (?v=4), Ventas (wizard servicios).
 
-## 2. TABULADOR 50 CLIENTES
+## 1. CONTACTOS — RFC y dirección fiscal del Excel tabulador
 
-### 2.1 Seed
-ssepinext/seed-tabulador-50.mjs — 50 empresas Excel → local_clientes_tabulador + local_contactos (--replace-contactos)
-ssepinext/data/master/clientes_tabulador.json — 50 records
-reiniciar-ssepi.bat [3j]: node seed-tabulador-50.mjs --replace-contactos
-(NO seed-erp-maestro --replace-contactos ni seed-contactos-manual en [3j])
+### 1.1 Datos enriquecidos (33 empresas con dirección)
+Archivos:
+- ssepinext/data/tabulador-direcciones-contacto.mjs — TABULADOR_DIRECCIONES (RFC, direccion, contacto, km)
+- ssepinext/sync-tabulador-direcciones-contactos.mjs — escribe local_clientes_tabulador + local_contactos (ficha empresa)
 
-### 2.2 Ventas dropdown
-panel/js/modules/ventas.js _loadContactos() — solo clientes_tabulador (log: Clientes tabulador (oficial): 50)
-_renderWizardPaso paso 1 debe llamar await _loadContactos() (no query directa a contactos)
+Verificar en BD o UI Contactos (empresa BADER TABACHINES, ANGUIPLAST, etc.):
+- RFC visible en panel (ej. BAD880303CC3)
+- Dirección fiscal en campo Dirección
+- Puesto/referencia de contacto (ej. Mantenimiento, Ing. Compras)
 
-Comando: cd ssepinext && node seed-tabulador-50.mjs --replace-contactos
+### 1.2 UI enriquecimiento en vivo
+panel/js/modules/contactos.js:
+- _getTabuladorEnriquecimiento() + _aplicarEnriquecimientoTabulador() al cargar lista
+- Merge desde clientes_tabulador si contacto no tiene rfc/direccion
 
-## 3. NUEVO — Multi-select equipos y servicios (Ventas paso 1)
+### 1.3 Import Excel tabulador (columnas EMPRESA, DIRECCIÓN FISCAL, RFC, CONTACTO)
+- _isTabuladorCotizacionSheet / _rowFromTabuladorSheet
+- Duplicados: actualiza RFC/dirección en lugar de solo omitir (mensaje "X actualizados")
 
-Archivo principal: panel/js/modules/ventas.js
+Prueba: Importar hoja tabulador → BADER debe tener dirección "Blvd. J. Clouthier, León, GTO".
 
-### 3.1 Constante y helpers (después de tabuladorAutomatizacion)
-- CATALOGO_EQUIPOS_LAB = Tablero, HMI, PLC, Servos, Tarjeta Electrónica, Sensores, Chillers, Teach Pencil, Otro
-- _deptUsaEquiposMulti(dept) → Laboratorio de Electrónica | Taller Motores
-- _deptUsaServiciosMulti(dept) → Automatización | Proyectos | Soporte en planta
-- _getWizardEquiposSeleccionados(), _getWizardServiciosSeleccionados()
-- _wizardResolverNombreProducto(dept), _wizardResolverServiciosAuto()
-- _bindWizardEquiposServiciosEvents(), _restoreWizardMultiSelects(f)
+### 1.4 Agrupación Pac (empresas vs personas)
+- contacto_solo sin empresa=nombre
+- Filtro empresa solo tipo_ficha empresa / contacto_empresa
+- repair-contactos-empresa-grupos.mjs
 
-### 3.2 UI paso 1 (_renderWizardPaso1)
-- #wizardEquiposWrap — checkboxes multi-select (visible Lab/Motores)
-- #wizardEquipoOtroWrap + #wizardEquipoOtro cuando "Otro"
-- #wizardServiciosAutoWrap — checkboxes 17 servicios de tabuladorAutomatizacion.servicios
-- #wizardServicioAutoWrap contenedor (visible Auto/Proyectos/Soporte)
-- #wizardNombreProductoWrap con #wizardNombreProductoVisible (otros deptos)
-- #wizardNombreProducto hidden dentro equipos wrap (sync equipos → texto)
+## 2. VENTAS — Selector de servicios (sistemas)
 
-### 3.3 Validación (_wizardSiguiente, _guardarCotizacionDesdeWizard)
-- Lab/Motores: ≥1 equipo obligatorio
-- Auto/Proyectos/Soporte: ≥1 servicio obligatorio
-- Otros deptos: texto producto obligatorio (excepto Suministro)
+panel/css/modules/ventas.css:
+- .wizard-servicios-list → grid 2 columnas en viewport ≥900px
+- Checkboxes 18px, hover en filas, max-height ~55vh
 
-### 3.4 Persistencia (ventasWizardCerebro / paso1Fields)
-- equipos: string[]
-- servicios_automatizacion: string[]
-- servicio_automatizacion: string unido con " | " (compat legacy)
-- nombre_producto: equipos unidos ", " o texto libre
+panel/js/modules/ventas.js:
+- #wizardServiciosAutoWrap con .wizard-servicio-row / .wizard-servicio-text
 
-### 3.5 Órdenes (_ventasCrearOrdenOperativa)
-- Taller SP-E: equipo = equipos seleccionados
-- Motores SP-M: motor = equipos seleccionados
-- Auto/Proyectos: notas_generales incluye "Servicios: ..."
-- Soporte: visita equipo/objetivo con servicios
+Prueba: Dept Automatización → lista legible en 2 columnas en pantalla ancha; scroll si >17 servicios.
 
-### 3.6 Pruebas manuales
-1. Dept Lab → aparecen 9 checkboxes equipos; elegir PLC+HMI → Siguiente OK
-2. Dept Automatización → lista 17 servicios checkbox; elegir ≥1 → OK
-3. Dept Soporte en planta → misma lista servicios
-4. Dept Suministro → BOM (sin equipos ni servicios)
-5. Borrador autosave restaura checkboxes (_restoreWizardMultiSelects)
+## 3. SUMINISTROS — Historial de órdenes
 
-## 4. PENDIENTE (no implementado)
+panel/pages/ssepi_suministros.html + panel/js/modules/suministros.js?v=4:
+- Barra filtros: fecha desde/hasta, estado
+- Solo admin: vendedor, comprador, automatización (authService.getUsersByRol)
+- Tabla: columna Creado por, PDF vista previa + descargar por fila
+- Guardar cotización incluye creado_por_id, creado_por_nombre, creado_por_rol
 
-- Contactos: click detalle sidePanel, dedupe fino
-- Taller import: solo Reparado/Cancelado, imágenes, fechas_etapas
-- Enlazar personas Odoo bajo empresas tabulador
+Prueba admin: filtros visibles; filtrar por fechas reduce filas.
+Prueba rol ventas: filtros de usuario ocultos; PDF en historial funciona.
 
-## 5. Checklist grep
+## 4. TABULADOR 50 + VENTAS DROPDOWN
 
-grep CATALOGO_EQUIPOS_LAB panel/js/modules/ventas.js
-grep wizardEquiposWrap panel/js/modules/ventas.js
-grep wizardServiciosAutoWrap panel/js/modules/ventas.js
-grep seed-tabulador-50 reiniciar-ssepi.bat
-grep "_loadContactos()" panel/js/modules/ventas.js
+ssepinext/seed-tabulador-50.mjs — 50 clientes
+ventas.js _loadContactos() — clientes_tabulador oficial
+Comando: node seed-tabulador-50.mjs --replace-contactos
 
-Entrega: tabla ✅/❌ y diffs si falta algo.
+## 5. LAB ORDENES — Ocultar en otros módulos
+
+panel/js/core/ssepi-runtime/lab-order-filter.js
+Aplicado: ventas.js, compras.js, facturacion.js (NO taller.js)
+
+## 6. INVENTARIO TALLER ~98 componentes
+
+taller.js _loadInventory: departamento taller + tipo_inventario electronica
+node ssepinext/seed-inventario.mjs
+
+## 7. MULTI-SELECT EQUIPOS Y SERVICIOS (Ventas paso 1)
+
+ventas.js: CATALOGO_EQUIPOS_LAB, wizardEquiposWrap, wizardServiciosAutoWrap, validación y persistencia equipos[] / servicios_automatizacion[]
+
+## 8. CHECKLIST GREP
+
+grep TABULADOR_DIRECCIONES ssepinext/data/tabulador-direcciones-contacto.mjs
+grep sync-tabulador-direcciones-contactos ssepinext/
+grep _isTabuladorCotizacionSheet panel/js/modules/contactos.js
+grep historial-filtros-bar panel/pages/ssepi_suministros.html
+grep wizard-servicios-list grid panel/css/modules/ventas.css
+grep lab-order-filter panel/js/modules/ventas.js
+
+Entrega: tabla ✅/❌ por sección, comandos ejecutados, capturas sugeridas (contacto con RFC+dirección, historial suministros con PDF, servicios 2 cols).
 ```
 
 ---
 
 ## Historial de secciones anteriores
 
-Ver commits / conversación para: SyntaxError, header Javier, tabulador 50, supuestos EPC1/EPC2, regresiones seed manual.
+Ver commits / conversación para: SyntaxError ventas, header Javier, tabulador 50, multi-select equipos/servicios, agrupación Pac contactos.
 
-*Última actualización: implementación multi-select equipos/servicios en Ventas.*
+*Última actualización: direcciones tabulador → contactos, historial suministros con filtros/PDF, grid servicios Ventas.*

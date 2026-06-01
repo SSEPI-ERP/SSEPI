@@ -25,7 +25,7 @@
     <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    <script type="module" src="/panel/js/modules/suministros.js?v=2"></script>
+    <script type="module" src="/panel/js/modules/suministros.js?v=4"></script>
     <script type="module" src="/panel/js/core/n8n-status.js?v=2"></script>
     <script type="module" src="/panel/js/core/n8n-insights-panel.js?v=2"></script>
 </head>
@@ -131,9 +131,11 @@
         <!-- COTIZACIÓN -->
         <section class="suministros-section" id="cotizacionSection">
             <div class="section-header">
-                <h2><i class="fas fa-file-invoice-dollar"></i> Cotización de Suministro</h2>
+                <h2><i class="fas fa-file-invoice-dollar"></i> Orden / Cotización de Suministro</h2>
             </div>
-            <div class="cotizacion-form">
+            <div id="suministrosPipeline" class="suministros-pipeline" aria-label="Estado de la orden de suministro"></div>
+            <div class="cotizacion-layout">
+            <div class="cotizacion-form cotizacion-form-main">
                 <div class="form-row">
                     <div class="form-group"><label>Cliente</label><select id="cotCliente" class="form-control"></select></div>
                     <div class="form-group"><label>Folio</label><input type="text" id="cotFolio" class="form-control" placeholder="Auto-generado"></div>
@@ -168,17 +170,63 @@
                     <button class="btn btn-outline" id="btnLimpiarCot"><i class="fas fa-eraser"></i> Limpiar</button>
                 </div>
             </div>
+            <aside class="cotizacion-resumen-panel">
+                <h3>Resumen orden</h3>
+                <p class="cot-resumen-folio"><span>Folio</span> <strong id="cotResumenFolio">—</strong></p>
+                <p class="cot-resumen-cliente"><span>Cliente</span> <strong id="cotResumenCliente">—</strong></p>
+                <p class="cot-resumen-items"><span>Artículos</span> <strong id="cotResumenItems">0</strong></p>
+                <p class="cot-resumen-total"><span>Total estimado</span> <strong id="cotResumenTotal">$0.00</strong></p>
+                <p class="cot-resumen-estado"><span>Estado</span> <strong id="cotResumenEstado">Cotización</strong></p>
+            </aside>
+            </div>
         </section>
 
         <!-- COTIZACIONES EXISTENTES -->
         <section class="suministros-section" id="cotizacionesListSection">
             <div class="section-header">
                 <h2><i class="fas fa-list"></i> Historial de Cotizaciones</h2>
+                <span class="historial-count" id="historialCount">0 órdenes</span>
             </div>
-            <table class="data-table" id="cotizacionesTabla">
-                <thead><tr><th>Folio</th><th>Cliente</th><th>Items</th><th>Total</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
+            <div class="historial-filtros-bar" id="historialFiltrosBar">
+                <div class="historial-filtro">
+                    <label for="histFechaDesde">Desde</label>
+                    <input type="date" id="histFechaDesde" class="form-control">
+                </div>
+                <div class="historial-filtro">
+                    <label for="histFechaHasta">Hasta</label>
+                    <input type="date" id="histFechaHasta" class="form-control">
+                </div>
+                <div class="historial-filtro">
+                    <label for="histEstado">Estado</label>
+                    <select id="histEstado" class="form-control">
+                        <option value="">Todos</option>
+                        <option value="cotizacion">Cotización</option>
+                        <option value="en_compra">En compras</option>
+                        <option value="aprobada">Aprobada</option>
+                        <option value="entregada">Entregada</option>
+                        <option value="cancelada">Cancelada</option>
+                    </select>
+                </div>
+                <div class="historial-filtro historial-filtro-admin" id="histFiltroVendedorWrap" hidden>
+                    <label for="histVendedor">Vendedor</label>
+                    <select id="histVendedor" class="form-control"><option value="">Todos</option></select>
+                </div>
+                <div class="historial-filtro historial-filtro-admin" id="histFiltroCompradorWrap" hidden>
+                    <label for="histComprador">Comprador</label>
+                    <select id="histComprador" class="form-control"><option value="">Todos</option></select>
+                </div>
+                <div class="historial-filtro historial-filtro-admin" id="histFiltroAutoWrap" hidden>
+                    <label for="histAutomatizacion">Automatización</label>
+                    <select id="histAutomatizacion" class="form-control"><option value="">Todos</option></select>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline" id="histLimpiarFiltros"><i class="fas fa-eraser"></i> Limpiar</button>
+            </div>
+            <div class="historial-table-wrap">
+            <table class="data-table historial-table" id="cotizacionesTabla">
+                <thead><tr><th>Folio</th><th>Cliente</th><th>Items</th><th>Total</th><th>Estado</th><th>Fecha</th><th>Creado por</th><th class="col-historial-pdf">PDF</th><th>Acciones</th></tr></thead>
                 <tbody id="cotizacionesBody"></tbody>
             </table>
+            </div>
         </section>
 
         <!-- MODAL DETALLE -->

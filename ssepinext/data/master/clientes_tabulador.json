@@ -1,6 +1,6 @@
 {
   "_schema_version": 2,
-  "_last_updated": "2026-05-26T22:52:52.164Z",
+  "_last_updated": "2026-05-30T04:30:28.441Z",
   "_source": "TABULADOR DE COTIZACIÓN actualizado.xlsx — 50 empresas",
   "records": [
     {
@@ -24,8 +24,8 @@
       "precio_sum_3pct": 740,
       "precio_auto_venta": 222,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-002",
@@ -48,8 +48,8 @@
       "precio_sum_3pct": 1872,
       "precio_auto_venta": 618,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-003",
@@ -72,8 +72,8 @@
       "precio_sum_3pct": 906,
       "precio_auto_venta": 661,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-004",
@@ -96,8 +96,8 @@
       "precio_sum_3pct": 489,
       "precio_auto_venta": 62,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-005",
@@ -120,8 +120,8 @@
       "precio_sum_3pct": 994,
       "precio_auto_venta": 278,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-006",
@@ -144,8 +144,8 @@
       "precio_sum_3pct": 1939,
       "precio_auto_venta": 618,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-007",
@@ -168,8 +168,8 @@
       "precio_sum_3pct": 489,
       "precio_auto_venta": 49,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-008",
@@ -192,8 +192,8 @@
       "precio_sum_3pct": 489,
       "precio_auto_venta": 49,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-009",
@@ -216,8 +216,8 @@
       "precio_sum_3pct": 950,
       "precio_auto_venta": 247,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-010",
@@ -240,8 +240,8 @@
       "precio_sum_3pct": 994,
       "precio_auto_venta": 278,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-011",
@@ -264,8 +264,8 @@
       "precio_sum_3pct": 682,
       "precio_auto_venta": 56,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-012",
@@ -288,8 +288,8 @@
       "precio_sum_3pct": 1872,
       "precio_auto_venta": 618,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-013",
@@ -312,8 +312,8 @@
       "precio_sum_3pct": 489,
       "precio_auto_venta": 49,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-014",
@@ -336,8 +336,8 @@
       "precio_sum_3pct": 776,
       "precio_auto_venta": 247,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-015",
@@ -360,8 +360,8 @@
       "precio_sum_3pct": null,
       "precio_auto_venta": null,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-016",
@@ -384,8 +384,8 @@
       "precio_sum_3pct": 2737,
       "precio_auto_venta": 1236,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-017",
@@ -408,8 +408,8 @@
       "precio_sum_3pct": 2737,
       "precio_auto_venta": 1236,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-018",
@@ -432,8 +432,8 @@
       "precio_sum_3pct": 777,
       "precio_auto_venta": 124,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-019",
@@ -456,8 +456,8 @@
       "precio_sum_3pct": 1757,
       "precio_auto_venta": 680,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-020",
@@ -480,8 +480,8 @@
       "precio_sum_3pct": 994,
       "precio_auto_venta": 278,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-021",
@@ -504,8 +504,8 @@
       "precio_sum_3pct": 699,
       "precio_auto_venta": 68,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-022",
@@ -528,8 +528,8 @@
       "precio_sum_3pct": 1498,
       "precio_auto_venta": 494,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-023",
@@ -552,8 +552,8 @@
       "precio_sum_3pct": 2737,
       "precio_auto_venta": 1236,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-024",
@@ -576,8 +576,8 @@
       "precio_sum_3pct": 471,
       "precio_auto_venta": 37,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-025",
@@ -600,8 +600,8 @@
       "precio_sum_3pct": 907,
       "precio_auto_venta": 216,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-026",
@@ -624,8 +624,8 @@
       "precio_sum_3pct": 596,
       "precio_auto_venta": 124,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-027",
@@ -648,8 +648,8 @@
       "precio_sum_3pct": 907,
       "precio_auto_venta": 216,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-028",
@@ -672,8 +672,8 @@
       "precio_sum_3pct": 489,
       "precio_auto_venta": 49,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-029",
@@ -696,8 +696,8 @@
       "precio_sum_3pct": 924,
       "precio_auto_venta": 229,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-030",
@@ -720,8 +720,8 @@
       "precio_sum_3pct": 481,
       "precio_auto_venta": 56,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-031",
@@ -744,8 +744,8 @@
       "precio_sum_3pct": 455,
       "precio_auto_venta": 37,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-032",
@@ -768,8 +768,8 @@
       "precio_sum_3pct": 714,
       "precio_auto_venta": 222,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-033",
@@ -792,8 +792,8 @@
       "precio_sum_3pct": 1210,
       "precio_auto_venta": 433,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-034",
@@ -816,8 +816,8 @@
       "precio_sum_3pct": 435,
       "precio_auto_venta": 167,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-035",
@@ -840,8 +840,8 @@
       "precio_sum_3pct": 533,
       "precio_auto_venta": 93,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-036",
@@ -864,8 +864,8 @@
       "precio_sum_3pct": 1262,
       "precio_auto_venta": 470,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-037",
@@ -888,8 +888,8 @@
       "precio_sum_3pct": 1210,
       "precio_auto_venta": 433,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-038",
@@ -912,8 +912,8 @@
       "precio_sum_3pct": 1210,
       "precio_auto_venta": 222,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-039",
@@ -936,8 +936,8 @@
       "precio_sum_3pct": 714,
       "precio_auto_venta": 19,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-040",
@@ -960,8 +960,8 @@
       "precio_sum_3pct": 471,
       "precio_auto_venta": 37,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-041",
@@ -984,8 +984,8 @@
       "precio_sum_3pct": 850,
       "precio_auto_venta": 155,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-042",
@@ -1008,8 +1008,8 @@
       "precio_sum_3pct": 743,
       "precio_auto_venta": 99,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-043",
@@ -1032,8 +1032,8 @@
       "precio_sum_3pct": 507,
       "precio_auto_venta": 62,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-044",
@@ -1056,8 +1056,8 @@
       "precio_sum_3pct": 680,
       "precio_auto_venta": 198,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-045",
@@ -1080,8 +1080,8 @@
       "precio_sum_3pct": 472,
       "precio_auto_venta": 49,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-046",
@@ -1104,8 +1104,8 @@
       "precio_sum_3pct": 507,
       "precio_auto_venta": 49,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-047",
@@ -1128,8 +1128,8 @@
       "precio_sum_3pct": 2737,
       "precio_auto_venta": 1236,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-048",
@@ -1152,8 +1152,8 @@
       "precio_sum_3pct": 507,
       "precio_auto_venta": 62,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-049",
@@ -1176,8 +1176,8 @@
       "precio_sum_3pct": 689,
       "precio_auto_venta": 43,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     },
     {
       "id": "tab-050",
@@ -1200,8 +1200,8 @@
       "precio_sum_3pct": 515,
       "precio_auto_venta": 80,
       "fuente": "tabulador_excel_50",
-      "created_at": "2026-05-26T22:52:52.146Z",
-      "updated_at": "2026-05-26T22:52:52.146Z"
+      "created_at": "2026-05-30T04:30:28.437Z",
+      "updated_at": "2026-05-30T04:30:28.437Z"
     }
   ]
 }

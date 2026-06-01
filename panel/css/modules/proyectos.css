@@ -347,17 +347,42 @@
 }
 
 .checkbox-group {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
     margin: 15px 0;
+    max-height: 320px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 8px;
+    padding: 8px 10px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .checkbox-item {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
     font-size: 13px;
+    line-height: 1.4;
+    width: 100%;
+    padding: 8px 6px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    box-sizing: border-box;
+}
+
+.checkbox-item:last-child {
+    border-bottom: none;
+}
+
+.checkbox-item input[type="checkbox"] {
+    flex-shrink: 0;
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
 }
 
 /* ========== FIRMAS ========== */
