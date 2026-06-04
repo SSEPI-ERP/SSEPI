@@ -9,11 +9,19 @@
 import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
 import { CostosEngine } from '../core/costos-engine.js';
-import { pdfGenerator } from '../core/pdf-generator.js';
+import { pdfGenerator } from '../core/pdf-generator.js?v=8';
 import { getPrioritySuppliersForModule } from '../core/ssepi-runtime/priority-suppliers-catalog.js';
 import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
 import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
 import { purgeDraftRecordKeys } from '../core/ssepi-runtime/draft-purge-keys.js';
+import { ssepiOn, SSEPI_EVENTS } from '../core/ssepi-runtime/ssepi-event-bus.js';
+import {
+    empresaGrupoKey,
+    empresaGrupoLabel,
+    contactoDisplayNombre,
+    isGarbageContactName,
+    normEmpresaKey,
+} from '../core/contactos-grupo-utils.js';
 import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
 
 const TallerModule = (function() {
@@ -115,6 +123,48 @@ const TallerModule = (function() {
         if (!str) return false;
         const s = String(str).trim();
         return s.length >= (minLen || 3);
+    }
+
+    /**
+     * Re-sanitiza los inputs visibles del modal de orden contra frases UI Odoo,
+     * "Crear cotización", "WhatsApp", etc. Usa window.OCRCleaner (panel/js/core/ocr-cleaner.js).
+     * Si el resultado es vacío, mantiene el valor original para que el usuario decida.
+     */
+    function _limpiarTextoOcrOrden() {
+        if (!window.OCRCleaner) {
+            _showToast?.('OCR cleaner no disponible', 'error');
+            return;
+        }
+        const OC = window.OCRCleaner;
+        const targets = [
+            { id: 'inpFail',                    kind: 'falla' },
+            { id: 'inpCond',                    kind: 'notas' },
+            { id: 'inpClientRef',               kind: 'cliente' },
+            { id: 'inpEquipOtro',               kind: 'equipo' },
+            { id: 'inpBrand',                   kind: 'equipo' },
+            { id: 'inpModel',                   kind: 'equipo' },
+            { id: 'inpSerial',                  kind: 'equipo' },
+            { id: 'internalNotes',              kind: 'notas' },
+            { id: 'generalNotes',               kind: 'notas' },
+            { id: 'reparacionResumenDiagnostico', kind: 'diagnostico' },
+        ];
+        let saneados = 0;
+        for (const t of targets) {
+            const el = document.getElementById(t.id);
+            if (!el) continue;
+            const orig = el.value;
+            if (!orig || !orig.trim()) continue;
+            const clean = OC.sanitizeField(t.kind, orig);
+            if (clean && clean !== orig) {
+                el.value = clean;
+                saneados++;
+            }
+        }
+        if (saneados > 0) {
+            _showToast?.(`Texto OCR saneado en ${saneados} campo(s). Recuerde Guardar para persistir.`, 'success');
+        } else {
+            _showToast?.('Sin cambios: los textos ya están limpios o están vacíos.', 'info');
+        }
     }
 
     // Suscripciones para cleanup
@@ -276,6 +326,28 @@ const TallerModule = (function() {
         }
     }
 
+    function _openTallerDraft(w) {
+        if (!w || !w.payload) return;
+        orderId = w.payload.orderId || null;
+        isNewOrder = !orderId;
+        tallerDraftSessionKey = null;
+        _resetForm();
+        _applyTallerDraft(w);
+        if (document.getElementById('inpFolio') && w.payload.folio) document.getElementById('inpFolio').value = w.payload.folio;
+        document.getElementById('wsModal').classList.add('active');
+        _renderPrioritySupplierBarTaller();
+        _showToast('Borrador restaurado', 'success');
+    }
+
+    function _resumeTallerDraftKey(recordKey) {
+        const w = loadLocalDraft('ordenes_taller', recordKey);
+        if (!w || !w.payload) {
+            _showToast('No se encontró el borrador', 'warning');
+            return;
+        }
+        _openTallerDraft(w);
+    }
+
     function _tryResumeTallerDraft() {
         const resume = new URLSearchParams(window.location.search).get('resume');
         if (!resume) return;
@@ -285,15 +357,12 @@ const TallerModule = (function() {
             history.replaceState({}, document.title, window.location.pathname);
             return;
         }
-        orderId = w.payload.orderId || null;
-        isNewOrder = !orderId;
-        tallerDraftSessionKey = null;
-        _resetForm();
-        _applyTallerDraft(w);
-        if (document.getElementById('inpFolio') && w.payload.folio) document.getElementById('inpFolio').value = w.payload.folio;
-        document.getElementById('wsModal').classList.add('active');
-        _renderPrioritySupplierBarTaller();
+        _openTallerDraft(w);
         history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    function _flushTallerAutosave() {
+        if (tallerAutosaveCtrl) tallerAutosaveCtrl.flush();
     }
 
     // ==================== NORMALIZACIÓN DE NOMBRES (ñ → n, acentos → plano) ====================
@@ -390,6 +459,11 @@ const TallerModule = (function() {
         _renderPrioritySupplierBarTaller();
         _initTallerAutosave();
         _tryResumeTallerDraft();
+        ssepiOn(SSEPI_EVENTS.RESUME_DRAFT, (detail) => {
+            if (!detail || detail.module !== 'ordenes_taller') return;
+            _resumeTallerDraftKey(detail.recordKey);
+        });
+        window.addEventListener('beforeunload', _flushTallerAutosave);
         _initExportButton();
         _cargarTecnicos();
         _cargarVendedores();
@@ -596,6 +670,7 @@ const TallerModule = (function() {
                     if (ordenId) {
                         comprasVinculadas[ordenId] = {
                             estado: c.estado,
+                            estado_interno: c.estado_interno || null,
                             folio: c.folio,
                             items: c.items || []
                         };
@@ -607,86 +682,104 @@ const TallerModule = (function() {
         }
     }
 
-    function _esAdmin() {
-        return perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+    function _verFinanciero() {
+        if (window.SSEPICostVisibility && window.SSEPICostVisibility.canSeeFinancials) {
+            return window.SSEPICostVisibility.canSeeFinancials(perfilUsuario);
+        }
+        const rol = String(perfilUsuario?.rol || '').toLowerCase();
+        return rol === 'admin' || rol === 'superadmin';
     }
 
     function _populateClientSelect() {
         const sel = document.getElementById('selClient');
         if (!sel) return;
         sel.innerHTML = '<option value="">-- Seleccionar empresa / contacto --</option>';
-        const esAdmin = _esAdmin();
+        const esAdmin = _verFinanciero();
 
-        // Agrupar contactos por empresa
-        const grupos = {};
+        // Agrupar por empresa válida (empresa_tabulador / sin basura OCR — igual que módulo Contactos)
+        const grupos = new Map();
         const sueltos = [];
         clients.forEach(c => {
-            const emp = (c.empresa || c.nombre || '').trim();
-            const nom = (c.nombre || '').trim();
-            if (!nom) return;
-            if (emp && emp !== nom) {
-                if (!grupos[emp]) grupos[emp] = [];
-                grupos[emp].push(c);
+            const display = contactoDisplayNombre(c);
+            if (!display) return;
+            let key = empresaGrupoKey(c);
+            if (!key) {
+                const tabHit = tabuladorClientes.find((tc) => {
+                    const tk = normEmpresaKey(tc.nombre);
+                    return tk && (tk === normEmpresaKey(c.empresa_tabulador) || tk === normEmpresaKey(display));
+                });
+                if (tabHit) key = normEmpresaKey(tabHit.nombre);
+            }
+            if (key) {
+                if (!grupos.has(key)) grupos.set(key, []);
+                grupos.get(key).push(c);
             } else {
                 sueltos.push(c);
             }
         });
 
-        // 1) Optgroups por empresa (ordenadas alfabéticamente)
-        const empresasSorted = Object.keys(grupos).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-        empresasSorted.forEach(emp => {
-            const arr = grupos[emp];
-            const tab = tabuladorClientes.find(tc => tc.nombre && tc.nombre.toLowerCase().trim() === emp.toLowerCase().trim());
-            let label = emp;
+        const keysSorted = [...grupos.keys()].sort((a, b) => {
+            const la = empresaGrupoLabel(a, grupos.get(a), tabuladorClientes);
+            const lb = empresaGrupoLabel(b, grupos.get(b), tabuladorClientes);
+            return la.localeCompare(lb, 'es', { sensitivity: 'base' });
+        });
+
+        keysSorted.forEach((key) => {
+            const arr = grupos.get(key);
+            const labelBase = empresaGrupoLabel(key, arr, tabuladorClientes);
+            const tab = tabuladorClientes.find((tc) => normEmpresaKey(tc.nombre) === key);
+            let label = labelBase;
             if (esAdmin && tab) {
                 label += `  (KM:${tab.km}  Hrs:${tab.horas}  Gas:$${Math.round(tab.gasolina || 0)})`;
             }
             const og = document.createElement('optgroup');
             og.label = label;
-            const empresas = arr.filter(c => (c.tipo_ficha || c.tipo) === 'empresa');
-            const contactos = arr.filter(c => (c.tipo_ficha || c.tipo) !== 'empresa');
-            [...empresas, ...contactos].forEach(c => {
+            const empresas = arr.filter((c) => (c.tipo_ficha || c.tipo) === 'empresa');
+            const contactos = arr.filter((c) => (c.tipo_ficha || c.tipo) !== 'empresa');
+            [...empresas, ...contactos].forEach((c) => {
+                const display = contactoDisplayNombre(c);
+                if (!display) return;
                 const tipo = c.tipo_ficha || c.tipo || 'contacto';
                 const tipoLabel = tipo === 'empresa' ? '[Empresa]' : (tipo === 'contacto_empresa' ? '[Contacto]' : '[Solo]');
                 const opt = document.createElement('option');
-                opt.value = c.nombre;
-                opt.textContent = `${tipoLabel} ${c.nombre}`;
-                opt.dataset.empresa = emp;
+                opt.value = display;
+                opt.textContent = `${tipoLabel} ${display}`;
+                opt.dataset.empresa = labelBase;
                 opt.dataset.tipo = tipo;
                 og.appendChild(opt);
             });
-            sel.appendChild(og);
+            if (og.children.length) sel.appendChild(og);
         });
 
-        // 2) Contactos sueltos (sin empresa asignada)
         if (sueltos.length > 0) {
             const ogSuelto = document.createElement('optgroup');
             ogSuelto.label = 'Contactos sin empresa';
-            sueltos.forEach(c => {
+            sueltos.forEach((c) => {
+                const display = contactoDisplayNombre(c);
+                if (!display) return;
                 const opt = document.createElement('option');
-                opt.value = c.nombre;
-                opt.textContent = c.nombre;
+                opt.value = display;
+                opt.textContent = display;
                 opt.dataset.tipo = c.tipo_ficha || c.tipo || 'contacto';
                 ogSuelto.appendChild(opt);
             });
-            sel.appendChild(ogSuelto);
+            if (ogSuelto.children.length) sel.appendChild(ogSuelto);
         }
 
-        // 3) Empresas del tabulador que no tengan contactos cargados
-        const empresasConContactos = new Set(empresasSorted);
-        tabuladorClientes.forEach(tc => {
-            if (tc.nombre && !empresasConContactos.has(tc.nombre)) {
-                const og = document.createElement('optgroup');
-                og.label = esAdmin
-                    ? `${tc.nombre}  (KM:${tc.km}  Hrs:${tc.horas}  Gas:$${Math.round(tc.gasolina || 0)})`
-                    : tc.nombre;
-                const opt = document.createElement('option');
-                opt.value = tc.nombre;
-                opt.textContent = `[Empresa] ${tc.nombre}`;
-                opt.dataset.tipo = 'empresa';
-                og.appendChild(opt);
-                sel.appendChild(og);
-            }
+        const keysConContactos = new Set(keysSorted);
+        tabuladorClientes.forEach((tc) => {
+            const key = normEmpresaKey(tc.nombre);
+            if (!tc.nombre || !key || keysConContactos.has(key) || isGarbageContactName(tc.nombre)) return;
+            const og = document.createElement('optgroup');
+            og.label = esAdmin
+                ? `${tc.nombre}  (KM:${tc.km}  Hrs:${tc.horas}  Gas:$${Math.round(tc.gasolina || 0)})`
+                : tc.nombre;
+            const opt = document.createElement('option');
+            opt.value = tc.nombre;
+            opt.textContent = `[Empresa] ${tc.nombre}`;
+            opt.dataset.tipo = 'empresa';
+            og.appendChild(opt);
+            sel.appendChild(og);
         });
 
         // Precargar KM/horas + info panel al cambiar cliente
@@ -702,12 +795,18 @@ const TallerModule = (function() {
             if (infoPanel) infoPanel.style.display = 'none';
             return;
         }
-        const contacto = clients.find(c => c.nombre === nombre);
-        const emp = contacto ? (contacto.empresa || nombre) : nombre;
-        const tab = tabuladorClientes.find(tc => tc.nombre && tc.nombre.toLowerCase().trim() === emp.toLowerCase().trim());
+        const contacto = clients.find((c) => contactoDisplayNombre(c) === nombre || c.nombre === nombre);
+        const emp = contacto
+            ? (contacto.empresa_tabulador || contacto.empresa || nombre)
+            : nombre;
+        const empKey = normEmpresaKey(emp);
+        const tab = tabuladorClientes.find(
+            (tc) => tc.nombre && (normEmpresaKey(tc.nombre) === empKey
+                || tc.nombre.toLowerCase().trim() === nombre.toLowerCase().trim())
+        );
         const kmEl = document.getElementById('tallerKmIda');
         const hrsEl = document.getElementById('tallerHorasViaje');
-        const esAdmin = _esAdmin();
+        const esAdmin = _verFinanciero();
 
         // Precargar KM/horas siempre (para costos), pero solo mostrar a admin
         if (kmEl) kmEl.value = tab ? tab.km : 0;
@@ -1019,7 +1118,15 @@ const TallerModule = (function() {
 
         let badgeCompra = '';
         if (tieneCompraPendiente) {
-            badgeCompra = `<span class="badge-warning" title="Compra en proceso: ${compraInfo.folio}">🛒 Compra #${compraInfo.folio}</span>`;
+            const esPreregistro = compraInfo.estado_interno === 'preregistro';
+            const esperandoCot = compraInfo.estado_interno === 'esperando_cotizacion';
+            if (esPreregistro) {
+                badgeCompra = `<span class="badge-preregistro-compra" title="Preregistro en Compras ${compraInfo.folio}: sin materiales aún. Espere a que el técnico agregue refacciones.">📋 Preregistro</span>`;
+            } else if (esperandoCot) {
+                badgeCompra = `<span class="badge-warning" title="Compra en proceso: ${compraInfo.folio} — esperando cotización">🛒 Compra #${compraInfo.folio} · Esperando cotización</span>`;
+            } else {
+                badgeCompra = `<span class="badge-warning" title="Compra en proceso: ${compraInfo.folio}">🛒 Compra #${compraInfo.folio}</span>`;
+            }
         } else if (compraCompletada) {
             badgeCompra = `<span class="badge-success" title="Material recibido">✅ Material listo</span>`;
         }
@@ -1030,7 +1137,7 @@ const TallerModule = (function() {
 
         // Badge de rentabilidad compacto junto al folio (solo admin ve el monto)
         let badgeRentabilidad = '';
-        const esAdminT = _esAdmin();
+        const esAdminT = _verFinanciero();
         if (orden.rentabilidad_estado === 'rojo') {
             badgeRentabilidad = esAdminT
                 ? `<span class="badge-rentabilidad-rojo badge-rentabilidad-inline" title="Adeudo $${(orden.adeudo_generado||0).toFixed(2)}">🔴 $${(orden.adeudo_generado||0).toFixed(0)}</span>`
@@ -1122,7 +1229,7 @@ const TallerModule = (function() {
             if (vis.tecnico !== false) cells.push(`<td>${o.tecnico_responsable || ''}</td>`);
             if (vis.estado !== false) cells.push(`<td>${o.estado || 'Nuevo'}</td>`);
             if (vis.balance !== false) {
-                const esAdminT = _esAdmin();
+                const esAdminT = _verFinanciero();
                 const badgeBal = o.rentabilidad_estado === 'rojo'
                     ? (esAdminT ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(o.adeudo_generado||0).toFixed(0)}</span>` : `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;" title="Rentabilidad baja"></span>`)
                     : (o.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—');
@@ -2228,7 +2335,21 @@ const TallerModule = (function() {
     }
 
     function _prevStep() { if (currentStep > 1) _irPaso(currentStep - 1); }
-    function _nextStep() { if (_validarPasoActual() && currentStep < 5) _irPaso(currentStep + 1); }
+
+    async function _nextStep() {
+        if (!_validarPasoActual() || currentStep >= 5) return;
+        const siguiente = currentStep + 1;
+        const nuevoEstado = _pasoToEstado(siguiente);
+        const ok = await _guardarOrden(true, siguiente);
+        if (!ok) {
+            _showToast('No se pudo guardar. Revise cliente, equipo y permisos.', 'error');
+            return;
+        }
+        _flushTallerAutosave();
+        _irPaso(siguiente);
+        _addToFeed('➡️', `Paso ${siguiente} · ${nuevoEstado}`);
+        _showToast(`Paso ${siguiente} guardado · ${nuevoEstado}`, 'success');
+    }
 
     function _validarPasoActual() {
         switch(currentStep) {
@@ -3140,10 +3261,11 @@ const TallerModule = (function() {
         if (etapa < 5) _irPaso(etapa + 1);
     }
 
-    async function _guardarOrden(silencioso = false) {
+    async function _guardarOrden(silencioso = false, pasoParaEstado = null) {
         const data = _recolectarDatos();
-        if (!data.cliente_nombre) { if (!silencioso) _showToast('Seleccione cliente', 'warning'); _irPaso(1); return; }
-        if (!data.equipo) { if (!silencioso) _showToast('Ingrese el equipo', 'warning'); _irPaso(1); return; }
+        if (!data.cliente_nombre) { if (!silencioso) _showToast('Seleccione cliente', 'warning'); _irPaso(1); return false; }
+        if (!data.equipo) { if (!silencioso) _showToast('Ingrese el equipo', 'warning'); _irPaso(1); return false; }
+        const pasoEst = pasoParaEstado != null ? pasoParaEstado : currentStep;
 
         const fotoInput = document.getElementById('productImage');
         if (fotoInput && fotoInput.files.length > 0) {
@@ -3202,11 +3324,10 @@ const TallerModule = (function() {
             console.warn('[SSEPI-RENTABILIDAD] Error calculando rentabilidad:', re);
         }
 
-        // Auto-avanzar estado según paso actual
+        // Auto-avanzar estado según paso (Siguiente puede indicar paso futuro)
         if (!isNewOrder) {
-            const pasoEstado = _pasoToEstado(currentStep);
+            const pasoEstado = _pasoToEstado(pasoEst);
             if (pasoEstado && data.estado !== pasoEstado) {
-                // Solo avanzar, nunca retroceder
                 const ordenActual = orders.find(o => String(o.id) === String(orderId));
                 const estadoActual = ordenActual?.estado || 'Nuevo';
                 const ordenPrioridad = _estadoPrioridad(estadoActual);
@@ -3270,6 +3391,7 @@ const TallerModule = (function() {
                             items: [],
                             total: 0,
                             estado: 1,
+                            estado_interno: 'preregistro',
                             observaciones: 'Preregistro generado automáticamente desde Laboratorio. Pendiente de asignar proveedor y materiales.',
                             pasos: [{ paso: 1, fecha: new Date().toISOString(), accion: 'Preregistro generado desde Laboratorio', usuario: perfilUsuario?.nombre || 'Sistema' }],
                             created_at: new Date().toISOString(),
@@ -3379,9 +3501,11 @@ const TallerModule = (function() {
                 await _loadOrders();
                 _applyFilters();
             }
+            return true;
         } catch (error) {
             console.error(error);
             if (!silencioso) _showToast('Error al guardar: ' + error.message, 'error');
+            return false;
         }
     }
 
@@ -3628,6 +3752,7 @@ const TallerModule = (function() {
     }
 
     function _cerrarModal() {
+        _flushTallerAutosave();
         document.getElementById('wsModal').classList.remove('active');
         currentOrder = null;
         orderId = null;
@@ -3862,17 +3987,41 @@ ${printScript}
         const items = [];
         if (diagnosticoInventario.length) {
             diagnosticoInventario.forEach(d => {
-                items.push({ descripcion: d.descripcion || 'Componente', especificaciones: d.sku || '', unidad: 'Pza', precio: Number(d.costo) || 0, cantidad: parseInt(d.cantidad) || 1, entrega: '' });
+                items.push({
+                    nombre: d.nombre || '',
+                    descripcion: d.nombre || d.descripcion || 'Componente',
+                    especificaciones: d.sku || '',
+                    unidad: 'Pza',
+                    precio: Number(d.costo) || 0,
+                    cantidad: parseInt(d.cantidad) || 1,
+                    entrega: ''
+                });
             });
         }
         if (consumiblesUsados.length) {
             consumiblesUsados.forEach(c => {
-                items.push({ descripcion: c.descripcion || 'Consumible', especificaciones: '', unidad: 'Pza', precio: Number(c.costo) || 0, cantidad: 1, entrega: '' });
+                items.push({
+                    nombre: c.descripcion || '',
+                    descripcion: c.descripcion || 'Consumible',
+                    especificaciones: c.sku || '',
+                    unidad: 'Pza',
+                    precio: Number(c.costo) || 0,
+                    cantidad: 1,
+                    entrega: ''
+                });
             });
         }
         if (componentesExtras.length) {
             componentesExtras.forEach(c => {
-                items.push({ descripcion: c.descripcion || 'Componente extra', especificaciones: '', unidad: 'Pza', precio: Number(c.costo_unitario) || 0, cantidad: parseInt(c.cantidad) || 1, entrega: '' });
+                items.push({
+                    nombre: c.nombre || '',
+                    descripcion: c.nombre || c.descripcion || 'Componente extra',
+                    especificaciones: c.sku || '',
+                    unidad: 'Pza',
+                    precio: Number(c.costo_unitario) || 0,
+                    cantidad: parseInt(c.cantidad) || 1,
+                    entrega: ''
+                });
             });
         }
         if (!items.length) items.push({ descripcion: '(Sin conceptos cargados)', especificaciones: '', unidad: '', precio: 0, cantidad: 1, entrega: '' });
@@ -4024,6 +4173,8 @@ ${printScript}
         if (printOrdenBtn) printOrdenBtn.addEventListener('click', () => _imprimirOrdenReparacion());
         const prevOrdenBtn = document.getElementById('btnVistaPreviaOrdenTaller');
         if (prevOrdenBtn) prevOrdenBtn.addEventListener('click', () => _vistaPreviaOrdenReparacion());
+        const limpiarOcrBtn = document.getElementById('btnLimpiarOcr');
+        if (limpiarOcrBtn) limpiarOcrBtn.addEventListener('click', _limpiarTextoOcrOrden);
         const reportePdfBtn = document.getElementById('btnReportePDFTaller');
         if (reportePdfBtn) reportePdfBtn.addEventListener('click', () => _generarReporteTaller(false, { sinPortada: true, partirSecciones: true }));
         const reporteParcialBtn = document.getElementById('btnReporteParcialTaller');

@@ -1112,6 +1112,84 @@ body.page-servicios .prio-chip:hover {
   gap: 8px;
 }
 
+/* Borradores preview — barra lateral derecha por módulo */
+.ssepi-module-prew {
+  margin-bottom: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+.ssepi-module-prew-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+.ssepi-module-prew-count {
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(245, 158, 11, 0.2);
+  color: #b45309;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.ssepi-module-prew-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+  line-height: 1.35;
+}
+.ssepi-module-prew-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.ssepi-module-prew-empty {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+}
+.ssepi-module-prew-card {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-hover);
+}
+.ssepi-module-prew-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.ssepi-module-prew-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  word-break: break-word;
+}
+.ssepi-module-prew-time {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+.ssepi-module-prew-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ssepi-module-prew-actions .btn-sm {
+  font-size: 10px;
+  padding: 4px 8px;
+}
+
 /* ========== MAIN ========== */
 main {
   padding: 30px;
@@ -3184,4 +3262,38 @@ main::before {
 
 .n8n-insight-action i {
     margin-right: 4px;
+}
+
+/* Sin importes/IVA: solo admin y superadmin (clase en body vía nav-by-role) */
+body.ssepi-sin-financieros .wizard-servicio-meta,
+body.ssepi-sin-financieros [data-financiero="true"],
+body.ssepi-sin-financieros .ssepi-financiero,
+body.ssepi-sin-financieros #editIVA,
+body.ssepi-sin-financieros #editTotal,
+body.ssepi-sin-financieros #editPrecioFinal,
+body.ssepi-sin-financieros #editUtilidad,
+body.ssepi-sin-financieros #editCredito,
+body.ssepi-sin-financieros #editGastosGenerales,
+body.ssepi-sin-financieros #resIVA,
+body.ssepi-sin-financieros #resTotal,
+body.ssepi-sin-financieros #resUtility,
+body.ssepi-sin-financieros #resCredit,
+body.ssepi-sin-financieros #resGeneralExpenses,
+body.ssepi-sin-financieros #previewTotal,
+body.ssepi-sin-financieros #previewSubtotal,
+body.ssepi-sin-financieros #lblLogisticaGasolina,
+body.ssepi-sin-financieros #lblLogisticaTraslado,
+body.ssepi-sin-financieros #valGasPlusSales,
+body.ssepi-sin-financieros #valFixedCosts,
+body.ssepi-sin-financieros #valTruck,
+body.ssepi-sin-financieros #inpParts,
+body.ssepi-sin-financieros #inpUtilidadPct,
+body.ssepi-sin-financieros #inpCreditoPct,
+body.ssepi-sin-financieros #compCosto,
+body.ssepi-sin-financieros #compCostoCompra,
+body.ssepi-sin-financieros .financiero-label-wrap {
+    display: none !important;
+}
+body.ssepi-sin-financieros .calculadora-sin-precios-hint {
+    display: block !important;
 }

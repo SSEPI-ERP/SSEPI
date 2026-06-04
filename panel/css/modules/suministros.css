@@ -97,6 +97,24 @@
 .historial-acciones { white-space: nowrap; }
 .historial-creador { font-size: .78rem; color: var(--text-secondary, #6b7280); max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
 
+/* Perfiles sin costos (ventas): ocultar importes, no eliminar datos */
+body.suministros-sin-costos .col-precio-suministros,
+body.suministros-sin-costos .col-costo-compra,
+body.suministros-sin-costos .carrito-col-precio,
+body.suministros-sin-costos #costosDesglose,
+body.suministros-sin-costos .cot-resumen-total,
+body.suministros-sin-costos #kpiCarritoTotalWrap,
+body.suministros-sin-costos .form-group-utilidad,
+body.suministros-sin-costos .historial-col-total,
+body.suministros-sin-costos .card-price-venta,
+body.suministros-sin-costos .card-price-costo {
+    display: none !important;
+}
+body.suministros-sin-costos .card-prov-chip { font-size: .65rem; }
+.admin-bandeja-section { border: 2px solid #f59e0b; background: #fffbeb; }
+.admin-bandeja-hint { font-size: .82rem; color: #92400e; margin: 0 0 12px; }
+.estado-pendiente-admin { background: #fef3c7; color: #92400e; }
+
 /* ===== TABLE ===== */
 .data-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .data-table th { background: var(--bg-tertiary, #f3f4f6); padding: 8px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border, #e5e7eb); white-space: nowrap; }
@@ -153,6 +171,42 @@
 .sum-pipe-step.active .sum-pipe-num { background: var(--primary, #0052cc); color: #fff; }
 .sum-pipe-step.done .sum-pipe-num { background: #10b981; color: #fff; }
 
+.cot-orden-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.cot-orden-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+.cot-resumen-bar {
+    flex: 1;
+    min-width: 260px;
+    margin: 0;
+}
+.cot-toggle-registro {
+    align-self: center;
+    white-space: nowrap;
+}
+.cot-form-panel.is-collapsed {
+    display: none;
+}
+.cot-form-panel:not(.is-collapsed) {
+    border-top: 1px solid var(--border-color, #e5e7eb);
+    padding-top: 16px;
+    margin-top: 4px;
+}
+#cotFolio[readonly] {
+    background: var(--bg-muted, #f3f4f6);
+    cursor: default;
+}
+
 .cotizacion-layout {
     display: grid;
     grid-template-columns: 1fr 280px;
@@ -191,6 +245,13 @@
 
 /* ===== COTIZACION FORM ===== */
 .cotizacion-form { display: flex; flex-direction: column; gap: 16px; }
+.cotizacion-form .form-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: .75rem;
+    color: var(--text-muted, #6b7280);
+    line-height: 1.35;
+}
 .form-row { display: flex; gap: 16px; flex-wrap: wrap; }
 .form-group { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 4px; }
 .form-group label { font-size: .8rem; font-weight: 600; color: var(--text-secondary, #6b7280); }

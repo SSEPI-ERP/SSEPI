@@ -91,6 +91,30 @@
     }
 
     /**
+     * Cotización / orden de suministro: SP-S[AÑO][MES][DÍA]-[N] según folios del día en cotizaciones.
+     */
+    function getNextFolioCotizacionSuministro(fecha) {
+        var d = fecha ? new Date(fecha) : new Date();
+        var yy = d.getFullYear().toString().slice(-2);
+        var mm = (d.getMonth() + 1).toString().padStart(2, '0');
+        var dd = d.getDate().toString().padStart(2, '0');
+        var prefix = 'SP-S' + yy + mm + dd + '-';
+        var sb = supabase();
+        if (!sb) return Promise.resolve(prefix + '1');
+        return sb.from('cotizaciones').select('folio').eq('origen', 'suministro').ilike('folio', prefix + '%')
+            .order('folio', { ascending: false }).limit(80)
+            .then(function (r) {
+                var max = 0;
+                (r.data || []).forEach(function (row) {
+                    var m = String(row.folio || '').match(/-(\d+)$/);
+                    if (m) max = Math.max(max, parseInt(m[1], 10) || 0);
+                });
+                return prefix + (max + 1);
+            })
+            .catch(function () { return prefix + '1'; });
+    }
+
+    /**
      * Orden de compra: SP-OC[AÑO][MES][XXX]. Ej: SP-OC26121.
      */
     function getNextFolioOrdenCompra() {
@@ -132,6 +156,7 @@
         getNextFolioMotores: getNextFolioMotores,
         getNextFolioLaboratorio: getNextFolioLaboratorio,
         getNextFolioSuministro: getNextFolioSuministro,
+        getNextFolioCotizacionSuministro: getNextFolioCotizacionSuministro,
         getNextFolioOrdenCompra: getNextFolioOrdenCompra,
         normalizeFolioLaboratorio: normalizeFolioLaboratorio
     };

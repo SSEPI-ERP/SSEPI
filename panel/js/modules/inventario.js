@@ -6,6 +6,7 @@
 // ================================================
 
 import { authService } from '../core/auth-service.js';
+import { canSeeCostsInModule, applyBodyFinancialClass } from '../core/ssepi-runtime/cost-visibility.js';
 import { createDataService } from '../core/data-service.js';
 import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
 
@@ -51,8 +52,17 @@ const InventarioModule = (function() {
 
     function _mainCat(cat) {
         if (!cat) return 'refaccion';
-        if (['refaccion', 'almacenable', 'consumible', 'servicio'].includes(cat)) return cat;
-        return CAT_MAP[cat] || 'refaccion';
+        const c = String(cat).toLowerCase().trim();
+        if (['refaccion', 'almacenable', 'consumible', 'servicio'].includes(c)) return c;
+        if (c.startsWith('consumible_') || c === 'consumible_taller') return 'consumible';
+        if (c.startsWith('servicio_')) return 'servicio';
+        return CAT_MAP[c] || 'refaccion';
+    }
+
+    function _catLabel(cat) {
+        const main = _mainCat(cat);
+        const labels = { refaccion: 'Refacción', almacenable: 'Almacenable', consumible: 'Consumible', servicio: 'Servicio' };
+        return labels[main] || cat || '—';
     }
     let busqueda = '';
     let vistaActual = 'table';
@@ -163,24 +173,22 @@ const InventarioModule = (function() {
         console.log('✅ [Inventario] Conectado');
         try {
             const profile = await authService.getCurrentProfile();
+            applyBodyFinancialClass(profile);
             const rol = (profile && profile.rol) ? String(profile.rol).toLowerCase() : (document.body.dataset.rol || sessionStorage.getItem('ssepi_rol') || '').toLowerCase();
             if (profile && profile.rol) {
                 try { sessionStorage.setItem('ssepi_rol', profile.rol); } catch (e) {}
                 document.body.dataset.rol = profile.rol;
             }
-            // Solo admin/superadmin ven costos reales y valor total
-            // Respetar ver_costos del perfil si está disponible
             const isAdmin = (rol === 'admin' || rol === 'superadmin');
-            const verCostosPerfil = profile && ('ver_costos' in profile) ? profile.ver_costos : null;
-            canSeeCosts = verCostosPerfil !== null ? verCostosPerfil : isAdmin;
+            canSeeCosts = canSeeCostsInModule(profile, 'inventario');
             canEditInventario = isAdmin;
             isRestrictedProfile = !canSeeCosts;
         } catch (e) {
             const rol = (document.body.dataset.rol || sessionStorage.getItem('ssepi_rol') || '').toLowerCase();
             const isAdmin = (rol === 'admin' || rol === 'superadmin');
-            const cachedProfile = sessionStorage.getItem('ssepi_profile');
-            const verCostosCached = cachedProfile ? (JSON.parse(cachedProfile).ver_costos ?? null) : null;
-            canSeeCosts = verCostosCached !== null ? verCostosCached : isAdmin;
+            let cachedProfile = null;
+            try { cachedProfile = sessionStorage.getItem('ssepi_profile') ? JSON.parse(sessionStorage.getItem('ssepi_profile')) : null; } catch (err) { cachedProfile = null; }
+            canSeeCosts = canSeeCostsInModule(cachedProfile || { rol }, 'inventario');
             canEditInventario = isAdmin;
             isRestrictedProfile = !canSeeCosts;
         }
@@ -209,13 +217,16 @@ const InventarioModule = (function() {
             el.classList.add('hide-for-no-admin');
             el.style.display = 'none';
         });
-        // Encabezados tabla: columnas Costo (índice 7) y Valor (índice 10)
-        document.querySelectorAll('.inventory-table thead th').forEach(function (th, i) {
-            if (i === 7 || i === 10) {
-                th.classList.add('hide-for-no-admin');
-                th.style.display = 'none';
-            }
+        // Ocultar columnas monetarias (costo, precio venta, valor) vía data-hide-for-no-admin
+        document.querySelectorAll('.inventory-table thead th[data-hide-for-no-admin="true"]').forEach(function (th) {
+            th.classList.add('hide-for-no-admin');
+            th.style.display = 'none';
         });
+        var priceGroup = document.getElementById('productPriceGroup');
+        if (priceGroup) {
+            priceGroup.style.display = 'none';
+            priceGroup.classList.add('hide-for-no-admin');
+        }
         // Tarjeta VALOR TOTAL
         var kpiValor = document.getElementById('kpiValorTotal');
         if (kpiValor) {
@@ -419,8 +430,10 @@ const InventarioModule = (function() {
         if (filtrados.length === 0) {
             const emptyState = document.getElementById('emptyState');
             const productsGrid = document.getElementById('productsGrid');
+            const tbody = document.getElementById('tableBody');
             if (emptyState) emptyState.style.display = 'block';
             if (productsGrid) productsGrid.innerHTML = '';
+            if (tbody) tbody.innerHTML = '';
         } else {
             const emptyState = document.getElementById('emptyState');
             if (emptyState) emptyState.style.display = 'none';
@@ -470,7 +483,7 @@ const InventarioModule = (function() {
                 </div>
                 <div class="card-footer">
                     <div class="stock-display">${p.stock || 0} <span>unidades</span></div>
-                    ${canSeeCosts ? `<div class="card-cost">$${(p.costo || 0).toFixed(2)}</div>` : `<div class="card-price">$${(p.precio_venta || 0).toFixed(2)}</div>`}
+                    ${canSeeCosts ? `<div class="card-cost">$${(p.costo || 0).toFixed(2)}</div>` : ''}
                 </div>
             </div>
         `;
@@ -480,7 +493,7 @@ const InventarioModule = (function() {
         const tbody = document.getElementById('tableBody');
         if (!tbody) return;
         tbody.innerHTML = productos.map(p => {
-            const catLabel = { refaccion: 'Refacción', almacenable: 'Almacenable', consumible: 'Consumible', servicio: 'Servicio' }[p.categoria] || p.categoria || '—';
+            const catLabel = _catLabel(p.categoria);
             if (canSeeCosts) {
                 const valor = (Number(p.costo) || 0) * (parseInt(p.stock, 10) || 0);
                 return `
@@ -499,7 +512,6 @@ const InventarioModule = (function() {
             </tr>
             `;
             } else {
-                // Perfil restringido: solo ve nombre, descripción, ubicación, stock, precio final
                 return `
             <tr onclick="inventarioModule._abrirModalEdicion('${p.id}')" role="button" tabindex="0">
                 <td><strong>${_escapeHtml(p.sku)}</strong></td>
@@ -509,7 +521,6 @@ const InventarioModule = (function() {
                 <td>${_escapeHtml(p.ubicacion)}</td>
                 <td class="col-num">${_fmtInt(p.stock)}</td>
                 <td class="col-num">${_fmtInt(p.minimo)}</td>
-                <td class="col-num">${_fmtMoney(p.precio_venta)}</td>
                 <td class="col-links">${_linksCompraHtml(p)}</td>
             </tr>
             `;

@@ -21,11 +21,11 @@
     <script src="/panel/js/core/theme-clock.js?v=2"></script>
     <script src="/panel/js/core/user-menu.js?v=2"></script>
     <script src="/panel/js/core/nav-by-role.js?v=2"></script>
-    <script src="/panel/js/core/folio-formats.js?v=2"></script>
+    <script src="/panel/js/core/folio-formats.js?v=3"></script>
     <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    <script type="module" src="/panel/js/modules/suministros.js?v=4"></script>
+    <script type="module" src="/panel/js/modules/suministros.js?v=9"></script>
     <script type="module" src="/panel/js/core/n8n-status.js?v=2"></script>
     <script type="module" src="/panel/js/core/n8n-insights-panel.js?v=2"></script>
 </head>
@@ -84,7 +84,7 @@
         <div class="kpi-bar" id="kpiRow">
             <div class="kpi-chip"><i class="fas fa-boxes-stacked kpi-chip-icon"></i><span class="kpi-chip-val" id="kpiTotalItems">0</span><span class="kpi-chip-lbl">Artículos</span></div>
             <div class="kpi-chip"><i class="fas fa-cart-plus kpi-chip-icon"></i><span class="kpi-chip-val" id="kpiCarritoItems">0</span><span class="kpi-chip-lbl">En Carrito</span></div>
-            <div class="kpi-chip"><i class="fas fa-dollar-sign kpi-chip-icon"></i><span class="kpi-chip-val" id="kpiCarritoTotal">$0</span><span class="kpi-chip-lbl">Total Carrito</span></div>
+            <div class="kpi-chip" id="kpiCarritoTotalWrap"><i class="fas fa-dollar-sign kpi-chip-icon"></i><span class="kpi-chip-val" id="kpiCarritoTotal">$0</span><span class="kpi-chip-lbl">Total Carrito</span></div>
             <div class="kpi-chip"><i class="fas fa-file-invoice kpi-chip-icon"></i><span class="kpi-chip-val" id="kpiCotizaciones">0</span><span class="kpi-chip-lbl">Cotizaciones</span></div>
         </div>
 
@@ -122,28 +122,60 @@
                 <button class="btn btn-sm btn-secondary" id="btnVaciarCarrito"><i class="fas fa-trash"></i> Vaciar</button>
             </div>
             <table class="data-table" id="carritoTabla">
-                <thead><tr><th>Fuente</th><th>Artículo</th><th>Cant.</th><th>Precio Unit.</th><th class="col-costo-compra">Costo Compra</th><th>Subtotal</th><th>Link</th><th></th></tr></thead>
+                <thead><tr><th>Fuente</th><th>Artículo</th><th>Cant.</th><th class="carrito-col-precio col-precio-suministros">Precio Unit.</th><th class="col-costo-compra carrito-col-precio">Costo Compra</th><th class="carrito-col-precio">Subtotal</th><th>Link</th><th></th></tr></thead>
                 <tbody id="carritoBody"></tbody>
                 <tfoot><tr class="total-row"><td colspan="3"><strong>Total</strong></td><td id="carritoTotalItems">0</td><td colspan="3"></td><td id="carritoTotalPrecio">$0.00</td></tr></tfoot>
             </table>
         </section>
 
+        <!-- BANDEJA ADMIN (revisión antes de Compras) -->
+        <section class="suministros-section admin-bandeja-section" id="adminBandejaSection" hidden>
+            <div class="section-header">
+                <h2><i class="fas fa-inbox"></i> Bandeja de entrada — Suministros</h2>
+                <span class="historial-count" id="adminBandejaCount">0</span> pendientes
+            </div>
+            <p class="admin-bandeja-hint">Cotizaciones enviadas por ventas sin ver costos. Aprueba para crear la orden en Compras.</p>
+            <table class="data-table historial-table">
+                <thead><tr><th>Folio</th><th>Cliente</th><th>Items</th><th>Solicitó</th><th>Enviado</th><th>Acciones</th></tr></thead>
+                <tbody id="adminBandejaBody"></tbody>
+            </table>
+        </section>
+
         <!-- COTIZACIÓN -->
         <section class="suministros-section" id="cotizacionSection">
-            <div class="section-header">
+            <div class="section-header cot-orden-header">
                 <h2><i class="fas fa-file-invoice-dollar"></i> Orden / Cotización de Suministro</h2>
+                <button type="button" class="btn btn-primary" id="btnNuevaOrdenSuministro" title="Abre el registro y asigna folio SP-S del día">
+                    <i class="fas fa-plus"></i> Nueva orden de suministro
+                </button>
             </div>
             <div id="suministrosPipeline" class="suministros-pipeline" aria-label="Estado de la orden de suministro"></div>
-            <div class="cotizacion-layout">
+            <div class="cot-orden-toolbar">
+                <aside class="cotizacion-resumen-panel cot-resumen-bar" aria-live="polite">
+                    <h3>Resumen orden</h3>
+                    <p class="cot-resumen-folio"><span>Folio</span> <strong id="cotResumenFolio">—</strong></p>
+                    <p class="cot-resumen-tipo"><span>Tipo</span> <strong id="cotResumenTipo">—</strong></p>
+                    <p class="cot-resumen-cliente"><span>Cliente</span> <strong id="cotResumenCliente">—</strong></p>
+                    <p class="cot-resumen-items"><span>Artículos</span> <strong id="cotResumenItems">0</strong></p>
+                    <p class="cot-resumen-total"><span>Total estimado</span> <strong id="cotResumenTotal">$0.00</strong></p>
+                    <p class="cot-resumen-estado"><span>Estado</span> <strong id="cotResumenEstado">Sin registrar</strong></p>
+                </aside>
+                <button type="button" class="btn btn-outline cot-toggle-registro" id="btnToggleCotRegistro" aria-expanded="false" aria-controls="cotFormPanel">
+                    <i class="fas fa-chevron-down" id="cotToggleIcon"></i>
+                    <span id="cotToggleLabel">Registrar datos de la orden</span>
+                </button>
+            </div>
+            <input type="hidden" id="cotTipoOrden" value="">
+            <div id="cotFormPanel" class="cot-form-panel is-collapsed">
             <div class="cotizacion-form cotizacion-form-main">
                 <div class="form-row">
                     <div class="form-group"><label>Cliente</label><select id="cotCliente" class="form-control"></select></div>
-                    <div class="form-group"><label>Folio</label><input type="text" id="cotFolio" class="form-control" placeholder="Auto-generado"></div>
+                    <div class="form-group"><label>Folio</label><input type="text" id="cotFolio" class="form-control" readonly placeholder="Se asigna al registrar"></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Días de gestión</label><input type="number" id="cotDias" class="form-control" value="1" min="1"></div>
                     <div class="form-group" style="display:none;"><label>Km recorrido (interno)</label><input type="number" id="cotKm" class="form-control" value="0" min="0"></div>
-                    <div class="form-group"><label>Utilidad (%)</label><input type="number" id="cotUtilidad" class="form-control" value="40" min="0" max="200"></div>
+                    <div class="form-group form-group-utilidad"><label>Utilidad (%)</label><input type="number" id="cotUtilidad" class="form-control" value="40" min="0" max="200"></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Fecha confirmación</label><input type="date" id="cotFechaConfirmacion" class="form-control"></div>
@@ -152,8 +184,16 @@
                     <div class="form-group"><label>Llegada a oficina</label><input type="date" id="cotLlegada" class="form-control"></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group"><label>Precorso — Importes</label><input type="text" id="cotPrecorsoImportes" class="form-control" placeholder="Ej. Importes 2024"></div>
-                    <div class="form-group"><label>Precorso — Importo</label><input type="text" id="cotPrecorsoImporto" class="form-control" placeholder="Ej. Importo SSEPI"></div>
+                    <div class="form-group">
+                        <label for="cotPrecorsoImportes">Notas — lista o referencia de importes</label>
+                        <input type="text" id="cotPrecorsoImportes" class="form-control" placeholder="Catálogo, archivo o lista de precios de importación (ej. Importes 2024)">
+                        <span class="form-hint">Opcional. Qué lista o documento de importes aplica a esta orden.</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="cotPrecorsoImporto">Notas — importador o proveedor extranjero</label>
+                        <input type="text" id="cotPrecorsoImporto" class="form-control" placeholder="Empresa importadora, contacto o pedimento (ej. Importo SSEPI)">
+                        <span class="form-hint">Opcional. Quién importa o de dónde se surte el material.</span>
+                    </div>
                 </div>
                 <div class="costos-desglose" id="costosDesglose">
                     <div class="costo-linea"><span>Costo suministros</span><span id="costoProveedor">$0.00</span></div>
@@ -166,18 +206,11 @@
                 </div>
                 <div class="form-actions">
                     <button class="btn btn-primary" id="btnGuardarCot"><i class="fas fa-save"></i> Guardar Cotización</button>
+                    <button class="btn btn-success" id="btnSiguientePipeline" type="button" title="Avanzar al siguiente paso del flujo"><i class="fas fa-arrow-right"></i> Siguiente</button>
                     <button class="btn btn-secondary" id="btnEnviarCompras"><i class="fas fa-paper-plane"></i> Enviar a Compras</button>
                     <button class="btn btn-outline" id="btnLimpiarCot"><i class="fas fa-eraser"></i> Limpiar</button>
                 </div>
             </div>
-            <aside class="cotizacion-resumen-panel">
-                <h3>Resumen orden</h3>
-                <p class="cot-resumen-folio"><span>Folio</span> <strong id="cotResumenFolio">—</strong></p>
-                <p class="cot-resumen-cliente"><span>Cliente</span> <strong id="cotResumenCliente">—</strong></p>
-                <p class="cot-resumen-items"><span>Artículos</span> <strong id="cotResumenItems">0</strong></p>
-                <p class="cot-resumen-total"><span>Total estimado</span> <strong id="cotResumenTotal">$0.00</strong></p>
-                <p class="cot-resumen-estado"><span>Estado</span> <strong id="cotResumenEstado">Cotización</strong></p>
-            </aside>
             </div>
         </section>
 
@@ -201,6 +234,7 @@
                     <select id="histEstado" class="form-control">
                         <option value="">Todos</option>
                         <option value="cotizacion">Cotización</option>
+                        <option value="pendiente_admin">Revisión Admin</option>
                         <option value="en_compra">En compras</option>
                         <option value="aprobada">Aprobada</option>
                         <option value="entregada">Entregada</option>
@@ -223,7 +257,7 @@
             </div>
             <div class="historial-table-wrap">
             <table class="data-table historial-table" id="cotizacionesTabla">
-                <thead><tr><th>Folio</th><th>Cliente</th><th>Items</th><th>Total</th><th>Estado</th><th>Fecha</th><th>Creado por</th><th class="col-historial-pdf">PDF</th><th>Acciones</th></tr></thead>
+                <thead><tr><th>Folio</th><th>Cliente</th><th>Items</th><th class="historial-col-total">Total</th><th>Estado</th><th>Fecha</th><th>Creado por</th><th class="col-historial-pdf">PDF</th><th>Acciones</th></tr></thead>
                 <tbody id="cotizacionesBody"></tbody>
             </table>
             </div>

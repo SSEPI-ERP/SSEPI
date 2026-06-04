@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Comparacion Clientes OCR vs Base de Datos SSEPI</title>
+<style>
+  body { font-family: 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+  h2 { font-size: 18px; color: #333; margin-bottom: 10px; }
+  .summary { background: #fff; border-radius: 8px; padding: 15px 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 13px; }
+  .table-wrap { overflow-x: auto; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #eee; vertical-align: middle; }
+  th { background: #f8f9fa; font-weight: 600; color: #555; position: sticky; top: 0; }
+  tr:hover td { background: #f8f9fa; }
+  .t-img { width: 80px; height: 60px; border-radius: 4px; object-fit: cover; cursor: pointer; border: 1px solid #ddd; }
+  .badge { display: inline-block; min-width: 40px; text-align: center; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .match-high { color: #1D9E75; }
+  .match-med { color: #ff9800; }
+  .match-low { color: #C42B2B; }
+  .section { margin-bottom: 30px; }
+  .ocr-name { font-weight: 600; color: #333; max-width: 200px; word-break: break-word; }
+  .diff-cell { font-family: monospace; font-size: 11px; max-width: 280px; word-break: break-all; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .db-table th { white-space: nowrap; }
+  .db-table td { white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<h2>Comparacion Clientes OCR (Imagenes) vs Base de Datos SSEPI</h2>
+
+<div class="summary">
+  <strong>Total imagenes procesadas:</strong> 0 |
+  <strong>Clientes BD SSEPI:</strong> 33 |
+  <span class="match-high">Verde ≥90%</span> |
+  <span class="match-med">Naranja 70–89%</span> |
+  <span class="match-low">Rojo <70%</span>
+</div>
+
+<div class="section">
+  <h2>Tabla comparativa completa (OCR con preprocesamiento: recorte superior + inversión + contraste)</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Imagen</th>
+          <th>Nombre OCR (escaneado)</th>
+          <th>Similitud</th>
+          <th>Cliente real BD</th>
+          <th>Diferencias resaltadas</th>
+          <th>RFC real</th>
+          <th>Contacto real</th>
+          <th>Direccion real</th>
+        </tr>
+      </thead>
+      <tbody>
+
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Lista de clientes BD SSEPI (33) — Datos completos del sistema V11</h2>
+  <div class="table-wrap">
+    <table class="db-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Cliente</th>
+          <th class="num">Cant</th>
+          <th class="num">Tasa</th>
+          <th class="num">Parcial</th>
+          <th class="num">Uds</th>
+          <th class="num">Fijo</th>
+          <th class="num">Total</th>
+          <th>Direccion</th>
+          <th>RFC</th>
+          <th>Contacto</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>ANGUIPLAST</td><td class="num">234</td><td class="num">24.63</td><td class="num">665.05</td><td class="num">6</td><td class="num">750</td><td class="num">1415.05</td><td>Libramiento Norte Km. 2, Arandas, JAL</td><td>ANG101215PG0</td><td>Ing. Compras</td></tr>
+        <tr><td>2</td><td>BOLSAS DE LOS ALTOS</td><td class="num">226</td><td class="num">23.79</td><td class="num">642.32</td><td class="num">5</td><td class="num">625</td><td class="num">1267.32</td><td>Carr. Tepatitlán - Arandas, JAL</td><td>BAL050101AA1</td><td>Lic. Adquisiciones</td></tr>
+        <tr><td>3</td><td>ECOBOLSAS</td><td class="num">216</td><td class="num">22.74</td><td class="num">613.89</td><td class="num">5</td><td class="num">625</td><td class="num">1238.89</td><td>Parque Industrial León, GTO</td><td>ECO990202BB2</td><td>Gerente Planta</td></tr>
+        <tr><td>4</td><td>BADER TABACHINES</td><td class="num">17.2</td><td class="num">1.81</td><td class="num">48.88</td><td class="num">2</td><td class="num">250</td><td class="num">298.88</td><td>Blvd. J. Clouthier, León, GTO</td><td>BAD880303CC3</td><td>Mantenimiento</td></tr>
+        <tr><td>5</td><td>BODYCOTE</td><td class="num">90.6</td><td class="num">9.54</td><td class="num">257.49</td><td class="num">3</td><td class="num">375</td><td class="num">632.49</td><td>Silao, Guanajuato Puerto Interior</td><td>BOD770404DD4</td><td>Ing. Proyectos</td></tr>
+        <tr><td>6</td><td>COFICAB</td><td class="num">80</td><td class="num">8.42</td><td class="num">227.37</td><td class="num">3</td><td class="num">375</td><td class="num">602.37</td><td>Puerto Interior, Silao, GTO</td><td>COF660505EE5</td><td>Ing. Eléctrico</td></tr>
+        <tr><td>7</td><td>CONDUMEX</td><td class="num">90.6</td><td class="num">9.54</td><td class="num">257.49</td><td class="num">3</td><td class="num">375</td><td class="num">632.49</td><td>Silao, GTO</td><td>CON550606FF6</td><td>Compras</td></tr>
+        <tr><td>8</td><td>ECSA</td><td class="num">32</td><td class="num">3.37</td><td class="num">90.95</td><td class="num">2</td><td class="num">250</td><td class="num">340.95</td><td>León, GTO</td><td>ECS440707GG7</td><td>Admin</td></tr>
+        <tr><td>9</td><td>EMMSA</td><td class="num">21.6</td><td class="num">2.27</td><td class="num">61.39</td><td class="num">2</td><td class="num">250</td><td class="num">311.39</td><td>León, GTO</td><td>EMM330808HH8</td><td>Almacén</td></tr>
+        <tr><td>10</td><td>EPC 1</td><td class="num">400</td><td class="num">42.11</td><td class="num">1136.84</td><td class="num">7</td><td class="num">875</td><td class="num">2011.84</td><td>SLP</td><td>EPC220909II9</td><td>Ingeniería</td></tr>
+        <tr><td>11</td><td>EPC 2</td><td class="num">402</td><td class="num">42.32</td><td class="num">1142.53</td><td class="num">8</td><td class="num">1000</td><td class="num">2142.53</td><td>SLP</td><td>EPC111010JJ0</td><td>Ingeniería</td></tr>
+        <tr><td>12</td><td>FRAENKISCHE</td><td class="num">79.4</td><td class="num">8.36</td><td class="num">225.66</td><td class="num">3</td><td class="num">375</td><td class="num">600.66</td><td>Silao, GTO</td><td>FRA001111KK1</td><td>Mtto</td></tr>
+        <tr><td>13</td><td>GEDNEY</td><td class="num">23.6</td><td class="num">2.48</td><td class="num">67.07</td><td class="num">3</td><td class="num">375</td><td class="num">442.07</td><td>León, GTO</td><td>GED991212LL2</td><td>Compras</td></tr>
+        <tr><td>14</td><td>GRUPO ACERERO</td><td class="num">386</td><td class="num">40.63</td><td class="num">1097.05</td><td class="num">7</td><td class="num">875</td><td class="num">1972.05</td><td>SLP</td><td>GRU880101MM3</td><td>Planta</td></tr>
+        <tr><td>15</td><td>HALL PLANTA 1</td><td class="num">73.8</td><td class="num">7.77</td><td class="num">209.75</td><td class="num">3</td><td class="num">375</td><td class="num">584.75</td><td>Parque Opción, San José Iturbide</td><td>HAL770202NN4</td><td>Ing. Control</td></tr>
+        <tr><td>16</td><td>HIRUTA PLANTA 1</td><td class="num">58.4</td><td class="num">6.15</td><td class="num">165.98</td><td class="num">3</td><td class="num">375</td><td class="num">540.98</td><td>Parque Amistad, Celaya</td><td>HIR660303OO5</td><td>Mtto</td></tr>
+        <tr><td>17</td><td>IK PLASTIC</td><td class="num">61.4</td><td class="num">6.46</td><td class="num">174.51</td><td class="num">3</td><td class="num">375</td><td class="num">549.51</td><td>Parque Stiva, León</td><td>IKP550404PP6</td><td>Ing. Proc</td></tr>
+        <tr><td>18</td><td>IMPRENTA JM</td><td class="num">16.2</td><td class="num">1.71</td><td class="num">46.04</td><td class="num">2</td><td class="num">250</td><td class="num">296.04</td><td>Col. Obregón, León</td><td>IMP440505QQ7</td><td>Dueño</td></tr>
+        <tr><td>19</td><td>JARDÍN LA ALEMANA</td><td class="num">12</td><td class="num">1.26</td><td class="num">34.11</td><td class="num">2</td><td class="num">250</td><td class="num">284.11</td><td>León, GTO</td><td>JAR330606RR8</td><td>Admin</td></tr>
+        <tr><td>20</td><td>MAFLOW</td><td class="num">59.8</td><td class="num">6.29</td><td class="num">169.96</td><td class="num">3</td><td class="num">375</td><td class="num">544.96</td><td>Silao, GTO</td><td>MAF220707SS9</td><td>Ingeniería</td></tr>
+        <tr><td>21</td><td>MARQUARDT</td><td class="num">125.4</td><td class="num">13.2</td><td class="num">356.4</td><td class="num">4</td><td class="num">500</td><td class="num">856.4</td><td>Irapuato, GTO</td><td>MAR110808TT0</td><td>Compras</td></tr>
+        <tr><td>22</td><td>MICROONDA</td><td class="num">41.6</td><td class="num">4.38</td><td class="num">118.23</td><td class="num">3</td><td class="num">375</td><td class="num">493.23</td><td>León, GTO</td><td>MIC000909UU1</td><td>Sistemas</td></tr>
+        <tr><td>23</td><td>MR LUCKY</td><td class="num">157</td><td class="num">16.53</td><td class="num">446.21</td><td class="num">4</td><td class="num">500</td><td class="num">946.21</td><td>Irapuato, GTO</td><td>MRL991010VV2</td><td>Campo</td></tr>
+        <tr><td>24</td><td>NHK</td><td class="num">138.6</td><td class="num">14.59</td><td class="num">393.92</td><td class="num">4</td><td class="num">500</td><td class="num">893.92</td><td>Celaya, GTO</td><td>NHK881111WW3</td><td>Mtto</td></tr>
+        <tr><td>25</td><td>NISHIKAWA</td><td class="num">61</td><td class="num">6.42</td><td class="num">173.37</td><td class="num">3</td><td class="num">375</td><td class="num">548.37</td><td>Silao, GTO</td><td>NIS771212XX4</td><td>Ing. Prod</td></tr>
+        <tr><td>26</td><td>PIELES AZTECA</td><td class="num">5</td><td class="num">0.53</td><td class="num">14.21</td><td class="num">1</td><td class="num">125</td><td class="num">139.21</td><td>León, GTO</td><td>PIE660101YY5</td><td>Almacén</td></tr>
+        <tr><td>27</td><td>RONGTAI</td><td class="num">28.2</td><td class="num">2.97</td><td class="num">80.15</td><td class="num">3</td><td class="num">375</td><td class="num">455.15</td><td>León, GTO</td><td>RON550202ZZ6</td><td>Compras</td></tr>
+        <tr><td>28</td><td>SAFE DEMO</td><td class="num">61.6</td><td class="num">6.48</td><td class="num">175.07</td><td class="num">3</td><td class="num">375</td><td class="num">550.07</td><td>Silao, GTO</td><td>SAF440303A11</td><td>Ingeniería</td></tr>
+        <tr><td>29</td><td>SERVIACERO ELECTROFORJADOS</td><td class="num">14.6</td><td class="num">1.54</td><td class="num">41.49</td><td class="num">2</td><td class="num">250</td><td class="num">291.49</td><td>León, GTO</td><td>SEE330404B22</td><td>Mtto</td></tr>
+        <tr><td>30</td><td>SUACERO</td><td class="num">392</td><td class="num">41.26</td><td class="num">1114.11</td><td class="num">8</td><td class="num">1000</td><td class="num">2114.11</td><td>SLP</td><td>SUA220505C33</td><td>Planta</td></tr>
+        <tr><td>31</td><td>TQ-1</td><td class="num">26</td><td class="num">2.74</td><td class="num">73.89</td><td class="num">2</td><td class="num">250</td><td class="num">323.89</td><td>León, GTO</td><td>TQ1110606D44</td><td>Admin</td></tr>
+        <tr><td>32</td><td>MINO INDUSTRY</td><td class="num">29.2</td><td class="num">3.07</td><td class="num">82.99</td><td class="num">2</td><td class="num">250</td><td class="num">332.99</td><td>León, GTO</td><td>MIN000707E55</td><td>Ing. Moldes</td></tr>
+        <tr><td>33</td><td>CURTIDOS BENGALA</td><td class="num">17.2</td><td class="num">1.81</td><td class="num">44.36</td><td class="num">2</td><td class="num">250</td><td class="num">298.88</td><td>Parque Piel</td><td>CUR880808F66</td><td>Propietario</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</body>
+</html>

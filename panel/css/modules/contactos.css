@@ -317,6 +317,67 @@
     letter-spacing: 0.5px;
 }
 
+.contact-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.contact-card-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.contact-card-badges .badge {
+    margin-top: 0;
+}
+
+.contact-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.3;
+}
+
+.contact-badge.tf-empresa { background: #e8f5e9; color: #2e7d32; }
+.contact-badge.tf-vendedor { background: #f3e5f5; color: #6a1b9a; }
+.contact-badge.tf-solo { background: #eceff1; color: #546e7a; }
+.contact-badge.match-ok { background: #e8f5e9; color: #2e7d32; }
+.contact-badge.match-med { background: #fff8e1; color: #f57f17; }
+.contact-badge.match-low { background: #ffebee; color: #c62828; }
+
+.contact-odoo-id {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.contact-meta {
+    margin: 0 0 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.contact-empresa-link {
+    color: var(--text-muted);
+}
+
+.contact-email {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.contact-muted {
+    opacity: 0.55;
+}
+
 .badge.client {
     background: rgba(46,125,50,0.2);
     color: var(--accent-client);
@@ -752,5 +813,141 @@
     }
     .kpi-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* ========== DATOS FALTANTES ========== */
+.form-section-datos-faltantes {
+    border-left: 4px solid #f59e0b;
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.04), transparent);
+}
+.form-section-datos-faltantes .section-title-form {
+    color: #b45309;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.datos-faltantes-count {
+    background: #f59e0b;
+    color: #fff;
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.datos-faltantes-filtros {
+    display: inline-flex;
+    gap: 14px;
+    margin-left: 14px;
+    font-size: 13px;
+    flex-wrap: wrap;
+}
+.datos-faltantes-filtros label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    color: var(--text-muted, #555);
+}
+.datos-faltantes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+    max-height: 360px;
+    overflow-y: auto;
+}
+.datos-faltantes-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--bg-card, #fff);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    transition: background 0.15s, border-color 0.15s;
+}
+.datos-faltantes-row:hover {
+    background: rgba(245, 158, 11, 0.06);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+.datos-faltantes-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+.datos-faltantes-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.datos-faltantes-info strong {
+    font-size: 14px;
+    color: var(--text-primary, #222);
+}
+.datos-faltantes-emp {
+    font-size: 12px;
+    color: var(--text-muted, #777);
+}
+.datos-faltantes-faltante {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 12px;
+    color: #b45309;
+    margin-top: 2px;
+}
+.datos-faltantes-faltante i {
+    margin-right: 3px;
+}
+.datos-faltantes-rfc {
+    font-size: 11px;
+    color: var(--text-muted, #888);
+    font-family: monospace;
+}
+.datos-faltantes-fuente {
+    font-size: 11px;
+    color: var(--text-muted, #888);
+    font-style: italic;
+}
+.datos-faltantes-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.btn-buscar-google,
+.btn-abrir-ficha {
+    font-size: 12px;
+    padding: 6px 10px;
+    white-space: nowrap;
+}
+.btn-buscar-google {
+    background: #4285f4 !important;
+    color: #fff !important;
+    border-color: #4285f4 !important;
+}
+.btn-buscar-google:hover {
+    background: #3367d6 !important;
+}
+@media (max-width: 640px) {
+    .datos-faltantes-row {
+        flex-wrap: wrap;
+    }
+    .datos-faltantes-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    .datos-faltantes-filtros {
+        margin-left: 0;
+        margin-top: 8px;
     }
 }

@@ -6,10 +6,13 @@ import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+REPO = ROOT.parent.parent.parent  # E:/SSEPI
 
 from odoo_sin_tabulador_reglas import aplicar_reglas_odoo_sin
 EXCEL_CANDIDATES = [
     ROOT / "TABULADOR DE COTIZACIÓN actualizado.xlsx",
+    REPO / "simulaciones" / "SSEPI_Paquete_ERP" / "TABULADOR DE COTIZACIÓN actualizado.xlsx",
+    REPO / "docs" / "TABULADOR DE COTIZACIÓN (1).xlsx",
     Path(r"c:\Users\norbe\Downloads\TABULADOR DE COTIZACIÓN actualizado.xlsx"),
     ROOT / "TABULADOR DE COTIZACIÓN.xlsx",
 ]
@@ -23,11 +26,39 @@ def resolve_excel_file():
 
 
 EXCEL_FILE = resolve_excel_file()
-ODOO_CONTACTS_FILE = ROOT / "contactos_odoo.xlsx"
-IMG_DIR = ROOT / "SistemaContactos" / "CapturasOdoo"
+ODOO_CONTACTS_CANDIDATES = [
+    ROOT / "contactos_odoo.xlsx",
+    REPO / "scripts" / "imports" / "fuente" / "Contacto (res.partner).xlsx",
+    REPO / "excel" / "Contacto (res.partner).xlsx",
+    Path(r"c:\Users\norbe\Downloads\Contacto (res.partner) (1).xlsx"),
+]
+IMG_DIR = ROOT.parent / "CapturasOdoo"
 OCR_FILE = ROOT / "ocr_results.json"
-RASTRO_FILE = ROOT / "rastro_capturas.json"
+RASTRO_CANDIDATES = [
+    ROOT / "rastro_capturas.json",
+    ROOT / "rastro_capturas_ejemplo.json",
+]
 OUT_FILE = ROOT / "datos_comparador.json"
+
+
+def resolve_odoo_contacts_file():
+    for p in ODOO_CONTACTS_CANDIDATES:
+        if p.exists():
+            return p
+    return ODOO_CONTACTS_CANDIDATES[0]
+
+
+ODOO_CONTACTS_FILE = resolve_odoo_contacts_file()
+
+
+def resolve_rastro_file():
+    for p in RASTRO_CANDIDATES:
+        if p.exists():
+            return p
+    return RASTRO_CANDIDATES[-1]
+
+
+RASTRO_FILE = resolve_rastro_file()
 
 
 def load_rastro_capturas():
@@ -817,6 +848,9 @@ def load_odoo_contacts():
     if not path.exists():
         alt = Path(r"c:\Users\norbe\Downloads\Contacto (res.partner) (1).xlsx")
         path = alt if alt.exists() else path
+    if not path.exists():
+        print(f"AVISO: sin Excel Odoo en {ODOO_CONTACTS_FILE} — catálogo vacío")
+        return []
     df = pd.read_excel(path)
     name_col = next(c for c in df.columns if "ombre" in str(c))
     email_col = next(c for c in df.columns if "orreo" in str(c))

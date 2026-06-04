@@ -2,6 +2,13 @@
  * vacaciones.js — Módulo Vacaciones: solicitudes, días disponibles, días feriados.
  * Todos los roles con permiso vacaciones pueden ver y solicitar; admin puede editar días asignados.
  */
+import {
+    filterVisibleProfiles,
+    isHiddenProfile,
+    isHiddenUserId,
+    resolveHiddenUserIds
+} from '../core/hidden-profiles.js';
+
 (function() {
     'use strict';
 
@@ -11,6 +18,7 @@
     var feriados = [];
     var balance = null;
     var empleadosMap = {};
+    var hiddenUserIds = new Set();
     var calendarYear = new Date().getFullYear();
     var calendarMonth = new Date().getMonth();
     var ocupacionPorDia = {};
@@ -33,8 +41,11 @@
             supabase().from('vacaciones_empleados').select('id, user_id, nombre, rol, email, color').order('orden'),
             supabase().from('users').select('auth_user_id, email, nombre')
         ]).then(function(ress) {
-            var empleados = ress[0].data || [];
-            var users = ress[1].data || [];
+            var rawEmpleados = ress[0].data || [];
+            var rawUsers = ress[1].data || [];
+            hiddenUserIds = resolveHiddenUserIds(rawEmpleados, rawUsers);
+            var empleados = filterVisibleProfiles(rawEmpleados);
+            var users = rawUsers.filter(function(u) { return !isHiddenProfile(u); });
             empleadosMap = {};
             var byEmail = {};
             empleados.forEach(function(e) {
@@ -84,6 +95,7 @@
                 if (r.error) throw r.error;
                 var map = {};
                 (r.data || []).forEach(function(s) {
+                    if (isHiddenUserId(s.user_id, hiddenUserIds)) return;
                     var d = new Date(s.fecha_desde + 'T12:00:00');
                     var h = new Date(s.fecha_hasta + 'T12:00:00');
                     var info = empleadosMap[s.user_id] || { nombre: 'Usuario', color: '#94a3b8' };
@@ -112,6 +124,7 @@
                 if (r.error) throw r.error;
                 var map = {};
                 (r.data || []).forEach(function(s) {
+                    if (isHiddenUserId(s.user_id, hiddenUserIds)) return;
                     var d = new Date(s.fecha_desde + 'T12:00:00');
                     var h = new Date(s.fecha_hasta + 'T12:00:00');
                     var info = empleadosMap[s.user_id] || { nombre: 'Usuario', color: '#94a3b8' };
@@ -459,7 +472,9 @@
                 }, {});
                 var tbody = document.getElementById('tablaAdminBalanceBody');
                 if (!tbody) return;
-                tbody.innerHTML = data.map(function(b) {
+                tbody.innerHTML = data.filter(function(b) {
+                    return !isHiddenUserId(b.user_id, hiddenUserIds) && !isHiddenProfile({ nombre: users[b.user_id], user_id: b.user_id });
+                }).map(function(b) {
                     var name = users[b.user_id] || b.user_id;
                     return '<tr data-id="' + b.id + '" data-user="' + b.user_id + '" data-anio="' + b.anio + '">' +
                         '<td>' + name + '</td><td>' + b.anio + '</td>' +
@@ -528,31 +543,46 @@
         }
     }
 
+    function resolveUserId(profile) {
+        if (!profile) return null;
+        return profile.auth_user_id || profile.id || null;
+    }
+
     async function init() {
-        var profile = await auth().getCurrentProfile();
-        if (!profile || !profile.id) return;
-        currentUserId = profile.id;
-        bindEvents();
-        startClock();
-        await loadEmpleadosAndUsers();
-        await loadFeriados();
-        await loadBalance();
-        await loadSolicitudes();
-        await loadCalendar();
-        var anualYearEl = document.getElementById('calAnualYear');
-        if (anualYearEl) {
-            var y = new Date().getFullYear();
-            for (var i = y - 1; i <= y + 2; i++) {
-                var opt = document.createElement('option');
-                opt.value = i;
-                opt.textContent = i;
-                if (i === y) opt.selected = true;
-                anualYearEl.appendChild(opt);
+        try {
+            var profile = await auth().getCurrentProfile();
+            currentUserId = resolveUserId(profile);
+            if (!currentUserId) {
+                console.warn('[Vacaciones] Sin sesión de usuario');
+                document.body.classList.remove('nav-loading');
+                document.body.classList.add('nav-ready');
+                return;
             }
+            bindEvents();
+            startClock();
+            await loadEmpleadosAndUsers();
+            await loadFeriados();
+            await loadBalance();
+            await loadSolicitudes();
+            await loadCalendar();
+            var anualYearEl = document.getElementById('calAnualYear');
+            if (anualYearEl) {
+                var y = new Date().getFullYear();
+                for (var i = y - 1; i <= y + 2; i++) {
+                    var opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = i;
+                    if (i === y) opt.selected = true;
+                    anualYearEl.appendChild(opt);
+                }
+            }
+            await loadAdminBalances();
+        } catch (e) {
+            console.error('[Vacaciones] Error al inicializar:', e);
+        } finally {
+            document.body.classList.remove('nav-loading');
+            document.body.classList.add('nav-ready');
         }
-        await loadAdminBalances();
-        document.body.classList.remove('nav-loading');
-        document.body.classList.add('nav-ready');
     }
 
     window.vacacionesMod = { init: init };

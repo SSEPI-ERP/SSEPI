@@ -11,6 +11,7 @@ import { getDb, persistDb } from './db.mjs';
 import { createOfflineProxyRouter } from './offline-proxy.mjs';
 import { loginOfflineUser, verifyOfflineToken, getOfflineUserById, registerOfflineUser, listOfflineUsers, updateOfflineUser, changeOfflinePassword, signOfflineToken } from './offline-auth.mjs';
 import { SSEPI_USERS } from './users-catalog.mjs';
+import { filterVisibleProfiles } from './hidden-profiles.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -154,7 +155,7 @@ app.post('/api/auth/refresh', async (req, res) => {
 // Admin: listar usuarios
 app.get('/api/auth/users', async (req, res) => {
   try {
-    const rows = await listOfflineUsers();
+    const rows = filterVisibleProfiles(await listOfflineUsers());
     res.json({ data: rows });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -394,10 +395,19 @@ app.get('/landing/panel/panel.html', (_req, res) => res.redirect('/panel/panel.h
 
 app.use('/landing', express.static(path.join(__dirname, '..', 'panel', 'landing')));
 
+// Panel/JS/CSS: sin cache agresivo en local (evita ver modulos viejos tras reinicio)
+function _noCachePanelAssets(req, res, next) {
+  if (/\.(js|css|html|mjs)$/i.test(req.path)) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+  }
+  next();
+}
+
 // ========================================
 // SERVIR ERP WEB + ASSETS
 // ========================================
-app.use('/panel', express.static(path.join(__dirname, '..', 'panel')));
+app.use('/panel', _noCachePanelAssets, express.static(path.join(__dirname, '..', 'panel')));
 app.use('/assets', express.static(path.join(__dirname, '..', 'panel', 'assets')));
 app.use('/excel', express.static(path.join(__dirname, '..', 'excel')));
 app.use('/facturas_timbradas', express.static(path.join(__dirname, 'facturas_timbradas')));
@@ -441,6 +451,13 @@ if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
     console.log(`[SSEPI-OFFLINE] HTTPS en https://localhost:${HTTPS_PORT}`);
     getLocalIPs().forEach(ip => console.log(`[SSEPI-OFFLINE] HTTPS LAN: https://${ip}:${HTTPS_PORT}/panel/panel.html`));
   });
+  httpsServer.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`[SSEPI-OFFLINE] AVISO: puerto ${HTTPS_PORT} ya en uso — otra instancia SSEPI corre. Cierra ventanas duplicadas.`);
+    } else {
+      console.error('[SSEPI-OFFLINE] Error HTTPS:', err.message);
+    }
+  });
   httpsServer.on('upgrade', (req, socket) => {
     socket.write('HTTP/1.1 426 Upgrade Required\r\n\r\n');
     socket.destroy();
@@ -455,6 +472,15 @@ httpServer.listen(httpPort, '0.0.0.0', () => {
   console.log(`[SSEPI-OFFLINE] Auth local: POST /api/auth/login`);
   console.log(`[SSEPI-OFFLINE] Proxy local: /proxy/rest/v1/{tabla}`);
   console.log(`[SSEPI-OFFLINE] SQLite: ./data/ssepi-local.db`);
+});
+httpServer.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[SSEPI-OFFLINE] ERROR: puerto ${httpPort} ya en uso. No ejecutes offline-server.mjs dos veces.`);
+    console.error('[SSEPI-OFFLINE] Cierra la ventana "SSEPI VPS SERVER" existente o ejecuta reiniciar-ssepi.bat');
+    process.exit(1);
+  }
+  console.error('[SSEPI-OFFLINE] Error HTTP:', err.message);
+  process.exit(1);
 });
 
 httpServer.on('upgrade', (req, socket) => {

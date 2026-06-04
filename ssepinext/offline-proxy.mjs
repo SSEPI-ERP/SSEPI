@@ -1,5 +1,6 @@
 import { prepareStatement, getSyncState } from './db.mjs';
 import express from 'express';
+import { filterVisibleProfiles } from './hidden-profiles.mjs';
 
 export const TABLE_MAP = {
   'ventas': 'local_ventas',
@@ -11,6 +12,7 @@ export const TABLE_MAP = {
   'facturas': 'local_facturas',
   'inventario': 'local_inventario',
   'contactos': 'local_contactos',
+  'actividades_contactos': 'local_actividades_contactos',
   'orden_historial': 'local_orden_historial',
   'coi_sync_queue': 'local_coi_sync_queue',
   'usuarios': 'local_usuarios',
@@ -45,7 +47,11 @@ export const TABLE_MAP = {
   'actividades_historial': 'local_actividades_historial',
   'actividades_subtareas': 'local_actividades_subtareas',
   'clientes_adeudos': 'local_clientes_adeudos',
-  'pagos_nomina': 'local_pagos_nomina'
+  'pagos_nomina': 'local_pagos_nomina',
+  'vacaciones_empleados': 'local_vacaciones_empleados',
+  'vacaciones_dias_feriados': 'local_vacaciones_dias_feriados',
+  'vacaciones_balance': 'local_vacaciones_balance',
+  'vacaciones_solicitudes': 'local_vacaciones_solicitudes'
 };
 
 function parsePostgrestQuery(query) {
@@ -94,6 +100,8 @@ function parsePostgrestQuery(query) {
 function _coerceValue(val) {
   if (val === 'true') return 1;
   if (val === 'false') return 0;
+  const s = String(val);
+  if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s);
   return val;
 }
 
@@ -189,6 +197,9 @@ export function createOfflineProxyRouter(db) {
   });
 
   router.get('/rest/v1/:table', async (req, res) => {
+    if (req.params.table === 'gastos_fijos') {
+      return res.json([]);
+    }
     const localTable = TABLE_MAP[req.params.table];
     if (!localTable) return res.status(404).json({ message: 'Tabla no existe en modo offline' });
 
@@ -213,13 +224,16 @@ export function createOfflineProxyRouter(db) {
       const rows = await stmt.query(where, params, orderBy, 100000);
       const total = rows.length;
       const lightRows = rows.map((r) => stripHeavyFields(r, localTable, parsed.select));
-      const paginated = lightRows.slice(offset, offset + limit);
+      const visibleRows = req.params.table === 'vacaciones_empleados' || req.params.table === 'usuarios' || req.params.table === 'users'
+        ? filterVisibleProfiles(lightRows)
+        : lightRows;
+      const paginated = visibleRows.slice(offset, offset + limit);
 
       // Content-Range para compatibilidad con Supabase-js .range() y Prefer: count=exact
       const wantsCount = req.headers['prefer'] && req.headers['prefer'].includes('count=exact');
       if (rangeHeader || wantsCount) {
         const end = paginated.length > 0 ? offset + paginated.length - 1 : offset;
-        res.setHeader('Content-Range', `${offset}-${end}/${total}`);
+        res.setHeader('Content-Range', `${offset}-${end}/${visibleRows.length}`);
       }
 
       if (parsed.single) {

@@ -238,12 +238,75 @@ function buildResumenCarpeta(rec, imageNames, docNames) {
 // ================================================================
 // BUILD ORDER DATA
 // ================================================================
+// ================================================================
+// Helpers — clasificación de strings del OCR / paquete ERP
+// ================================================================
+const FORBIDDEN_STRINGS = /^(equipo por identificar|cliente por identificar|s\/n|s\/d|n\/a|undefined|null|none)$/i;
+const FALLA_HINTS = /no funciona|no enciende|no arranca|reparaci[oó]n|falla|descompost|quemad|roto|golpe|sin se[ñn]al|sin video|sin imagen|chocado|muestra|marca|parpadea|ruido|huele|olor|corto|abierto|cerrado|sale|emite|enciende|apaga|disparo|dañad|averiad/i;
+
+function isValidText(s) {
+  if (typeof s !== 'string') return false;
+  const t = s.trim();
+  if (t.length < 4) return false;
+  if (FORBIDDEN_STRINGS.test(t)) return false;
+  return true;
+}
+
+function looksLikeFalla(s) {
+  if (!s) return false;
+  return FALLA_HINTS.test(String(s).toLowerCase());
+}
+
+/** Resuelve el cliente final con prioridad y heurísticas anti-confusión. */
+function resolverCliente(rec, recp) {
+  const recCli = isValidText(rec.cliente) ? rec.cliente.trim() : '';
+  const recpCli = isValidText(recp.cliente) ? recp.cliente.trim() : '';
+  // recp.cliente es a veces la falla (caso RE-0170: "dice que el compresor no funciona")
+  if (recpCli && !looksLikeFalla(recpCli)) return recpCli;
+  if (recCli && !looksLikeFalla(recCli)) return recCli;
+  if (recpCli) return recpCli; // ultima instancia: aunque parezca falla, lo guardamos
+  if (recCli) return recCli;
+  return '';
+}
+
+/** Resuelve la falla final. Prioriza recp.falla; si vacio, busca en descripcion/diagnostico. */
+function resolverFalla(rec, recp) {
+  if (isValidText(recp.falla)) return recp.falla.trim();
+  if (isValidText(rec.falla_corta)) return rec.falla_corta.trim();
+  if (isValidText(rec.falla)) return rec.falla.trim();
+  if (isValidText(recp.condiciones)) return recp.condiciones.trim();
+  if (isValidText(rec.diagnostico)) return String(rec.diagnostico).trim();
+  return '';
+}
+
+/** Resuelve el equipo. Si el top es placeholder o vacio, usa recp.equipo. */
+function resolverEquipo(rec, recp) {
+  const recEq = isValidText(rec.equipo) ? rec.equipo.trim() : '';
+  const recpEq = isValidText(recp.equipo) ? recp.equipo.trim() : '';
+  if (recEq && recEq.length >= 3 && !FORBIDDEN_STRINGS.test(recEq)) return recEq;
+  if (recpEq && recpEq.length >= 3 && !FORBIDDEN_STRINGS.test(recpEq)) return recpEq;
+  return recEq || recpEq || '';
+}
+
 function buildBaseOrder(rec, reporteImagenes, documentosAdjuntos, resumenCarpeta) {
   const lab = normalizeLabOrder(rec);
   const recp = lab.datos_recepcion || {};
   const fechaIso = parseFechaToIso(rec.fecha_ingreso || rec.fecha);
-  const folio = rec.referencia_reparacion || rec._folder || 'SIN-FOLIO';
+  // Normalizar folio (2026-06-01): usar SIEMPRE la forma canónica (WH/RO/00108)
+  // para que cleanPreviousImports encuentre y reemplace las filas previas.
+  const folioRaw = rec.referencia_reparacion || rec._folder || 'SIN-FOLIO';
+  const folio = normalizeFolioRef(folioRaw) || folioRaw;
   const imgsLab = imagenesReporte(lab).map(urlImagen).filter(Boolean);
+  const capturas = imagenesCaptura(lab).map(urlImagen).filter(Boolean);
+  const capturaOrden = capturas[0] || null;
+
+  // Propagación corregida (2026-06-01): el front lee `cliente`, `falla` y `equipo`
+  // top-level, no solo `cliente_nombre` / `falla_reportada`. Antes de este fix
+  // las 181 órdenes importadas tenían cliente/falla vacíos en el top-level.
+  const clienteTop = resolverCliente(rec, recp);
+  const fallaTop = resolverFalla(rec, recp);
+  const equipoTop = resolverEquipo(rec, recp);
+
   return {
     folio,
     origen: 'import_erp',
@@ -253,17 +316,21 @@ function buildBaseOrder(rec, reporteImagenes, documentosAdjuntos, resumenCarpeta
     datos_recepcion: lab.datos_recepcion || recp,
     resumen_diagnostico: lab.resumen_diagnostico || rec.diagnostico || '',
     imagenes_reporte: imgsLab,
-    imagen_captura_orden: imagenesCaptura(lab).map(urlImagen).filter(Boolean)[0] || null,
+    imagen_captura_orden: capturaOrden,
     estado: normalizeEstado(rec.estado_actual),
     resumen_carpeta: resumenCarpeta || '',
-    cliente_nombre: recp.cliente || rec.cliente || 'Cliente por identificar',
+    // === Top-level (lo que lee el front en taller.js) ===
+    cliente: clienteTop,
+    falla: fallaTop,
+    equipo: equipoTop,
+    // === Aliases historicas (no romper) ===
+    cliente_nombre: clienteTop || rec.cliente || 'Cliente por identificar',
     cliente_id: null,
     referencia: rec.referencia_odoo || lab.numero_orden_wh || '',
-    equipo: recp.equipo || rec.equipo || 'Equipo por identificar',
     marca: recp.marca || '',
     modelo: recp.modelo || '',
     serie: recp.serie || rec.componente || '',
-    falla_reportada: recp.falla || rec.falla_corta || 'Por diagnosticar',
+    falla_reportada: fallaTop || 'Por diagnosticar',
     condiciones_fisicas: recp.condiciones || '',
     notas_internas: lab.resumen_diagnostico || rec.diagnostico || rec.notas || '',
     notas_generales: resumenCarpeta || [rec.solucion, rec.historial_actividad].filter(Boolean).join('\n').trim(),
@@ -342,25 +409,42 @@ function buildAutoOrder(rec, reporteImagenes, documentosAdjuntos) {
 // ================================================================
 // CLEAN PREVIOUS IMPORTS
 // ================================================================
+// Recibe folios en formato normalizado (WH/RO/00108) Y formato crudo (WHRO00108)
+// y borra cualquier variante que exista en BD.
 async function cleanPreviousImports(db, folios) {
-  const folioList = folios.map(f => `'${f.replace(/'/g, "''")}'`).join(',');
-  if (!folioList) return;
+  if (!folios || !folios.length) return;
   const tables = ['local_ordenes_taller', 'local_ordenes_motores', 'local_proyectos_automatizacion'];
   let totalDeleted = 0;
   for (const t of tables) {
     try {
-      const stmt = db.prepare(`DELETE FROM ${t} WHERE json_extract(data, '$.folio') IN (${folioList})`);
-      stmt.run([]);
+      // Construir lista IN con TODAS las variantes del folio
+      const variants = new Set();
+      for (const f of folios) {
+        variants.add(f);
+        const norm = normalizeFolioRef(f);
+        if (norm) variants.add(norm);
+        // Variante sin slash: WHRO00108 -> WHRO00108
+        const noSlash = f.replace(/\//g, '');
+        if (noSlash !== f) variants.add(noSlash);
+        // Variante con zero pad
+        const m = f.match(/(\d+)$/);
+        if (m) variants.add(f.replace(/\d+$/, m[1].padStart(5, '0')));
+      }
+      const list = [...variants].filter(Boolean).map(v => `'${String(v).replace(/'/g, "''")}'`).join(',');
+      if (!list) continue;
+      const stmt = db.prepare(`DELETE FROM ${t} WHERE json_extract(data, '$.folio') IN (${list})`);
+      stmt.run();
       stmt.free();
-      totalDeleted += db.getRowsModified ? db.getRowsModified() : 0;
+      const rows = db.getRowsModified ? db.getRowsModified() : 0;
+      if (rows > 0) {
+        totalDeleted += rows;
+        console.log(`[Clean] ${rows} folios previos eliminados de ${t}`);
+      }
     } catch (e) {
       console.warn(`[Clean] Error limpiando ${t}:`, e.message);
     }
   }
-  if (totalDeleted) {
-    console.log(`[Clean] ${totalDeleted} registros anteriores eliminados`);
-    persistDb();
-  }
+  if (totalDeleted) persistDb();
 }
 
 async function cleanDemoData(db) {

@@ -14,3 +14,4 @@ export * from './autosave-debounce.js';
 export * from './autosave-coordinator.js';
 export * from './pending-activity-view.js';
 export * from './nav-pending-mini.js';
+export * from './module-pending-preview.js';

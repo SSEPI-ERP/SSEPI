@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -21,7 +21,7 @@
     <script src="/panel/js/core/user-menu.js?v=2"></script>
     <script src="/panel/js/core/nav-by-role.js?v=2"></script>
     <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
-    <script type="module" src="/panel/js/modules/contactos.js?v=4"></script>
+    <script type="module" src="/panel/js/modules/contactos.js?v=5"></script>
 </head>
 <body class="page-contactos nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -129,6 +129,23 @@
                 <div class="kpi-value" id="kpiSaldoTotal">$0</div>
                 <div class="kpi-title">Cuentas por cobrar</div>
             </div>
+        </div>
+
+        <!-- Datos faltantes: fichas sin email/tel. Boton "Buscar en Google" para abrir búsqueda manual. -->
+        <div class="form-section form-section-datos-faltantes" id="datosFaltantesSection" style="display:none;">
+            <h3 class="section-title-form">
+                <i class="fas fa-exclamation-triangle"></i>
+                Datos faltantes <span class="datos-faltantes-count" id="datosFaltantesCount">0</span>
+            </h3>
+            <p class="form-hint">
+                Fichas sin email o teléfono. Usa "Buscar en Google" para validar el dato con la persona/equipo, luego pégalo en la ficha.
+                <span class="datos-faltantes-filtros">
+                    <label><input type="checkbox" id="datosFaltantesFiltroEmail" checked> Sin email</label>
+                    <label><input type="checkbox" id="datosFaltantesFiltroTel" checked> Sin teléfono</label>
+                    <label><input type="checkbox" id="datosFaltantesFiltroRfc" checked> Sin RFC</label>
+                </span>
+            </p>
+            <div class="datos-faltantes-list" id="datosFaltantesList"></div>
         </div>
 
         <!-- Toolbar -->

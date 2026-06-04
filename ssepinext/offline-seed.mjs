@@ -145,12 +145,14 @@ async function seed() {
   // ===== 5. Parametros costos (ahora desde data-loader / JSON master) =====
   // Los parametros reales se cargan en el paso 11 via loadMasterData.
 
-  // ===== 6. Users ver costos (todos true por defecto offline) =====
+  // ===== 6. Users ver costos (solo compras/admin/contabilidad; ventas NO ven costos fuera de Compras) =====
+  const ROLES_VER_COSTOS = new Set(['admin', 'superadmin', 'compras', 'administracion', 'contabilidad', 'facturacion']);
   const stmtVerCostos = await prepareStatement(db, 'local_users_ver_costos');
   for (const u of users) {
     const existing = await stmtVerCostos.query(`json_extract(data, '$.auth_user_id') = ?`, [u.id], 'id ASC', 1);
+    const verCostos = ROLES_VER_COSTOS.has(String(u.rol || '').toLowerCase());
     if (existing.length === 0) {
-      await stmtVerCostos.insert(null, { auth_user_id: u.id, ver_costos: true });
+      await stmtVerCostos.insert(null, { auth_user_id: u.id, ver_costos: verCostos });
     }
   }
 

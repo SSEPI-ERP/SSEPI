@@ -6,15 +6,14 @@ cls
 
 echo =========================================
 
-echo   SSEPI ERP - VPS LOCAL V14
-
+echo   SSEPI ERP - VPS LOCAL V16
 echo   %date% %time%
-
-echo   Offline completo + tunel Cloudflare (aprobacion remota)
-
-echo   Importa: contactos, tabulador, calculadoras, inventario,
-
-echo   BOM, ordenes lab (paquete ERP), ERP maestro, pipeline
+echo   Mata procesos + importa maestros + demo Auto + verify Ventas + arranca
+echo.
+echo   MANTIENE: Laboratorio (SP-E), contactos, inventario, tabulador
+echo   BORRA:    PO/COT/FAC/proyectos Auto basura (deja 1 demo vinculada)
+echo   IMPORTA:  Pac_Contactos, reportes ERP, seeds maestros
+echo   NUEVO V16: servidor sin cache JS/CSS + verify cotizaciones Ventas
 
 echo =========================================
 
@@ -48,27 +47,44 @@ echo.
 
 
 
-:: [1] Matar procesos Node y liberar puerto
+:: ========== FASE A: MATAR PROCESOS Y LIBERAR PUERTOS ==========
+echo [A1] Cerrando ventanas SSEPI (server, tunel, chrome temp)...
+taskkill /F /FI "WINDOWTITLE eq SSEPI SERVER*" 2>nul
+taskkill /F /FI "WINDOWTITLE eq SSEPI VPS SERVER*" 2>nul
+taskkill /F /FI "WINDOWTITLE eq Cloudflare Tunnel SSEPI*" 2>nul
+taskkill /F /FI "WINDOWTITLE eq SSEPI Chrome*" 2>nul
 
-echo [1] Matando procesos Node y limpiando puertos 3333 y 3443...
-
+echo [A2] Matando node.exe y cloudflared.exe...
 taskkill /F /IM node.exe 2>nul
+taskkill /F /IM cloudflared.exe 2>nul
+
+timeout /t 3 /nobreak >nul
+
+:: Verificar puertos 3333 y 3443 (puede haber quedado un PID de un proceso que no es node/cloudflared)
+for %%P in (3333 3443) do (
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%%P" ^| findstr "LISTENING"') do (
+        echo      Aun hay PID %%a en puerto %%P, matando...
+        taskkill /F /PID %%a 2>nul
+    )
+)
 
 timeout /t 2 /nobreak >nul
 
+:: Verificacion final
+set "PUERTOS_LIBRES=OK"
 for %%P in (3333 3443) do (
-
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%%P" ^| findstr "LISTENING"') do taskkill /F /PID %%a 2>nul
-
+    netstat -ano | findstr ":%%P" | findstr "LISTENING" >nul && set "PUERTOS_LIBRES=NO"
+)
+if "%PUERTOS_LIBRES%"=="OK" (
+    echo      OK - Puertos 3333/3443 libres.
+) else (
+    echo      AVISO: 3333/3443 aun ocupados. Cerrar manualmente y reintentar.
 )
 
-echo      Puertos 3333/3443 libres.
 
 
-
-:: [2] Integridad BD local (evitar ssepi-local.db en 0 bytes)
-
-echo [2] Verificando base de datos local...
+:: ========== FASE B: INTEGRIDAD BD LOCAL ==========
+echo [B1] Verificando base de datos local...
 
 cd /d "%~dp0ssepinext"
 
@@ -98,19 +114,8 @@ if exist "data\ssepi-local.db-journal" del /q "data\ssepi-local.db-journal" 2>nu
 
 
 
-:: [2b] Limpiar contactos inventados (solo reales de imagenes)
-
-echo [2b] Limpiando contactos inventados...
-
-node limpiar-contactos-db.mjs
-
-if %errorlevel% neq 0 echo      (Aviso limpiar-contactos)
-
-
-
-:: [2a] Usuarios offline
-
-echo [2a] Usuarios offline...
+:: [B2] Usuarios offline
+echo [B2] Usuarios offline...
 
 node seed-usuarios.mjs
 
@@ -118,9 +123,8 @@ if %errorlevel% neq 0 echo      (Aviso seed-usuarios)
 
 
 
-:: [2c] Seed contactos idempotente
-
-echo [2c] Seed contactos base...
+:: [B3] Verificacion contactos (idempotente, no borra)
+echo [B3] Verificacion idempotente de contactos...
 
 node seed-limpiar-contactos.mjs
 
@@ -128,33 +132,58 @@ if %errorlevel% neq 0 echo      (Aviso seed-limpiar-contactos)
 
 
 
-:: [3a] Generar datos_comparador si falta (ERP maestro)
+:: ========== FASE C: IMPORTAR FUENTES MAESTRAS ==========
+echo [C1] Pac_Contactos / comparador Odoo...
 
-echo [3a] ERP Maestro JSON (datos_comparador)...
+cd /d "%~dp0simulaciones\Pac_Contactos\01_Comparador_Odoo_Excel"
 
-set "COMPARADOR=%~dp0simulaciones\escaner de imagenes\info\datos_comparador.json"
+python build_comparador.py
 
-if not exist "%COMPARADOR%" (
+if %errorlevel% neq 0 echo      (Error build_comparador.py — revisa Python/pandas)
 
-    echo      Generando datos_comparador.json ...
+cd /d "%~dp0ssepinext"
 
-    cd /d "%~dp0scripts\imports"
+echo [3a] Verificando Pac_Contactos...
 
-    node build-erp-maestro.mjs
+set "PAC_DATOS=%~dp0simulaciones\Pac_Contactos\01_Comparador_Odoo_Excel\datos_comparador.json"
 
-    cd /d "%~dp0ssepinext"
+set "PAC_LISTADO=%~dp0simulaciones\Pac_Contactos\04_Datos_muestra\listado_tabulador_odoo.json"
+
+set "PAC_RASTRO=%~dp0simulaciones\Pac_Contactos\01_Comparador_Odoo_Excel\rastro_capturas_ejemplo.json"
+
+if not exist "%PAC_DATOS%" (
+
+    echo      ERROR: Falta datos_comparador.json — build_comparador fallo
 
 ) else (
 
-    echo      OK - datos_comparador.json existe.
+    echo      OK - datos_comparador.json (139 capturas)
+
+)
+
+if not exist "%PAC_LISTADO%" (
+
+    echo      ERROR: Falta listado_tabulador_odoo.json en Pac_Contactos\04_Datos_muestra
+
+) else (
+
+    echo      OK - listado_tabulador_odoo.json
+
+)
+
+if not exist "%PAC_RASTRO%" (
+
+    echo      AVISO: Falta rastro OCR — emails/tel pueden quedar vacios.
+
+) else (
+
+    echo      OK - rastro_capturas_ejemplo.json
 
 )
 
 
 
-:: [3d] Inventario
-
-echo [3d] Inventario electronica...
+echo [C2] Inventario electronica...
 
 node seed-inventario.mjs
 
@@ -162,9 +191,7 @@ if %errorlevel% neq 0 echo      (Error inventario)
 
 
 
-:: [3e] Consumibles taller
-
-echo [3e] Consumibles taller...
+echo [C3] Consumibles taller...
 
 node seed-consumibles.mjs
 
@@ -172,9 +199,15 @@ if %errorlevel% neq 0 echo      (Error consumibles)
 
 
 
-:: [3f] BOM automatizacion
+echo [C4] Servicios y almacenables inventario...
 
-echo [3f] BOM automatizacion...
+node seed-inventario-catalogo.mjs
+
+if %errorlevel% neq 0 echo      (Error catalogo inventario)
+
+
+
+echo [C5] BOM automatizacion...
 
 node seed-bom.mjs
 
@@ -182,9 +215,7 @@ if %errorlevel% neq 0 echo      (Error BOM)
 
 
 
-:: [3i] Calculadoras y tabulador
-
-echo [3i] Calculadoras / tabulador / hoja Excel...
+echo [C6] Calculadoras / tabulador / hoja Excel...
 
 node seed-calculadoras.mjs
 
@@ -192,28 +223,15 @@ if %errorlevel% neq 0 echo      (Error calculadoras - revisa consola)
 
 
 
-:: [3j] Tabulador Excel — 50 clientes oficiales (Ventas / cotización)
-
-echo [3j] Tabulador 50 clientes (TABULADOR DE COTIZACION actualizado.xlsx)...
+echo [C7] Tabulador 50 clientes...
 
 node seed-tabulador-50.mjs
 
 if %errorlevel% neq 0 echo      (Error seed-tabulador-50)
 
 
-:: [3j2] Contactos ERP maestro (Odoo export + cruces) — llena telefono/email/rfc/direccion
-
-echo [3j2] Contactos ERP maestro (Odoo export + cruces)...
-
-node seed-erp-maestro-local.mjs --replace-contactos
-
-if %errorlevel% neq 0 echo      (Error contactos ERP — ejecuta build-erp-maestro.mjs)
-
-
-
-:: [3k] Importar ordenes desde SSEPI_Paquete_ERP (JSON + carpetas reportes/)
-
-echo [3k] Importando desde simulaciones\SSEPI_Paquete_ERP (datos_ordenes_editables + reportes/)...
+:: ========== FASE D: IMPORTAR ORDENES / REPORTES LAB ==========
+echo [D1] Importando SSEPI_Paquete_ERP (ordenes lab + reportes/)...
 
 echo      Log: %LOGFILE%
 
@@ -231,9 +249,7 @@ if %errorlevel%==0 (
 
 
 
-:: [3k-fix] SP-E/SP-M/SP-A al modulo correcto (taller/motores/auto)
-
-echo [3k-fix] Corrigiendo clasificacion de folios...
+echo [D2] Corrigiendo clasificacion folios SP-E/SP-M/SP-A...
 
 node corregir-ordenes-modulo.mjs
 
@@ -241,19 +257,15 @@ if %errorlevel% neq 0 echo      (Aviso corregir-ordenes-modulo)
 
 
 
-:: [3m] ERP Maestro — enriquecer tabulador / vinculos (idempotente)
-
-echo [3m] ERP Maestro local (refuerzo tabulador)...
+echo [D3] Contactos Pac_Contactos a BD local...
 
 node seed-erp-maestro-local.mjs
 
-if %errorlevel% neq 0 echo      (Error ERP maestro local)
+if %errorlevel% neq 0 echo      (Error seed-erp-maestro-local — revisa Pac_Contactos JSON)
 
 
 
-:: [3l] Pipeline comercial
-
-echo [3l] Pipeline comercial...
+echo [D4] Pipeline comercial...
 
 node seed-pipeline.mjs
 
@@ -261,9 +273,7 @@ if %errorlevel% neq 0 echo      (Aviso pipeline)
 
 
 
-:: [3n] Actividades diarias
-
-echo [3n] Actividades diarias...
+echo [D5] Actividades diarias...
 
 node seed-actividades.mjs
 
@@ -271,9 +281,7 @@ if %errorlevel% neq 0 echo      (Aviso actividades)
 
 
 
-:: [3o] Proyectos automatizacion (si no hay del import)
-
-echo [3o] Proyectos automatizacion ejemplo...
+echo [D6] Proyectos automatizacion ejemplo (previo a limpieza demo)...
 
 node seed-proyectos-automatizacion.mjs
 
@@ -281,9 +289,7 @@ if %errorlevel% neq 0 echo      (Aviso proyectos auto)
 
 
 
-:: [3p] Soporte de planta (si no hay del import)
-
-echo [3p] Soporte de planta ejemplo...
+echo [D7] Soporte de planta ejemplo...
 
 node seed-proyectos-soporte-planta.mjs
 
@@ -291,9 +297,29 @@ if %errorlevel% neq 0 echo      (Aviso soporte planta)
 
 
 
-:: [3z] Rellenar tablas vacias
+:: ========== FASE E: LIMPIEZA DEMO AUTOMATIZACION (borra basura, deja 1 orden) ==========
+echo [E1] Limpieza: 1 proyecto Auto + PO-A-DEMO-01 + COT-A-DEMO-01 + FAC-A-DEMO-01...
+echo      (Borra compras/cotizaciones/facturas/proyectos Auto que no sean demo ni laboratorio)
+node seed-orden-automatizacion-unica.mjs
+if %errorlevel% neq 0 echo      (Error seed-orden-automatizacion-unica)
 
-echo [3z] Verificacion seeds (tablas vacias)...
+echo [E2] Verificacion orden demo vinculada...
+node verify-orden-demo.mjs
+if %errorlevel% neq 0 (
+    echo      AVISO: verify-orden-demo fallo — reintentando seed...
+    node seed-orden-automatizacion-unica.mjs
+    node verify-orden-demo.mjs
+    if %errorlevel% neq 0 echo      *** Sigue fallando verify ***
+) else (
+    echo      OK - Orden demo Auto verificada.
+)
+
+echo [E3] Tests logicos fases Auto/Ventas/Compras...
+node test-fases-automatizacion.mjs
+if %errorlevel% neq 0 echo      (Aviso test-fases-automatizacion)
+
+:: ========== FASE F: VERIFICACION FINAL SEEDS ==========
+echo [F1] Verificacion seeds (tablas vacias)...
 
 node seed-all-check.mjs
 
@@ -301,9 +327,7 @@ if %errorlevel% neq 0 echo      (Aviso seed-all-check)
 
 
 
-:: [3y] Resumen conteos
-
-echo [3y] Verificacion final de datos...
+echo [F2] Verificacion final de datos...
 
 node verificar-importacion.mjs
 
@@ -323,57 +347,78 @@ if %errorlevel% neq 0 (
 
 
 
-:: [4] Servidor offline
-
-echo [4] Arrancando servidor VPS SSEPI NEXT (offline)...
+:: ========== FASE G: ARRANCAR SERVIDOR + TUNEL + CHROME ==========
+echo [G1] Arrancando servidor VPS SSEPI NEXT (offline)...
 
 start "SSEPI VPS SERVER" cmd /k "cd /d %~dp0ssepinext && node offline-server.mjs"
 
 
 
-:: [5] Esperar servidor
+echo [G2] Esperando servidor (hasta 30s)...
 
-echo [5] Esperando servidor (6s)...
-
-timeout /t 6 /nobreak >nul
-
-
-
-:: [6] Health check
-
-echo [6] Verificando servidor...
+set "SERVER_OK=0"
 
 curl -s http://localhost:3333/api/health >nul 2>nul
 
-if %errorlevel%==0 (
+if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+
+if "%SERVER_OK%"=="1" (
 
     echo      OK - Servidor activo en http://localhost:3333
 
 ) else (
 
-    echo      AVISO: Sin respuesta aun — espera y recarga el panel.
+    echo      AVISO: Servidor aun no responde — el tunel esperara hasta 90s mas.
 
 )
 
 
 
-:: [7] Chrome local
+echo [G3] Verificando servidor...
 
-echo [7] Abriendo Chrome (perfil temporal, localhost)...
+echo [G4] Abriendo Chrome (perfil temporal, localhost)...
 
 set "SSEPI_PROFILE=%TEMP%\ssepi-chrome-%RANDOM%"
 
 mkdir "%SSEPI_PROFILE%" 2>nul
 
-start "SSEPI Chrome Local" chrome --user-data-dir="%SSEPI_PROFILE%" --no-first-run --no-default-browser-check --disable-popup-blocking --new-tab "http://localhost:3333/panel/login.html"
+start "SSEPI Chrome Local" chrome --user-data-dir="%SSEPI_PROFILE%" --no-first-run --no-default-browser-check --disable-popup-blocking --new-tab "http://localhost:3333/panel/login.html?nocache=%RANDOM%"
 
 
 
-:: [8] Tunel Cloudflare (URL publica temporal para aprobar desde otro dispositivo)
-
-echo [8] Iniciando tunel Cloudflare...
-
+echo [G5] Iniciando tunel Cloudflare...
 echo      Se abrira otra ventana con la URL trycloudflare.com
+echo      IMPORTANTE: Usa la URL NUEVA de esa ventana. Las URLs viejas caducan.
 
 start "Cloudflare Tunnel SSEPI" /D "%~dp0ssepinext" cmd /k iniciar-tunel-cloudflare.bat
 
@@ -392,6 +437,20 @@ echo   Local:  http://localhost:3333/panel/login.html
 echo   Tunel:  ventana "Cloudflare Tunnel SSEPI" muestra URL publica
 
 echo   Log:    %LOGFILE%
+
+echo.
+
+echo   === TRAS ENTRAR AL ERP (importante) ===
+
+echo   1. Ctrl+F5 en cada modulo que abras (Ventas, Compras, Auto)
+
+echo   2. Ventas Historial: debe verse COT-A-DEMO-01 en Kanban Autorizado
+
+echo   3. Auto: SP-A-DEMO-01 en columna Completado
+
+echo   4. Compras PDF: compras.js v12 + pdf-generator v8
+
+echo   5. Si Historial vacio: verify fallo arriba — corre seed manual
 
 echo.
 

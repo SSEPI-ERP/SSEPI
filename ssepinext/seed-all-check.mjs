@@ -46,6 +46,7 @@ export async function seedIfEmpty(db) {
   }
   if (count('local_proyectos_automatizacion') === 0) runSeed('seed-proyectos-automatizacion.mjs');
   if (count('local_estado_pipeline_unificado') === 0) runSeed('seed-pipeline.mjs');
+  if (count('local_vacaciones_empleados') === 0) runSeed('seed-vacaciones-local.mjs');
 }
 
 // Solo ejecutar si se corre directamente (no al importar desde otro módulo)

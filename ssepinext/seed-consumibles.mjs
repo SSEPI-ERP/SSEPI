@@ -31,6 +31,10 @@ async function importarConsumibles() {
   const stmtInv = await prepareStatement(db, 'local_inventario');
   const stmtMov = await prepareStatement(db, 'local_movimientos_inventario');
 
+  db.exec("DELETE FROM local_movimientos_inventario WHERE json_extract(data, '$.referencia') LIKE '%consumibles%'");
+  db.exec("DELETE FROM local_inventario WHERE json_extract(data, '$.tipo_inventario') = 'consumible'");
+  console.log('[Consum] Consumibles anteriores eliminados.');
+
   let insertados = 0;
   let valorTotal = 0;
   setDeferPersist(true);
