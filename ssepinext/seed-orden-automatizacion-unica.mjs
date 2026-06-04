@@ -312,6 +312,13 @@ async function main() {
       nombre: proyecto.nombre
     },
     items: itemsCompra,
+    pasos: [
+        { paso: 1, fecha: '2026-04-05T09:05:00.000Z', usuario: 'Compras', accion: 'Orden creada desde automatización' },
+        { paso: 2, fecha: '2026-04-10T11:00:00.000Z', usuario: 'Compras', accion: 'Materiales confirmados' },
+        { paso: 3, fecha: '2026-04-12T14:00:00.000Z', usuario: 'Compras', accion: 'Orden confirmada' },
+        { paso: 4, fecha: '2026-05-20T10:00:00.000Z', usuario: 'Compras', accion: 'Materiales recibidos' },
+        { paso: 5, fecha: '2026-05-28T18:00:00.000Z', usuario: 'Compras', accion: 'Entregada a proyecto' }
+    ],
     observaciones: 'Lista de materiales para compra — demo única.',
     data: {
       costo_resumen: { materiales_base: matBase, markup_materiales_pct: markupPct },

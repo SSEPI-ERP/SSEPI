@@ -228,9 +228,11 @@ const DEPTO_KEY_MAP = {
     'Automatización': 'automatizacion',
     'Proyectos': 'automatizacion',
     'Ventas': 'suministros',
+    'Ventas y Suministros': 'suministros',
     'Compras': 'suministros',
     'Soporte': 'soporte',
-    'Soporte de Planta': 'soporte'
+    'Soporte de Planta': 'soporte',
+    'Soporte a Planta': 'soporte'
 };
 
 // ── Coordenadas zona blanca en Página 1 (membrete) por departamento ──
@@ -265,6 +267,161 @@ export class PDFGenerator {
 
     async generateReport(data, user, preview = false) {
         return this._generarReportePDFV11(data, user, preview);
+    }
+
+    /** PDF de póliza / políticas (Laboratorio, Motores, Auto…) — mismo layout que Compras v8. */
+    async generatePolitica(data, user, preview = false, opts = {}) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+        const PW = 210, PH = 297, ML = 15, MR = 15, TW = PW - ML - MR;
+        const BODY_BOTTOM = PH - 20;
+        const logoSsepi = await _loadLogoSsepiTransparent();
+        const TEAL = [23, 165, 152], GR_SEP = [220, 220, 220], GR_TXT = [51, 51, 51];
+        const GR_LT = [130, 130, 130], BLK = [0, 0, 0], WHT = [255, 255, 255];
+        const FOLDER = [239, 246, 246], GR_HDR = [245, 245, 245];
+        const PDF_FONT = 'helvetica', PDF_SZ_BODY = 11, PDF_SZ_TITLE = 12;
+        const folio = _decodePdfText(data.folio || ('POL-' + Date.now().toString().slice(-6))).trim();
+        const deptoKey = DEPTO_KEY_MAP[data.departamento] || 'automatizacion';
+        const membreteB64 = window.MEMBRETES?.[deptoKey] || '';
+        const hl = (x, y, w, c, lw) => { doc.setDrawColor(...(c || GR_SEP)); doc.setLineWidth(lw || 0.3); doc.line(x, y, x + w, y); };
+        const fl = (x, y, w, h, c) => { doc.setFillColor(...c); doc.rect(x, y, w, h, 'F'); };
+        const tx = (t, x, y, fnt, sz, c, optsTx) => {
+            doc.setFont(PDF_FONT, fnt || 'normal'); doc.setFontSize(sz || PDF_SZ_BODY);
+            doc.setTextColor(...(c || GR_TXT)); doc.text(String(t || ''), x, y, optsTx || {});
+        };
+        const drawFolder = (x, y, w, h, fillColor, borderColor, lw) => {
+            doc.setFillColor(...fillColor); doc.setDrawColor(...(borderColor || GR_SEP));
+            doc.setLineWidth(lw || 0.4); doc.rect(x, y, w, h, 'FD');
+        };
+
+        if (membreteB64) {
+            try { doc.addImage(membreteB64, 'JPEG', 0, 0, PW, PH); }
+            catch (_) { fl(0, 0, PW, PH, WHT); }
+        } else {
+            fl(0, 0, PW, PH, WHT);
+            tx('SSEPI', PW / 2, 70, 'bold', 22, TEAL, { align: 'center' });
+        }
+
+        const drawHeader = () => {
+            const HH = 48.5, HR = 38.2, DX1 = 74.5, DX2 = 91.0, LOGO_S = 20;
+            const sf = doc.internal.scaleFactor;
+            const ph = doc.internal.pageSize.getHeight();
+            const px = (x) => (x * sf).toFixed(3);
+            const py = (y) => ((ph - y) * sf).toFixed(3);
+            doc.setFillColor(0xEF, 0xF6, 0xF6);
+            doc.internal.write(
+                `${px(0)} ${py(0)} m ${px(PW)} ${py(0)} l ${px(PW)} ${py(HR)} l ${px(DX2)} ${py(HR)} l ` +
+                `${px(88.6)} ${py(39.5)} l ${px(80.0)} ${py(46.9)} l ${px(DX1)} ${py(HH)} l ${px(0)} ${py(HH)} l h f`
+            );
+            try {
+                if (logoSsepi) doc.addImage(logoSsepi, 'PNG', 9, 8, LOGO_S, LOGO_S, undefined, 'FAST');
+                else throw new Error('no logo');
+            } catch (_) { tx('SSEPI', ML, 18, 'bold', 12, TEAL); }
+            tx('Bulevard Zodiaco 336, Los Limones,', PW - 5, 12, 'normal', 8.5, [100, 115, 125], { align: 'right' });
+            tx('C.P. 37448, Leon, Guanajuato, México', PW - 5, 18, 'normal', 8.5, [100, 115, 125], { align: 'right' });
+            doc.setFont(PDF_FONT, 'italic'); doc.setFontSize(8.5); doc.setTextColor(0x3F, 0x9E, 0x9E);
+            doc.splitTextToSize('Conectamos ingeniería, tecnología y productividad industrial', 58)
+                .slice(0, 2).forEach((l, i) => doc.text(l, 9, 30 + i * 3.8));
+            const folioLabel = 'Num. de póliza ' + folio;
+            let fsz = 14;
+            doc.setFont(PDF_FONT, 'bold'); doc.setFontSize(fsz);
+            const rightZoneW = PW - DX2 - 6;
+            while (doc.getTextWidth(folioLabel) > rightZoneW - 2 && fsz > 9) { fsz--; doc.setFontSize(fsz); }
+            doc.setTextColor(0x3F, 0x9E, 0x9E);
+            doc.text(folioLabel, PW - 5, HR - 2, { align: 'right' });
+            return HH + 5;
+        };
+
+        let totalPgs = '?';
+        const FY = PH - 16;
+        const drawFooter = (pn) => {
+            hl(ML, FY, TW, GR_SEP, 0.3);
+            tx('Num. de póliza ' + folio, ML, FY + 4, 'normal', 7, [160, 160, 160]);
+            tx('Conectamos ingeniería, tecnología y productividad industrial', PW / 2, FY + 4, 'italic', 7, [160, 160, 160], { align: 'center' });
+            tx('Bulevard Zodiaco 336, Los Limones, C.P. 37448, León, Guanajuato, México', PW / 2, FY + 8, 'normal', 7, [160, 160, 160], { align: 'center' });
+            tx('Tel. 477 737 3118', ML, FY + 12, 'normal', 7, GR_LT);
+            tx('ventas@ssepi.org', ML + 45, FY + 12, 'normal', 7, GR_LT);
+            tx('www.ssepi.org', ML + 90, FY + 12, 'normal', 7, GR_LT);
+            tx('Página ' + pn + ' / ' + totalPgs, PW - MR, FY + 12, 'normal', 8, GR_LT, { align: 'right' });
+        };
+
+        let pgNum = 1;
+        doc.addPage(); pgNum++;
+        let y = drawHeader();
+        const newPageSolo = () => { drawFooter(pgNum); doc.addPage(); pgNum++; y = drawHeader(); };
+
+        const cc = data.clienteContacto || {};
+        const clienteCtx = {
+            tx, ML, TW, PDF_SZ_TITLE, PDF_SZ_BODY, BLK, GR_TXT, GR_LT,
+            clienteFields: _clienteFieldsFromData({
+                ...data,
+                cliente: cc.nombre || cc.empresa || data.cliente,
+                clienteContacto: cc,
+                clienteLogo: cc.logo_url || data.clienteLogo
+            })
+        };
+        y = _drawClienteSectionPdf(doc, clienteCtx, y);
+        if (y > drawHeader() + 2) y += 2;
+
+        const s2pad = 5;
+        let s2y = y, s2h = s2pad + 2;
+        tx('Detalles del Servicio', ML + s2pad, s2y + s2h, 'bold', PDF_SZ_TITLE, TEAL);
+        hl(ML + s2pad, s2y + s2h + 2, 28, TEAL, 0.8);
+        s2h += 10;
+        const drawPair = (lab1, val1, lab2, val2, yy) => {
+            const colW = TW / 2 - 8;
+            if (lab1) { tx(lab1, ML + s2pad, yy, 'normal', 9, GR_LT); tx(val1 || '—', ML + s2pad + 50, yy, 'bold', 10, BLK); }
+            if (lab2) { tx(lab2, ML + colW + 4, yy, 'normal', 9, GR_LT); tx(val2 || '—', ML + colW + 56, yy, 'bold', 10, BLK); }
+            return yy + 6.5;
+        };
+        if (data.tiempoEntrega || data.garantia) { drawPair('Tiempo de entrega:', data.tiempoEntrega, 'Garantía:', data.garantia, s2y + s2h); s2h += 6.5; }
+        if (data.moneda || data.servicio) { drawPair('Moneda:', data.moneda, 'Servicio:', data.servicio, s2y + s2h); s2h += 6.5; }
+        s2h += s2pad;
+        if (s2h < 28) s2h = 28;
+        drawFolder(ML, s2y, TW, s2h, WHT, GR_SEP, 0.5);
+        y = s2y + s2h + 4;
+
+        const polDef = DEPTO_POLICIES[deptoKey];
+        const notas = (data.notas && data.notas.length) ? data.notas : (polDef ? polDef.lines : []);
+        const s3pad = 5;
+        let s3y = y;
+        const NL = 5.5, NMAX = TW - 12;
+        let s3h = s3pad + 8;
+        notas.forEach((nota) => {
+            const lines = doc.splitTextToSize(String(nota || ''), NMAX);
+            s3h += lines.length * NL + 2;
+        });
+        s3h += 10;
+        if (s3y + s3h > BODY_BOTTOM) { newPageSolo(); s3y = y; }
+        drawFolder(ML, s3y, TW, s3h, FOLDER, GR_SEP, 0.5);
+        y = s3y + s3pad;
+        tx('Notas Importantes', ML + s3pad, y, 'bold', 14, BLK); y += 7;
+        if (!notas.length) tx('No hay políticas configuradas.', ML + 10, y, 'italic', 10, [150, 150, 150]);
+        notas.forEach((nota, idx) => {
+            const lines = doc.splitTextToSize(String(nota || ''), NMAX);
+            const nH = lines.length * NL + 2;
+            if (y + nH > BODY_BOTTOM) { drawFooter(pgNum); doc.addPage(); pgNum++; y = drawHeader() + s3pad; }
+            tx((idx + 1) + '.', ML + s3pad, y + 4, 'normal', 9, GR_TXT);
+            lines.forEach((l, i) => tx(l, ML + 10, y + 4 + i * NL, 'normal', 9, GR_TXT));
+            y += nH;
+        });
+        y += 4;
+        tx('Para mayor información revise nuestros términos y condiciones en: ' + (data.urlTerminos || 'https://www.ssepi.org/terms'), ML + s3pad, y, 'normal', 8, GR_LT);
+
+        totalPgs = doc.internal.pages ? String(doc.internal.pages.length - 1) : '?';
+        drawFooter(pgNum);
+
+        const fname = 'Politicas_' + (data.departamento || 'SSEPI').replace(/\s+/g, '_') + '_' + folio + '.pdf';
+        if (opts.returnDoc) return doc;
+        if (preview) {
+            const blobUrl = doc.output('bloburl');
+            const a = document.createElement('a');
+            a.href = blobUrl; a.target = '_blank'; a.rel = 'noopener';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        } else {
+            doc.save(fname);
+        }
+        return doc;
     }
 
     // ═══════════════════════════════════════════════════════════════════

@@ -31,7 +31,7 @@
     <script src="/panel/js/core/folio-formats.js?v=2"></script>
     <script src="/panel/js/core/state-machine.js?v=2"></script>
     <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
-    <script type="module" src="/panel/js/modules/ventas.js?v=12"></script>
+    <script type="module" src="/panel/js/modules/ventas.js?v=14"></script>
 </head>
 <body class="page-ventas nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -139,7 +139,7 @@
                 <button type="button" class="chip-filtro" data-estado="autorizado">Autorizado</button>
                 <button type="button" class="chip-filtro" data-estado="compra">En Compra</button>
                 <button type="button" class="chip-filtro" data-estado="ejecucion">En Ejecución</button>
-                <button type="button" class="chip-filtro" data-estado="entregado">Entregado</button>
+                <button type="button" class="chip-filtro" data-estado="entregado">Terminado</button>
                 <button type="button" class="chip-filtro" data-estado="pagado">Pagado</button>
                 <button type="button" class="chip-filtro" data-estado="cancelado">Cancelado</button>
             </div>
@@ -191,7 +191,7 @@
         <!-- Flujo unificado: pipeline + órdenes por área (enlace a Compras y módulos) -->
         <div class="panel-operativas-cross panel-operativas-ventas">
             <h2><i class="fas fa-route"></i> Flujo operativo unificado</h2>
-            <p class="panel-operativas-desc">Pipeline comercial + órdenes de Laboratorio, Motores y Automatización. Desde aquí saltas a <strong>Compras</strong> con la vinculación lista o al módulo de ejecución.</p>
+            <p class="panel-operativas-desc">Aquí ves la <strong>orden de venta</strong> (servicios, ingeniería, traslado y materiales). <strong>Compras</strong> es solo la OC de materiales vinculada al folio operativo.</p>
             <div class="pipeline-cross-scroll" id="pipelineCardsContainer"></div>
             <h3 class="op-subtitle"><i class="fas fa-link"></i> Órdenes y proyectos por área</h3>
             <div class="operativas-tabs" id="operativasTabsVentas">

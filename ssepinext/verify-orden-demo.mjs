@@ -37,9 +37,21 @@ else {
 const po = comprasAuto.find((c) => c.folio === 'PO-A-DEMO-01');
 if (!po) fail('Falta PO-A-DEMO-01');
 else {
-    pass(`Compra ${po.folio} items=${(po.items || []).length} total=${po.total}`);
+    pass(`Compra ${po.folio} estado=${po.estado} estado_interno=${po.estado_interno} items=${(po.items || []).length} total=${po.total}`);
     const v = po.vinculacion;
     if (!v || String(v.id) !== String(demo?.id)) fail('Compra no vinculada al proyecto');
+    // Estado numérico 5 = "recibida/completada" en el workflow de compras.
+    if (Number(po.estado) !== 5) {
+        fail(`PO-A-DEMO-01 estado=${po.estado} — debe ser 5 (recibida/completada)`);
+    } else {
+        pass(`PO-A-DEMO-01 estado=5 (completada)`);
+    }
+    const ei = String(po.estado_interno || '').toLowerCase();
+    if (ei !== 'recibida') {
+        fail(`PO-A-DEMO-01 estado_interno=${po.estado_interno} — debe ser 'recibida'`);
+    } else {
+        pass(`PO-A-DEMO-01 estado_interno=recibida`);
+    }
 }
 
 const cotD = cotsAuto.find((c) => c.folio === 'COT-A-DEMO-01');
