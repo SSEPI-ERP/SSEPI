@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -19,8 +19,10 @@
     <script type="module" src="/panel/js/core/auth-service.js?v=2"></script>
     <script type="module" src="/panel/js/core/data-service.js?v=2"></script>
     <script type="module" src="/panel/js/core/costos-engine.js?v=2"></script>
+    <script type="module" src="/panel/js/core/horas-jerarquia.js?v=1"></script>
+    <script type="module" src="/panel/js/core/ventas-costo-desglose.js?v=2"></script>
     <script type="module" src="/panel/js/core/contactos-formulas.js?v=2"></script>
-    <script type="module" src="/panel/js/core/pdf-generator.js?v=2"></script>
+    <script type="module" src="/panel/js/core/pdf-generator.js?v=8"></script>
     <script src="/panel/js/core/membretes_base64.js?v=2"></script>
     <script src="/panel/js/core/theme-clock.js?v=2"></script>
     <script src="/panel/js/core/user-menu.js?v=2"></script>
@@ -29,7 +31,7 @@
     <script src="/panel/js/core/folio-formats.js?v=2"></script>
     <script src="/panel/js/core/state-machine.js?v=2"></script>
     <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
-    <script type="module" src="/panel/js/modules/ventas.js?v=2"></script>
+    <script type="module" src="/panel/js/modules/ventas.js?v=12"></script>
 </head>
 <body class="page-ventas nav-loading">
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
@@ -196,6 +198,7 @@
                 <button type="button" class="active" data-op-tab="taller"><i class="fas fa-microchip"></i> Laboratorio <span id="opVCountTaller">(0)</span></button>
                 <button type="button" data-op-tab="motor"><i class="fas fa-industry"></i> Motores <span id="opVCountMotor">(0)</span></button>
                 <button type="button" data-op-tab="auto"><i class="fas fa-robot"></i> Automatización <span id="opVCountAuto">(0)</span></button>
+                <button type="button" data-op-tab="solicitudes"><i class="fas fa-file-invoice"></i> Solicitudes Lab <span id="opVCountSolicitudes">(0)</span></button>
                 <button type="button" data-op-tab="facturar"><i class="fas fa-file-invoice-dollar"></i> Por facturar <span id="opVCountFacturar">(0)</span></button>
             </div>
             <div id="operativasListVentas" class="operativas-list"></div>
@@ -374,7 +377,7 @@
                 <button class="modal-close" id="closeCotizacionModal">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="calculadora-section">
+                <div class="calculadora-section" data-financiero="true">
                     <div class="calculadora-titulo"><i class="fas fa-chart-pie"></i> Desglose de Costos</div>
                     <div class="editor-grid">
                         <div class="editor-item">

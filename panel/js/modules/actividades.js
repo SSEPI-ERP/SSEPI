@@ -6,6 +6,8 @@
 
 import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
 import { authService } from '../core/auth-service.js';
+import { isHiddenProfile, isHiddenUserId } from '../core/hidden-profiles.js';
+import { calcularHorasExtraSub } from '../core/horas-jerarquia.js';
 
 const ActividadesModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -42,6 +44,31 @@ const ActividadesModule = (function() {
 
     const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const diasSemanaCortos = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+    function _metaFromNotas(notas) {
+        const m = String(notas || '').match(/<!--ssepi-meta:(\{.*?\})-->/);
+        if (!m) return {};
+        try { return JSON.parse(m[1]); } catch (e) { return {}; }
+    }
+
+    function _horasPlanActividad(act) {
+        return Number(_metaFromNotas(act?.notas).horas_plan) || 0;
+    }
+
+    function _horasExtraActividad(act) {
+        const plan = _horasPlanActividad(act);
+        if (!plan) return 0;
+        return calcularHorasExtraSub({
+            horas_plan: plan,
+            duracion_minutos: Number(act?.duracion_minutos) || 0
+        });
+    }
+
+    function _mergeMetaNotas(notas, patch) {
+        const meta = { ..._metaFromNotas(notas), ...patch };
+        const stripped = String(notas || '').replace(/<!--ssepi-meta:\{.*?\}-->\s*/g, '').trim();
+        return `<!--ssepi-meta:${JSON.stringify(meta)}-->\n${stripped}`.trim();
+    }
 
     // Servicios de datos
     const actividadesService = createDataService('actividades_diarias');
@@ -98,6 +125,11 @@ const ActividadesModule = (function() {
         _startClock();
         _setupRealtime();
         _initExportButton();
+
+        const verId = new URLSearchParams(window.location.search).get('ver');
+        if (verId) {
+            setTimeout(() => _verActividad(verId), 400);
+        }
 
         console.log('✅ Módulo actividades iniciado');
     }
@@ -229,7 +261,6 @@ const ActividadesModule = (function() {
             // Fallback modo local: si no hay usuarios en tabla 'usuarios', usar datos offline conocidos
             if (Object.keys(userMap).length === 0 && userIds.length > 0) {
                 const fallback = {
-                    'user-001': { nombre: 'Norberto Moro', email: 'norbertomoro4@gmail.com' },
                     'user-002': { nombre: 'Carlos Calderon', email: 'ventas1@ssepi.org' },
                     'user-003': { nombre: 'Daniel Zuniga', email: 'ventas@ssepi.org' },
                     'user-004': { nombre: 'Itzel', email: 'compras@ssepi.org' },
@@ -244,7 +275,9 @@ const ActividadesModule = (function() {
                 };
                 userIds.forEach(id => { if (fallback[id]) userMap[id] = fallback[id]; });
             }
-            actividades = rawActividades.map(a => ({
+            actividades = rawActividades
+                .filter(a => !isHiddenUserId(a.creado_por) && !isHiddenUserId(a.user_id))
+                .map(a => ({
                 ...a,
                 creado_por_usuario: a.creado_por ? { nombre: userMap[a.creado_por]?.nombre, email: userMap[a.creado_por]?.email } : null
             }));
@@ -268,9 +301,7 @@ const ActividadesModule = (function() {
             // Fallback: usuarios del sistema (offline o cloud)
             if (tecnicos.length === 0) {
                 var usuarios = await authService.getUsersByRol(['taller', 'electronica', 'motores', 'automatizacion', 'admin', 'superadmin']);
-                tecnicos = usuarios
-                    .filter(function(u) { return !((u.nombre || '').toLowerCase().includes('norberto')); })
-                    .map(function(u) {
+                tecnicos = usuarios.map(function(u) {
                         return { id: u.id, nombre: u.nombre || u.email, email: u.email };
                     });
             }
@@ -841,12 +872,39 @@ const ActividadesModule = (function() {
 
     // ==================== VER ACTIVIDAD ====================
     async function _verActividad(id) {
-        const act = actividades.find(a => String(a.id) === String(id));
-        if (!act) return;
+        let act = actividades.find(a => String(a.id) === String(id));
+        // Si no está en cache (p. ej. abierto desde widget de proyecto/servicio), cargar desde Supabase
+        if (!act && window.supabase) {
+            try {
+                const { data, error } = await window.supabase
+                    .from('actividades_diarias')
+                    .select('*')
+                    .eq('id', id)
+                    .maybeSingle();
+                if (error) throw error;
+                if (data) {
+                    act = data;
+                    // Inyectar en cache para próximas aperturas
+                    if (!actividades.find(a => String(a.id) === String(act.id))) {
+                        actividades.push(act);
+                    }
+                }
+            } catch (e) {
+                console.warn('[Actividades] _verActividad cache miss:', e);
+            }
+        }
+        if (!act) {
+            console.warn('[Actividades] Actividad no encontrada:', id);
+            _showToast('No se encontró la actividad', 'error');
+            return;
+        }
 
         const modal = document.getElementById('verActividadModal');
         const body = document.getElementById('verActividadBody');
-        if (!body) return;
+        if (!body || !modal) {
+            window.location.href = '/panel/pages/ssepi_actividades.html?ver=' + encodeURIComponent(id);
+            return;
+        }
 
         const tecnico = act.creado_por_usuario?.nombre || 'Técnico';
         const fecha = act.fecha ? new Date(act.fecha).toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '--';
@@ -1000,6 +1058,11 @@ const ActividadesModule = (function() {
                 document.querySelectorAll('.kanban-column').forEach(c => c.classList.remove('drag-over'));
             });
             card.addEventListener('click', function(e) {
+                if (e.target.closest('.kanban-subtask-row')) return;
+                _verActividad(this.dataset.id);
+            });
+            card.addEventListener('dblclick', function(e) {
+                e.preventDefault();
                 _openSidebar(this.dataset.id);
             });
         });
@@ -1101,6 +1164,9 @@ const ActividadesModule = (function() {
         const tiempo = _tiempoTranscurrido(act);
         const estadoLabel = _getEstadoLabel(act.estado);
         const estadoClass = act.estado || 'pendiente';
+        const horasPlan = _horasPlanActividad(act);
+        const horasExtra = _horasExtraActividad(act);
+        const esAutoDepto = act.departamento === 'automatizacion' || act.orden_origen_tipo === 'proyectos_automatizacion';
 
         if (title) title.innerHTML = `<i class="fas fa-ticket-alt"></i> ${key}`;
 
@@ -1109,7 +1175,16 @@ const ActividadesModule = (function() {
                 <div class="sidebar-key">${key}</div>
                 <span class="sidebar-estado ${estadoClass}"><span class="kanban-dot dot-${estadoClass}"></span> ${estadoLabel}</span>
                 ${tiempo ? `<div class="sidebar-tiempo"><i class="fas fa-clock"></i> Tiempo transcurrido: ${tiempo}</div>` : ''}
+                ${esAutoDepto && horasPlan ? `<div class="sidebar-tiempo"><i class="fas fa-hourglass-half"></i> Horas plan: <strong>${horasPlan} h</strong></div>` : ''}
+                ${isAdmin && horasExtra > 0.01 ? `<div class="sidebar-extra-hrs" title="No va a cotización al cliente"><i class="fas fa-user-shield"></i> +${horasExtra.toFixed(1)} h extra (interno)</div>` : ''}
             </div>
+            ${esAutoDepto && isAdmin ? `
+            <div class="sidebar-section">
+                <h4><i class="fas fa-stopwatch"></i> Presupuesto de horas</h4>
+                <label style="font-size:12px;color:var(--text-secondary);">Horas plan (oficina/planta)</label>
+                <input type="number" min="0" step="0.5" id="sidebarHorasPlan" value="${horasPlan || ''}" style="width:100%;padding:8px;margin-top:6px;">
+                <button class="btn-ssepi btn-primario" style="margin-top:8px;" onclick="window.actividadesModule._guardarHorasPlan('${id}')"><i class="fas fa-save"></i> Guardar horas plan</button>
+            </div>` : ''}
 
             <div class="sidebar-section">
                 <h4><i class="fas fa-align-left"></i> Resumen</h4>
@@ -1118,7 +1193,7 @@ const ActividadesModule = (function() {
 
             <div class="sidebar-section">
                 <h4><i class="fas fa-sticky-note"></i> Notas</h4>
-                <textarea class="sidebar-notas" id="sidebarNotas" placeholder="Escribe notas internas...">${act.notas || ''}</textarea>
+                <textarea class="sidebar-notas" id="sidebarNotas" placeholder="Escribe notas internas...">${String(act.notas || '').replace(/<!--ssepi-meta:\{.*?\}-->\s*/g, '').trim()}</textarea>
                 ${isAdmin ? `<button class="btn-ssepi btn-primario" style="margin-top:8px;" onclick="window.actividadesModule._guardarNotas('${id}')"><i class="fas fa-save"></i> Guardar Notas</button>` : ''}
             </div>
 
@@ -1287,15 +1362,33 @@ const ActividadesModule = (function() {
 
     async function _guardarNotas(id) {
         if (!isAdmin) return;
-        const val = document.getElementById('sidebarNotas')?.value || '';
+        const act = actividades.find(a => String(a.id) === String(id));
+        const val = (document.getElementById('sidebarNotas')?.value || '').trim();
+        const withMeta = _mergeMetaNotas(val, _metaFromNotas(act?.notas));
         try {
-            await actividadesService.update(id, { notas: val });
-            const act = actividades.find(a => a.id === id);
-            if (act) act.notas = val;
+            await actividadesService.update(id, { notas: withMeta });
+            if (act) act.notas = withMeta;
             _showToast('Notas guardadas', 'success');
         } catch (err) {
             console.error('[Actividades] Error guardando notas:', err);
             _showToast('Error al guardar notas', 'error');
+        }
+    }
+
+    async function _guardarHorasPlan(id) {
+        if (!isAdmin) return;
+        const act = actividades.find(a => String(a.id) === String(id));
+        const val = parseFloat(document.getElementById('sidebarHorasPlan')?.value) || 0;
+        const visible = String(act?.notas || '').replace(/<!--ssepi-meta:\{.*?\}-->\s*/g, '').trim();
+        const withMeta = _mergeMetaNotas(visible, { horas_plan: val });
+        try {
+            await actividadesService.update(id, { notas: withMeta });
+            if (act) act.notas = withMeta;
+            _showToast('Horas plan guardadas', 'success');
+            _renderSidebar(id);
+        } catch (err) {
+            console.error('[Actividades] Error guardando horas plan:', err);
+            _showToast('Error al guardar horas plan', 'error');
         }
     }
 
@@ -1509,7 +1602,7 @@ const ActividadesModule = (function() {
                                 const ts = a.created_at ? new Date(a.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : (a.fecha ? new Date(a.fecha).toLocaleDateString('es-MX') : '');
                                 const extra = a.notas ? ' · ' + (a.notas.length > 25 ? a.notas.substring(0,25)+'...' : a.notas) : '';
                                 return `
-                                <div class="actividades-widget-item ${a.estado || 'pendiente'}">
+                                <div class="actividades-widget-item ${a.estado || 'pendiente'}" data-id="${a.id}" style="cursor:pointer" title="Ver detalle">
                                     <span class="widget-dot dot-${a.estado || 'pendiente'}"></span>
                                     <span class="widget-resumen">${(a.resumen || 'Sin resumen').substring(0, 35)}${(a.resumen || '').length > 35 ? '...' : ''}${extra}</span>
                                     <span class="widget-fecha">${ts}</span>
@@ -1528,6 +1621,19 @@ const ActividadesModule = (function() {
                     </div>
                 </div>
             `;
+            // Listener delegado: cualquier click en un item del historial abre el detalle
+            const listEl = container.querySelector('.actividades-widget-list');
+            if (listEl && !listEl.dataset.bound) {
+                listEl.dataset.bound = '1';
+                listEl.addEventListener('click', (ev) => {
+                    const item = ev.target.closest('.actividades-widget-item[data-id]');
+                    if (!item) return;
+                    const id = item.dataset.id;
+                    if (id && window.actividadesModule?._verActividad) {
+                        window.actividadesModule._verActividad(id);
+                    }
+                });
+            }
         } catch (e) {
             console.warn('[Actividades] Error renderizando widget:', e);
             container.innerHTML = `<div class="actividades-widget-empty">Error cargando actividades</div>`;
@@ -1550,6 +1656,7 @@ const ActividadesModule = (function() {
         _deleteSubtarea,
         _uploadSubtareaImage,
         _guardarNotas,
+        _guardarHorasPlan,
         renderWidgetActividades
     };
 })();

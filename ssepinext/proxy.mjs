@@ -1,5 +1,6 @@
 import { prepareStatement, getSyncState, setSyncState } from './db.mjs';
 import express from 'express';
+import { filterVisibleProfiles } from './hidden-profiles.mjs';
 
 export const TABLE_MAP = {
   'ventas': 'local_ventas',
@@ -11,6 +12,7 @@ export const TABLE_MAP = {
   'facturas': 'local_facturas',
   'inventario': 'local_inventario',
   'contactos': 'local_contactos',
+  'actividades_contactos': 'local_actividades_contactos',
   'orden_historial': 'local_orden_historial',
   'coi_sync_queue': 'local_coi_sync_queue',
   'usuarios': 'local_usuarios',
@@ -45,7 +47,11 @@ export const TABLE_MAP = {
   'suministros_items': 'local_suministros_items',
   'soporte_visitas': 'local_soporte_visitas',
   'ingresos_contabilidad': 'local_ingresos_contabilidad',
-  'pagos_nomina': 'local_pagos_nomina'
+  'pagos_nomina': 'local_pagos_nomina',
+  'vacaciones_empleados': 'local_vacaciones_empleados',
+  'vacaciones_dias_feriados': 'local_vacaciones_dias_feriados',
+  'vacaciones_balance': 'local_vacaciones_balance',
+  'vacaciones_solicitudes': 'local_vacaciones_solicitudes'
 };
 
 function parsePostgrestQuery(query) {
@@ -93,23 +99,33 @@ function colRef(col) {
   return col === 'id' ? 'id' : `json_extract(data, '$.${col}')`;
 }
 
+function _coerceValue(val) {
+  if (val === 'true') return 1;
+  if (val === 'false') return 0;
+  const s = String(val);
+  if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s);
+  return val;
+}
+
 function buildSqliteWhere(filters) {
   const clauses = [], params = [];
   for (const f of filters) {
     const ref = colRef(f.col);
+    const v = _coerceValue(f.value);
     switch (f.op) {
-      case 'eq': clauses.push(`${ref} = ?`); params.push(f.value); break;
-      case 'neq': clauses.push(`${ref} != ?`); params.push(f.value); break;
-      case 'gt': clauses.push(`${ref} > ?`); params.push(f.value); break;
-      case 'gte': clauses.push(`${ref} >= ?`); params.push(f.value); break;
-      case 'lt': clauses.push(`${ref} < ?`); params.push(f.value); break;
-      case 'lte': clauses.push(`${ref} <= ?`); params.push(f.value); break;
+      case 'eq': clauses.push(`${ref} = ?`); params.push(v); break;
+      case 'neq': clauses.push(`${ref} != ?`); params.push(v); break;
+      case 'gt': clauses.push(`${ref} > ?`); params.push(v); break;
+      case 'gte': clauses.push(`${ref} >= ?`); params.push(v); break;
+      case 'lt': clauses.push(`${ref} < ?`); params.push(v); break;
+      case 'lte': clauses.push(`${ref} <= ?`); params.push(v); break;
       case 'like': clauses.push(`${ref} LIKE ?`); params.push(f.value); break;
       case 'ilike': clauses.push(`LOWER(${ref}) LIKE LOWER(?)`); params.push(f.value); break;
       case 'in': {
-        const ph = f.value.map(() => '?').join(',');
+        const arr = Array.isArray(f.value) ? f.value.map(_coerceValue) : [v];
+        const ph = arr.map(() => '?').join(',');
         clauses.push(`${ref} IN (${ph})`);
-        params.push(...f.value);
+        params.push(...arr);
         break;
       }
       case 'is':
@@ -220,6 +236,9 @@ export function createProxyRouter(db, supabaseConfig) {
   });
 
   router.get('/rest/v1/:table', async (req, res) => {
+    if (req.params.table === 'gastos_fijos') {
+      return res.json([]);
+    }
     const localTable = TABLE_MAP[req.params.table];
     if (!localTable) return proxyOr503(req, res, supabaseConfig);
 
@@ -231,10 +250,13 @@ export function createProxyRouter(db, supabaseConfig) {
     try {
       const rows = await stmt.query(where, params, orderBy, parsed.limit);
       const paginated = rows.slice(parsed.offset, parsed.offset + parsed.limit);
+      const visible = req.params.table === 'vacaciones_empleados' || req.params.table === 'usuarios' || req.params.table === 'users'
+        ? filterVisibleProfiles(paginated)
+        : paginated;
       if (await isServerOnline(db)) {
         refreshFromCloud(db, supabaseConfig, req.params.table, parsed.filters).catch(() => {});
       }
-      res.status(200).json(paginated);
+      res.status(200).json(visible);
     } catch (err) {
       console.error('[Proxy] GET error:', err);
       res.status(500).json({ message: err.message });

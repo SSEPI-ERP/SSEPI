@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Comparacion Clientes OCR vs Base de Datos SSEPI</title>
+<style>
+  body { font-family: 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+  h2 { font-size: 18px; color: #333; margin-bottom: 10px; }
+  .summary { background: #fff; border-radius: 8px; padding: 15px 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 13px; }
+  .table-wrap { overflow-x: auto; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #eee; vertical-align: middle; }
+  th { background: #f8f9fa; font-weight: 600; color: #555; position: sticky; top: 0; }
+  tr:hover td { background: #f8f9fa; }
+  .t-img { width: 60px; height: 45px; border-radius: 4px; object-fit: cover; cursor: pointer; border: 1px solid #ddd; }
+  .badge { display: inline-block; min-width: 30px; text-align: center; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+  .match-high { color: #1D9E75; }
+  .match-med { color: #ff9800; }
+  .match-low { color: #C42B2B; }
+  .section { margin-bottom: 30px; }
+  .ocr-name { font-weight: 600; color: #333; max-width: 150px; word-break: break-word; }
+  .diff-cell { font-family: monospace; font-size: 10px; max-width: 200px; word-break: break-all; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .db-table th { white-space: nowrap; }
+  .db-table td { white-space: nowrap; }
+  .merged-note { font-style: italic; color: #666; font-size: 10px; }
+</style>
+</head>
+<body>
+
+<h2>Comparacion Clientes OCR (Imagenes) vs Base de Datos SSEPI</h2>
+
+<div class="summary">
+  <strong>Total imagenes procesadas:</strong> 80 |
+  <strong>Clientes BD SSEPI:</strong> <span id="client-count">33</span> |
+  <span class="match-high">Verde ≥90%</span> |
+  <span class="match-med">Naranja 70–89%</span> |
+  <span class="match-low">Rojo <70%</span>
+</div>
+
+<div class="section">
+  <h2>Tabla comparativa completa (OCR con preprocesamiento: recorte superior + inversión + contraste)</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Imagen</th>
+          <th>Nombre OCR (escaneado)</th>
+          <th>Similitud</th>
+          <th>Cliente real BD</th>
+          <th>Diferencias resaltadas</th>
+          <th>RFC real</th>
+          <th>Contacto real</th>
+          <th>Direccion real</th>
+          <th>Empresa</th>
+          <th>Dirección</th>
+          <th>Calle</th>
+          <th>Calle 2</th>
+          <th>C.P.</th>
+          <th>Ciudad</th>
+          <th>Estado</th>
+          <th>País</th>
+          <th>Puesto de Trabajo</th>
+          <th>RFC</th>
+          <th>Sitio Web</th>
+          <th>Idioma</th>
+          <th>Etiquetas</th>
+          <th>Propiedad 1</th>
+          <th>Vendedor</th>
+          <th>Términos de Pago</th>
+          <th>Método de Pago</th>
+          <th>Lista de Precios</th>
+          <th>Método de Envío</th>
+          <th>Agrupar Solicitud</th>
+          <th>Comprador</th>
+          <th>Referencia</th>
+        </tr>
+      </thead>
+      <tbody id="ocr-table-body">
+        <!-- OCR rows will be generated here by JavaScript -->
+      </tbody>
+    </table>
+    <div style="margin-top: 10px; text-align: right;">
+      <button onclick="exportContactsAsCSV()" style="background: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+        Exportar Contactos a CSV
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Lista de clientes BD SSEPI (<span id="db-client-count">33</span>) — Datos completos del sistema V11</h2>
+  <div class="table-wrap">
+    <table class="db-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Cliente</th>
+          <th class="num">Cant</th>
+          <th class="num">Tasa</th>
+          <th class="num">Parcial</th>
+          <th class="num">Uds</th>
+          <th class="num">Fijo</th>
+          <th class="num">Total</th>
+          <th>Direccion</th>
+          <th>RFC</th>
+          <th>Contacto</th>
+          <th>Sheets</th>
+        </tr>
+      </thead>
+      <tbody id="db-table-body">
+        <!-- DB rows will be generated here by JavaScript -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Análisis de Contactos Extraídos</h2>
+  <div class="table-wrap">
+    <div id="contact-stats">
+      <!-- Statistics will be generated here by JavaScript -->
+    </div>
+    <table id="duplicates-table">
+      <thead>
+        <tr>
+          <th>Grupo</th>
+          <th>Contactos Posiblemente Duplicados</th>
+          <th>Similitud Promedio</th>
+          <th>Acciones Sugeridas</th>
+        </tr>
+      </thead>
+      <tbody id="duplicates-table-body">
+        <!-- Duplicate groups will be generated here by JavaScript -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  let DB_CLIENTS = [];
+  let OCR_RESULTS = [];
+
+  // Text normalization functions (same as in process_images_v2.js)
+  function normalizeText(t) {
+    if (!t) return "";
+    // Convert to uppercase, remove accents, remove special characters, normalize spaces
+    // Since we can't easily use unicodedata in JS, we'll do a basic version
+    // For proper accent removal, we'd need a more complex solution, but for now:
+    t = t.toUpperCase();
+    // Remove special characters (keeping only letters, numbers, and spaces)
+    t = t.replace(/[^A-Z0-9\s]/g, '');
+    // Normalize spaces
+    t = t.replace(/\s+/g, ' ').trim();
+    return t;
+  }
+
+  function levenshteinDistance(a, b) {
+    if (!a) return b.length;
+    if (!b) return a.length;
+
+    // Create a matrix
+    const m = a.length;
+    const n = b.length;
+    const d = [];
+
+    // Initialize first row and column
+    for (let i = 0; i <= m; i++) {
+      d[i] = [i];
+    }
+    for (let j = 0; j <= n; j++) {
+      d[0][j] = j;
+    }
+
+    // Fill the matrix
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        d[i][j] = Math.min(
+          d[i - 1][j] + 1,      // deletion
+          d[i][j - 1] + 1,      // insertion
+          d[i - 1][j - 1] + cost  // substitution
+        );
+      }
+    }
+
+    return d[m][n];
+  }
+
+  function similarity(a, b) {
+    const s = normalizeText(a);
+    const t = normalizeText(b);
+    if (!s || !t) return 0;
+    const dist = levenshteinDistance(s, t);
+    const maxLen = Math.max(s.length, t.length);
+    if (maxLen === 0) return 100;
+    return Math.round((1 - dist / maxLen) * 100);
+  }
+
+  // Extract detailed information from OCR text
+  function extractContactInfo(text) {
+    const info = {
+      empresa: '',
+      direccion: '',
+      calle: '',
+      calle2: '',
+      cp: '',
+      ciudad: '',
+      estado: '',
+      pais: '',
+      puestoTrabajo: '',
+      rfc: '',
+      sitioWeb: '',
+      idioma: 'Spanish (Latin America)',
+      etiquetas: '',
+      propiedad1: 'Ventas',
+      vendedor: '',
+      terminosPago: '',
+      metodoPago: '',
+      listaPrecios: 'Default (MXN)',
+      metodoEnvio: 'Compra',
+      agruparSolicitud: 'Al ordenar',
+      comprador: '',
+      terminosPago2: '',
+      metodoPago2: '',
+      recordatorioEntrega: '',
+      posicionFiscal: '',
+      regimenFiscal: '',
+      desgloseIEPS: '',
+      uso: '',
+      formaPago: '',
+      politicaPago: '',
+      referencia: '',
+      sitioWebGeneral: '',
+      cuentasBancarias: '',
+      cuentaPorCobrar: '',
+      cuentaPorPagar: '',
+      registrarFacturasAuto: '',
+      informacionDIOT: '',
+      nacionalidad: '',
+      tipoOperacion: '',
+      seguimientoFacturas: '',
+      estadoSeguimiento: '',
+      recordatorios: '',
+      automatico: '',
+      manual: '',
+      enviar: '',
+      siguienteRecordatorio: '',
+      responsable: '',
+      facturasCliente: '',
+      idPeppol: '',
+      addendasComplementos: ''
+    };
+
+    if (!text) return info;
+
+    // Extract email
+    const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    if (emailMatch) {
+      // We'll use email as part of contacto or referencia if needed
+    }
+
+    // Extract phone
+    const phoneMatch = text.match(/(\+52\s*)?[\(]?[0-9]{3}[\)]?[\s-]?[0-9]{3}[\s-]?[0-9]{4}/);
+    if (phoneMatch) {
+      info.vendedor = phoneMatch[0]; // Using as vendedor for now
+    }
+
+    // Extract address (look for "Dirección" followed by text)
+    const direccionMatch = text.match(/Dirección\s*[-:]?\s*([^\n]+)/i);
+    if (direccionMatch) {
+      info.direccion = direccionMatch[1].trim();
+      // Try to parse address components
+      const addrParts = info.direccion.split(',');
+      if (addrParts.length >= 1) info.calle = addrParts[0].trim();
+      if (addrParts.length >= 2) info.calle2 = addrParts[1].trim();
+      if (addrParts.length >= 3) {
+        // Try to extract CP, ciudad, estado from the last part
+        const lastPart = addrParts[addrParts.length - 1].trim();
+        const cpMatch = lastPart.match(/(\d{5})/);
+        if (cpMatch) {
+          info.cp = cpMatch[1];
+          // Remove CP from last part to get ciudad/estado
+          const rest = lastPart.replace(cpMatch[0], '').trim();
+          const ciudadEstado = rest.split(' ');
+          if (ciudadEstado.length >= 1) info.ciudad = ciudadEstado[0];
+          if (ciudadEstado.length >= 2) info.estado = ciudadEstado[1];
+        }
+      }
+    }
+
+    // Extract website/sitio web
+    const sitioWebMatch = text.match(/https?:\/\/[^\s]+/i);
+    if (sitioWebMatch) {
+      info.sitioWeb = sitioWebMatch[0];
+      info.sitioWebGeneral = sitioWebMatch[0];
+    }
+    // Also look for "Sitio web" label
+    const sitioWebLabelMatch = text.match(/Sitio\s*web\s*[:-]?\s*([^\n]+)/i);
+    if (sitioWebLabelMatch && !info.sitioWeb) {
+      info.sitioWeb = sitioWebLabelMatch[1].trim();
+      info.sitioWebGeneral = info.sitioWeb;
+    }
+
+    // Extract puesto de trabajo
+    const puestoMatch = text.match(/Puesto\s*de\s*trabajo\s*[:-]?\s*([^\n]+)/i);
+    if (puestoMatch) {
+      info.puestoTrabajo = puestoMatch[1].trim();
+    }
+
+    // Extract company name (empresa) - often at the start or after "Empresa"
+    const empresaMatch1 = text.match(/^[^\n]+/);
+    if (empresaMatch1) {
+      const firstLine = empresaMatch1[0].trim();
+      // If it looks like a company name (not starting with common OCR prefixes)
+      if (!firstLine.match(/^(O\s+Persona\s+Empresa|Persona\s+O\s+Empresa)/i)) {
+        info.empresa = firstLine;
+      }
+    }
+
+    // Alternative: look for "Empresa — Nombre ce la empresa"
+    const empresaMatch2 = text.match(/Empresa\s*[—-]\s*Nombre\s*ce\s*la\s*empresa\s*[:-]?\s*([^\n]+)/i);
+    if (empresaMatch2) {
+      info.empresa = empresaMatch2[1].trim();
+    }
+
+    // Extract RFC (look for RFC pattern)
+    const rfcMatch = text.match(/RFC\s*[?:]?\s*([A-Z&Ñ]{3,4}[0-9]{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2})/i);
+    if (rfcMatch) {
+      info.rfc = rfcMatch[1];
+    }
+
+    // Extract contact person name
+    // Look for patterns like names before email or after certain labels
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      // Skip empty lines and lines that are clearly labels
+      if (!line || line.match(/^(O\s+Persona\s+Empresa|Persona\s+O\s+Empresa|Empresa\s+[—-]|Correo\s+electrónico|Teléfono|Dirección|Puesto\s+de\s+trabajo|Sitio\s+web)/i)) {
+        continue;
+      }
+      // If line looks like a name (contains letters, not too long, no special chars except spaces and dots)
+      if (line.match(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\.]{2,30}$/) && !line.match(/[@&\d]/)) {
+        // This might be a contact name
+        if (!info.empresa || line.toLowerCase() !== info.empresa.toLowerCase()) {
+          info.referencia = line; // Using as referencia for contact name
+          break;
+        }
+      }
+    }
+
+    return info;
+  }
+
+  async function loadData() {
+    try {
+      // Load client data
+      const clientResponse = await fetch('clients_final.json');
+      DB_CLIENTS = await clientResponse.json();
+
+      // Load OCR results and enhance with extracted contact info
+      const ocrResponse = await fetch('ocr_results.json');
+      OCR_RESULTS = await ocrResponse.json();
+
+      // Enhance each OCR result with extracted contact information
+      OCR_RESULTS.forEach(result => {
+        result.contactInfo = extractContactInfo(result.text);
+      });
+
+      initApp();
+    } catch (error) {
+      console.error('Error loading data:', error);
+      // Show error in the section headers
+      document.querySelector('.section:nth-child(3) h2').textContent =
+        'Lista de clientes BD SSEPI — Error cargando datos';
+      document.querySelector('.section:nth-child(2) h2').textContent =
+        'Tabla comparativa completa — Error cargando OCR';
+    }
+  }
+
+  function initApp() {
+    // Update client counts
+    const clientCountEl = document.getElementById('client-count');
+    const dbClientCountEl = document.getElementById('db-client-count');
+    if (clientCountEl) clientCountEl.textContent = DB_CLIENTS.length;
+    if (dbClientCountEl) dbClientCountEl.textContent = DB_CLIENTS.length;
+
+    // Update summary count
+    const summaryStrongElements = document.querySelectorAll('.summary strong');
+    if (summaryStrongElements.length >= 2) {
+      summaryStrongElements[1].textContent = DB_CLIENTS.length;
+    }
+
+    // Generate OCR table rows with detailed contact info
+    const ocrTbody = document.getElementById('ocr-table-body');
+    if (ocrTbody) {
+      ocrTbody.innerHTML = OCR_RESULTS.map((result, index) => {
+        const sc = result.match.score;
+        const barColor = sc >= 90 ? '#1D9E75' : sc >= 70 ? '#ff9800' : '#C42B2B';
+        const diffHtml = result.match.client ? highlightDiffs(result.name, result.match.client.name) : '-';
+        const info = result.contactInfo;
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td><img src="${result.file}" class="t-img" alt="${result.file}" title="Click to view full size"></td>
+            <td class="ocr-name">${result.name}</td>
+            <td><span class="badge" style="background:${barColor};color:#fff">${sc}%</span></td>
+            <td style="font-weight:600">${result.match.client ? result.match.client.name : '-'}</td>
+            <td class="diff-cell">${diffHtml}</td>
+            <td>${result.match.client ? result.match.client.rfc : '-'}</td>
+            <td>${result.match.client ? result.match.client.contact : '-'}</td>
+            <td>${result.match.client ? result.match.client.address : '-'}</td>
+            <td>${info.empresa || '-'}</td>
+            <td>${info.direccion || '-'}</td>
+            <td>${info.calle || '-'}</td>
+            <td>${info.calle2 || '-'}</td>
+            <td>${info.cp || '-'}</td>
+            <td>${info.ciudad || '-'}</td>
+            <td>${info.estado || '-'}</td>
+            <td>${info.pais || '-'}</td>
+            <td>${info.puestoTrabajo || '-'}</td>
+            <td>${info.rfc || '-'}</td>
+            <td>${info.sitioWeb || '-'}</td>
+            <td>${info.idioma || '-'}</td>
+            <td>${info.etiquetas || '-'}</td>
+            <td>${info.propiedad1 || '-'}</td>
+            <td>${info.vendedor || '-'}</td>
+            <td>${info.terminosPago || '-'}</td>
+            <td>${info.metodoPago || '-'}</td>
+            <td>${info.listaPrecios || '-'}</td>
+            <td>${info.metodoEnvio || '-'}</td>
+            <td>${info.agruparSolicitud || '-'}</td>
+            <td>${info.comprador || '-'}</td>
+            <td>${info.referencia || '-'}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Generate DB table rows
+    const dbTbody = document.getElementById('db-table-body');
+    if (dbTbody) {
+      dbTbody.innerHTML = DB_CLIENTS.map((client, index) => {
+        // Check if this client appears to be a merged client (has multiple sheets that suggest merging)
+        const isLikelyMerged = client.sheets.length > 1;
+        const mergedNote = isLikelyMerged ? '<br><span class="merged-note">(Cliente fusionado de múltiples entradas)</span>' : '';
+
+        return `
+          <tr>
+            <td>${client.num}</td>
+            <td>${client.name}</td>
+            <td class="num">${client.c1}</td>
+            <td class="num">${client.c2}</td>
+            <td class="num">${client.c3}</td>
+            <td class="num">${client.c4}</td>
+            <td class="num">${client.c5}</td>
+            <td class="num">${client.c6}</td>
+            <td>${client.address}</td>
+            <td>${client.rfc}</td>
+            <td>${client.contact}</td>
+            <td>${client.sheets.join(', ')}${mergedNote}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Generate contact statistics and duplicate detection
+    generateContactStats();
+  }
+
+  function generateContactStats() {
+    const statsDiv = document.getElementById('contact-stats');
+    const duplicatesTbody = document.getElementById('duplicates-table-body');
+
+    if (!statsDiv || !duplicatesTbody) return;
+
+    // Calculate basic stats
+    const totalContacts = OCR_RESULTS.length;
+    let companiesWithMatch = 0;
+    let companiesWithoutMatch = 0;
+
+    OCR_RESULTS.forEach(result => {
+      if (result.match.client) {
+        companiesWithMatch++;
+      } else {
+        companiesWithoutMatch++;
+      }
+    });
+
+    // Detect potential duplicates based on company name similarity
+    const duplicates = findPotentialDuplicates();
+
+    // Generate stats HTML
+    statsDiv.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+        <div><strong>Total contactos extraídos:</strong> ${totalContacts}</div>
+        <div><strong>Con coincidencia en BD:</strong> ${companiesWithMatch}</div>
+        <div><strong>Sin coincidencia en BD:</strong> ${companiesWithoutMatch}</div>
+        <div><strong>Grupos de posibles duplicados:</strong> ${duplicates.length}</div>
+      </div>
+    `;
+
+    // Generate duplicates table
+    if (duplicates.length > 0) {
+      duplicatesTbody.innerHTML = duplicates.map((group, index) => {
+        const avgSimilarity = group.similarities.reduce((sum, sim) => sum + sim, 0) / group.similarities.length;
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${group.contacts.map(c => `<div>${c.name} (${c.file})</div>`).join('')}</td>
+            <td>${Math.round(avgSimilarity)}%</td>
+            <td>
+              <button onclick="mergeDuplicateGroup(${index})" style="background: #ff9800; color: white; border: none; padding: 4px 8px; border-radius: 3px; font-size: 11px;">
+                Revisar y Fusionar
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } else {
+      duplicatesTbody.innerHTML = '<tr><td colspan="4">No se detectaron posibles duplicados.</td></tr>';
+    }
+  }
+
+  function findPotentialDuplicates() {
+    const contacts = OCR_RESULTS.map(result => ({
+      name: result.name,
+      file: result.file,
+      index: OCR_RESULTS.indexOf(result)
+    }));
+
+    const duplicates = [];
+    const used = new Set();
+
+    for (let i = 0; i < contacts.length; i++) {
+      if (used.has(i)) continue;
+
+      const group = {
+        contacts: [contacts[i]],
+        similarities: [100], // Self similarity is 100%
+        indices: [i]
+      };
+
+      for (let j = i + 1; j < contacts.length; j++) {
+        if (used.has(j)) continue;
+
+        const sim = similarity(contacts[i].name, contacts[j].name);
+        if (sim >= 80) { // 80% similarity threshold for potential duplicates
+          group.contacts.push(contacts[j]);
+          group.similarities.push(sim);
+          group.indices.push(j);
+          used.add(j);
+        }
+      }
+
+      if (group.contacts.length > 1) {
+        used.add(i);
+        duplicates.push(group);
+      }
+    }
+
+    return duplicates;
+  }
+
+  function mergeDuplicateGroup(groupIndex) {
+    // This would open a modal to review and merge duplicates
+    alert('Funcionalidad de fusión de duplicados en desarrollo. Por ahora, revise los contactos marcados como posibles duplicados manualmente.');
+  }
+
+  function highlightDiffs(ocr, real) {
+    const o = normalizeText(ocr), r = normalizeText(real);
+    if (!o || !r) return '-';
+    let html = '', ri = 0;
+    for (let i = 0; i < o.length; i++) {
+      const ch = o[i];
+      let found = false;
+      for (let j = ri; j < r.length; j++) {
+        if (r[j] === ch) { found = true; ri = j + 1; break; }
+      }
+      if (found) html += `<span style="color:green">${ch}</span>`;
+      else html += `<span style="color:red;font-weight:bold">${ch}</span>`;
+    }
+    return html;
+  }
+
+  // Function to export contacts as CSV
+  function exportContactsAsCSV() {
+    const headers = [
+      'Imagen', 'Nombre OCR', 'Similitud', 'Cliente BD', 'Diferencias',
+      'RFC BD', 'Contacto BD', 'Dirección BD',
+      'Empresa', 'Dirección', 'Calle', 'Calle 2', 'C.P.', 'Ciudad', 'Estado', 'País',
+      'Puesto de Trabajo', 'RFC', 'Sitio Web', 'Idioma', 'Etiquetas', 'Propiedad 1',
+      'Vendedor', 'Términos de Pago', 'Método de Pago', 'Lista de Precios',
+      'Método de Envío', 'Agrupar Solicitud', 'Comprador', 'Referencia'
+    ];
+
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+
+    OCR_RESULTS.forEach((result, index) => {
+      const info = result.contactInfo;
+      const row = [
+        `"${result.file}"`,
+        `"${result.name}"`,
+        `${result.match.score}`,
+        `"${result.match.client ? result.match.client.name : ''}"`,
+        `"${result.match.client ? highlightDiffs(result.name, result.match.client.name) : ''}"`,
+        `"${result.match.client ? result.match.client.rfc : ''}"`,
+        `"${result.match.client ? result.match.client.contact : ''}"`,
+        `"${result.match.client ? result.match.client.address : ''}"`,
+        `"${info.empresa}"`,
+        `"${info.direccion}"`,
+        `"${info.calle}"`,
+        `"${info.calle2}"`,
+        `"${info.cp}"`,
+        `"${info.ciudad}"`,
+        `"${info.estado}"`,
+        `"${info.pais}"`,
+        `"${info.puestoTrabajo}"`,
+        `"${info.rfc}"`,
+        `"${info.sitioWeb}"`,
+        `"${info.idioma}"`,
+        `"${info.etiquetas}"`,
+        `"${info.propiedad1}"`,
+        `"${info.vendedor}"`,
+        `"${info.terminosPago}"`,
+        `"${info.metodoPago}"`,
+        `"${info.listaPrecios}"`,
+        `"${info.metodoEnvio}"`,
+        `"${info.agruparSolicitud}"`,
+        `"${info.comprador}"`,
+        `"${info.referencia}"`
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'contactos_extraídos.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // Load data when page loads
+  window.addEventListener('load', loadData);
+
+// Instructions for user
+document.addEventListener('DOMContentLoaded', function() {
+  // Add instructions section after the existing content
+  const instructionsDiv = document.createElement('div');
+  instructionsDiv.className = 'section';
+  instructionsDiv.innerHTML = `
+    <h2>Instrucciones de Uso y Próximos Pasos</h2>
+    <div class="table-wrap">
+      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <h3>Cómo usar este sistema:</h3>
+        <ol>
+          <li><strong>Servidor Local:</strong> Mantenga ejecutando el servidor en PowerShell: <code>python -m http.server 8000</code></li>
+          <li><strong>Acceso:</strong> Abra su navegador y visite <code>http://localhost:8000/comparacion_clientes.html</code></li>
+          <li><strong>Visualización:</strong>
+            <ul>
+              <li>La primera tabla muestra la comparación OCR vs Base de Datos con todos los campos de contacto extraídos</li>
+              <li>La segunda tabla muestra los clientes de la base de datos con su información de hojas de Excel</li>
+              <li>La sección de análisis muestra estadísticas y posibles duplicados detectados</li>
+            </ul>
+          </li>
+          <li><strong>Exportar Datos:</strong> Use el botón "Exportar Contactos a CSV" para descargar todos los contactos en formato CSV</li>
+          <li><strong>Revisar Duplicados:</strong> Revise la sección de análisis para identificar posibles contactos duplicados</li>
+        </ol>
+      </div>
+
+      <div style="background: #e8f5e8; padding: 15px; border-radius: 8px;">
+        <h3>Próximos pasos para subir nuevos contactos e imágenes:</h3>
+        <ol>
+          <li><strong>Para agregar nuevas imágenes:</strong>
+            <ul>
+              <li>Coloque las nuevas capturas de pantalla en este directorio</li>
+              <li>Ejecute el proceso de OCR para extraer el texto de las imágenes</li>
+              <li>Actualice el archivo <code>ocr_results.json</code> con los nuevos resultados</li>
+            </ul>
+          </li>
+          <li><strong>Para actualizar la base de datos de clientes:</strong>
+            <ul>
+              <li>Modifique el archivo <code>clients_from_excel.json</code> con nuevos clientes o actualizaciones</li>
+              <li>Ejecute uno de los scripts de combinación (<code>merge_client_lists_correct.py</code>) para generar un nuevo <code>clients_final.json</code></li>
+            </ul>
+          </li>
+          <li><strong>Comandos útiles:</strong>
+            <ul>
+              <li><strong>Iniciar servidor:</strong> <code>python -m http.server 8000</code></li>
+              <li><strong>Ejecutar combinación de clientes:</strong> <code>python merge_client_lists_correct.py</code></li>
+              <li><strong>Ver conteo de OCR:</strong> <code>grep -c '"file"' ocr_results.json</code></li>
+              <li><strong>Ver conteo de clientes:</strong> <code>grep -c '"name"' clients_final.json</code></li>
+            </ul>
+          </li>
+        </ol>
+      </div>
+    </div>
+  `;
+
+  // Insert the instructions before the closing body tag
+  document.body.appendChild(instructionsDiv);
+});
+</script>
+</script>
+</body>
+</html>

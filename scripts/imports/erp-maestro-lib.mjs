@@ -140,10 +140,33 @@ export function findExcelMatch(odooName, rfc, excelList, hintName = null) {
 export function isGarbageName(name) {
   if (!name || String(name).trim().length < 2) return true;
   const lo = String(name).toLowerCase();
-  if (/persona.*empresa|empresa.*persona|nombre.*empresa|correo\s*electr/i.test(lo)) return true;
+  // Placeholders UI Odoo y campos de formulario
+  if (/^agregar\s+contacto$|^contacto\s+cread|^contacto\s+cre$|^nombre\s+ce|^nombre\s+de\s+la\s+empresa|^puesto\s+de\s+trabajo|^correo\s*electr|^enviar\s+mensaje|^registrar\s+una\s+nota|^whatsapp\s+actividad|^persona.*empresa|empresa.*persona/i.test(lo)) return true;
+  // Concatenacion de placeholders UI: 2+ frases UI Odoo juntas
+  const uiHits = lo.match(/enviar\s+mensaje|registrar\s+una\s+nota|whatsapp\s+actividad|agregar\s+contacto|contacto\s+crear|empresa\s*o\s*persona|persona\s*o\s*empresa|registrar\s*actividad|nueva\s+nota/g);
+  if (uiHits && uiHits.length >= 2) return true;
+  // Fragmentos OCR sueltos (1 letra + espacio + 1 palabra, o simbolos al inicio)
+  if (/^[a-z]\s+[a-z]{1,3}$/i.test(String(name).trim())) return true; // "J J", "E L"
+  if (/^[)\]}\-_,.;:!?¡¿]/.test(String(name).trim())) return true; // ") BOLSAS", leading junk
+  if (/^[a-z]{1,2}\)\s/i.test(String(name).trim())) return true; // "Ta) Anguiplast"
   const raw = String(name).trim();
+  // Ensalada OCR: muchas palabras cortas sin forma de razón social
+  const words = raw.split(/\s+/).filter(Boolean);
+  if (words.length >= 8) {
+    const hasCo = /\b(S\.?\s*A\.?|DE\s+C\.?\s*V\.?|S\.?\s*DE\s+R\.?\s*L\.?|INDUSTRIAL|GRUPO|M[ÉE]XICO|COMERCIAL)\b/i.test(raw);
+    const shortRatio = words.filter((w) => w.length <= 4).length / words.length;
+    if (!hasCo && shortRatio > 0.55) return true;
+  }
   const alnum = [...raw].filter((c) => /[a-z0-9]/i.test(c)).length;
   return raw.length > 6 && alnum / raw.length < 0.45;
+}
+
+/** Nombre apto para ficha empresa tabulador (calculadora). */
+export function isValidEmpresaTabuladorName(name) {
+  const tab = canonicalExcelName(name || '');
+  if (!tab || tab.length < 3) return false;
+  if (isGarbageName(tab)) return false;
+  return true;
 }
 
 export function clasificarTipoFicha(ocrItem) {

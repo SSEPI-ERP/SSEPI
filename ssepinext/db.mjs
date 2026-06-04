@@ -19,6 +19,7 @@ export const TABLES = [
   { name: 'local_facturas', indexCols: ['folio','estado','cliente_nombre','bloqueo_contable'] },
   { name: 'local_inventario', indexCols: ['codigo','nombre','categoria','activo'] },
   { name: 'local_contactos', indexCols: ['nombre','tipo','email'] },
+  { name: 'local_actividades_contactos', indexCols: ['contacto_id','fecha','tipo'] },
   { name: 'local_orden_historial', indexCols: ['orden_id','tabla_origen','evento'] },
   { name: 'local_coi_sync_queue', indexCols: ['tabla_origen','registro_id','estatus'] },
   { name: 'local_usuarios', indexCols: ['email','rol','activo'] },
@@ -51,7 +52,11 @@ export const TABLES = [
   { name: 'local_actividades_historial', indexCols: ['actividad_id','evento'] },
   { name: 'local_actividades_subtareas', indexCols: ['actividad_id','done','orden'] },
   { name: 'local_clientes_adeudos', indexCols: ['cliente_id','recuperado'] },
-  { name: 'local_pagos_nomina', indexCols: ['empleado_nombre','fecha_pago','estado'] }
+  { name: 'local_pagos_nomina', indexCols: ['empleado_nombre','fecha_pago','estado'] },
+  { name: 'local_vacaciones_empleados', indexCols: ['nombre','rol','email','orden'] },
+  { name: 'local_vacaciones_dias_feriados', indexCols: ['fecha','tipo','anio'] },
+  { name: 'local_vacaciones_balance', indexCols: ['user_id','anio'] },
+  { name: 'local_vacaciones_solicitudes', indexCols: ['user_id','estado','fecha_desde','fecha_hasta'] }
 ];
 
 let _sql = null;

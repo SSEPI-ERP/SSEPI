@@ -41,10 +41,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="/panel/js/core/membretes_base64.js?v=2"></script>
-    <script type="module" src="/panel/js/core/pdf-generator.js?v=2"></script>
+    <script type="module" src="/panel/js/core/pdf-generator.js?v=8"></script>
     <script type="module" src="/panel/js/modules/actividades.js?v=2"></script>
     <script src="/panel/js/core/importar_laboratorio.js?v=1"></script>
-    <script type="module" src="/panel/js/modules/taller.js?v=2"></script>
+    <script src="/panel/js/core/ocr-cleaner.js?v=1"></script>
+    <script type="module" src="/panel/js/modules/taller.js?v=3"></script>
     <script type="module" src="/panel/js/core/n8n-status.js?v=2"></script>
     <script type="module" src="/panel/js/core/n8n-insights-panel.js?v=2"></script>
 </head>
@@ -269,6 +270,9 @@
                 <div class="ws-header-actions">
                 <button type="button" class="btn-secondary ws-print-btn" id="btnVistaPreviaOrdenTaller" title="Abre vista previa; desde el navegador Imprimir → Guardar como PDF">
                     Vista previa
+                </button>
+                <button type="button" class="btn-secondary ws-print-btn" id="btnLimpiarOcr" title="Re-sanitiza textos importados por OCR (frases UI Odoo, actividad, whatsapp)">
+                    <i class="fas fa-broom"></i> Limpiar texto OCR
                 </button>
                 <button type="button" class="btn-secondary ws-print-btn" id="btnImprimirOrdenTaller" title="Abre e inicia el cuadro de impresión (PDF)">
                     Imprimir / PDF

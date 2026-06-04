@@ -3,6 +3,7 @@
  */
 import { createDataService } from '../core/data-service.js';
 import { enqueueCoiJob } from '../core/coi-queue.js';
+import { filterVisibleProfiles, isHiddenProfile } from '../core/hidden-profiles.js';
 
 const nominaService = createDataService('pagos_nomina');
 const contactosService = createDataService('contactos');
@@ -94,8 +95,9 @@ async function _loadEmpleadosDatalist() {
     } catch (_) {
         nombres = [];
     }
-    const fallback = ['Norberto Moro', 'Carlos Calderon', 'Daniel', 'Itzel', 'Becerra', 'Tecnico', 'Ivan', 'Administracion', 'Arturo', 'javier', 'Aaron'];
+    const fallback = ['Carlos Calderon', 'Daniel', 'Itzel', 'Becerra', 'Tecnico', 'Ivan', 'Administracion', 'Arturo', 'javier', 'Aaron'];
     fallback.forEach(n => { if (!nombres.includes(n)) nombres.push(n); });
+    nombres = filterVisibleProfiles(nombres.map((nombre) => ({ nombre }))).map((r) => r.nombre);
     _empleadosCache = nombres;
     dl.innerHTML = nombres.map(n => `<option value="${_escape(n)}">`).join('');
 }
@@ -218,7 +220,9 @@ async function refreshList() {
     const hasta = (document.getElementById('nomHasta')?.value || '').trim();
     try {
         const rows = await nominaService.select({}, { orderBy: 'fecha_pago', ascending: false, limit: 400 });
-        let list = (rows || []).filter(n => _inDateRange(n.fecha_pago, desde, hasta));
+        let list = (rows || [])
+            .filter(n => _inDateRange(n.fecha_pago, desde, hasta))
+            .filter(n => !isHiddenProfile({ nombre: n.empleado_nombre, email: n.empleado_email }));
         _updateKpis(list);
         _addToFeed('📥', 'Cargados ' + list.length + ' pagos en rango', 'ok');
         if (!list.length) {

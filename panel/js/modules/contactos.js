@@ -22,6 +22,8 @@ const ContactosModule = (function() {
     let busqueda = '';
     let filtroEmpresaKey = '';
     let empresaGrupos = [];
+    /** Mejor email/tel/RFC por clave empresa tabulador (rollup vista). */
+    let rollupPorEmpresa = new Map();
     let periodo = 'all';
     let vistaActual = 'kanban';
     let contactoSeleccionado = null;
@@ -87,6 +89,9 @@ const ContactosModule = (function() {
 
     /** Evita duplicar la misma persona al fusionar `clientes` con `contactos` (misma clave = una sola fila). */
     function _claveDedupeContacto(c) {
+        if (c.odoo_captura_id != null && String(c.odoo_captura_id).trim() !== '') {
+            return 'odoo:' + String(c.odoo_captura_id).trim();
+        }
         const email = (c.email || '').toString().toLowerCase().trim();
         const nom = _normalizarDedupe(c.nombre);
         const emp = _normalizarDedupe(c.empresa);
@@ -142,17 +147,34 @@ const ContactosModule = (function() {
         return joined.includes('nombre completo') && (joined.includes('correo') || joined.includes('teléfono') || joined.includes('telefono'));
     }
 
+    /** Caracteres "basura" al inicio de un nombre OCR (— em-dash, comillas, simbolos varios) */
+    const _OCR_NOISE_START = /^[A-Z]\s|^[)\]}\-_,.;:!?¡¿'"`~\\\/—–]|^[A-Z]{1,2}\s[A-Z]/;
+
     /** Clave de grupo empresa (Pac_Contactos: solo ficha empresa o vendedor bajo empresa). */
     function _empresaGrupoKey(c) {
         if (!c) return '';
         const tipo = c.tipo_ficha || '';
         if (tipo === 'empresa' || c.categoria === 'empresa') {
-            const base = (c.empresa_tabulador || c.nombre || c.empresa || '').trim();
-            return base ? _normalizarDedupe(base) : '';
+            // Prioridad 1: empresa_tabulador (vinculacion Pac_Contactos)
+            if (c.empresa_tabulador && String(c.empresa_tabulador).trim()) {
+                return _normalizarDedupe(c.empresa_tabulador);
+            }
+            // Prioridad 2: nombre solo si NO es OCR basura (sin simbolos sueltos al inicio)
+            const nom = (c.nombre || '').trim();
+            if (nom && !_OCR_NOISE_START.test(nom) && nom.length >= 3) {
+                return _normalizarDedupe(nom);
+            }
+            // Sin tabulador y nombre OCR: no agrupar (queda en vista plana)
+            return '';
         }
         if (tipo === 'contacto_empresa') {
-            const base = (c.empresa_tabulador || c.empresa || '').trim();
-            if (!base) return '';
+            // Prioridad 1: empresa_tabulador (vinculacion Pac_Contactos)
+            if (c.empresa_tabulador && String(c.empresa_tabulador).trim()) {
+                return _normalizarDedupe(c.empresa_tabulador);
+            }
+            // Prioridad 2: c.empresa solo si NO es OCR basura
+            const base = (c.empresa || '').trim();
+            if (!base || _OCR_NOISE_START.test(base) || base.length < 3) return '';
             const nomEmp = _normalizarDedupe(c.nombre);
             const keyEmp = _normalizarDedupe(base);
             if (nomEmp && nomEmp === keyEmp) return '';
@@ -165,6 +187,87 @@ const ContactosModule = (function() {
         const g = empresaGrupos.find(x => x.key === key);
         if (g) return g.label;
         return (fallback || key || '').toUpperCase();
+    }
+
+    function _escHtml(s) {
+        return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    }
+
+    function _buildRollupPorEmpresa() {
+        rollupPorEmpresa = new Map();
+        const acc = (key, c) => {
+            if (!key) return;
+            if (!rollupPorEmpresa.has(key)) {
+                rollupPorEmpresa.set(key, { email: '', telefono: '', rfc: '', direccion: '', puesto: '' });
+            }
+            const r = rollupPorEmpresa.get(key);
+            if (!r.email && c.email) r.email = String(c.email).trim();
+            if (!r.telefono && c.telefono) r.telefono = String(c.telefono).trim();
+            if (!r.rfc && c.rfc) r.rfc = String(c.rfc).trim();
+            if (!r.direccion && c.direccion) r.direccion = String(c.direccion).trim();
+            if (!r.puesto && c.puesto) r.puesto = String(c.puesto).trim();
+        };
+        for (const c of contactos) {
+            if (!c.email && !c.telefono && !c.rfc && !c.direccion) continue;
+            for (const raw of [c.empresa_tabulador, c.empresa, c.nombre]) {
+                if (!raw) continue;
+                acc(_normalizarDedupe(raw), c);
+            }
+        }
+    }
+
+    /** Muestra email/tel de vendedores Odoo en la ficha corta del tabulador. */
+    function _contactoParaVista(c) {
+        if (!c) return c;
+        if (c.email && c.telefono) return c;
+        const keys = [];
+        if (c.empresa_tabulador) keys.push(_normalizarDedupe(c.empresa_tabulador));
+        if (c.empresa) keys.push(_normalizarDedupe(c.empresa));
+        if (c.tipo_ficha === 'empresa' || c.categoria === 'empresa') {
+            if (c.nombre) keys.push(_normalizarDedupe(c.nombre));
+        }
+        let rollup = null;
+        for (const k of keys) {
+            if (rollupPorEmpresa.has(k)) {
+                rollup = rollupPorEmpresa.get(k);
+                break;
+            }
+        }
+        if (!rollup) return c;
+        return {
+            ...c,
+            email: c.email || rollup.email || '',
+            telefono: c.telefono || rollup.telefono || '',
+            rfc: c.rfc || rollup.rfc || '',
+            direccion: c.direccion || rollup.direccion || '',
+            puesto: c.puesto || rollup.puesto || '',
+        };
+    }
+
+    function _badgeMatchScore(score) {
+        const n = Number(score);
+        if (!n || n !== n) return '';
+        const cls = n >= 90 ? 'match-ok' : (n >= 70 ? 'match-med' : 'match-low');
+        return `<span class="contact-badge ${cls}">${Math.round(n)}%</span>`;
+    }
+
+    function _badgeTipoFicha(tipo) {
+        const m = {
+            empresa: ['tf-empresa', 'Empresa (dirección)'],
+            contacto_empresa: ['tf-vendedor', 'Vendedor → empresa'],
+            contacto_solo: ['tf-solo', 'Contacto solo'],
+        };
+        const [cls, label] = m[tipo] || ['tf-solo', tipo || 'Contacto'];
+        return `<span class="contact-badge ${cls}">${label}</span>`;
+    }
+
+    function _metaLineaContacto(c) {
+        const parts = [];
+        if (c.puesto) parts.push(_escHtml(c.puesto));
+        if (c.empresa_tabulador && c.tipo_ficha === 'contacto_empresa') {
+            parts.push(`<span class="contact-empresa-link">empresa: ${_escHtml(c.empresa_tabulador)}</span>`);
+        }
+        return parts.length ? `<p class="contact-meta">${parts.join(' · ')}</p>` : '';
     }
 
     function _buildEmpresaGrupos() {
@@ -180,7 +283,9 @@ const ContactosModule = (function() {
             if (tipo === 'empresa' || c.categoria === 'empresa') {
                 g.empresaId = c.id;
                 g.tieneFicha = true;
-                g.label = (c.empresa_tabulador || c.nombre || c.empresa || key).toUpperCase();
+                // Label: priorizar empresa_tabulador (validado por Pac) sobre nombre OCR
+                const nomOCR = c.nombre && !_OCR_NOISE_START.test(c.nombre) ? c.nombre : '';
+                g.label = (c.empresa_tabulador || c.empresa || nomOCR || key).toUpperCase();
             } else if (tipo === 'contacto_empresa') {
                 g.vendedores++;
                 if (!g.label) g.label = (c.empresa_tabulador || c.empresa || key).toUpperCase();
@@ -463,7 +568,7 @@ const ContactosModule = (function() {
         const skipPriorityEnsure = opts && opts.skipPriorityEnsure;
         let rawContactos = [];
         try {
-            rawContactos = await contactosService.select({}, { orderBy: 'nombre', ascending: true }) || [];
+            rawContactos = await contactosService.select({}, { orderBy: 'nombre', ascending: true, page: 0, pageSize: 3000 }) || [];
         } catch (e) {
             console.warn('[Contactos] Error cargando contactos:', e?.message || e);
         }
@@ -481,6 +586,7 @@ const ContactosModule = (function() {
             return true;
         }).map((c) => _aplicarEnriquecimientoTabulador(c, tabMap));
         console.log('[Contactos] Total después de dedupe:', contactos.length);
+        _buildRollupPorEmpresa();
         _rebuildEmpresaGrupos();
         // Proveedores de catálogo PRIORITY desactivados — solo contactos reales
         // if (!skipPriorityEnsure && !_ensuringPrioritySuppliers) {
@@ -543,7 +649,7 @@ const ContactosModule = (function() {
                 (c.nombre && c.nombre.toLowerCase().includes(q)) ||
                 (c.email && c.email.toLowerCase().includes(q)) ||
                 (c.rfc && c.rfc.toLowerCase().includes(q)) ||
-                (c.etiquetas && c.etiquetas?.toLowerCase().includes(q)) ||
+                (Array.isArray(c.etiquetas) ? c.etiquetas.some(function(t) { return String(t).toLowerCase().includes(q); }) : (c.etiquetas && String(c.etiquetas).toLowerCase().includes(q))) ||
                 (c.empresa && c.empresa.toLowerCase().includes(q)) ||
                 (c.sitio_web && c.sitio_web.toLowerCase().includes(q)) ||
                 (c.puesto && c.puesto.toLowerCase().includes(q))
@@ -586,24 +692,41 @@ const ContactosModule = (function() {
             container.innerHTML = `<div class="empty-state"><i class="fas fa-address-book"></i><p>No se encontraron contactos</p></div>`;
             return;
         }
-        container.innerHTML = contacts.map(c => {
+        container.innerHTML = contacts.map(raw => {
+            const c = _contactoParaVista(raw);
             const inicial = (c.nombre || '?').charAt(0).toUpperCase();
             const estiloAvatar = c.logo_url
-                ? `background-image: url('${c.logo_url}'); background-size: cover; background-position: center;`
+                ? `background-image: url('${_escHtml(c.logo_url)}'); background-size: cover; background-position: center;`
                 : `background: linear-gradient(135deg, ${c.color || '#00a09d'}, ${c.color || '#008a87'});`;
             const tipoClass = (c.tipo === 'client' || c.tipo === 'cliente') ? 'client' : 'provider';
             const tipoText = (c.tipo === 'client' || c.tipo === 'cliente') ? 'CLIENTE' : 'PROVEEDOR';
-            const catClass = (c.categoria === 'empresa') ? 'empresa' : 'persona';
-            const catText = (c.categoria === 'empresa') ? 'EMPRESA' : 'PERSONA';
+            const catClass = (c.categoria === 'empresa' || c.tipo_ficha === 'empresa') ? 'empresa' : 'persona';
+            const catText = catClass === 'empresa' ? 'EMPRESA' : 'PERSONA';
+            const tipoFicha = c.tipo_ficha || (catClass === 'empresa' ? 'empresa' : '');
+            const badgesTop = tipoFicha ? _badgeTipoFicha(tipoFicha) : '';
+            const matchBadge = _badgeMatchScore(c.match_score);
+            const odooId = c.odoo_captura_id ? `<span class="contact-odoo-id">#${_escHtml(c.odoo_captura_id)}</span>` : '';
+            const emailLine = c.email
+                ? `<p class="contact-email"><i class="fas fa-envelope"></i> ${_escHtml(c.email)}</p>`
+                : `<p class="contact-muted" title="Sin email en Pac_Contactos / Odoo / tabulador${c.fuente ? ' (fuente actual: ' + _escHtml(c.fuente) + ')' : ''}"><i class="fas fa-envelope"></i> Sin email disponible</p>`;
+            const telLine = c.telefono
+                ? `<p><i class="fas fa-phone-alt"></i> ${_escHtml(c.telefono)}</p>`
+                : `<p class="contact-muted" title="Sin telefono en Pac_Contactos / Odoo / tabulador${c.fuente ? ' (fuente actual: ' + _escHtml(c.fuente) + ')' : ''}"><i class="fas fa-phone-alt"></i> Sin telefono disponible</p>`;
+            const empresaShow = c.empresa_tabulador || c.empresa || '';
             return `
                 <div class="contact-card" data-id="${c.id}">
                     <div class="avatar-box" style="${estiloAvatar}">${c.logo_url ? '' : inicial}</div>
                     <div class="info">
-                        <h3>${c.nombre || 'Sin nombre'}</h3>
-                        <p><i class="fas fa-envelope"></i> ${c.email || '—'}</p>
-                        <p><i class="fas fa-phone-alt"></i> ${c.telefono || '—'}</p>
-                        <p><i class="fas fa-building"></i> ${c.empresa || '—'}</p>
-                        <span class="badge ${catClass}">${catText}</span> <span class="badge ${tipoClass}">${tipoText}</span>
+                        <div class="contact-card-tags">${badgesTop}${matchBadge}${odooId}</div>
+                        <h3>${_escHtml(c.nombre || 'Sin nombre')}</h3>
+                        ${_metaLineaContacto(c)}
+                        ${emailLine}
+                        ${telLine}
+                        <p><i class="fas fa-building"></i> ${_escHtml(empresaShow || '—')}</p>
+                        <div class="contact-card-badges">
+                            <span class="badge ${catClass}">${catText}</span>
+                            <span class="badge ${tipoClass}">${tipoText}</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -623,7 +746,8 @@ const ContactosModule = (function() {
             return;
         }
 
-        tbody.innerHTML = contacts.map(c => {
+        tbody.innerHTML = contacts.map(raw => {
+            const c = _contactoParaVista(raw);
             const tipoClass = (c.tipo === 'client' || c.tipo === 'cliente') ? 'client' : 'provider';
             const tipoText = (c.tipo === 'client' || c.tipo === 'cliente') ? 'Cliente' : 'Proveedor';
             const catClass = (c.categoria === 'empresa') ? 'empresa' : 'persona';
@@ -668,13 +792,109 @@ const ContactosModule = (function() {
         if (kpiClientes) kpiClientes.innerText = clientes;
         if (kpiProveedores) kpiProveedores.innerText = proveedores;
         if (kpiSaldo) kpiSaldo.innerHTML = `$${saldoTotal.toFixed(2)}`;
+        _renderDatosFaltantes();
+    }
+
+    /**
+     * Sección "Datos faltantes": fichas sin email/tel/RFC.
+     * Muestra un botón "Buscar en Google" que abre una búsqueda con RFC + nombre.
+     * La persona decide si el dato es válido y lo pega en la ficha.
+     */
+    function _renderDatosFaltantes() {
+        const sec = document.getElementById('datosFaltantesSection');
+        const listEl = document.getElementById('datosFaltantesList');
+        const countEl = document.getElementById('datosFaltantesCount');
+        if (!sec || !listEl) return;
+
+        const fEmail = document.getElementById('datosFaltantesFiltroEmail')?.checked !== false;
+        const fTel = document.getElementById('datosFaltantesFiltroTel')?.checked !== false;
+        const fRfc = document.getElementById('datosFaltantesFiltroRfc')?.checked !== false;
+        if (!fEmail && !fTel && !fRfc) { sec.style.display = 'none'; return; }
+
+        const faltantes = contactos.filter(c => {
+            if (!c || c._isCatalogPreset) return false;
+            const noEmail = !c.email || !String(c.email).trim();
+            const noTel = !c.telefono || !String(c.telefono).trim();
+            const noRfc = !c.rfc || !String(c.rfc).trim();
+            return (fEmail && noEmail) || (fTel && noTel) || (fRfc && noRfc);
+        });
+
+        if (!faltantes.length) {
+            sec.style.display = 'none';
+            return;
+        }
+        sec.style.display = '';
+        if (countEl) countEl.textContent = `(${faltantes.length})`;
+
+        faltantes.sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
+        listEl.innerHTML = faltantes.map(c => {
+            const emp = c.empresa_tabulador || c.empresa || '';
+            const rfc = c.rfc || '';
+            const inicial = (c.nombre || '?').charAt(0).toUpperCase();
+            const colorBg = c.color || '#888';
+            const queryParts = [c.nombre, emp, rfc].filter(Boolean).join(' ');
+            const queryEnc = encodeURIComponent(queryParts + ' contacto email telefono');
+            const googleUrl = `https://www.google.com/search?q=${queryEnc}`;
+            const fuenteLabel = c.fuente ? `fuente: ${_escHtml(c.fuente)}` : '';
+            return `
+                <div class="datos-faltantes-row" data-id="${_escHtml(c.id)}">
+                    <div class="datos-faltantes-avatar" style="background:${colorBg}">${inicial}</div>
+                    <div class="datos-faltantes-info">
+                        <strong>${_escHtml(c.nombre || '(sin nombre)')}</strong>
+                        <span class="datos-faltantes-emp">${_escHtml(emp)}</span>
+                        <span class="datos-faltantes-faltante">
+                            ${!c.email ? '<i class="fas fa-envelope"></i> sin email' : ''}
+                            ${!c.telefono ? '<i class="fas fa-phone-alt"></i> sin tel' : ''}
+                            ${!c.rfc ? '<i class="fas fa-id-card"></i> sin RFC' : ''}
+                        </span>
+                        ${rfc ? `<span class="datos-faltantes-rfc">RFC: ${_escHtml(rfc)}</span>` : ''}
+                        ${fuenteLabel ? `<span class="datos-faltantes-fuente">${fuenteLabel}</span>` : ''}
+                    </div>
+                    <div class="datos-faltantes-actions">
+                        <button type="button" class="btn-ssepi btn-taller btn-buscar-google" data-url="${googleUrl}">
+                            <i class="fab fa-google"></i> Buscar en Google
+                        </button>
+                        <button type="button" class="btn-ssepi btn-taller btn-abrir-ficha" data-id="${_escHtml(c.id)}">
+                            <i class="fas fa-pen"></i> Editar
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        if (!listEl.dataset.bound) {
+            listEl.dataset.bound = '1';
+            listEl.addEventListener('click', function(ev) {
+                const btnGoogle = ev.target.closest('.btn-buscar-google');
+                if (btnGoogle) {
+                    const url = btnGoogle.getAttribute('data-url');
+                    if (url) window.open(url, '_blank', 'noopener');
+                    return;
+                }
+                const btnEdit = ev.target.closest('.btn-abrir-ficha');
+                if (btnEdit) {
+                    const id = btnEdit.getAttribute('data-id');
+                    if (id) abrirDetalle(id);
+                }
+            });
+        }
+
+        // Re-bind de los filtros (solo una vez)
+        ['datosFaltantesFiltroEmail', 'datosFaltantesFiltroTel', 'datosFaltantesFiltroRfc'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && !el.dataset.bound) {
+                el.dataset.bound = '1';
+                el.addEventListener('change', _renderDatosFaltantes);
+            }
+        });
     }
 
     // ==================== PANEL DE DETALLE ====================
     async function abrirDetalle(id) {
         const sid = String(id);
-        const contacto = ultimaVistaFiltrada.find(c => String(c.id) === sid) || contactos.find(c => String(c.id) === sid);
-        if (!contacto) return;
+        const raw = ultimaVistaFiltrada.find(c => String(c.id) === sid) || contactos.find(c => String(c.id) === sid);
+        if (!raw) return;
+        const contacto = _contactoParaVista(raw);
         contactoSeleccionado = contacto;
         const backdrop = document.getElementById('backdrop');
         const sidePanel = document.getElementById('sidePanel');
@@ -695,7 +915,8 @@ const ContactosModule = (function() {
         setVal('panelRfc', contacto.rfc);
         setVal('panelDireccion', contacto.direccion);
         setVal('panelSitio', contacto.sitio_web);
-        setVal('panelCategoria', contacto.categoria || 'persona');
+        const catPanel = contacto.categoria || (contacto.tipo_ficha === 'empresa' ? 'empresa' : 'persona');
+        setVal('panelCategoria', catPanel);
         setVal('panelTipo', contacto.tipo || 'client');
         setVal('panelEtiquetas', contacto.etiquetas);
         setVal('panelLogoUrl', contacto.logo_url);
@@ -747,7 +968,10 @@ const ContactosModule = (function() {
                     const avatar = r.logo_url
                         ? `<img src="${r.logo_url}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px;">`
                         : `<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,${r.color || '#00a09d'},${r.color || '#008a87'});color:#fff;font-size:11px;font-weight:700;vertical-align:middle;margin-right:6px;">${(r.nombre || '?').charAt(0).toUpperCase()}</span>`;
-                    return `<div class="related-person-row" data-id="${r.id}" style="padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.05);cursor:pointer;">${avatar}<strong>${r.nombre}</strong> <span style="color:#888;font-size:12px;">${r.puesto || ''}</span></div>`;
+                    const tags = _badgeTipoFicha(r.tipo_ficha || 'contacto_empresa') + _badgeMatchScore(r.match_score);
+                    const email = r.email ? `<span style="display:block;font-size:12px;color:#666;">${_escHtml(r.email)}</span>` : '';
+                    const odoo = r.odoo_captura_id ? `<span style="font-size:11px;color:#999;">#${_escHtml(r.odoo_captura_id)}</span>` : '';
+                    return `<div class="related-person-row" data-id="${r.id}" style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.05);cursor:pointer;">${avatar}<div style="display:inline-block;vertical-align:top;max-width:calc(100% - 36px);"><div style="margin-bottom:4px;">${tags}</div><strong>${_escHtml(r.nombre)}</strong> <span style="color:#888;font-size:12px;">${_escHtml(r.puesto || '')}</span>${email}${odoo ? `<span style="margin-left:6px;">${odoo}</span>` : ''}</div></div>`;
                 }).join('');
                 const sectionHtml = `
                     <div class="detail-section" id="panelRelatedPeople">
@@ -847,6 +1071,7 @@ const ContactosModule = (function() {
             }
             _rebuildEmpresaGrupos();
             _renderView();
+            _renderDatosFaltantes();
             _updateAvatarFromContact(contactoSeleccionado || updatedData);
             await _agregarActividad(id, 'nota', 'Contacto actualizado');
             showNotification('✅ Contacto actualizado', 'success');
@@ -877,7 +1102,13 @@ const ContactosModule = (function() {
                 .eq('contacto_id', contactoId)
                 .order('fecha', { ascending: false })
                 .limit(20);
-            if (error) throw error;
+            if (error) {
+                if (String(error.message || '').includes('Tabla no existe')) {
+                    container.innerHTML = '<div class="empty-timeline">Timeline no disponible en modo local</div>';
+                    return;
+                }
+                throw error;
+            }
             if (!data || data.length === 0) {
                 container.innerHTML = '<div class="empty-timeline">No hay actividades registradas</div>';
                 return;

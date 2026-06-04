@@ -596,6 +596,16 @@ main {
     font-weight: 600;
 }
 
+.badge-preregistro-compra {
+    background: rgba(158, 158, 158, 0.22);
+    color: #424242;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    border: 1px dashed #9e9e9e;
+}
+
 .origen-line { margin-top: 2px; }
 .badge-origen {
     display: inline-block;

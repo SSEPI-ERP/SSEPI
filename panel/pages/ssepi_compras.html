@@ -24,9 +24,10 @@
     <script src="/panel/js/core/nav-by-role.js?v=2"></script>
     <script src="/panel/js/core/folio-formats.js?v=2"></script>
     <script src="/panel/js/core/email-service.js?v=2"></script>
-    <script type="module" src="/panel/js/core/pdf-generator.js?v=2"></script>
+    <script src="/panel/js/core/membretes_base64.js?v=2"></script>
+    <script type="module" src="/panel/js/core/pdf-generator.js?v=8"></script>
     <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
-    <script type="module" src="/panel/js/modules/compras.js?v=2"></script>
+    <script type="module" src="/panel/js/modules/compras.js?v=12"></script>
     <script type="module" src="/panel/js/core/n8n-status.js?v=2"></script>
     <script type="module" src="/panel/js/core/n8n-insights-panel.js?v=2"></script>
 </head>
@@ -242,10 +243,9 @@
 
                     <div class="form-grid">
                         <div class="input-group">
-                            <label>Proveedor</label>
-                            <select id="proveedorSelect">
-                                <option value="">PENDIENTE / Por asignar</option>
-                            </select>
+                            <label>Proveedor (orden sencilla)</label>
+                            <input type="text" id="proveedorSelect" list="proveedoresCompraList"
+                                placeholder="Escribir o elegir — vacío = pendiente">
                         </div>
                         <div class="input-group required">
                             <label>Departamento</label>
@@ -299,14 +299,19 @@
                         <div id="clienteInfoGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;"></div>
                     </div>
 
+                    <datalist id="proveedoresCompraList"></datalist>
+                    <p id="ordenTipoAyuda" class="compras-orden-tipo-hint" style="font-size:12px;color:#64748b;margin:8px 0 12px;">
+                        <strong>Sencilla:</strong> un proveedor arriba para toda la orden.
+                        <strong>Personalizada:</strong> indique proveedor por material (se generan varias órdenes de compra).
+                    </p>
                     <h4 style="margin-top: 18px;"><i class="fas fa-truck"></i> Materiales de Proveedores (a comprar)</h4>
                     <table class="items-table">
-                        <thead><tr><th>Nombre</th><th>Descripción</th><th>SKU</th><th>Cantidad</th><th>Precio Unit.</th><th>Link</th><th></th></tr></thead>
+                        <thead><tr><th>Nombre</th><th>Descripción</th><th>SKU</th><th class="col-proveedor-item">Proveedor</th><th>Cantidad</th><th>Precio Unit.</th><th>Link</th><th></th></tr></thead>
                         <tbody id="itemsBody"></tbody>
                     </table>
-                    <h4 style="margin-top: 18px;"><i class="fas fa-warehouse"></i> Materiales de Inventario</h4>
+                    <h4 style="margin-top: 18px;"><i class="fas fa-warehouse"></i> Materiales de Inventario / Automatización</h4>
                     <table class="items-table">
-                        <thead><tr><th>Nombre</th><th>Descripción</th><th>SKU</th><th>Cantidad</th><th>Precio Unit.</th><th></th></tr></thead>
+                        <thead><tr><th>Nombre</th><th>Descripción</th><th>SKU</th><th class="col-proveedor-item">Proveedor</th><th>Cantidad</th><th>Precio Unit.</th><th></th></tr></thead>
                         <tbody id="itemsBodyInventario"></tbody>
                     </table>
                     <button type="button" class="btn-add-row" id="addItemBtn"><i class="fas fa-plus"></i> Agregar producto proveedor</button>

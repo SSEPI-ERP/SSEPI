@@ -385,14 +385,17 @@ const FacturacionModule = (function() {
     }
 
     async function _loadFacturas() {
-        const supabase = _supabase();
-        if (supabase) {
-            const { data, error } = await supabase
-                .from('facturas')
-                .select('*')
-                .order('fecha_emision', { ascending: false });
-            if (error) console.error(error);
-            else facturas = data;
+        try {
+            facturas = await facturasService.select({}, {
+                orderBy: 'fecha_emision',
+                ascending: false,
+                page: 0,
+                pageSize: 500
+            }) || [];
+            _actualizarTodo();
+        } catch (e) {
+            console.warn('[Facturación] Error cargando facturas:', e);
+            facturas = [];
         }
     }
 
@@ -401,23 +404,24 @@ const FacturacionModule = (function() {
         _updateKPIs();
     }
 
-    // ==================== FILTROS Y VISTAS ====================
-    function _aplicarFiltros() {
+    /** Órdenes listas para facturar (sin filtro de fecha — el mes solo aplica a emitidas). */
+    function _listarPendientesBase() {
         let tOrd = [...ordenesTaller];
         let mOrd = [...ordenesMotores];
         let pOrd = [...ordenesProyectos];
         if (filtroArea === 'taller_electronica') { mOrd = []; pOrd = []; }
         else if (filtroArea === 'taller_motores') { tOrd = []; pOrd = []; }
         else if (filtroArea === 'automatizacion') { tOrd = []; mOrd = []; }
-        let pendientes = [...tOrd, ...mOrd, ...pOrd];
+        return [...tOrd, ...mOrd, ...pOrd];
+    }
+
+    // ==================== FILTROS Y VISTAS ====================
+    function _aplicarFiltros() {
+        let pendientes = _listarPendientesBase();
         let emitidas = facturas;
 
-        // Filtrar por fecha
+        // Filtrar por fecha — solo facturas emitidas (pendientes siempre visibles)
         if (filtroFechaInicio && filtroFechaFin) {
-            pendientes = pendientes.filter(o => {
-                const f = new Date(o.fecha_reparacion || o.fecha_ingreso);
-                return f >= filtroFechaInicio && f <= filtroFechaFin;
-            });
             emitidas = emitidas.filter(f => {
                 const fecha = new Date(f.fecha_emision);
                 return fecha >= filtroFechaInicio && fecha <= filtroFechaFin;
@@ -613,18 +617,19 @@ const FacturacionModule = (function() {
         });
     }
 
-    function _pendientesCountForKpis() {
-        let t = ordenesTaller.length;
-        let m = ordenesMotores.length;
-        let p = ordenesProyectos.length;
-        if (filtroArea === 'taller_electronica') { m = 0; p = 0; }
-        else if (filtroArea === 'taller_motores') { t = 0; p = 0; }
-        else if (filtroArea === 'automatizacion') { t = 0; m = 0; }
-        return t + m + p;
-    }
-
     function _updateKPIs() {
-        const pendientes = _pendientesCountForKpis();
+        let pendientes = _listarPendientesBase();
+        if (filtroEstado === 'emitida') pendientes = [];
+        if (filtroBuscar) {
+            const term = filtroBuscar.toLowerCase();
+            pendientes = pendientes.filter(o =>
+                (o.cliente_nombre && o.cliente_nombre.toLowerCase().includes(term)) ||
+                (o.folio && o.folio.toLowerCase().includes(term)) ||
+                (o.nombre_proyecto && o.nombre_proyecto.toLowerCase().includes(term)) ||
+                (o.nombre && String(o.nombre).toLowerCase().includes(term))
+            );
+        }
+        const pendientesCount = pendientes.length;
 
         const now = new Date();
         const mesActual = now.getMonth();
@@ -643,7 +648,7 @@ const FacturacionModule = (function() {
             }
         });
 
-        document.getElementById('kpiPendientes').innerText = pendientes;
+        document.getElementById('kpiPendientes').innerText = pendientesCount;
         document.getElementById('kpiFacturasMes').innerText = facturasMes;
         document.getElementById('kpiTotalFacturado').innerHTML = `$${totalFacturadoMes.toFixed(2)}`;
         document.getElementById('kpiEmitidas').innerText = facturas.length;

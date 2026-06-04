@@ -3,6 +3,8 @@ export const MODULE_PAGE_PATH = {
   ordenes_taller: '/panel/pages/ssepi_taller.html',
   ordenes_motores: '/panel/pages/ssepi_motores.html',
   proyectos_automatizacion: '/panel/pages/ssepi_servicios.html',
+  ventas: '/panel/pages/ssepi_ventas.html',
+  suministros: '/panel/pages/ssepi_suministros.html',
   compras: '/panel/pages/ssepi_compras.html',
 };
 

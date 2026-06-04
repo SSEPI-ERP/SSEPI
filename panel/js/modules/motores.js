@@ -9,11 +9,13 @@ import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
 import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
 import { CostosEngine } from '../core/costos-engine.js';
-import { pdfGenerator } from '../core/pdf-generator.js';
+import { pdfGenerator } from '../core/pdf-generator.js?v=8';
 import { getPrioritySuppliersForModule } from '../core/ssepi-runtime/priority-suppliers-catalog.js';
 import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
 import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
 import { purgeDraftRecordKeys } from '../core/ssepi-runtime/draft-purge-keys.js';
+import { ssepiOn, SSEPI_EVENTS } from '../core/ssepi-runtime/ssepi-event-bus.js';
+import { contactoDisplayNombre, isGarbageContactName } from '../core/contactos-grupo-utils.js';
 
 const MotoresModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -64,8 +66,12 @@ const MotoresModule = (function() {
     let subscriptions = [];
     let perfilUsuario = null;
 
-    function _esAdmin() {
-        return perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+    function _verFinanciero() {
+        if (window.SSEPICostVisibility && window.SSEPICostVisibility.canSeeFinancials) {
+            return window.SSEPICostVisibility.canSeeFinancials(perfilUsuario);
+        }
+        const rol = String(perfilUsuario?.rol || '').toLowerCase();
+        return rol === 'admin' || rol === 'superadmin';
     }
 
     function _motoresRecordKey() {
@@ -216,6 +222,28 @@ const MotoresModule = (function() {
         }
     }
 
+    function _openMotoresDraft(w) {
+        if (!w || !w.payload) return;
+        orderId = w.payload.orderId || null;
+        isNewOrder = !orderId;
+        motoresDraftSessionKey = null;
+        _resetForm();
+        _applyMotoresDraft(w);
+        if (document.getElementById('inpFolio') && w.payload.folio) document.getElementById('inpFolio').value = w.payload.folio;
+        document.getElementById('wsModal').classList.add('active');
+        _renderPrioritySupplierBarMotores();
+        _showSuccessAlert('Borrador restaurado');
+    }
+
+    function _resumeMotoresDraftKey(recordKey) {
+        const w = loadLocalDraft('ordenes_motores', recordKey);
+        if (!w || !w.payload) {
+            alert('No se encontró el borrador');
+            return;
+        }
+        _openMotoresDraft(w);
+    }
+
     function _tryResumeMotoresDraft() {
         const resume = new URLSearchParams(window.location.search).get('resume');
         if (!resume) return;
@@ -225,15 +253,12 @@ const MotoresModule = (function() {
             history.replaceState({}, document.title, window.location.pathname);
             return;
         }
-        orderId = w.payload.orderId || null;
-        isNewOrder = !orderId;
-        motoresDraftSessionKey = null;
-        _resetForm();
-        _applyMotoresDraft(w);
-        if (document.getElementById('inpFolio') && w.payload.folio) document.getElementById('inpFolio').value = w.payload.folio;
-        document.getElementById('wsModal').classList.add('active');
-        _renderPrioritySupplierBarMotores();
+        _openMotoresDraft(w);
         history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    function _flushMotoresAutosave() {
+        if (motoresAutosaveCtrl) motoresAutosaveCtrl.flush();
     }
 
     // ==================== CARGAR TÉCNICOS ====================
@@ -293,6 +318,11 @@ const MotoresModule = (function() {
         _initMotoresAutosave();
         _cargarVendedores();
         _tryResumeMotoresDraft();
+        ssepiOn(SSEPI_EVENTS.RESUME_DRAFT, (detail) => {
+            if (!detail || detail.module !== 'ordenes_motores') return;
+            _resumeMotoresDraftKey(detail.recordKey);
+        });
+        window.addEventListener('beforeunload', _flushMotoresAutosave);
         _initExportButton();
         _cargarTecnicos();
         console.log('✅ Módulo motores iniciado');
@@ -445,7 +475,7 @@ const MotoresModule = (function() {
         // Combinar contactos + clientes del tabulador (sin duplicados)
         const nombres = new Set();
         clients.forEach(c => {
-            const nombre = c.nombre || c.empresa;
+            const nombre = contactoDisplayNombre(c);
             if (nombre && !nombres.has(nombre)) {
                 nombres.add(nombre);
                 const opt = document.createElement('option');
@@ -455,7 +485,7 @@ const MotoresModule = (function() {
             }
         });
         tabuladorClientes.forEach(tc => {
-            if (tc.nombre && !nombres.has(tc.nombre)) {
+            if (tc.nombre && !isGarbageContactName(tc.nombre) && !nombres.has(tc.nombre)) {
                 nombres.add(tc.nombre);
                 const opt = document.createElement('option');
                 opt.value = tc.nombre;
@@ -670,7 +700,7 @@ const MotoresModule = (function() {
         const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
 
         let badgeRentabilidad = '';
-        const esAdminM = _esAdmin();
+        const esAdminM = _verFinanciero();
         if (orden.rentabilidad_estado === 'rojo') {
             badgeRentabilidad = esAdminM
                 ? `<span class="badge-rentabilidad-rojo badge-rentabilidad-inline" title="Adeudo $${(orden.adeudo_generado||0).toFixed(2)}">🔴 $${(orden.adeudo_generado||0).toFixed(0)}</span>`
@@ -742,7 +772,7 @@ const MotoresModule = (function() {
                 <td>${o.hp || ''}</td>
                 <td>${o.tecnico_responsable || ''}</td>
                 <td>${o.estado || 'Nuevo'}</td>
-                <td>${o.rentabilidad_estado === 'rojo' ? (_esAdmin() ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(o.adeudo_generado||0).toFixed(0)}</span>` : `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;" title="Rentabilidad baja"></span>`) : (o.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—')}</td>
+                <td>${o.rentabilidad_estado === 'rojo' ? (_verFinanciero() ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(o.adeudo_generado||0).toFixed(0)}</span>` : `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;" title="Rentabilidad baja"></span>`) : (o.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—')}</td>
                 <td>${o.fecha_ingreso ? new Date(o.fecha_ingreso).toLocaleDateString() : ''}</td>
                 <td>${o.fecha_reparacion ? new Date(o.fecha_reparacion).toLocaleDateString() : ''}</td>
                 <td>${recibidoPor}</td>
@@ -1033,6 +1063,16 @@ const MotoresModule = (function() {
     function _pasoToEstado(paso) {
         const mapa = { 1: 'Registrado', 2: 'Diagnóstico', 3: 'Esperando Cotización', 4: 'En reparación', 5: 'Entregado' };
         return mapa[paso] || 'Registrado';
+    }
+
+    function _estadoPrioridad(estado) {
+        const mapa = {
+            'Nuevo': 1, 'Registrado': 1, 'Diagnóstico': 2,
+            'Esperando Cotización': 3, 'En Espera': 3, 'Esperando Confirmación Cliente': 3,
+            'Confirmado': 4, 'En reparación': 4, 'Reparado': 4, 'Reparado / Listo': 4,
+            'Entregado': 5, 'Facturado': 5, 'Cancelado': 0, 'Garantía': 2
+        };
+        return mapa[estado] || 1;
     }
 
     async function _renderTimelineMotores(ordenId, estadoActual) {
@@ -1362,7 +1402,21 @@ const MotoresModule = (function() {
     }
 
     function _prevStep() { if (currentStep > 1) _irPaso(currentStep - 1); }
-    function _nextStep() { if (_validarPasoActual() && currentStep < 5) _irPaso(currentStep + 1); }
+
+    async function _nextStep() {
+        if (!_validarPasoActual() || currentStep >= 5) return;
+        const siguiente = currentStep + 1;
+        const nuevoEstado = _pasoToEstado(siguiente);
+        const ok = await _guardarOrden(true, siguiente);
+        if (!ok) {
+            alert('No se pudo guardar. Revise cliente, motor y permisos.');
+            return;
+        }
+        _flushMotoresAutosave();
+        _irPaso(siguiente);
+        _addToFeed('➡️', `Paso ${siguiente} · ${nuevoEstado}`);
+        _showSuccessAlert(`Paso ${siguiente} guardado · ${nuevoEstado}`);
+    }
 
     function _validarPasoActual() {
         switch(currentStep) {
@@ -1644,7 +1698,7 @@ const MotoresModule = (function() {
     function _renderPanelRentabilidad() {
         const panel = document.getElementById('panelRentabilidad');
         if (!panel) return;
-        const esAdminM = _esAdmin();
+        const esAdminM = _verFinanciero();
         const data = _recolectarDatos();
         const costoPresupuestado = currentOrder?.costo_presupuestado || currentOrder?.costo_total || data.costo_total || 0;
         const costoReal = CostosEngine.calcularCostoRealMotores({ ...data, costo_total: costoPresupuestado });
@@ -2051,11 +2105,14 @@ const MotoresModule = (function() {
         if (etapa < 5) _irPaso(etapa + 1);
     }
 
-    async function _guardarOrden(silencioso = false) {
+    async function _guardarOrden(silencioso = false, pasoParaEstado = null) {
         const data = _recolectarDatos();
-        // Auto-guardado: siempre guardar, solo advertir en modo manual si faltan campos
+        const pasoEst = pasoParaEstado != null ? pasoParaEstado : currentStep;
         if (!silencioso && (!data.cliente_nombre || !data.motor)) {
-            if (!confirm('Faltan campos obligatorios. ¿Guardar como borrador?')) { _irPaso(1); return; }
+            if (!confirm('Faltan campos obligatorios. ¿Guardar como borrador?')) { _irPaso(1); return false; }
+        }
+        if (silencioso && (!data.cliente_nombre || !data.motor)) {
+            return false;
         }
 
         const fotoInput = document.getElementById('productImage');
@@ -2104,6 +2161,17 @@ const MotoresModule = (function() {
             data.rentabilidad_estado = CostosEngine.determinarRentabilidad(costoPresupuestado, costoReal);
         } catch (re) {
             console.warn('[SSEPI-RENTABILIDAD] Error calculando rentabilidad:', re);
+        }
+
+        if (!isNewOrder) {
+            const pasoEstado = _pasoToEstado(pasoEst);
+            if (pasoEstado) {
+                const ordenActual = orders.find(o => String(o.id) === String(orderId));
+                const estadoActual = ordenActual?.estado || 'Nuevo';
+                if (_estadoPrioridad(pasoEstado) > _estadoPrioridad(estadoActual)) {
+                    data.estado = pasoEstado;
+                }
+            }
         }
 
         const csrfToken = sessionStorage.getItem('csrfToken');
@@ -2200,9 +2268,11 @@ const MotoresModule = (function() {
                 }
             }
 
+            return true;
         } catch (error) {
             console.error(error);
             if (!silencioso) alert('Error al guardar: ' + error.message);
+            return false;
         }
     }
 
@@ -2404,6 +2474,7 @@ const MotoresModule = (function() {
     }
 
     function _cerrarModal() {
+        _flushMotoresAutosave();
         document.getElementById('wsModal').classList.remove('active');
         currentOrder = null;
         orderId = null;
@@ -2455,7 +2526,7 @@ const MotoresModule = (function() {
         const items = [];
         if (orden.refacciones && orden.refacciones.length) {
             orden.refacciones.forEach(r => {
-                items.push({ descripcion: r.descripcion || r.nombre || 'Refacción', especificaciones: r.sku || '', unidad: 'Pza', precio: Number(r.costo) || 0, cantidad: parseInt(r.cantidad) || 1, entrega: '' });
+                items.push({ nombre: r.nombre || '', descripcion: r.nombre || r.descripcion || 'Refacción', especificaciones: r.sku || '', unidad: 'Pza', precio: Number(r.costo) || 0, cantidad: parseInt(r.cantidad) || 1, entrega: '' });
             });
         }
         if (!items.length) items.push({ descripcion: '(Sin refacciones cargadas)', especificaciones: '', unidad: '', precio: 0, cantidad: 1, entrega: '' });
@@ -2569,12 +2640,17 @@ const MotoresModule = (function() {
     }
 
     // ==================== EVENTOS DOM ====================
+    function _onEl(id, event, handler) {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, handler);
+    }
+
     function _bindEvents() {
-        document.getElementById('toggleMenu').addEventListener('click', _toggleMenu);
+        _onEl('toggleMenu', 'click', _toggleMenu);
         /* #themeBtn lo gestiona theme-clock.js */
-        document.getElementById('newOrderBtn').addEventListener('click', _abrirNuevaOrden);
-        document.getElementById('closeWsBtn').addEventListener('click', _cerrarModal);
-        document.getElementById('cancelWsBtn').addEventListener('click', _cerrarModal);
+        _onEl('newOrderBtn', 'click', _abrirNuevaOrden);
+        _onEl('closeWsBtn', 'click', _cerrarModal);
+        _onEl('cancelWsBtn', 'click', _cerrarModal);
         const reportePdfBtn = document.getElementById('btnReportePDFMotores');
         if (reportePdfBtn) reportePdfBtn.addEventListener('click', () => _generarReporteMotores(false, { sinPortada: true, partirSecciones: true }));
         const reporteParcialBtn = document.getElementById('btnReporteParcialMotores');
@@ -2586,12 +2662,12 @@ const MotoresModule = (function() {
         document.querySelectorAll('.ws-step-btn').forEach(btn => {
             btn.addEventListener('click', (e) => _irPaso(parseInt(e.target.dataset.step)));
         });
-        document.getElementById('prevStepBtn').addEventListener('click', _prevStep);
-        document.getElementById('nextStepBtn').addEventListener('click', _nextStep);
-        document.getElementById('saveOrderBtn').addEventListener('click', () => _guardarOrden(false));
-        document.getElementById('completeOrderBtn').addEventListener('click', _completarEntrega);
-        document.getElementById('sinReparacionBtn').addEventListener('click', _sinReparacion);
-        document.getElementById('generarCompraBtn').addEventListener('click', _generarSolicitudCompra);
+        _onEl('prevStepBtn', 'click', _prevStep);
+        _onEl('nextStepBtn', 'click', _nextStep);
+        _onEl('saveOrderBtn', 'click', () => _guardarOrden(false));
+        _onEl('completeOrderBtn', 'click', _completarEntrega);
+        _onEl('sinReparacionBtn', 'click', _sinReparacion);
+        _onEl('generarCompraBtn', 'click', _generarSolicitudCompra);
 
         // Botones del flujo comercial
         const btnCompraEspecial = document.getElementById('btnCompraEspecialMotores');
@@ -2606,23 +2682,23 @@ const MotoresModule = (function() {
             if (btn) btn.addEventListener('click', () => _terminarEtapa(i));
         }
 
-        document.getElementById('terminarReparacionBtn').addEventListener('click', _terminarReparacion);
-        document.getElementById('addEnlaceBtn').addEventListener('click', () => {
+        _onEl('terminarReparacionBtn', 'click', _terminarReparacion);
+        _onEl('addEnlaceBtn', 'click', () => {
             diagnosticoEnlaces.push({ nombre: '', descripcion: '', sku: '', cantidad: 1, link: '' });
             _renderDiagnosticoEnlaces();
         });
-        document.getElementById('addInventarioBtn').addEventListener('click', () => {
+        _onEl('addInventarioBtn', 'click', () => {
             diagnosticoInventario.push({ sku: '', nombre: '', descripcion: '', cantidad: 1 });
             _renderDiagnosticoInventario();
         });
-        document.getElementById('addConsumibleBtn').addEventListener('click', () => {
+        _onEl('addConsumibleBtn', 'click', () => {
             consumiblesUsados.push({ sku: '', nombre: '', descripcion: '', cantidad: 1 });
             _renderConsumibles();
         });
         const addComponenteExtraBtn = document.getElementById('addComponenteExtraBtn');
         if (addComponenteExtraBtn) addComponenteExtraBtn.addEventListener('click', _agregarComponenteExtra);
 
-        document.getElementById('aplicarFiltrosBtn').addEventListener('click', () => {
+        _onEl('aplicarFiltrosBtn', 'click', () => {
             filtroFechaInicio = document.getElementById('filtroFechaInicio').valueAsDate;
             filtroFechaFin = document.getElementById('filtroFechaFin').valueAsDate;
             filtroTecnico = document.getElementById('filtroTecnico').value;
@@ -2631,7 +2707,7 @@ const MotoresModule = (function() {
             _applyFilters();
         });
 
-        document.getElementById('vistaKanban').addEventListener('click', () => {
+        _onEl('vistaKanban', 'click', () => {
             vistaActual = 'kanban';
             document.getElementById('kanbanContainer').style.display = 'flex';
             document.getElementById('listaContainer').style.display = 'none';
@@ -2640,7 +2716,7 @@ const MotoresModule = (function() {
             document.getElementById('vistaKanban').classList.add('active');
             _applyFilters();
         });
-        document.getElementById('vistaLista').addEventListener('click', () => {
+        _onEl('vistaLista', 'click', () => {
             vistaActual = 'lista';
             document.getElementById('kanbanContainer').style.display = 'none';
             document.getElementById('listaContainer').style.display = 'block';
@@ -2649,7 +2725,7 @@ const MotoresModule = (function() {
             document.getElementById('vistaLista').classList.add('active');
             _applyFilters();
         });
-        document.getElementById('vistaGrafica').addEventListener('click', () => {
+        _onEl('vistaGrafica', 'click', () => {
             vistaActual = 'grafica';
             document.getElementById('kanbanContainer').style.display = 'none';
             document.getElementById('listaContainer').style.display = 'none';
@@ -2659,8 +2735,8 @@ const MotoresModule = (function() {
             _applyFilters();
         });
 
-        document.getElementById('productImage').addEventListener('change', _previewImage);
-        document.getElementById('fotoEntrega').addEventListener('change', (e) => {
+        _onEl('productImage', 'change', _previewImage);
+        _onEl('fotoEntrega', 'change', (e) => {
             const preview = document.getElementById('previewEntrega');
             if (e.target.files[0]) {
                 const reader = new FileReader();

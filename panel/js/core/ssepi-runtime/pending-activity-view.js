@@ -4,7 +4,10 @@ export function formatPendingTitle(entry) {
   const mod = entry.module === 'ordenes_taller' ? 'Laboratorio'
     : entry.module === 'ordenes_motores' ? 'Motores'
       : entry.module === 'proyectos_automatizacion' ? 'Automatización'
-        : entry.module;
+        : entry.module === 'ventas' ? 'Ventas'
+          : entry.module === 'suministros' ? 'Suministros'
+            : entry.module === 'compras' ? 'Compras'
+              : entry.module;
   return `${mod}: ${entry.label}`;
 }
 

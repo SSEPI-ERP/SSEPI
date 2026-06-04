@@ -195,6 +195,7 @@ async function importarInventario() {
     }
   }
 
+  setDeferPersist(false);
   persistDb();
 
   console.log('\n=========================================');

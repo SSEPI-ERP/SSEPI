@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -21,7 +21,7 @@
     <script src="/panel/js/core/user-menu.js?v=2"></script>
     <script src="/panel/js/core/nav-by-role.js?v=2"></script>
     <script src="/panel/js/core/ssepi-toast.js?v=2"></script>
-    <script type="module" src="/panel/js/modules/inventario.js?v=2"></script>
+    <script type="module" src="/panel/js/modules/inventario.js?v=4"></script>
 </head>
 <body class="page-inventario nav-loading">
     <script>
@@ -171,7 +171,7 @@
                             <th class="col-num">Stock</th>
                             <th class="col-num">Mín.</th>
                             <th class="col-num" data-hide-for-no-admin="true">Costo</th>
-                            <th class="col-num">Precio Venta</th>
+                            <th class="col-num" data-hide-for-no-admin="true">Precio Venta</th>
                             <th class="col-num" data-hide-for-no-admin="true">Valor</th>
                             <th class="col-links">Compras</th>
                         </tr>
@@ -289,7 +289,7 @@
                             <label>Costo Unitario ($)</label>
                             <input type="number" id="productCost" min="0" step="0.01" value="0">
                         </div>
-                        <div class="input-group">
+                        <div class="input-group" id="productPriceGroup" data-hide-for-no-admin="true">
                             <label>Precio de Venta ($)</label>
                             <input type="number" id="productPrice" min="0" step="0.01" value="0">
                         </div>

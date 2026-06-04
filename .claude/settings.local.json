@@ -188,7 +188,16 @@
       "Bash(findstr -i \"contacto cliente empresa datos\")",
       "PowerShell(cmd /c \"E:\\\\SSEPI\\\\reiniciar-ssepi.bat\")",
       "PowerShell(node seed-calculadoras.mjs)",
-      "PowerShell(Measure-Command *)"
+      "PowerShell(Measure-Command *)",
+      "PowerShell(head *)",
+      "Bash(Get-Process -Name cloudflared -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object Id, StartTime, CommandLine)",
+      "Bash(cmd.exe //c \"taskkill /F /IM node.exe\")",
+      "Bash(cmd.exe //c \"taskkill /F /IM cloudflared.exe\")",
+      "Bash(cmd.exe //c \"E:\\\\SSEPI\\\\reiniciar-ssepi.bat\")",
+      "Bash(curl.exe -s -m 5 \"http://127.0.0.1:3333/api/health\")",
+      "Bash(curl.exe -s -m 5 \"http://127.0.0.1:3333/panel/login.html\" -o /dev/null -w \"HTTP=%{http_code} TIME=%{time_total}s\\\\n\")",
+      "Bash(Select-Object -First 50)"
     ]
   }
 }

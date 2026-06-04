@@ -1,0 +1,284 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.wrap{padding:1rem 0}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;align-items:center}
+.controls input{flex:1;min-width:180px;font-size:13px;padding:6px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)}
+.controls select{font-size:13px;padding:6px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:1rem}
+.stat{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 14px}
+.stat-n{font-size:22px;font-weight:500;color:var(--color-text-primary)}
+.stat-l{font-size:12px;color:var(--color-text-secondary);margin-top:2px}
+.tbl-wrap{overflow-x:auto;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed}
+th{padding:8px 10px;text-align:left;font-weight:500;font-size:12px;color:var(--color-text-secondary);background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);position:sticky;top:0;z-index:2}
+td{padding:7px 10px;border-bottom:0.5px solid var(--color-border-tertiary);color:var(--color-text-primary);vertical-align:top;overflow:hidden;text-overflow:ellipsis}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--color-background-secondary)}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:500;white-space:nowrap}
+.b-ok{background:#EAF3DE;color:#3B6D11}
+.b-partial{background:#FAEEDA;color:#854F0B}
+.b-none{background:#FCEBEB;color:#A32D2D}
+.b-odoo{background:#E6F1FB;color:#185FA5}
+.contacts{font-size:11px;color:var(--color-text-secondary);margin-top:3px}
+.rfc-small{font-family:var(--font-mono);font-size:11px;color:var(--color-text-tertiary)}
+.score-bar{display:inline-flex;align-items:center;gap:4px}
+.score-dot{width:7px;height:7px;border-radius:50%}
+.expand-btn{cursor:pointer;font-size:11px;color:var(--color-text-secondary);background:none;border:none;text-decoration:underline;padding:0}
+.detail-row td{background:var(--color-background-secondary);font-size:12px}
+.sheets{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+.sheet-tag{padding:1px 5px;border-radius:3px;font-size:10px;background:var(--color-background-info);color:var(--color-text-info)}
+.col-empresa{width:20%}
+.col-odoo{width:22%}
+.col-rfc{width:14%}
+.col-match{width:10%}
+.col-kms{width:8%}
+.col-costo{width:10%}
+.col-sheets{width:16%}
+</style>
+
+<div class="wrap">
+<h2 class="sr-only">Comparador de clientes Odoo vs Excel SSEPI</h2>
+
+<div class="stats" id="stats"></div>
+
+<div class="controls">
+  <input type="text" id="search" placeholder="Buscar empresa, RFC, contacto..." oninput="render()">
+  <select id="filter" onchange="render()">
+    <option value="all">Todos</option>
+    <option value="matched">Con match exacto</option>
+    <option value="partial">Match parcial</option>
+    <option value="unmatched">Sin match en Excel</option>
+    <option value="excel_only">Solo en Excel</option>
+  </select>
+</div>
+
+<div class="tbl-wrap">
+<table>
+<thead><tr>
+  <th class="col-empresa">Empresa (Odoo)</th>
+  <th class="col-odoo">Contacto(s) Odoo</th>
+  <th class="col-rfc">RFC real</th>
+  <th class="col-match">Match Excel</th>
+  <th class="col-kms">KM (c1)</th>
+  <th class="col-costo">Costo total</th>
+  <th class="col-sheets">Hojas servicio</th>
+</tr></thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+
+<p style="font-size:11px;color:var(--color-text-tertiary);margin-top:8px;text-align:right">* Datos Odoo extraídos del PDF (60 registros). Completar con los 79 restantes para cobertura total.</p>
+</div>
+
+<script>
+const EXCEL = [
+  {name:"AEROPUERTO",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"ANGUIPALST",rfc:"ANG101215PG0",c1:234,c6:1415.05,sheets:["Hoja1"]},
+  {name:"ARCOSA",rfc:"ECS440707GG7",c1:32,c6:340.95,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"BADER TABACHINES",rfc:"BAD880303CC3",c1:17.2,c6:298.88,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"BODYCOTE",rfc:"BOD770404DD4",c1:90.6,c6:632.49,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"BOLSAS DE LOS ALTOS",rfc:"BAL050101AA1",c1:226,c6:1267.32,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"BRUSAROSCO",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"CARTO MICRO",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"COFICAB",rfc:"COF660505EE5",c1:80,c6:602.37,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"CONDUMEX",rfc:"CON550606FF6",c1:90.6,c6:632.49,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"CURTIDOS BENGALA",rfc:"CUR880808F66",c1:17.2,c6:298.88,sheets:[]},
+  {name:"DI CENTRAL",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"ECOBOLSAS",rfc:"ECO990202BB2",c1:216,c6:1238.89,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"ELECTROFORJADOS",rfc:"SEE330404B22",c1:14.6,c6:291.49,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"EMMSA",rfc:"EMM330808HH8",c1:21.6,c6:311.39,sheets:["Hoja1"]},
+  {name:"EMMSA SILAO",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"EPC 1",rfc:"EPC220909II9",c1:400,c6:2011.84,sheets:["Hoja1"]},
+  {name:"EPC 2",rfc:"EPC111010JJ0",c1:402,c6:2142.53,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"FAMO ALIMENTOS",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"FAS",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"FRAENKISCHE",rfc:"FRA001111KK1",c1:79.4,c6:600.66,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"GEDNEY",rfc:"GED991212LL2",c1:23.6,c6:442.07,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"GRANOS Y SEMILLAS",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"GRUPO ACERERO",rfc:"GRU880101MM3",c1:386,c6:1972.05,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"HALL PLANTA 1",rfc:"HAL770202NN4",c1:73.8,c6:584.75,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"HIELO REGIA",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"HIRUTA PLANTA 1",rfc:"HIR660303OO5",c1:58.4,c6:540.98,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"HORMAS PALACIOS",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"IK PLASTIC",rfc:"IKP550404PP6",c1:61.4,c6:549.51,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"IMPRENTA JM",rfc:"IMP440505QQ7",c1:16.2,c6:296.04,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"JARDÍN LA ALEMANA",rfc:"JAR330606RR8",c1:12,c6:284.11,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"MAFLOW",rfc:"MAF220707SS9",c1:59.8,c6:544.96,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"MARQUARDT",rfc:"MAR110808TT0",c1:125.4,c6:856.4,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"MICROONDA",rfc:"MIC000909UU1",c1:41.6,c6:493.23,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"MINO INDUSTRY",rfc:"MIN000707E55",c1:29.2,c6:332.99,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"MR LUCKY",rfc:"MRL991010VV2",c1:157,c6:946.21,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"NHK",rfc:"NHK881111WW3",c1:138.6,c6:893.92,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"NISHIKAWA",rfc:"NIS771212XX4",c1:61,c6:548.37,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"PIELES AZTECA",rfc:"PIE660101YY5",c1:5,c6:139.21,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"PILSAC",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"PRELOSA",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"RONGTAI",rfc:"RON550202ZZ6",c1:28.2,c6:455.15,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"SADDLEBACK",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"SAFE DEMO",rfc:"SAF440303A11",c1:61.6,c6:550.07,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"SOSER",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"SUACERO",rfc:"SUA220505C33",c1:392,c6:2114.11,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"TENERÍA VARGAS",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"TORNIMASTER",rfc:"",c1:0,c6:0,sheets:["AUTOMATIZACIÓN","LABORATORIO","MOTORES","SUMINISTROS"]},
+  {name:"TQ-1",rfc:"TQ1110606D44",c1:26,c6:323.89,sheets:["AUTOMATIZACIÓN","Hoja1","LABORATORIO","MOTORES","SUMINISTROS"]}
+];
+
+const ODOO = [
+  {empresa:"Anguiplast, S.A. de C.V.",rfc:"ANG101215PG0",dir:"Libramiento Norte Km. 2, Arandas, JAL",tel:"+52 348 784 6573",email:"aluquin@anguiplast.com",tipo:"Empresa",contacts:[{name:"Jaziel Lopez",email:"ventas@anguiplast.com",tel:"+52 348 784 6573",puesto:""}]},
+  {empresa:"BODYCOTE",rfc:"GODE561231GR8",dir:"Ave Olmo No. 100, Parque Industrial Las Colinas, Silao 36270, GTO",tel:"+52 472 103 5500",email:"",tipo:"Empresa",contacts:[{name:"Christian Ramírez",email:"christian.ramirez@bodycote.com",tel:"+52 462 188 0922",puesto:"Mantenimiento"}]},
+  {empresa:"BOLSAS DE LOS ALTOS",rfc:"",dir:"Lib. Sur 125, Jardines de La Glorieta, Arandas 47180, JAL",tel:"+52 348 784 4666",email:"",tipo:"Empresa",contacts:[{name:"Jennifer Gerrero",email:"",tel:"",puesto:"Ventas"}]},
+  {empresa:"Brusarosco de México, S.A. de C.V.",rfc:"BME200218GI9",dir:"Industrial Zapatera No. 168, León 37564, GTO",tel:"+52 477 100 8470",email:"l.ochoa@rmgbrusdemex.com",tipo:"Empresa",contacts:[]},
+  {empresa:"COFICAB",rfc:"",dir:"Av. Mina de Guadalupe 780, Parque Ind. Santa Fe IV, Silao 37275, GTO",tel:"+52 477 162 2500",email:"",tipo:"Empresa",contacts:[]},
+  {empresa:"CONDUMEX",rfc:"TEM780525GW8",dir:"Miguel Hidalgo #7, Silao 36100, GTO",tel:"",email:"",tipo:"Empresa",contacts:[]},
+  {empresa:"Centro de Investigación en Cómputo Aplicado S.A.",rfc:"CIC1403104H3",dir:"Blvd. Delta No. 803, León 37290, GTO",tel:"+52 477 329 4410",email:"ag@oxmachines.com",tipo:"Empresa",contacts:[]},
+  {empresa:"DI-CENTRAL",rfc:"",dir:"Blvd. Industriales 2000 No. 202, Ciudad Industrial, León 37490",tel:"+52 477 292 2000",email:"hola@dicentral.mx",tipo:"Empresa",contacts:[]},
+  {empresa:"DOMUM",rfc:"DAU190816PH4",dir:"C. Garambullo 204, Los Limones, León 37448, GTO",tel:"+52 477 312 0214",email:"",tipo:"Empresa",contacts:[{name:"Ariel Diaz",email:"ventas1@d-automation.com",tel:"+52 477 564 2981",puesto:"Ventas"}]},
+  {empresa:"Demo Technic Leon / Safe Demo",rfc:"",dir:"William Thompson 108, Parque Ind. Leon Bajío PILBA, León 37680",tel:"+52 477 344 1060",email:"contact.demotechnic@safe-demo.com",tipo:"Empresa",contacts:[{name:"Lic. Blanca Vanesa",email:"",tel:"",puesto:""}]},
+  {empresa:"ECOBOLSAS",rfc:"EBO090606410",dir:"Carr. Arandas León Km 4, Arandas 47180, JAL",tel:"+52 348 784 4440",email:"compras@eco-bolsas.com.mx",tipo:"Empresa",contacts:[{name:"Elio Cesar",email:"produccion@eco-bolsas.com.mx",tel:"",puesto:""}]},
+  {empresa:"EMMSA",rfc:"",dir:"Parque Industrial Apolo, Silao, GTO",tel:"",email:"",tipo:"Empresa",contacts:[]},
+  {empresa:"Envases Plásticos del Centro S.A. de C.V.",rfc:"EPC800819LW8",dir:"Av Eje 104, Zona Industrial, San Luis Potosí 78395",tel:"+52 444 824 2454",email:"compras@eplasticos.com.mx",tipo:"Empresa",contacts:[{name:"Maurico Santiago",email:"ventas@eplasticos.com.mx",tel:"+52 444 824 2454",puesto:"Mantenimiento"}]},
+  {empresa:"Famo Alimentos, S.A. de C.V.",rfc:"FAL1505136N3",dir:"Cerrada de Muñoz No.109, San Francisco del Rincón 36443, GTO",tel:"+52 477 343 4300",email:"antoniorm@famoalimentos.com.mx",tipo:"Empresa",contacts:[]},
+  {empresa:"Fraenkische Industrial Pipes México S.A. de C.V.",rfc:"FIP110624BY8",dir:"Av. Paraíso No. 405, Parque Ind. Las Colinas, Silao de la Victoria 36270, GTO",tel:"+52 472 690 3040",email:"sandra.rangel@fraenkische-mx.com",tipo:"Empresa",contacts:[]},
+  {empresa:"Granos y Servicios Integrales S.A. de C.V.",rfc:"GSI040921926",dir:"Lasallistas No. 120 Int. 2B, El Rosario, San Juan de los Lagos 47095, JAL",tel:"+52 395 725 8033",email:"pedro.pastor@proan.com",tipo:"Empresa",contacts:[{name:"Ing. Uriel Padilla",email:"mantenimiento.gsi@consorciogsi.com",tel:"+52 395 112 6913",puesto:"Ing. de mantenimiento"}]},
+  {empresa:"Grupo Zahonero",rfc:"",dir:"Prolongación Oleoducto #109, Col. Nueva Ciudad Industrial, León 37490, GTO",tel:"",email:"",tipo:"Empresa",contacts:[]},
+  {empresa:"GRUPO PLASMA AUTOMATION",rfc:"",dir:"Cam. Rancho Alegre 100A, Fracciones de el Alto, León 37295, GTO",tel:"",email:"",tipo:"Empresa",contacts:[]},
+  {empresa:"Hormas Palacios, S.A. de C.V.",rfc:"HPA9301194W8",dir:"Hilario Medina No. 616, El Coecillo, León 37260, GTO",tel:"+52 477 763 4574",email:"",tipo:"Empresa",contacts:[{name:"Lulu Palacios",email:"hormaspalacios@gmail.com",tel:"+52 477 143 2413",puesto:"Compras"}]},
+  {empresa:"ARCOSA",rfc:"",dir:"Blvd. Sendai # 3, Parque Sendai, Valle de Santiago 38422, GTO",tel:"+52 456 649 5178",email:"",tipo:"Empresa",contacts:[]},
+  {empresa:"BRENDA ISELA MARTINEZ MORALES",rfc:"MAMB880922T43",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"COMPONENTES DE LEON",rfc:"CLE121101449",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"DISTRIBUIDORA LIVERPOOL",rfc:"DLI931201MI9",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"DMT CORTES UNIVERSALES",rfc:"DCU1809064Z6",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"DON PULCRO",rfc:"DPU991209HW4",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"EBAY",rfc:"no aplica",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"ECSA",rfc:"no aplica",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"EIKI",rfc:"EIK001214A56",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"ESTACION DE SERVICIO LAS HUERTAS",rfc:"ESH920210N26",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"EUROELECTRICA",rfc:"EUR930324493",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"FANTASIAS MIGUEL",rfc:"FMI650208GG9",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"FAS",rfc:"no aplica",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"GRUPO AMIGOS DE SAN ANGEL",rfc:"GAS9404199I6",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"GRUPO COMERCIAL CZO CARNAVALLIA",rfc:"GCC200715C26",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"GUSTAVO NASSER GONZALEZ",rfc:"NAGG831231750",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"HALL ALUMINIUM",rfc:"no aplica",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"HIRUTA",rfc:"no aplica",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"HOME DEPOT MEXICO",rfc:"HDM001017AS1",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"ICEMAN",rfc:"no aplica",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"A Y B EUROSERVICIOS",rfc:"BEU160404M89",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"AG ELECTRONICA",rfc:"AEL920315L68",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"AUTOMATISCHE TECHNIK MEXICO",rfc:"ATM090707DI7",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"BADER",rfc:"no aplica",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+  {empresa:"BIG BEN UNIFORMES",rfc:"BBU150406Q93",dir:"",tel:"",email:"",tipo:"Persona",contacts:[]},
+];
+
+function norm(s){return (s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9\s]/g,'').replace(/\s+/g,' ').trim()}
+function lev(a,b){if(!a)return b.length;if(!b)return a.length;const d=[];for(let i=0;i<=a.length;i++)d[i]=[i];for(let j=0;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++){const c=a[i-1]===b[j-1]?0:1;d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c)}return d[a.length][b.length]}
+function sim(a,b){const s=norm(a),t=norm(b);if(!s||!t)return 0;const d=lev(s,t);return Math.round((1-d/Math.max(s.length,t.length))*100)}
+
+function rfcMatch(r1,r2){if(!r1||!r2)return false;if(r1==='no aplica'||r2==='no aplica')return false;return norm(r1)===norm(r2)}
+
+function findExcelMatch(odooItem){
+  let best=null,bestScore=-1;
+  for(const ex of EXCEL){
+    let score=sim(odooItem.empresa,ex.name);
+    if(rfcMatch(odooItem.rfc,ex.rfc))score=Math.max(score,95);
+    if(score>bestScore){bestScore=score;best=ex}
+  }
+  return {match:bestScore>=50?best:null,score:bestScore}
+}
+
+const ENRICHED = ODOO.map(o=>{
+  const {match,score}=findExcelMatch(o);
+  return {...o,excelMatch:match,matchScore:score}
+});
+
+const EXCEL_ONLY = EXCEL.filter(ex=>{
+  const matched = ENRICHED.some(o=>o.excelMatch&&o.excelMatch.name===ex.name);
+  return !matched;
+});
+
+let expanded={};
+
+function getStatus(item){
+  if(!item.excelMatch)return 'none';
+  if(item.matchScore>=90)return 'ok';
+  return 'partial';
+}
+
+function render(){
+  const q=norm(document.getElementById('search').value);
+  const f=document.getElementById('filter').value;
+  const tbody=document.getElementById('tbody');
+
+  let rows=[];
+
+  if(f!=='excel_only'){
+    let items=ENRICHED;
+    if(f==='matched')items=items.filter(i=>getStatus(i)==='ok');
+    else if(f==='partial')items=items.filter(i=>getStatus(i)==='partial');
+    else if(f==='unmatched')items=items.filter(i=>getStatus(i)==='none');
+    if(q)items=items.filter(i=>norm(i.empresa).includes(q)||norm(i.rfc).includes(q)||i.contacts.some(c=>norm(c.name).includes(q)));
+    rows=items.map(item=>renderOdooRow(item));
+  }
+
+  if(f==='all'||f==='excel_only'){
+    let exItems=EXCEL_ONLY;
+    if(q)exItems=exItems.filter(ex=>norm(ex.name).includes(q)||norm(ex.rfc).includes(q));
+    rows=rows.concat(exItems.map(ex=>renderExcelOnlyRow(ex)));
+  }
+
+  tbody.innerHTML=rows.join('');
+
+  const total=ENRICHED.length;
+  const matched=ENRICHED.filter(i=>getStatus(i)==='ok').length;
+  const partial=ENRICHED.filter(i=>getStatus(i)==='partial').length;
+  const none=ENRICHED.filter(i=>getStatus(i)==='none').length;
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="stat-n">${total}</div><div class="stat-l">Odoo (visibles)</div></div>
+    <div class="stat"><div class="stat-n" style="color:#3B6D11">${matched}</div><div class="stat-l">Match exacto</div></div>
+    <div class="stat"><div class="stat-n" style="color:#854F0B">${partial}</div><div class="stat-l">Match parcial</div></div>
+    <div class="stat"><div class="stat-n" style="color:#A32D2D">${none}</div><div class="stat-l">Sin match Excel</div></div>
+    <div class="stat"><div class="stat-n" style="color:#185FA5">${EXCEL_ONLY.length}</div><div class="stat-l">Solo en Excel</div></div>
+  `;
+}
+
+function renderOdooRow(item){
+  const st=getStatus(item);
+  const badgeMap={ok:'<span class="badge b-ok">Exacto</span>',partial:'<span class="badge b-partial">'+item.matchScore+'%</span>',none:'<span class="badge b-none">Sin match</span>'};
+  const badge=badgeMap[st];
+  const contactsHtml=item.contacts.length?`<div class="contacts">${item.contacts.map(c=>`<i class="ti ti-user" style="font-size:10px" aria-hidden="true"></i> ${c.name}${c.puesto?' · '+c.puesto:''}${c.email?' · '+c.email:''}`).join('<br>')}</div>`:'';
+  const sheets=item.excelMatch?.sheets||[];
+  const sheetsHtml=sheets.length?`<div class="sheets">${sheets.slice(0,3).map(s=>`<span class="sheet-tag">${s}</span>`).join('')}${sheets.length>3?`<span class="sheet-tag">+${sheets.length-3}</span>`:''}</div>`:'<span style="color:var(--color-text-tertiary);font-size:11px">—</span>';
+  const matchName=item.excelMatch?`<div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px">${item.excelMatch.name}</div>`:'';
+  const rfcDisplay=item.rfc&&item.rfc!=='no aplica'&&item.rfc!='GODE561231GR8'?`<div class="rfc-small">${item.rfc}</div>`:`<span style="color:var(--color-text-tertiary);font-size:11px">${item.rfc||'—'}</span>`;
+  const tipo=item.tipo==='Empresa'?'':`<span class="badge b-odoo" style="margin-left:4px">persona</span>`;
+  const kms=item.excelMatch?.c1||0;
+  const costo=item.excelMatch?.c6||0;
+
+  return `<tr>
+    <td class="col-empresa"><span style="font-weight:500">${item.empresa}</span>${tipo}</td>
+    <td class="col-odoo">${item.email?`<div style="font-size:11px;color:var(--color-text-secondary)">${item.email}</div>`:''}${item.tel?`<div style="font-size:11px;color:var(--color-text-secondary)">${item.tel}</div>`:''}${contactsHtml}</td>
+    <td class="col-rfc">${rfcDisplay}</td>
+    <td class="col-match">${badge}${matchName}</td>
+    <td class="col-kms" style="text-align:right">${kms?kms.toFixed(1):'—'}</td>
+    <td class="col-costo" style="text-align:right">${costo?'$'+costo.toFixed(0):'—'}</td>
+    <td class="col-sheets">${sheetsHtml}</td>
+  </tr>`;
+}
+
+function renderExcelOnlyRow(ex){
+  const sheetsHtml=ex.sheets.length?`<div class="sheets">${ex.sheets.slice(0,3).map(s=>`<span class="sheet-tag">${s}</span>`).join('')}${ex.sheets.length>3?`<span class="sheet-tag">+${ex.sheets.length-3}</span>`:''}</div>`:'—';
+  return `<tr style="opacity:0.7">
+    <td class="col-empresa"><span style="font-weight:500">${ex.name}</span> <span class="badge b-odoo">solo Excel</span></td>
+    <td class="col-odoo" style="color:var(--color-text-tertiary);font-size:11px">Sin registro Odoo</td>
+    <td class="col-rfc"><div class="rfc-small">${ex.rfc||'—'}</div></td>
+    <td class="col-match"><span class="badge b-none">Solo Excel</span></td>
+    <td class="col-kms" style="text-align:right">${ex.c1||'—'}</td>
+    <td class="col-costo" style="text-align:right">${ex.c6?'$'+ex.c6.toFixed(0):'—'}</td>
+    <td class="col-sheets">${sheetsHtml}</td>
+  </tr>`;
+}
+
+render();
+</script>

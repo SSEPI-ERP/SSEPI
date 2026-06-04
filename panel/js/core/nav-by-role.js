@@ -18,7 +18,7 @@
     var ROLE_MODULES = {
         admin: null,              // null = ve todo (incluye análisis general)
         superadmin: null,         // null = ve todo
-        ventas:              ['ventas', 'inventario', 'contactos', 'vacaciones', 'suministros', 'proyectos_automatizacion'],
+        ventas:              ['ventas', 'inventario', 'contactos', 'vacaciones', 'suministros'],
         administracion:      ['compras', 'facturas', 'contabilidad', 'pagos_nomina', 'inventario', 'contactos', 'vacaciones', 'suministros'],
         taller:              ['ordenes_taller', 'inventario', 'vacaciones'],
         motores:             ['ordenes_motores', 'inventario', 'vacaciones'],
@@ -302,6 +302,19 @@
         } catch (e) {}
     }
 
+    function applyBodyFinancialClass(profile) {
+        if (!document.body) return;
+        var ok = false;
+        if (profile) {
+            var rol = String(profile.rol || '').toLowerCase();
+            ok = rol === 'admin' || rol === 'superadmin';
+            if (ok && isDualModeUser(profile)) {
+                try { if (sessionStorage.getItem('ssepi_mode') === 'normal') ok = false; } catch (e) {}
+            }
+        }
+        document.body.classList.toggle('ssepi-sin-financieros', !ok);
+    }
+
     async function runWhenReady() {
         migrateLegacyModeKeys();
         var deadline = Date.now() + 8000;
@@ -325,6 +338,7 @@
                 var effectiveRol = getEffectiveRol(profile);
                 try { sessionStorage.setItem('ssepi_rol', effectiveRol || profile.rol); } catch (e) {}
                 if (document.body) document.body.dataset.rol = effectiveRol || profile.rol;
+                applyBodyFinancialClass({ rol: effectiveRol || profile.rol });
                 applyNavByRoleFromCache(effectiveRol || profile.rol);
                 if (isDualModeUser(profile)) {
                     injectDualModeToggle(profile);
@@ -365,7 +379,11 @@
                 else sessionStorage.setItem('ssepi_norberto_empleado', 'true');
             } catch (e) {}
             document.body.dataset.rol = newRol;
+            applyBodyFinancialClass({ rol: newRol });
             applyNavByRoleFromCache(newRol);
+            try {
+                document.body.dispatchEvent(new CustomEvent('ssepi:cost-visibility-changed', { detail: { rol: newRol, mode: newMode } }));
+            } catch (e) {}
             btn.title = currentlyNormal ? 'Modo admin (clic para modo normal: ' + baseRol + ')' : 'Modo normal: ' + baseRol + ' (clic para modo admin)';
             btn.innerHTML = currentlyNormal ? '<i class="fas fa-user-shield"></i>' : '<i class="fas fa-user"></i>';
             btn.setAttribute('aria-label', currentlyNormal ? 'Cambiar a modo normal' : 'Cambiar a modo admin');

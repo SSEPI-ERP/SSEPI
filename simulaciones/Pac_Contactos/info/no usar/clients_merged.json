@@ -1,0 +1,947 @@
+[
+  {
+    "name": "AEROPUERTO",
+    "num": 1,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "ANGUIPALST",
+    "num": 2,
+    "sheets": [
+      "Hoja1"
+    ],
+    "c1": 234.0,
+    "c2": 24.63,
+    "c3": 665.05,
+    "c4": 6.0,
+    "c5": 750.0,
+    "c6": 1415.05,
+    "address": "Libramiento Norte Km. 2, Arandas, JAL",
+    "rfc": "ANG101215PG0",
+    "contact": "Ing. Compras"
+  },
+  {
+    "name": "ARCOSA",
+    "num": 3,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 32.0,
+    "c2": 3.37,
+    "c3": 90.95,
+    "c4": 2.0,
+    "c5": 250.0,
+    "c6": 340.95,
+    "address": "Le\u00f3n, GTO",
+    "rfc": "ECS440707GG7",
+    "contact": "Admin"
+  },
+  {
+    "name": "BADER TABACHINES",
+    "num": 4,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 17.2,
+    "c2": 1.81,
+    "c3": 48.88,
+    "c4": 2.0,
+    "c5": 250.0,
+    "c6": 298.88,
+    "address": "Blvd. J. Clouthier, Le\u00f3n, GTO",
+    "rfc": "BAD880303CC3",
+    "contact": "Mantenimiento"
+  },
+  {
+    "name": "BODYCOTE",
+    "num": 5,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 90.6,
+    "c2": 9.54,
+    "c3": 257.49,
+    "c4": 3.0,
+    "c5": 375.0,
+    "c6": 632.49,
+    "address": "Silao, Guanajuato Puerto Interior",
+    "rfc": "BOD770404DD4",
+    "contact": "Ing. Proyectos"
+  },
+  {
+    "name": "BOLSAS DE LOS ALTOS",
+    "num": 6,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 226.0,
+    "c2": 23.79,
+    "c3": 642.32,
+    "c4": 5.0,
+    "c5": 625.0,
+    "c6": 1267.32,
+    "address": "Carr. Tepatitl\u00e1n - Arandas, JAL",
+    "rfc": "BAL050101AA1",
+    "contact": "Lic. Adquisiciones"
+  },
+  {
+    "name": "BRUSAROSCO",
+    "num": 7,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "CARTO MICRO",
+    "num": 8,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "COFICAB",
+    "num": 9,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 80.0,
+    "c2": 8.42,
+    "c3": 227.37,
+    "c4": 3.0,
+    "c5": 375.0,
+    "c6": 602.37,
+    "address": "Puerto Interior, Silao, GTO",
+    "rfc": "COF660505EE5",
+    "contact": "Ing. El\u00e9ctrico"
+  },
+  {
+    "name": "CONDUMEX",
+    "num": 10,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 90.6,
+    "c2": 9.54,
+    "c3": 257.49,
+    "c4": 3.0,
+    "c5": 375.0,
+    "c6": 632.49,
+    "address": "Silao, GTO",
+    "rfc": "CON550606FF6",
+    "contact": "Compras"
+  },
+  {
+    "name": "CURTIDOS BENGALA",
+    "num": 11,
+    "sheets": [],
+    "c1": 17.2,
+    "c2": 1.81,
+    "c3": 44.36,
+    "c4": 2.0,
+    "c5": 250.0,
+    "c6": 298.88,
+    "address": "Parque Piel",
+    "rfc": "CUR880808F66",
+    "contact": "Propietario"
+  },
+  {
+    "name": "DI CENTRAL",
+    "num": 12,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "ECOBOLSAS",
+    "num": 13,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 216.0,
+    "c2": 22.74,
+    "c3": 613.89,
+    "c4": 5.0,
+    "c5": 625.0,
+    "c6": 1238.89,
+    "address": "Parque Industrial Le\u00f3n, GTO",
+    "rfc": "ECO990202BB2",
+    "contact": "Gerente Planta"
+  },
+  {
+    "name": "ELECTROFORJADOS",
+    "num": 14,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 14.6,
+    "c2": 1.54,
+    "c3": 41.49,
+    "c4": 2.0,
+    "c5": 250.0,
+    "c6": 291.49,
+    "address": "Le\u00f3n, GTO",
+    "rfc": "SEE330404B22",
+    "contact": "Mtto"
+  },
+  {
+    "name": "EMMSA",
+    "num": 15,
+    "sheets": [
+      "Hoja1"
+    ],
+    "c1": 21.6,
+    "c2": 2.27,
+    "c3": 61.39,
+    "c4": 2.0,
+    "c5": 250.0,
+    "c6": 311.39,
+    "address": "Le\u00f3n, GTO",
+    "rfc": "EMM330808HH8",
+    "contact": "Almac\u00e9n"
+  },
+  {
+    "name": "EMMSA SILAO",
+    "num": 16,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "EPC 1",
+    "num": 17,
+    "sheets": [
+      "Hoja1"
+    ],
+    "c1": 400.0,
+    "c2": 42.11,
+    "c3": 1136.84,
+    "c4": 7.0,
+    "c5": 875.0,
+    "c6": 2011.84,
+    "address": "SLP",
+    "rfc": "EPC220909II9",
+    "contact": "Ingenier\u00eda"
+  },
+  {
+    "name": "EPC 2",
+    "num": 18,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 402.0,
+    "c2": 42.32,
+    "c3": 1142.53,
+    "c4": 8.0,
+    "c5": 1000.0,
+    "c6": 2142.53,
+    "address": "SLP",
+    "rfc": "EPC111010JJ0",
+    "contact": "Ingenier\u00eda"
+  },
+  {
+    "name": "FAMO ALIMENTOS",
+    "num": 19,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "FAS",
+    "num": 20,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "FRAENKISCHE",
+    "num": 21,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 79.4,
+    "c2": 8.36,
+    "c3": 225.66,
+    "c4": 3.0,
+    "c5": 375.0,
+    "c6": 600.66,
+    "address": "Silao, GTO",
+    "rfc": "FRA001111KK1",
+    "contact": "Mtto"
+  },
+  {
+    "name": "GEDNEY",
+    "num": 22,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 23.6,
+    "c2": 2.48,
+    "c3": 67.07,
+    "c4": 3.0,
+    "c5": 375.0,
+    "c6": 442.07,
+    "address": "Le\u00f3n, GTO",
+    "rfc": "GED991212LL2",
+    "contact": "Compras"
+  },
+  {
+    "name": "GRANOS Y SEMILLAS",
+    "num": 23,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "GRUPO ACERERO",
+    "num": 24,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 386.0,
+    "c2": 40.63,
+    "c3": 1097.05,
+    "c4": 7.0,
+    "c5": 875.0,
+    "c6": 1972.05,
+    "address": "SLP",
+    "rfc": "GRU880101MM3",
+    "contact": "Planta"
+  },
+  {
+    "name": "HALL PLANTA 1",
+    "num": 25,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 73.8,
+    "c2": 7.77,
+    "c3": 209.75,
+    "c4": 3.0,
+    "c5": 375.0,
+    "c6": 584.75,
+    "address": "Parque Opci\u00f3n, San Jos\u00e9 Iturbide",
+    "rfc": "HAL770202NN4",
+    "contact": "Ing. Control"
+  },
+  {
+    "name": "HIELO REGIA",
+    "num": 26,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "HIRUTA PLANTA 1",
+    "num": 27,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 58.4,
+    "c2": 6.15,
+    "c3": 165.98,
+    "c4": 3.0,
+    "c5": 375.0,
+    "c6": 540.98,
+    "address": "Parque Amistad, Celaya",
+    "rfc": "HIR660303OO5",
+    "contact": "Mtto"
+  },
+  {
+    "name": "HORMAS PALACIOS",
+    "num": 28,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "IK PLASTIC",
+    "num": 29,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 61.4,
+    "c2": 6.46,
+    "c3": 174.51,
+    "c4": 3.0,
+    "c5": 375.0,
+    "c6": 549.51,
+    "address": "Parque Stiva, Le\u00f3n",
+    "rfc": "IKP550404PP6",
+    "contact": "Ing. Proc"
+  },
+  {
+    "name": "IMPRENTA JM",
+    "num": 30,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 16.2,
+    "c2": 1.71,
+    "c3": 46.04,
+    "c4": 2.0,
+    "c5": 250.0,
+    "c6": 296.04,
+    "address": "Col. Obreg\u00f3n, Le\u00f3n",
+    "rfc": "IMP440505QQ7",
+    "contact": "Due\u00f1o"
+  },
+  {
+    "name": "JARD\u00cdN LA ALEMANA",
+    "num": 31,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 12.0,
+    "c2": 1.26,
+    "c3": 34.11,
+    "c4": 2.0,
+    "c5": 250.0,
+    "c6": 284.11,
+    "address": "Le\u00f3n, GTO",
+    "rfc": "JAR330606RR8",
+    "contact": "Admin"
+  },
+  {
+    "name": "MAFLOW",
+    "num": 32,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 59.8,
+    "c2": 6.29,
+    "c3": 169.96,
+    "c4": 3.0,
+    "c5": 375.0,
+    "c6": 544.96,
+    "address": "Silao, GTO",
+    "rfc": "MAF220707SS9",
+    "contact": "Ingenier\u00eda"
+  },
+  {
+    "name": "MARQUARDT",
+    "num": 33,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 125.4,
+    "c2": 13.2,
+    "c3": 356.4,
+    "c4": 4.0,
+    "c5": 500.0,
+    "c6": 856.4,
+    "address": "Irapuato, GTO",
+    "rfc": "MAR110808TT0",
+    "contact": "Compras"
+  },
+  {
+    "name": "MICROONDA",
+    "num": 34,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 41.6,
+    "c2": 4.38,
+    "c3": 118.23,
+    "c4": 3.0,
+    "c5": 375.0,
+    "c6": 493.23,
+    "address": "Le\u00f3n, GTO",
+    "rfc": "MIC000909UU1",
+    "contact": "Sistemas"
+  },
+  {
+    "name": "MINO INDUSTRY",
+    "num": 35,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 29.2,
+    "c2": 3.07,
+    "c3": 82.99,
+    "c4": 2.0,
+    "c5": 250.0,
+    "c6": 332.99,
+    "address": "Le\u00f3n, GTO",
+    "rfc": "MIN000707E55",
+    "contact": "Ing. Moldes"
+  },
+  {
+    "name": "MR LUCKY",
+    "num": 36,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 157.0,
+    "c2": 16.53,
+    "c3": 446.21,
+    "c4": 4.0,
+    "c5": 500.0,
+    "c6": 946.21,
+    "address": "Irapuato, GTO",
+    "rfc": "MRL991010VV2",
+    "contact": "Campo"
+  },
+  {
+    "name": "NHK",
+    "num": 37,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 138.6,
+    "c2": 14.59,
+    "c3": 393.92,
+    "c4": 4.0,
+    "c5": 500.0,
+    "c6": 893.92,
+    "address": "Celaya, GTO",
+    "rfc": "NHK881111WW3",
+    "contact": "Mtto"
+  },
+  {
+    "name": "NISHIKAWA",
+    "num": 38,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 61.0,
+    "c2": 6.42,
+    "c3": 173.37,
+    "c4": 3.0,
+    "c5": 375.0,
+    "c6": 548.37,
+    "address": "Silao, GTO",
+    "rfc": "NIS771212XX4",
+    "contact": "Ing. Prod"
+  },
+  {
+    "name": "PIELES AZTECA",
+    "num": 39,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 5.0,
+    "c2": 0.53,
+    "c3": 14.21,
+    "c4": 1.0,
+    "c5": 125.0,
+    "c6": 139.21,
+    "address": "Le\u00f3n, GTO",
+    "rfc": "PIE660101YY5",
+    "contact": "Almac\u00e9n"
+  },
+  {
+    "name": "PILSAC",
+    "num": 40,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "PRELOSA",
+    "num": 41,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "RONGTAI",
+    "num": 42,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 28.2,
+    "c2": 2.97,
+    "c3": 80.15,
+    "c4": 3.0,
+    "c5": 375.0,
+    "c6": 455.15,
+    "address": "Le\u00f3n, GTO",
+    "rfc": "RON550202ZZ6",
+    "contact": "Compras"
+  },
+  {
+    "name": "SADDLEBACK",
+    "num": 43,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "SAFE DEMO",
+    "num": 44,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 61.6,
+    "c2": 6.48,
+    "c3": 175.07,
+    "c4": 3.0,
+    "c5": 375.0,
+    "c6": 550.07,
+    "address": "Silao, GTO",
+    "rfc": "SAF440303A11",
+    "contact": "Ingenier\u00eda"
+  },
+  {
+    "name": "SOSER",
+    "num": 45,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "SUACERO",
+    "num": 46,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 392.0,
+    "c2": 41.26,
+    "c3": 1114.11,
+    "c4": 8.0,
+    "c5": 1000.0,
+    "c6": 2114.11,
+    "address": "SLP",
+    "rfc": "SUA220505C33",
+    "contact": "Planta"
+  },
+  {
+    "name": "TENER\u00cdA VARGAS",
+    "num": 47,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "TORNIMASTER",
+    "num": 48,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 0.0,
+    "c2": 0.0,
+    "c3": 0.0,
+    "c4": 0.0,
+    "c5": 0.0,
+    "c6": 0.0,
+    "address": "",
+    "rfc": "",
+    "contact": ""
+  },
+  {
+    "name": "TQ-1",
+    "num": 49,
+    "sheets": [
+      "AUTOMATIZACI\u00d3N",
+      "Hoja1",
+      "LABORATORIO",
+      "MOTORES",
+      "SUMINISTROS"
+    ],
+    "c1": 26.0,
+    "c2": 2.74,
+    "c3": 73.89,
+    "c4": 2.0,
+    "c5": 250.0,
+    "c6": 323.89,
+    "address": "Le\u00f3n, GTO",
+    "rfc": "TQ1110606D44",
+    "contact": "Admin"
+  }
+]

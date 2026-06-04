@@ -4,6 +4,7 @@ const TARGET = typeof window !== 'undefined' ? window : globalThis;
 export const SSEPI_EVENTS = {
   DRAFT_SAVED: 'ssepi:draft-saved',
   DRAFT_RESTORED: 'ssepi:draft-restored',
+  RESUME_DRAFT: 'ssepi:resume-draft',
   PENDING_UPDATED: 'ssepi:pending-updated',
 };
 

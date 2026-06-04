@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -19,6 +19,7 @@
     <script type="module" src="/panel/js/core/auth-service.js?v=2"></script>
     <script type="module" src="/panel/js/core/data-service.js?v=2"></script>
     <script type="module" src="/panel/js/core/costos-engine.js?v=2"></script>
+    <script type="module" src="/panel/js/core/horas-jerarquia.js?v=1"></script>
     <script type="module" src="/panel/js/core/contactos-formulas.js?v=2"></script>
     <script src="/panel/js/core/theme-clock.js?v=2"></script>
     <script src="/panel/js/core/user-menu.js?v=2"></script>
@@ -28,10 +29,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="/panel/js/core/membretes_base64.js?v=2"></script>
-    <script type="module" src="/panel/js/core/pdf-generator.js?v=2"></script>
+    <script type="module" src="/panel/js/core/pdf-generator.js?v=8"></script>
     <script type="module" src="/panel/js/core/folio-formats.js?v=2"></script>
-    <script type="module" src="/panel/js/modules/actividades.js?v=2"></script>
-    <script type="module" src="/panel/js/modules/servicios.js?v=2"></script>
+    <script type="module" src="/panel/js/modules/actividades.js?v=4"></script>
+    <script type="module" src="/panel/js/modules/servicios.js?v=21"></script>
     <script type="module" src="/panel/js/core/n8n-status.js?v=2"></script>
     <script type="module" src="/panel/js/core/n8n-insights-panel.js?v=2"></script>
 </head>
@@ -193,11 +194,16 @@
                 <div>
                     <div class="ws-title">AUTOMATIZACIÓN - 5 ETAPAS</div>
                     <div class="ws-folio"><input type="text" id="inpFolio" class="ws-folio-input" readonly></div>
+                    <span id="serviciosDraftIndicator" class="auto-draft-indicator" aria-live="polite"></span>
                 </div>
             </div>
             <!-- Registro de tiempos por etapa -->
             <div id="registroTiemposPanel" style="margin-top:8px;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:#475569;min-height:24px;"></div>
             <div id="registroTiemposRelacionados" style="margin-top:4px;"></div>
+            <div id="autoModoConsultaBanner" hidden style="display:none;margin-top:8px;padding:10px 14px;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;font-size:13px;color:#065f46;">
+                <i class="fas fa-check-circle"></i> <strong>Proyecto completado</strong> — puede revisar cualquier etapa (Anterior/Siguiente o botones arriba). No se modifica el flujo ni se envía a Compras.
+                Para retrabajo use <strong>Garantía</strong> (flujo formal).
+            </div>
         </div>
 
         <div class="ws-body">
@@ -207,15 +213,29 @@
                 <div id="step-1" class="step-content active">
                     <div class="form-section">
                         <div class="section-title-form"><i class="fas fa-clipboard-list"></i> Levantamiento</div>
+                        <p class="auto-paso1-hint">Datos que registró <strong>Ventas</strong> al crear el folio. Las notas del día van en la <strong>bitácora</strong> (panel derecho).</p>
                         <div class="form-grid">
                             <div class="input-group required"><label>Nombre del Proyecto</label><input type="text" id="paso1_nombre"></div>
-                            <div class="input-group required"><label>Cliente</label><input type="text" id="paso1_cliente"></div>
+                            <div class="input-group required"><label>Cliente</label><select id="paso1_cliente"><option value="">— Seleccionar cliente —</option></select></div>
                             <div class="input-group required"><label>Fecha</label><input type="date" id="paso1_fecha"></div>
-                            <div class="input-group"><label>Vendedor</label><input type="text" id="paso1_vendedor"></div>
+                            <div class="input-group"><label>Vendedor</label><input type="text" id="paso1_vendedor" readonly placeholder="Desde Ventas"></div>
                         </div>
-                        <div class="input-group"><label>Notas Generales</label><textarea id="paso1_notasGenerales" rows="3"></textarea></div>
-                        <div class="input-group" style="display:none;"><label>Notas Internas</label><textarea id="paso1_notasInternas" rows="3"></textarea></div>
-                        <div id="widgetActividadesProyecto"></div>
+                        <div class="input-group">
+                            <label>Requerimiento / alcance (levantamiento en Ventas)</label>
+                            <textarea id="paso1_requerimiento" rows="3" placeholder="Qué pidió el cliente — viene del paso 1 del cerebro de Ventas"></textarea>
+                        </div>
+                        <div class="form-section auto-servicios-lev-box">
+                            <div class="section-title-form" style="font-size:0.95rem;"><i class="fas fa-list-check"></i> Servicios a desarrollar</div>
+                            <p class="auto-paso1-hint" style="margin-bottom:10px;">Los que el vendedor marcó en Ventas. Puedes quitar o agregar más antes de pasar a Ingeniería.</p>
+                            <table class="data-table auto-servicios-lev-table">
+                                <thead><tr><th>Área</th><th>Servicio</th><th style="width:48px;"></th></tr></thead>
+                                <tbody id="serviciosLevantamientoBody"></tbody>
+                            </table>
+                            <div class="auto-servicios-lev-add">
+                                <select id="servicioLevantamientoSelect" class="form-control"><option value="">Agregar servicio del catálogo…</option></select>
+                                <button type="button" class="btn btn-secondary btn-sm" id="btnAgregarServicioLevantamiento"><i class="fas fa-plus"></i> Agregar</button>
+                            </div>
+                        </div>
                         <div style="display:flex; justify-content:flex-end;">
                             <button class="btn-etapa" id="guardarPaso1"><i class="fas fa-save"></i> Guardar</button>
                             <button class="btn-etapa" id="terminarEtapa1" data-etapa="1"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
@@ -227,17 +247,19 @@
                 <div id="step-2" class="step-content">
                     <div class="form-section">
                         <div class="section-title-form"><i class="fas fa-drafting-compass"></i> Ingeniería</div>
-                        <button class="btn-add-row" id="agregarActividad"><i class="fas fa-plus"></i> Agregar Actividad</button>
-                        <table class="actividades-table">
-                            <thead><tr><th>Área</th><th>Actividad</th><th>Tipo</th><th>Horas</th><th></th></tr></thead>
-                            <tbody id="actividadesBody"></tbody>
-                        </table>
-                        <button class="btn-primary" id="generarCronograma"><i class="fas fa-calendar-alt"></i> Generar Cronograma</button>
+                        <p class="auto-paso1-hint">Planificación: define sub-actividades y horas. La <strong>ejecución</strong> (Inicio/Fin y evidencias) es en el paso <strong>Desarrollo</strong> o en el módulo Actividades.</p>
+                        <div class="auto-ing-toolbar">
+                            <button class="btn-add-row" type="button" id="syncActividadesDesdeServicios"><i class="fas fa-sync"></i> Importar servicios del paso 1</button>
+                            <select id="agregarActividadServicioSelect" class="form-control auto-ing-add-sel"><option value="">Agregar servicio al plan…</option></select>
+                            <button class="btn-add-row" type="button" id="agregarActividad"><i class="fas fa-plus"></i> Agregar</button>
+                        </div>
+                        <div id="actividadesIngenieriaList" class="auto-ing-list"></div>
+                        <button class="btn-primary" type="button" id="generarCronograma"><i class="fas fa-calendar-alt"></i> Generar Cronograma y sincronizar Actividades</button>
                         <div id="ganttContainer" class="gantt-container" style="display:none;">
-                            <h4>Cronograma de Actividades</h4>
+                            <h4>Cronograma de Actividades (Gantt)</h4>
                             <div id="ganttHeader" class="gantt-header"></div>
                             <div id="ganttBody"></div>
-                            <button class="btn-secondary" id="exportarCronogramaPDF"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
+                            <button class="btn-secondary" type="button" id="exportarCronogramaPDF"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
                         </div>
                         <div style="display:flex; justify-content:flex-end; margin-top:20px;">
                             <button class="btn-etapa" id="terminarEtapa2" data-etapa="2"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
@@ -248,29 +270,35 @@
                 <!-- PASO 3: MATERIALES -->
                 <div id="step-3" class="step-content">
                     <div class="form-section">
-                        <div class="section-title-form"><i class="fas fa-boxes"></i> Materiales</div>
-                        <div class="form-section" style="margin-bottom:1rem;padding:0;border:none;">
-                            <div class="section-title-form" style="font-size:0.95rem;"><i class="fas fa-calculator"></i> Referencia de costos</div>
-                            <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 10px;">Suma de costo por línea (costo unitario editable o costo del SKU en inventario; carga con <code>node import.mjs inventario --apply</code> y el Excel <strong>inventario electronica ssepi</strong>) más traslado (km / camioneta) con parámetros de calculadoras en Supabase.</p>
-                            <div class="form-grid">
-                                <div class="input-group"><label>Km visita</label><input type="number" id="autoCostoKm" min="0" step="1" value="0"></div>
-                                <div class="input-group"><label>Horas camioneta</label><input type="number" id="autoCostoHrsCam" min="0" step="0.5" value="0"></div>
-                            </div>
-                            <button type="button" class="btn-ssepi btn-automatizacion" id="btnRecalcCostosServicios" style="margin-top:8px;"><i class="fas fa-sync-alt"></i> Actualizar estimación</button>
-                            <div id="serviciosCostosResumen" style="margin-top:12px;font-size:0.9rem;line-height:1.5;"></div>
+                        <div class="section-title-form"><i class="fas fa-boxes"></i> Materiales (BOM)</div>
+                        <p class="auto-paso1-hint">Solo <strong>componentes físicos</strong> del inventario (PLC, sensores, cable, etc.). Los servicios de mano de obra van en el paso 1 e Ingeniería, no aquí.</p>
+                        <p class="auto-paso1-hint auto-flujo-compras-hint"><i class="fas fa-route"></i> Flujo: al avanzar o enviar lista, la solicitud aparece en <strong>Compras</strong> (cotización). La confirmación del cliente la registra <strong>Ventas</strong>, no Automatización.</p>
+                        <!-- Km/horas: solo uso interno (tabulador); no visible en este módulo -->
+                        <div id="autoCostoRefBox" hidden aria-hidden="true">
+                            <input type="hidden" id="autoCostoKm" value="0">
+                            <input type="hidden" id="autoCostoHrsCam" value="0">
+                            <span id="autoTabuladorHint"></span>
+                            <div id="serviciosCostosResumen"></div>
                         </div>
                         <div id="autoPrioritySuppliers" class="auto-prio-host" aria-label="Tiendas componentes (prioridad)"></div>
+                        <div class="auto-material-search-wrap">
+                            <input type="search" id="buscarMaterialInventario" class="auto-material-search" placeholder="Buscar componente por SKU, nombre o descripción…" autocomplete="off">
+                            <span id="materialBusquedaCount" class="auto-material-count"></span>
+                        </div>
                         <div class="inventario-selector">
-                            <select id="inventarioSelect"><option value="">Seleccionar producto</option></select>
+                            <select id="inventarioSelect"><option value="">Seleccionar componente del inventario…</option></select>
                             <button class="btn-secondary" id="agregarDesdeInventario">Agregar</button>
                         </div>
-                        <button class="btn-add-row" id="agregarMaterialManual"><i class="fas fa-plus"></i> Agregar Manual</button>
+                        <button class="btn-add-row" id="agregarMaterialManual"><i class="fas fa-plus"></i> Agregar material manual</button>
+                        <div class="materiales-table-wrap">
                         <table class="materiales-table">
-                            <thead><tr><th>Nombre</th><th>Descripción</th><th>Cantidad</th><th>SKU</th><th>Proveedor</th><th>Costo u.</th><th>Subtotal</th><th></th></tr></thead>
+                            <thead><tr><th>Nombre</th><th>Descripción</th><th>Cant.</th><th>SKU</th><th>Proveedor</th><th></th></tr></thead>
                             <tbody id="materialesBody"></tbody>
                         </table>
+                        </div>
                         <div style="display:flex; justify-content:flex-end; margin-top:20px; gap:8px; flex-wrap:wrap;">
                             <button class="btn-etapa" id="guardarMateriales"><i class="fas fa-save"></i> Guardar</button>
+                            <a class="btn-etapa btn-secondary" id="btnVerOcCompraAuto" href="#" target="_blank" rel="noopener" style="display:none;"><i class="fas fa-external-link-alt"></i> Ver OC en Compras</a>
                             <button class="btn-etapa" id="generarRequerimientoCompraBtn"><i class="fas fa-paper-plane"></i> Enviar lista de materiales a Compras</button>
                             <button class="btn-etapa" id="btnClienteConfirmadoAuto" style="background:#10b981; color:white; display:none;"><i class="fas fa-check-circle"></i> Cliente confirmó — Avanzar a Desarrollo</button>
                             <button class="btn-etapa" id="terminarEtapa3" data-etapa="3"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
@@ -281,12 +309,27 @@
                 <!-- PASO 4: DESARROLLO -->
                 <div id="step-4" class="step-content">
                     <div class="form-section">
-                        <div class="section-title-form"><i class="fas fa-code"></i> Desarrollo</div>
-                        <div style="display:flex; gap:10px; margin-bottom:15px;">
-                            <input type="text" id="nuevaEpica" placeholder="Nueva épica..." style="flex:1; padding:8px;">
-                            <button class="btn-primary" id="crearEpica">Crear</button>
+                        <div class="section-title-form"><i class="fas fa-hard-hat"></i> Desarrollo — Ejecución</div>
+                        <p class="auto-desarrollo-hint">Inicia y termina cada <strong>sub-actividad</strong> planificada en Ingeniería. Adjunta evidencias (fotos, video, documentos). También puedes llevarlas en el módulo <strong>Actividades</strong>.</p>
+                        <div class="auto-desarrollo-upload">
+                            <label class="auto-upload-zone" for="desarrolloArchivosInput">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <span class="auto-upload-title">Evidencias del desarrollo</span>
+                                <span class="auto-upload-sub">Imágenes, video, PDF — arrastra o haz clic</span>
+                                <input type="file" id="desarrolloArchivosInput" multiple accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" hidden>
+                            </label>
+                            <div id="desarrolloArchivosList" class="auto-upload-list"></div>
                         </div>
-                        <div class="epicas-container" id="epicasContainer"></div>
+                        <div class="auto-desarrollo-toolbar">
+                            <a href="/panel/pages/ssepi_actividades.html?departamento=automatizacion" class="btn btn-secondary btn-sm" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> Abrir módulo Actividades</a>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btnRefrescarDesarrollo"><i class="fas fa-sync"></i> Actualizar avance</button>
+                        </div>
+                        <div id="widgetActividadesProyecto" class="auto-widget-actividades-paso4" hidden aria-hidden="true"></div>
+                        <div id="desarrolloEjecucionList" class="auto-desarrollo-list"></div>
+                        <!-- Épicas legado (oculto; datos preservados en BD) -->
+                        <div id="epicasLegacyWrap" hidden aria-hidden="true">
+                            <div id="epicasContainer"></div>
+                        </div>
                         <div style="display:flex; justify-content:flex-end; margin-top:20px;">
                             <button class="btn-etapa" id="terminarEtapa4" data-etapa="4"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
                         </div>
@@ -307,7 +350,16 @@
                         </div>
                         <div class="form-grid">
                             <div class="input-group"><label>Resumen de lo realizado</label><textarea id="entregaResumenAutomatizacion" rows="3" placeholder="Qué se hizo en esta entrega"></textarea></div>
-                            <div class="input-group"><label>Responsable de entrega (quién lo hizo)</label><input type="text" id="entregaResponsableAutomatizacion" placeholder="Nombre del ingeniero/técnico"></div>
+                        </div>
+                        <div class="auto-entrega-responsables">
+                            <div class="auto-entrega-resp-item">
+                                <span class="auto-entrega-resp-label">Proyecto registrado por (Ventas)</span>
+                                <div id="entregaCreadoPorAuto" class="auto-entrega-resp-val">—</div>
+                            </div>
+                            <div class="auto-entrega-resp-item">
+                                <span class="auto-entrega-resp-label">Desarrollo realizado por</span>
+                                <div id="entregaDesarrolladoPorAuto" class="auto-entrega-resp-val">—</div>
+                            </div>
                         </div>
 
                         <!-- Panel de Rentabilidad (Semáforo) -->
@@ -332,19 +384,6 @@
                             </div>
                         </div>
 
-                        <div class="form-section firmas-entrega">
-                            <div class="section-title-form"><i class="fas fa-signature"></i> Firmas</div>
-                            <div class="firmas-container">
-                                <div class="firma-item">
-                                    <div><strong>Firma del Cliente</strong></div>
-                                    <input type="text" id="firmaClienteNombreAutomatizacion" placeholder="Nombre y fecha" class="firma-input">
-                                </div>
-                                <div class="firma-item">
-                                    <div><strong>Firma del Técnico</strong></div>
-                                    <input type="text" id="firmaTecnicoNombreAutomatizacion" placeholder="Nombre y fecha" class="firma-input">
-                                </div>
-                            </div>
-                        </div>
                         <!-- PDF Cotización + Reporte -->
                         <div class="form-section" style="margin-top:16px;padding:16px;border:1px solid var(--border);border-radius:8px;">
                             <div class="section-title-form"><i class="fas fa-file-pdf"></i> Documentos PDF</div>
@@ -399,6 +438,21 @@
                 <button class="btn-secondary" id="prevStepBtn" style="display:none;">← Anterior</button>
                 <button class="btn-primary" id="nextStepBtn">Siguiente →</button>
                 <button class="btn-primary" id="saveProjectBtn">💾 Guardar Proyecto</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal ver actividad (widget paso 1 / enlace desde desarrollo) -->
+    <div class="modal-backdrop" id="verActividadModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-file-alt"></i> Detalle de Actividad</h3>
+                <button type="button" class="modal-close" id="closeVerActividadModalAuto">&times;</button>
+            </div>
+            <div class="modal-body" id="verActividadBody"></div>
+            <div class="modal-footer">
+                <a href="/panel/pages/ssepi_actividades.html" class="btn-ssepi btn-secondary" target="_blank" rel="noopener">Abrir en Actividades</a>
+                <button type="button" class="btn-ssepi btn-secondary" id="closeVerActividadBtnAuto">Cerrar</button>
             </div>
         </div>
     </div>

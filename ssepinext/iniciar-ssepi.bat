@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 chcp 65001 > nul
 cls
 echo =========================================
@@ -6,30 +7,38 @@ echo  SSEPI ERP - Reinicio Completo (Local)
 echo =========================================
 echo.
 
-:: [1] Matar todos los procesos Node
-echo [1] Cerrando procesos Node...
+:: [1] Matar todos los procesos Node y Cloudflare (incluyendo ventanas zombie de arranques anteriores)
+echo [1] Cerrando procesos Node, cloudflared y ventanas zombie...
 taskkill /F /IM node.exe 2> nul
-timeout /t 2 /nobreak > nul
+taskkill /F /IM cloudflared.exe 2> nul
+taskkill /F /FI "WINDOWTITLE eq SSEPI SERVER*" 2> nul
+taskkill /F /FI "WINDOWTITLE eq Cloudflare Tunnel SSEPI*" 2> nul
+timeout /t 3 /nobreak > nul
 
-:: [2] Verificar que el puerto 3333 quedo libre
-echo [2] Verificando puerto 3333...
-netstat -ano | findstr ":3333" | findstr "LISTENING" >nul
-if %errorlevel%==0 (
-    echo [2] AUN hay algo en 3333. Matando por PID...
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":3333" ^| findstr "LISTENING"') do (
-        echo     Matando PID %%a...
-        taskkill /F /PID %%a 2> nul
+:: [2] Verificar que los puertos 3333 y 3443 quedaron libres
+echo [2] Verificando puertos 3333 y 3443...
+for %%P in (3333 3443) do (
+    netstat -ano | findstr ":%%P" | findstr "LISTENING" > nul
+    if !errorlevel!==0 (
+        echo [2] AUN hay algo en %%P. Matando por PID...
+        for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%%P" ^| findstr "LISTENING"') do (
+            echo     Matando PID %%a...
+            taskkill /F /PID %%a 2> nul
+        )
+        timeout /t 2 /nobreak > nul
     )
-    timeout /t 2 /nobreak > nul
 )
 
 :: [3] Limpiar cache y journal de SQLite (NO borrar la base)
 echo [3] Limpiando cache local...
 del /q "%~dp0data\ssepi-local.db-journal" 2> nul
 
-:: [3.5] Verificar semillas (solo si tablas vacías)
-echo [3.5] Verificando datos base...
+:: [3.5] Contactos Pac_Contactos + semillas si faltan
+echo [3.5] Contactos Pac_Contactos...
 cd /d "%~dp0"
+node seed-erp-maestro-local.mjs
+if %errorlevel% neq 0 echo      (Aviso seed-erp-maestro-local)
+echo [3.6] Verificando datos base...
 node seed-all-check.mjs
 
 :: [4] Iniciar servidor offline (SSEPI NEXT local)

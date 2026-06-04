@@ -5,6 +5,7 @@
  */
 import { initAuditFeed } from './audit-feed.js';
 import { mountNavPendingMini } from './ssepi-runtime/nav-pending-mini.js';
+import { mountModulePendingSidebar } from './ssepi-runtime/module-pending-preview.js';
 
 /** Tablas de auditoría típicas por módulo del menú (data-module). */
 const MODULE_AUDIT_TABLES = {
@@ -50,6 +51,7 @@ export function mountNavActivityFeed() {
   nav.appendChild(wrap);
 
   mountNavPendingMini();
+  mountModulePendingSidebar();
 
   initAuditFeed({
     tables,

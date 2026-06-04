@@ -9,14 +9,23 @@ import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
 import { CostosEngine } from '../core/costos-engine.js';
 import { ContactosFormulas } from '../core/contactos-formulas.js';
-import { pdfGenerator } from '../core/pdf-generator.js';
+import { pdfGenerator } from '../core/pdf-generator.js?v=8';
 import { notifyVentaIfEligible } from '../core/coi-sync-engine.js';
 import { syncFolioAfterCotizacionInsert } from '../core/folio-operativo-service.js';
 import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
 import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
 import { purgeDraftRecordKeys } from '../core/ssepi-runtime/draft-purge-keys.js';
+import { ssepiOn, SSEPI_EVENTS } from '../core/ssepi-runtime/ssepi-event-bus.js';
 import { isAdminExportAllowed, downloadCSV, createExportButton } from '../core/csv-export.js';
 import { filterOrdenesOperativas } from '../core/ssepi-runtime/lab-order-filter.js';
+import { canSeeFinancials, applyBodyFinancialClass } from '../core/ssepi-runtime/cost-visibility.js';
+import {
+    buildDesgloseDesdeFuentes,
+    recalcularDesglose,
+    renderDesgloseTableHTML,
+    buildConceptosPDFPublicos
+} from '../core/ventas-costo-desglose.js';
+import { horasParaCotizacionActividad } from '../core/horas-jerarquia.js';
 
 const VentasModule = (function() {
     // ==================== ESTADO PRIVADO ====================
@@ -35,12 +44,15 @@ const VentasModule = (function() {
     /** Pestaña panel órdenes operativas (Laboratorio / Motores / Auto) en Ventas */
     let operativasTabVentas = 'taller';
     let solicitudesTaller = [];
+    let solicitudesTallerFiltradas = []; // vista UI: solo preregistro/esperando_cotizacion
     let solicitudesFacturacion = [];
 
     let currentVenta = null;
     let ventaId = null;
     let isNewVenta = true;
     let editingCotizacionId = null;
+    /** Desglose tipo Excel (Automatización) — solo admin en paso 2. */
+    let costoDesgloseVentas = null;
 
     // Estado de la calculadora
     let calculadoraComponentes = [];
@@ -75,8 +87,8 @@ const VentasModule = (function() {
     let chartInstance = null;
     let perfilUsuario = null;
 
-    function _esAdmin() {
-        return perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+    function _verFinanciero() {
+        return canSeeFinancials(perfilUsuario);
     }
 
     function _normStr(s) {
@@ -300,7 +312,9 @@ const VentasModule = (function() {
         if (wrapEquipos) wrapEquipos.style.display = esEquipos ? 'block' : 'none';
         if (wrapServicios) wrapServicios.style.display = esServicios ? 'block' : 'none';
         if (wrapProducto) wrapProducto.style.display = (esSuministro || esEquipos) ? 'none' : 'block';
-        if (lblProd && !esSuministro && !esEquipos) {
+        if (lblProd && esServicios) {
+            lblProd.innerHTML = 'Nombre del proyecto / orden <span style="color:#c62828;">*</span>';
+        } else if (lblProd && !esSuministro && !esEquipos) {
             lblProd.innerHTML = 'Nombre del producto / Equipo <span style="color:#c62828;">*</span>';
         }
         if (esEquipos) _syncWizardNombreProductoDesdeEquipos();
@@ -516,6 +530,20 @@ const VentasModule = (function() {
         }
     }
 
+    function _flushVentasAutosave() {
+        if (ventasAutosaveCtrl) ventasAutosaveCtrl.flush();
+    }
+
+    function _resumeVentasDraftKey(recordKey) {
+        const w = loadLocalDraft('ventas', recordKey);
+        if (!w || !w.payload) {
+            _showToast('No se encontró el borrador', 'warning');
+            return;
+        }
+        ventasDraftSessionKey = recordKey.indexOf('tmp:') === 0 ? recordKey : null;
+        _applyVentasDraft(w);
+    }
+
     function _tryResumeVentasDraft() {
         const resume = new URLSearchParams(window.location.search).get('resume');
         if (!resume) return;
@@ -525,8 +553,7 @@ const VentasModule = (function() {
             history.replaceState({}, document.title, window.location.pathname);
             return;
         }
-        ventasDraftSessionKey = resume.indexOf('tmp:') === 0 ? resume : null;
-        _applyVentasDraft(w);
+        _resumeVentasDraftKey(resume);
         history.replaceState({}, document.title, window.location.pathname);
     }
 
@@ -614,10 +641,10 @@ const VentasModule = (function() {
                         const adeudo = await _consultarAdeudoCliente(contactoId);
                         const banner = document.getElementById('wizardAdeudoBanner');
                         const rolActual = sessionStorage.getItem('ssepi_rol') || '';
-                        const esAdmin = ['admin','superadmin','contabilidad'].includes(rolActual);
+                        const verFin = canSeeFinancials(perfilUsuario);
                         if (banner) {
                             if (adeudo > 0) {
-                                if (esAdmin) {
+                                if (verFin) {
                                     banner.innerHTML = `<div class="alert-adeudo" style="padding:10px 14px; background:#fff7ed; border:1px solid #fdba74; border-radius:8px; color:#9a3412; font-size:13px;">
                                         <i class="fas fa-exclamation-triangle" style="margin-right:6px;"></i>
                                         Este cliente tiene un adeudo acumulado de <strong>$${adeudo.toLocaleString()}</strong>.
@@ -959,14 +986,41 @@ const VentasModule = (function() {
                 } catch (e) {
                     folio = 'SP-A' + Date.now().toString(36).toUpperCase();
                 }
-                const nombre = dept === 'Proyectos' ? 'Proyecto (Ventas)' : 'Automatización (Ventas)';
-                const notasProy = [falla, serviciosAuto ? ('Servicios: ' + serviciosAuto) : '', prioLine].filter(Boolean).join('\n\n');
+                const fallaReq = (document.getElementById('wizardFallaReportada') || {}).value?.trim() || falla || '';
+                const serviciosSel = _getWizardServiciosSeleccionados();
+                const serviciosLevantamiento = serviciosSel.map((key, i) => {
+                    const parts = key.split(' | ');
+                    const area = parts[0] || '';
+                    const servicio = parts.slice(1).join(' | ') || key;
+                    return { id: 'sl' + i, area, servicio, key };
+                });
+                const nombreProyecto = nombreProducto
+                    || (fallaReq.slice(0, 80) || resumenTrabajo || (dept === 'Proyectos' ? 'Proyecto (Ventas)' : 'Automatización (Ventas)'));
+                const actividadesIniciales = serviciosLevantamiento.map((s, i) => {
+                    const cat = tabuladorAutomatizacion.servicios.find(
+                        (x) => (x.area + ' | ' + x.servicio) === s.key || (x.area === s.area && x.servicio === s.servicio)
+                    );
+                    return {
+                        id: 'act-v-' + i,
+                        area: s.area || 'General',
+                        servicio: s.servicio || s.key,
+                        tipo: cat?.tipo || 'O',
+                        horas: 0,
+                        tarifa: cat?.valorAgregado || 0,
+                        subactividades: []
+                    };
+                });
+                const notasProy = [fallaReq, serviciosSel.length ? ('Servicios: ' + serviciosSel.join(' | ')) : '', prioLine].filter(Boolean).join('\n\n');
                 const row = {
                     folio,
-                    nombre,
+                    nombre: nombreProyecto,
                     cliente: clienteNombre,
                     fecha: (fechaStr || new Date().toISOString().split('T')[0]),
                     vendedor: userName,
+                    requerimiento_cliente: fallaReq,
+                    servicios_levantamiento: serviciosLevantamiento,
+                    servicios_automatizacion: serviciosSel,
+                    actividades: actividadesIniciales,
                     notas_generales: notasProy,
                     estado: 'pendiente'
                 };
@@ -1228,7 +1282,7 @@ const VentasModule = (function() {
             jornada: 9,
             diasLaborales: 20,
             utilidad: 40,
-            credito: 3,
+            credito: 2,
             iva: 16
         },
         servicios: [
@@ -1478,7 +1532,15 @@ const VentasModule = (function() {
     // ==================== INICIALIZACIÓN ====================
     async function init() {
         console.log('✅ [Ventas] Conectado');
-        try { perfilUsuario = await authService.getCurrentProfile(); } catch(e) {}
+        try {
+            perfilUsuario = await authService.getCurrentProfile();
+            applyBodyFinancialClass(perfilUsuario);
+        } catch(e) {}
+
+        // Re-aplicar visibilidad financiera al togglear admin<->normal en sesión
+        document.body.addEventListener('ssepi:cost-visibility-changed', function(ev) {
+            try { applyBodyFinancialClass({ rol: (ev && ev.detail && ev.detail.rol) || '' }); } catch (e) {}
+        });
 
         // Cargar configuración de costos desde BD
         try {
@@ -1521,6 +1583,11 @@ const VentasModule = (function() {
         // Inicializar autosave y reanudar borradores
         _initVentasAutosave();
         _tryResumeVentasDraft();
+        ssepiOn(SSEPI_EVENTS.RESUME_DRAFT, (detail) => {
+            if (!detail || detail.module !== 'ventas') return;
+            _resumeVentasDraftKey(detail.recordKey);
+        });
+        window.addEventListener('beforeunload', _flushVentasAutosave);
 
         // Exportar funciones de folios para uso global
         _exportFunctions();
@@ -1798,9 +1865,16 @@ const VentasModule = (function() {
         try {
             const compras = await comprasService.select({}, { orderBy: 'fecha_creacion', ascending: false, page: 0, pageSize: 800 }) || [];
             solicitudesTaller = compras.filter(c => c.vinculacion?.tipo === 'taller' && c.estado === 1);
+            // Filtrado estricto para UI: distingue preregistro (sin items) vs esperando_cotizacion
+            solicitudesTallerFiltradas = compras.filter(c =>
+                c.vinculacion?.tipo === 'taller' &&
+                (c.estado === 1 || c.estado === 2) &&
+                (c.estado_interno === 'preregistro' || c.estado_interno === 'esperando_cotizacion')
+            );
         } catch (e) {
             console.warn('[Ventas] compras:', e);
             solicitudesTaller = [];
+            solicitudesTallerFiltradas = [];
         }
     }
 
@@ -2290,7 +2364,11 @@ const VentasModule = (function() {
         let filtered = _mergeVentasCotizaciones();
 
         // Excluir registros de Suministros del pipeline general (tienen su propia pestaña)
-        filtered = filtered.filter(item => item.departamento !== 'Suministro');
+        filtered = filtered.filter(item => {
+            if (item.departamento === 'Suministro') return false;
+            if (item.tipo === 'suministro' || item.origen === 'suministro' || item.modulo_origen === 'suministros') return false;
+            return true;
+        });
 
         // Filtrar canceladas por defecto (solo mostrar si mostrarCanceladas === true)
         if (!mostrarCanceladas) {
@@ -2321,7 +2399,7 @@ const VentasModule = (function() {
             } else if (filtroEstado === 'confirmado') {
                 filtered = filtered.filter(item => item.estado === 'confirmado' || item.estado === 'confirmada_por_cliente');
             } else if (filtroEstado === 'autorizado') {
-                filtered = filtered.filter(item => item.estado === 'autorizado' || item.estado === 'autorizada_por_ventas');
+                filtered = filtered.filter(item => ['autorizado', 'autorizada_por_ventas', 'autorizada'].includes(String(item.estado || '').toLowerCase()));
             } else if (filtroEstado === 'compra') {
                 filtered = filtered.filter(item => item.estado === 'compra' || item.estado === 'en_compra');
             } else if (filtroEstado === 'ejecucion') {
@@ -2378,10 +2456,10 @@ const VentasModule = (function() {
         const cotizacion = items.filter((i) => es(i) === 'cotizacion' || es(i) === 'pendiente_autorizacion_ventas');
         const esperandoConfirmacion = items.filter((i) => es(i) === 'esperando_confirmacion' || es(i) === 'esperando_confirmacion_cliente' || es(i) === 'pendiente_confirmacion');
         const confirmado = items.filter((i) => es(i) === 'confirmado' || es(i) === 'confirmada_por_cliente');
-        const autorizado = items.filter((i) => es(i) === 'autorizado' || es(i) === 'autorizada_por_ventas');
+        const autorizado = items.filter((i) => ['autorizado', 'autorizada_por_ventas', 'autorizada'].includes(es(i)));
         const compra = items.filter((i) => es(i) === 'compra' || es(i) === 'en_compra');
-        const ejecucion = items.filter((i) => es(i) === 'ejecucion' || es(i) === 'en_ejecucion');
-        const entregado = items.filter((i) => es(i) === 'entregado' || (i.tipo !== 'cotizacion' && i.estatus_pago === 'Pendiente'));
+        const ejecucion = items.filter((i) => es(i) === 'ejecucion' || es(i) === 'en_ejecucion' || es(i) === 'en ejecución' || es(i) === 'progreso');
+        const entregado = items.filter((i) => es(i) === 'entregado' || es(i) === 'completado' || es(i) === 'cerrado' || (i.tipo !== 'cotizacion' && i.estatus_pago === 'Pendiente'));
         const pagado = items.filter((i) => i.estatus_pago === 'Pagado' || es(i) === 'pagado');
 
         // Renderizar tarjetas asíncronamente para cargar folios vinculados
@@ -2537,7 +2615,7 @@ const VentasModule = (function() {
      * Función asíncrona para poder consultar los folios vinculados.
      */
     async function _renderKanbanCardsAsync(items) {
-        const esAdminV = _esAdmin();
+        const esAdminV = _verFinanciero();
         if (items.length === 0) return '<div style="text-align:center; padding:20px; color:var(--text-muted);">Sin elementos</div>';
 
         // Precargar folios vinculados para todas las cotizaciones
@@ -2603,7 +2681,7 @@ const VentasModule = (function() {
     }
 
     function _renderKanbanCards(items) {
-        const esAdminV = _esAdmin();
+        const esAdminV = _verFinanciero();
         // Wrapper síncrono para compatibilidad - se llama desde _renderKanban
         // Para versión con folios vinculados, usar _renderKanbanCardsAsync
         if (items.length === 0) return '<div style="text-align:center; padding:20px; color:var(--text-muted);">Sin elementos</div>';
@@ -2640,7 +2718,7 @@ const VentasModule = (function() {
     }
 
     function _renderLista(items) {
-        const esAdminV = _esAdmin();
+        const esAdminV = _verFinanciero();
         const tbody = document.getElementById('tablaVentasBody');
         if (!tbody) return;
         if (items.length === 0) {
@@ -2742,7 +2820,7 @@ const VentasModule = (function() {
     }
 
     async function _generarPDFSuministro(id, preview) {
-        const item = suministrosVentas.find(s => s.id === id);
+        const item = suministrosVentas.find(s => _idsMatch(s.id, id));
         if (!item) { _showToast('Registro no encontrado', 'error'); return; }
         const data = item.data || item;
         const comps = data.componentes || data.items || [];
@@ -2771,7 +2849,7 @@ const VentasModule = (function() {
     }
 
     async function _confirmarCompraSuministro(id) {
-        const item = suministrosVentas.find(s => s.id === id);
+        const item = suministrosVentas.find(s => _idsMatch(s.id, id));
         if (!item) { _showToast('Registro no encontrado', 'error'); return; }
         const data = item.data || item;
         const compraId = data.vinculacion?.id;
@@ -2809,7 +2887,7 @@ const VentasModule = (function() {
     }
 
     async function _enviarAFacturacionSuministro(id) {
-        const item = suministrosVentas.find(s => s.id === id);
+        const item = suministrosVentas.find(s => _idsMatch(s.id, id));
         if (!item) { _showToast('Registro no encontrado', 'error'); return; }
         const data = item.data || item;
         try {
@@ -2828,7 +2906,7 @@ const VentasModule = (function() {
     }
 
     async function _clienteCanceloSuministro(id) {
-        const item = suministrosVentas.find(s => s.id === id);
+        const item = suministrosVentas.find(s => _idsMatch(s.id, id));
         if (!item) { _showToast('Registro no encontrado', 'error'); return; }
         const motivo = prompt('Motivo de cancelación (opcional):') || '';
         if (!confirm('¿El cliente canceló la cotización de suministros? Se cerrará la orden.')) return;
@@ -2901,7 +2979,7 @@ const VentasModule = (function() {
     }
 
     function _updateKPIs(items) {
-        const esAdminV = _esAdmin();
+        const esAdminV = _verFinanciero();
         const now = new Date();
         const mesActual = now.getMonth();
         const añoActual = now.getFullYear();
@@ -2942,7 +3020,7 @@ const VentasModule = (function() {
         if (elTotalVentas) elTotalVentas.innerHTML = esAdminV ? '$' + totalVentasDinero.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '—';
         if (elCotizPend) elCotizPend.innerText = cotizacionesPendientesCount;
         if (elMargen) elMargen.innerHTML = esAdminV ? margenObjetivo + '%' : '—';
-        if (elTicket) elTicket.innerHTML = countVentasCerradas ? (esAdminV ? '$' + ticketPromedio.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '—') : '$0';
+        if (elTicket) elTicket.innerHTML = countVentasCerradas && esAdminV ? '$' + ticketPromedio.toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '—';
     }
 
     function _pipelineRowForVentas(row, tabla, tipoUi) {
@@ -2976,7 +3054,7 @@ const VentasModule = (function() {
         container.innerHTML = ordenes.map(o => {
             const info = SSEPIStateMachine.obtenerInfoPaso(o.estatus_actual);
             return `
-            <div class="pipeline-card" data-active-step="${o.estatus_actual}" onclick="ventasModule._abrirDetalle('${o.id}', '${o.tipo || 'venta'}')">
+            <div class="pipeline-card" data-active-step="${o.estatus_actual}" onclick="ventasModule._abrirDetalle('${o.id}', '${o.tipo || 'venta'}')" title="Abrir registro">
                 <div class="pipeline-card-header">
                     <span class="pipeline-card-folio">${o.folio || o.id?.slice(-6)}</span>
                     <span class="pipeline-card-step active" style="background:${info.color};color:#fff;">${info.icono} ${info.label}</span>
@@ -3027,6 +3105,35 @@ const VentasModule = (function() {
             d.textContent = s == null ? '' : String(s);
             return d.innerHTML;
         }
+        if (operativasTabVentas === 'solicitudes') {
+            const c5 = document.getElementById('opVCountSolicitudes');
+            if (c5) c5.textContent = '(' + (solicitudesTallerFiltradas || []).length + ')';
+            if (!(solicitudesTallerFiltradas || []).length) {
+                list.innerHTML = '<div class="op-empty">Sin solicitudes de Laboratorio pendientes. Las órdenes nuevas en Lab generan automáticamente un preregistro aquí.</div>';
+                return;
+            }
+            list.innerHTML = solicitudesTallerFiltradas.map(function (c) {
+                const folio = c.folio || (c.id && String(c.id).slice(-8)) || '—';
+                const cliente = c.vinculacion?.nombre || '—';
+                const tallerFolio = c.vinculacion?.folio_taller || '—';
+                const tallerId = encodeURIComponent(c.vinculacion?.id || '');
+                const estado = c.estado_interno === 'preregistro'
+                    ? '<span class="estado-preregistro">Preregistro · sin materiales</span>'
+                    : '<span class="estado-esperando">Esperando cotización</span>';
+                const itemsCount = Array.isArray(c.items) ? c.items.length : 0;
+                const sinMateriales = itemsCount === 0 ? ' <span class="op-meta">(sin materiales aún)</span>' : '';
+                const hrefLab = '/panel/pages/ssepi_taller.html?open=' + tallerId;
+                const hrefComp = '/panel/pages/ssepi_compras.html?vincTipo=taller&vincId=' + tallerId;
+                return '<div class="op-row">' +
+                    '<div><span class="op-badge" style="font-size:10px;background:#e3f2fd;padding:2px 6px;border-radius:4px;margin-right:6px;">Lab → Compras</span><strong>' + esc(folio) + '</strong> · ' + esc(cliente) +
+                    '<br><span class="op-meta">Orden Lab: ' + esc(tallerFolio) + ' · ' + estado + sinMateriales + '</span></div>' +
+                    '<div class="op-actions">' +
+                    '<a class="btn-ssepi btn-ventas op-link" style="font-size:12px;padding:6px 12px;text-decoration:none;display:inline-block;" href="' + esc(hrefLab) + '">Abrir Laboratorio</a> ' +
+                    '<a class="btn-ssepi btn-ventas op-link" style="font-size:12px;padding:6px 12px;text-decoration:none;display:inline-block;" href="' + esc(hrefComp) + '">Crear cotización</a>' +
+                    '</div></div>';
+            }).join('');
+            return;
+        }
         if (operativasTabVentas === 'facturar') {
             const estadosFacturar = ['reparado', 'terminado', 'entregado', 'listo para facturar', 'completado'];
             const ft = (taller || []).filter(r => estadosFacturar.includes(String(r.estado || '').toLowerCase()));
@@ -3073,9 +3180,14 @@ const VentasModule = (function() {
             const st = r.estado || '—';
             const id = encodeURIComponent(r.id);
             const hrefCompras = '/panel/pages/ssepi_compras.html?vincTipo=' + encodeURIComponent(tipoVinc) + '&vincId=' + id;
+            const esperaConf = _estadoEsperandoConfirmacionCliente(st);
+            const tipoOp = operativasTabVentas === 'motor' ? 'motor' : (operativasTabVentas === 'auto' ? 'proyecto' : 'taller');
+            const btnConf = esperaConf
+                ? '<button type="button" class="btn-ssepi btn-success op-link" style="font-size:12px;padding:6px 12px;" onclick="ventasModule._clienteConfirmoOperativo(\'' + String(r.id).replace(/'/g, "\\'") + '\', \'' + tipoOp + '\')"><i class="fas fa-check-circle"></i> Cliente confirmó</button> '
+                : '';
             return '<div class="op-row">' +
                 '<div><strong>' + esc(folio) + '</strong> · ' + esc(cliente) + '<br><span class="op-meta">' + esc(st) + '</span></div>' +
-                '<div class="op-actions">' +
+                '<div class="op-actions">' + btnConf +
                 '<a class="btn-ssepi btn-ventas op-link" style="font-size:12px;padding:6px 12px;text-decoration:none;display:inline-block;" href="' + esc(modUrl) + '">Abrir módulo</a> ' +
                 '<a class="btn-ssepi btn-ventas op-link" style="font-size:12px;padding:6px 12px;text-decoration:none;display:inline-block;" href="' + hrefCompras + '">Compras vinculadas</a>' +
                 '</div></div>';
@@ -3215,13 +3327,19 @@ const VentasModule = (function() {
     }
 
     function _generarHTMLCalculadora(compra, horasEstimadas) {
-        const cliente = calculadoraClienteActual;
-        const rolActual = sessionStorage.getItem('ssepi_rol') || '';
-        const esAdmin = ['admin', 'automatizacion', 'electronica', 'superadmin'].includes(rolActual);
+        const cliente = calculadoraClienteActual || { km: 0, horas: 0, nombre: '' };
+        horasEstimadas = Number(horasEstimadas) || 0;
+        const verFin = canSeeFinancials(perfilUsuario);
 
-        // Verificar si es departamento de Automatización
-        const esAutomatizacion = ventasWizardCerebro?.departamento === 'Automatización' ||
-                                  ventasWizardCerebro?.departamento === 'Proyectos';
+        const deptWizard = ventasWizardCerebro?.departamento
+            || (editingCotizacionId && (() => {
+                const cot = cotizaciones.find((c) => c.id === editingCotizacionId);
+                const map = { automatizacion: 'Automatización', proyecto: 'Proyectos', soporte: 'Soporte en planta' };
+                return map[cot?.origen] || cot?.departamento || '';
+            })());
+        const esAutomatizacion = deptWizard === 'Automatización'
+            || deptWizard === 'Proyectos'
+            || deptWizard === 'Soporte en planta';
 
         // Calcular desglose completo de costos
         const desglose = CostosEngine.calcularPrecioFinal({
@@ -3232,18 +3350,42 @@ const VentasModule = (function() {
         });
         const totalFinal = desglose.total;
 
-        // VISTA SIMPLIFICADA - Solo TOTAL FINAL para no admins
-        if (!esAdmin) {
+        // VISTA SIN IMPORTES — ventas/compras/taller/etc. (solo admin/superadmin ven montos e IVA)
+        if (!verFin) {
+            if (esAutomatizacion) {
+                return `
+                <div class="calculadora-section" style="background:#ecfdf5;border:1px solid #6ee7b7;padding:20px;border-radius:12px;">
+                    <div style="font-size:14px;font-weight:700;color:#065f46;margin-bottom:8px;"><i class="fas fa-robot"></i> Cotización simplificada (Automatización)</div>
+                    <p style="font-size:13px;color:#047857;margin:0 0 12px;">
+                        Registra componentes y avanza el wizard. El desglose financiero (servicios, materiales, viáticos e IVA)
+                        lo completa un administrador con la tabla de costos y el proyecto en Automatización.
+                    </p>
+                    <ul style="font-size:12px;color:#334155;margin:0;padding-left:18px;">
+                        <li>Servicios y horas: módulo Automatización (plan de ingeniería).</li>
+                        <li>Materiales: módulo Compras (solo insumos).</li>
+                        <li>Precio al cliente: paso 4 tras validación admin.</li>
+                    </ul>
+                </div>
+                <div class="calculadora-section" style="margin-top: 20px;">
+                    <div class="calculadora-titulo" style="background: var(--c-ventas, #10b981); color: white;">
+                        <i class="fas fa-boxes"></i> Componentes del proyecto
+                    </div>
+                    <table class="componentes-table">
+                        <thead><tr><th>Componente</th><th>Cantidad</th><th></th></tr></thead>
+                        <tbody id="componentesTableBody"></tbody>
+                    </table>
+                    <div style="display:grid; grid-template-columns:1fr 120px auto; gap:10px; margin-top:15px;">
+                        <input type="text" id="compNombre" placeholder="Componente" style="padding:8px;">
+                        <input type="number" id="compCantidad" value="1" min="1" style="padding:8px;">
+                        <button class="btn btn-sm btn-primary" onclick="ventasModule._agregarComponente()">Agregar</button>
+                    </div>
+                </div>`;
+            }
             return `
-                <div class="calculadora-section" style="background: linear-gradient(135deg, var(--c-ventas, #10b981), #059669); padding: 24px; border-radius: 12px; text-align: center;">
-                    <div style="color: white; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">
-                        <i class="fas fa-calculator"></i> Costo Final del Proyecto
-                    </div>
-                    <div style="color: white; font-size: 42px; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                        $${totalFinal.toFixed(2)}
-                    </div>
-                    <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin-top: 12px;">
-                        Incluye viáticos, mano de obra, refacciones e IVA
+                <div class="calculadora-section" style="background:#f0fdf4;border:1px solid #86efac;padding:20px;border-radius:12px;text-align:center;">
+                    <div style="font-size:14px;font-weight:700;color:#166534;margin-bottom:6px;"><i class="fas fa-calculator"></i> Armado de cotización</div>
+                    <p class="calculadora-sin-precios-hint" style="display:block;font-size:13px;color:#15803d;margin:0;">
+                        Agrega componentes y datos del cliente. Los importes, utilidad e IVA los valida un administrador antes de enviar al cliente.
                     </p>
                 </div>
 
@@ -3252,21 +3394,18 @@ const VentasModule = (function() {
                         <i class="fas fa-boxes"></i> Refacciones y Componentes
                     </div>
                     <p style="color:var(--text-muted); font-size:12px; margin-bottom:12px;">
-                        Agrega refacciones desde el Inventario Maestro o componentes manualmente.
+                        Agrega refacciones desde el Inventario Maestro o componentes manualmente (sin ver precios).
                     </p>
                     <table class="componentes-table">
-                        <thead><tr><th>Componente</th><th>Cantidad</th><th>Subtotal</th><th></th></tr></thead>
+                        <thead><tr><th>Componente</th><th>Cantidad</th><th></th></tr></thead>
                         <tbody id="componentesTableBody"></tbody>
                     </table>
-                    <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:10px; margin-top:15px;">
+                    <div style="display:grid; grid-template-columns:1fr 120px auto; gap:10px; margin-top:15px;">
                         <input type="text" id="compNombre" placeholder="Componente" style="padding:8px;">
                         <input type="number" id="compCantidad" value="1" min="1" style="padding:8px;">
                         <button class="btn btn-sm btn-primary" onclick="ventasModule._agregarComponente()">Agregar</button>
                     </div>
                 </div>
-                <button type="button" class="btn btn-sm btn-primary" onclick="ventasModule._abrirEditorCostos()" style="margin-top: 16px; width: 100%; background: linear-gradient(135deg, #6b7280, #4b5563);">
-                    <i class="fas fa-table"></i> Ver Tablas de Costos y Gastos Fijos
-                </button>
             `;
         }
 
@@ -3369,11 +3508,11 @@ const VentasModule = (function() {
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
                     <div>
                         <label style="font-size:12px; color:var(--text-secondary);">Kilómetros (KM)</label>
-                        <input type="number" id="inpLogisticaKm" value="${cliente.km}" min="0" step="0.1" style="width:100%; padding:8px;">
+                        <input type="number" id="inpLogisticaKm" value="${Number(cliente.km) || 0}" min="0" step="0.1" style="width:100%; padding:8px;">
                     </div>
                     <div>
                         <label style="font-size:12px; color:var(--text-secondary);">Horas de viaje</label>
-                        <input type="number" id="inpLogisticaHoras" value="${cliente.horas}" min="0" step="0.5" style="width:100%; padding:8px;">
+                        <input type="number" id="inpLogisticaHoras" value="${Number(cliente.horas) || 0}" min="0" step="0.5" style="width:100%; padding:8px;">
                     </div>
                 </div>
                 <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px;">
@@ -3433,7 +3572,7 @@ const VentasModule = (function() {
                     </div>
                     <div>
                         <label style="font-size:12px; color:var(--text-secondary);">% Crédito</label>
-                        <input type="number" id="inpCreditoPct" value="${CostosEngine.CONFIG?.credito || 3}" min="0" step="0.1" style="width:100%; padding:8px;">
+                        <input type="number" id="inpCreditoPct" value="${CostosEngine.CONFIG?.credito || 2}" min="0" step="0.1" style="width:100%; padding:8px;">
                     </div>
                 </div>
                 <div style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px;">
@@ -3460,12 +3599,95 @@ const VentasModule = (function() {
                 </div>
             </div>
 
+            ${(esAutomatizacion && verFin && costoDesgloseVentas) ? `
+            <div class="calculadora-section" style="margin-top: 20px;">
+                <div class="calculadora-titulo" style="background: linear-gradient(135deg, #0f766e, #115e59); color: white;">
+                    <i class="fas fa-table"></i> Costos finales (Automatización)
+                </div>
+                <p style="font-size:12px;color:var(--text-secondary);margin:8px 0;">Importes editables. Las horas de servicios vienen del proyecto en Automatización.</p>
+                <div id="ventasDesgloseAutoContainer">${renderDesgloseTableHTML(costoDesgloseVentas, true)}</div>
+            </div>` : ''}
+
             <button type="button" class="btn btn-sm btn-primary" onclick="ventasModule._abrirEditorCostos()" style="margin-top: 16px; width: 100%; background: linear-gradient(135deg, #6b7280, #4b5563);">
                 <i class="fas fa-table"></i> Ver Tablas de Costos y Gastos Fijos
             </button>
         `;
 
         return html;
+    }
+
+    async function _fetchActividadesProyectoVinculado() {
+        const ordenId = compraActual?.vinculacion?.id
+            || ventasWizardCerebro?.orden_id
+            || compraActual?.id;
+        if (!ordenId || !window.supabase) return [];
+        try {
+            const { data } = await window.supabase
+                .from('proyectos_automatizacion')
+                .select('actividades')
+                .eq('id', ordenId)
+                .maybeSingle();
+            const raw = Array.isArray(data?.actividades) ? data.actividades : [];
+            return raw.map((a) => ({
+                ...a,
+                horas: horasParaCotizacionActividad(a),
+                horas_plan: horasParaCotizacionActividad(a)
+            }));
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function _sumMaterialesCompraRow(compra) {
+        const items = Array.isArray(compra?.items) ? compra.items : [];
+        const mats = items.filter((i) => {
+            const t = String(i.tipo || 'material').toLowerCase();
+            return !t || t === 'material' || t === 'consumible' || t === 'inventario';
+        });
+        if (mats.length) {
+            return mats.reduce(
+                (s, i) => s + (Number(i.cantidad) || 1) * (
+                    Number(i.costo_unitario) || Number(i.costo_compra) || Number(i.precio) || Number(i.costo) || 0
+                ),
+                0
+            );
+        }
+        return Number(compra?.total) || 0;
+    }
+
+    async function _fetchTotalMaterialesCompraProyecto(ordenId) {
+        if (!ordenId || !window.supabase) return 0;
+        try {
+            const { data } = await window.supabase
+                .from('compras')
+                .select('items,total,vinculacion,departamento,folio')
+                .order('id', { ascending: false })
+                .limit(200);
+            const rows = (data || []).filter((c) => {
+                const v = c.vinculacion;
+                return v && String(v.id) === String(ordenId);
+            });
+            if (!rows.length) return 0;
+            return rows.reduce((sum, c) => sum + _sumMaterialesCompraRow(c), 0);
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    function _bindDesgloseVentas() {
+        const host = document.getElementById('ventasDesgloseAutoContainer');
+        if (!host || !costoDesgloseVentas) return;
+        host.querySelectorAll('.ventas-desglose-inp').forEach((inp) => {
+            inp.addEventListener('change', () => {
+                const key = inp.dataset.key;
+                if (!key) return;
+                if (inp.type === 'number') costoDesgloseVentas[key] = parseFloat(inp.value) || 0;
+                else costoDesgloseVentas[key] = inp.value;
+                costoDesgloseVentas = recalcularDesglose(costoDesgloseVentas, { aplicarIva: true });
+                host.innerHTML = renderDesgloseTableHTML(costoDesgloseVentas, true);
+                _bindDesgloseVentas();
+            });
+        });
     }
 
     function _agregarComponente() {
@@ -3498,18 +3720,16 @@ const VentasModule = (function() {
     function _renderizarComponentes() {
         const tbody = document.getElementById('componentesTableBody');
         if (!tbody) return;
-        const rolActual = sessionStorage.getItem('ssepi_rol') || '';
-        const esAdmin = ['admin', 'automatizacion', 'electronica', 'superadmin'].includes(rolActual);
+        const verFin = canSeeFinancials(perfilUsuario);
         if (calculadoraComponentes.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${esAdmin ? 6 : 4}" style="text-align:center;">No hay componentes agregados</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${verFin ? 6 : 3}" style="text-align:center;">No hay componentes agregados</td></tr>`;
             return;
         }
         tbody.innerHTML = calculadoraComponentes.map((comp, idx) => `
             <tr>
                 <td>${comp.nombre}</td>
                 <td>${comp.cantidad}</td>
-                ${esAdmin ? `<td>$${(comp.costo_compra || 0).toFixed(2)}</td><td>$${comp.costo_unitario.toFixed(2)}</td>` : ''}
-                <td>$${comp.subtotal.toFixed(2)}</td>
+                ${verFin ? `<td>$${(comp.costo_compra || 0).toFixed(2)}</td><td>$${comp.costo_unitario.toFixed(2)}</td><td>$${comp.subtotal.toFixed(2)}</td>` : ''}
                 <td><button class="btn-remove" onclick="ventasModule._eliminarComponente(${idx})">✖</button></td>
             </tr>
         `).join('');
@@ -3679,12 +3899,27 @@ const VentasModule = (function() {
 
     // ==================== CARGA DE COSTOS DESDE BD ====================
     /** Carga parámetros de costos desde parametros_costos */
+    function _parametrosCostosConDefaults(raw) {
+        const base = { ...(tabuladorTaller.variables || {}) };
+        const src = raw || {};
+        return {
+            gasolina: Number(src.gasolina ?? base.gasolina) || 0,
+            rendimiento: Number(src.rendimiento ?? base.rendimiento) || 0,
+            costoTecnico: Number(src.costoTecnico ?? base.costoTecnico) || 0,
+            gastosFijosHora: Number(src.gastosFijosHora ?? base.gastosFijosHora) || 0,
+            camionetaHora: Number(src.camionetaHora ?? base.camionetaHora) || 0,
+            utilidad: Number(src.utilidad ?? base.utilidad) || 0,
+            credito: Number(src.credito ?? base.credito) || 2,
+            iva: Number(src.iva ?? base.iva) || 16
+        };
+    }
+
     async function _cargarParametrosCostos() {
         try {
             const { data, error } = await window.supabase
                 .from('parametros_costos')
                 .select('clave, valor');
-            if (error || !data) return tabuladorTaller.variables;
+            if (error || !data) return _parametrosCostosConDefaults(null);
 
             const params = {};
             data.forEach(p => {
@@ -3697,10 +3932,10 @@ const VentasModule = (function() {
                 if (p.clave === 'credito') params.credito = Number(p.valor);
                 if (p.clave === 'iva') params.iva = Number(p.valor);
             });
-            return params;
+            return _parametrosCostosConDefaults(params);
         } catch (e) {
             console.warn('[Ventas] Error cargando parámetros:', e);
-            return tabuladorTaller.variables;
+            return _parametrosCostosConDefaults(null);
         }
     }
 
@@ -3744,11 +3979,12 @@ const VentasModule = (function() {
 
     /** Abre modal para editar gastos fijos y parámetros */
     async function _abrirEditorCostos() {
-        const [parametros, gastosFijos, clientes] = await Promise.all([
+        const [parametrosRaw, gastosFijos, clientes] = await Promise.all([
             _cargarParametrosCostos(),
             _cargarGastosFijos(),
             _cargarClientesTabulador()
         ]);
+        const parametros = _parametrosCostosConDefaults(parametrosRaw);
 
         const totalGastosFijos = gastosFijos.reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
         const gastoFijoHora = (totalGastosFijos / 160).toFixed(2); // 160 hrs/mes
@@ -3773,31 +4009,31 @@ const VentasModule = (function() {
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                                     <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px;">
                                         <label style="font-size: 12px; color: var(--text-secondary);">Gasolina ($/L)</label>
-                                        <input type="number" id="paramGasolina" step="0.01" value="${parametros.gasolina}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="gasolina">
+                                        <input type="number" id="paramGasolina" step="0.01" value="${Number(parametros.gasolina) || 0}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="gasolina">
                                     </div>
                                     <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px;">
                                         <label style="font-size: 12px; color: var(--text-secondary);">Rendimiento (km/L)</label>
-                                        <input type="number" id="paramRendimiento" step="0.1" value="${parametros.rendimiento}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="rendimiento">
+                                        <input type="number" id="paramRendimiento" step="0.1" value="${Number(parametros.rendimiento) || 0}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="rendimiento">
                                     </div>
                                     <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px;">
                                         <label style="font-size: 12px; color: var(--text-secondary);">Costo Técnico ($/hr)</label>
-                                        <input type="number" id="paramCostoTecnico" step="0.01" value="${parametros.costoTecnico}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="costo_tecnico">
+                                        <input type="number" id="paramCostoTecnico" step="0.01" value="${Number(parametros.costoTecnico) || 0}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="costo_tecnico">
                                     </div>
                                     <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px;">
                                         <label style="font-size: 12px; color: var(--text-secondary);">Camioneta ($/hr)</label>
-                                        <input type="number" id="paramCamioneta" step="0.01" value="${parametros.camionetaHora}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="camioneta_hora">
+                                        <input type="number" id="paramCamioneta" step="0.01" value="${Number(parametros.camionetaHora) || 0}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="camioneta_hora">
                                     </div>
                                     <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px;">
                                         <label style="font-size: 12px; color: var(--text-secondary);">Utilidad (%)</label>
-                                        <input type="number" id="paramUtilidad" step="0.1" value="${parametros.utilidad}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="utilidad">
+                                        <input type="number" id="paramUtilidad" step="0.1" value="${Number(parametros.utilidad) || 0}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="utilidad">
                                     </div>
                                     <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px;">
                                         <label style="font-size: 12px; color: var(--text-secondary);">Crédito (%)</label>
-                                        <input type="number" id="paramCredito" step="0.1" value="${parametros.credito}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="credito">
+                                        <input type="number" id="paramCredito" step="0.1" value="${Number(parametros.credito) || 0}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="credito">
                                     </div>
                                     <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px;">
                                         <label style="font-size: 12px; color: var(--text-secondary);">IVA (%)</label>
-                                        <input type="number" id="paramIva" step="0.1" value="${parametros.iva}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="iva">
+                                        <input type="number" id="paramIva" step="0.1" value="${Number(parametros.iva) || 0}" style="width: 100%; padding: 8px; font-weight: 600;" data-param="iva">
                                     </div>
                                 </div>
                             </div>
@@ -3821,7 +4057,7 @@ const VentasModule = (function() {
                                         ${gastosFijos.map(g => `
                                             <tr data-id="${g.id}">
                                                 <td><input type="text" value="${g.nombre}" class="gasto-nombre" style="width: 100%; padding: 6px;"></td>
-                                                <td><input type="number" value="${g.monto}" step="0.01" class="gasto-monto" style="width: 100%; padding: 6px;"></td>
+                                                <td><input type="number" value="${Number(g.monto) || 0}" step="0.01" class="gasto-monto" style="width: 100%; padding: 6px;"></td>
                                                 <td><input type="checkbox" class="gasto-activo" ${g.activo ? 'checked' : ''}></td>
                                                 <td><button class="btn-remove btn-sm" onclick="ventasModule._eliminarGastoFijo('${g.id}', this)"><i class="fas fa-trash"></i></button></td>
                                             </tr>
@@ -4236,6 +4472,74 @@ const VentasModule = (function() {
 
     // ==================== DETALLE Y EDICIÓN ====================
 
+    function _idsMatch(a, b) {
+        if (a == null || b == null) return false;
+        return String(a) === String(b);
+    }
+
+    function _normalizarTipoRegistro(tipo) {
+        const t = String(tipo || 'cotizacion').toLowerCase();
+        if (t === 'ordenes_taller' || t === 'laboratorio') return 'taller';
+        if (t === 'ordenes_motores' || t === 'motores') return 'motor';
+        if (t === 'proyectos_automatizacion' || t === 'automatizacion' || t === 'proyecto' || t === 'proyectos') return 'proyecto';
+        if (t === 'suministro' || t === 'suministros') return 'suministro';
+        return t;
+    }
+
+    function _findRegistroVentas(id, tipo) {
+        const t = _normalizarTipoRegistro(tipo);
+        const poolByTipo = {
+            venta: ventas,
+            cotizacion: cotizaciones,
+            suministro: suministrosVentas,
+            taller: taller,
+            motor: motores,
+            proyecto: proyectos
+        };
+        const primary = poolByTipo[t];
+        if (primary && primary.length) {
+            const hit = primary.find((i) => _idsMatch(i.id, id));
+            if (hit) return hit;
+        }
+        const all = [...cotizaciones, ...ventas, ...suministrosVentas, ...taller, ...motores, ...proyectos];
+        return all.find((i) => _idsMatch(i.id, id)) || all.find((i) => _idsMatch(i.folio, id)) || null;
+    }
+
+    function _urlModuloOperativo(tipo, id) {
+        const t = _normalizarTipoRegistro(tipo);
+        if (t === 'taller') return '/panel/pages/ssepi_taller.html?open=' + encodeURIComponent(id);
+        if (t === 'motor') return '/panel/pages/ssepi_motores.html?open=' + encodeURIComponent(id);
+        if (t === 'proyecto') return '/panel/pages/ssepi_servicios.html?open=' + encodeURIComponent(id);
+        if (t === 'suministro') return '/panel/pages/ssepi_suministros.html?edit=' + encodeURIComponent(id);
+        return null;
+    }
+
+    function _esRegistroSuministro(item) {
+        if (!item) return false;
+        const d = item.departamento || item.data?.departamento;
+        const o = item.origen || item.data?.origen;
+        return o === 'suministro' || d === 'Suministro' || String(item.folio || '').startsWith('SP-S');
+    }
+
+    function _estadoEsperandoConfirmacionCliente(estado) {
+        const s = String(estado || '').trim().toLowerCase();
+        return s === 'esperando_confirmacion'
+            || s === 'esperando_confirmacion_cliente'
+            || s === 'pendiente_confirmacion'
+            || s === 'esperando confirmación cliente'
+            || s === 'esperando confirmacion cliente';
+    }
+
+    function _editarSuministroDesdeVentas(item) {
+        const data = item.data || item;
+        const folio = data.folio || item.folio;
+        if (!folio) {
+            _showToast('Cotización de suministro sin folio', 'warning');
+            return;
+        }
+        window.location.href = '/panel/pages/ssepi_suministros.html?edit=' + encodeURIComponent(folio);
+    }
+
     /**
      * Carga y muestra el historial de una cotización/orden
      */
@@ -4247,15 +4551,17 @@ const VentasModule = (function() {
             return;
         }
 
+        const tNorm = _normalizarTipoRegistro(tipo);
         const columnMap = {
             'cotizacion': 'cotizacion_id',
             'venta': 'cotizacion_id',
+            'suministro': 'cotizacion_id',
             'taller': 'orden_taller_id',
             'motor': 'orden_motor_id',
             'proyecto': 'proyecto_id',
             'automatizacion': 'proyecto_id'
         };
-        const columnName = columnMap[tipo] || 'cotizacion_id';
+        const columnName = columnMap[tNorm] || columnMap[tipo] || 'cotizacion_id';
 
         let data = [], userMap = {}, events = [];
         try {
@@ -4321,8 +4627,8 @@ const VentasModule = (function() {
             console.warn('[Ventas] Error en historial:', err);
         }
 
-        const item = [...ventas, ...cotizaciones].find(i => i.id === id);
-        const estadoActual = item?.estado || item?.estatus_pago || 'registro';
+        const item = _findRegistroVentas(id, tipo);
+        const estadoActual = item?.estado || item?.estatus_pago || item?.estatus_actual || 'registro';
         const cerebro = item?.cerebro_registro || {};
         const equipoInfo = cerebro.producto_servicio || cerebro.nombre_producto || item?.descripcion || item?.equipo || null;
         const marcaInfo = cerebro.marca || null;
@@ -4373,12 +4679,19 @@ const VentasModule = (function() {
                 `}
             </div>
             <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
-                ${(estadoActual === 'esperando_confirmacion' || estadoActual === 'esperando_confirmacion_cliente' || estadoActual === 'pendiente_confirmacion') ? `
+                ${(_estadoEsperandoConfirmacionCliente(estadoActual) && (tNorm === 'cotizacion' || tNorm === 'venta' || tNorm === 'suministro')) ? `
                 <button class="btn btn-success" onclick="ventasModule._clienteConfirmo('${id}')">
                     <i class="fas fa-check-circle"></i> Cliente Confirmó
                 </button>
                 <button class="btn btn-danger" onclick="ventasModule._clienteCancelo('${id}')">
                     <i class="fas fa-times-circle"></i> Cliente Canceló
+                </button>` : ''}
+                ${(_estadoEsperandoConfirmacionCliente(estadoActual) && (tNorm === 'taller' || tNorm === 'motor' || tNorm === 'proyecto')) ? `
+                <button class="btn btn-success" onclick="ventasModule._clienteConfirmoOperativo('${id}', '${tNorm}')">
+                    <i class="fas fa-check-circle"></i> Cliente Confirmó (orden)
+                </button>
+                <button class="btn btn-danger" onclick="ventasModule._clienteCanceloOperativo('${id}', '${tNorm}')">
+                    <i class="fas fa-times-circle"></i> Cliente Canceló (orden)
                 </button>` : ''}
                 ${(estadoActual === 'entregado' || estadoActual === 'pagado' || estadoActual === 'facturado' || estadoActual === 'reparado') ? `
                 <button class="btn btn-primary" onclick="ventasModule._generarPDFDesdeHistorial('${id}', '${tipo}')">
@@ -4435,28 +4748,88 @@ const VentasModule = (function() {
     }
 
     function _abrirDetalle(id, tipo) {
-        // Abrir historial directamente
+        const t = _normalizarTipoRegistro(tipo);
+        if (t === 'taller' || t === 'motor' || t === 'proyecto') {
+            const item = _findRegistroVentas(id, tipo);
+            if (item && _estadoEsperandoConfirmacionCliente(item.estado)) {
+                _mostrarHistorial(id, tipo);
+                return;
+            }
+            const url = _urlModuloOperativo(t, id);
+            if (url) {
+                window.location.href = url;
+                return;
+            }
+        }
+        if (t === 'suministro') {
+            const item = _findRegistroVentas(id, tipo);
+            if (item && _esRegistroSuministro(item)) {
+                _editarSuministroDesdeVentas(item);
+                return;
+            }
+        }
         _mostrarHistorial(id, tipo);
     }
 
     async function _editarVenta(id, tipo) {
-        const item = [...ventas, ...cotizaciones].find(i => i.id === id);
+        const t = _normalizarTipoRegistro(tipo);
+        const item = _findRegistroVentas(id, tipo);
         if (!item) { _showToast('Registro no encontrado', 'error'); return; }
 
+        document.getElementById('historialModal')?.classList.remove('active');
+
+        if (t === 'taller' || t === 'motor' || t === 'proyecto') {
+            const url = _urlModuloOperativo(t, item.id);
+            if (url) {
+                _showToast('Abriendo módulo operativo para editar…', 'info');
+                window.location.href = url;
+                return;
+            }
+        }
+
+        if (t === 'suministro' || _esRegistroSuministro(item)) {
+            _editarSuministroDesdeVentas(item);
+            return;
+        }
+
+        if (t !== 'cotizacion' && t !== 'venta') {
+            _showToast('Este tipo de registro se edita en su módulo.', 'info');
+            return;
+        }
+
         // Marcar que estamos editando esta cotizacion
-        editingCotizacionId = id;
+        editingCotizacionId = item.id;
 
         // Cargar datos en el wizard
         calculadoraClienteActual = {
             id: item.cliente_id || '',
-            nombre: item.cliente || '',
+            nombre: item.cliente || item.cliente_nombre || '',
             email: item.email || '',
             telefono: item.telefono || '',
-            rfc: item.rfc || ''
+            rfc: item.rfc || '',
+            km: Number(item.km_distancia) || 0,
+            horas: Number(item.horas_viaje) || 0
         };
-        compraActual = null;
-        ventasWizardCerebro = item.cerebro_registro || null;
+        compraActual = item.orden_origen_id
+            ? { vinculacion: { id: item.orden_origen_id, tipo: item.origen || 'automatizacion' } }
+            : null;
+        const deptFromOrigen = {
+            automatizacion: 'Automatización',
+            proyecto: 'Proyectos',
+            soporte: 'Soporte en planta',
+            taller: 'Laboratorio de Electrónica',
+            motores: 'Taller Motores',
+            suministro: 'Suministro'
+        }[item.origen];
+        ventasWizardCerebro = item.cerebro_registro || (deptFromOrigen ? {
+            departamento: deptFromOrigen,
+            cliente_id: item.cliente_id,
+            orden_id: item.orden_origen_id
+        } : null);
         fechasEtapas = item.fechas_etapas || {};
+        if (item.costo_desglose && typeof item.costo_desglose === 'object') {
+            costoDesgloseVentas = recalcularDesglose({ ...item.costo_desglose }, { aplicarIva: true });
+        }
 
         // Reconstruir componentes desde items
         calculadoraComponentes = (item.items || []).map(i => ({
@@ -4506,8 +4879,17 @@ const VentasModule = (function() {
     }
 
     async function _eliminarVenta(id, tipo) {
-        const item = [...ventas, ...cotizaciones].find(i => i.id === id);
+        const item = _findRegistroVentas(id, tipo);
         if (!item) { _showToast('Registro no encontrado', 'error'); return; }
+        if (_esRegistroSuministro(item)) {
+            _showToast('Las cotizaciones de Suministros se gestionan en el módulo Suministros.', 'info');
+            return;
+        }
+        const t = _normalizarTipoRegistro(tipo);
+        if (t === 'taller' || t === 'motor' || t === 'proyecto') {
+            _showToast('Cancela o edita esta orden en su módulo operativo.', 'info');
+            return;
+        }
         const folio = item.folio || id.slice(-6);
 
         // REGLA 2: validar cuarentena antes de cualquier acción de cancelación
@@ -4780,12 +5162,33 @@ const VentasModule = (function() {
             _toggleWizardDeptFields();
         } else if (paso === 2) {
             let horasEst = 0;
-            const vid = compraActual?.vinculacion?.id;
+            const vid = compraActual?.vinculacion?.id || compraActual?.id;
             if (vid) {
                 horasEst = Number(taller.find((o) => o.id === vid)?.horas_estimadas)
                     || Number(motores.find((o) => o.id === vid)?.horas_estimadas)
                     || 0;
             }
+            const cotEdit = editingCotizacionId ? cotizaciones.find((c) => c.id === editingCotizacionId) : null;
+            const log = _calcularCostosGuardado();
+            const acts = await _fetchActividadesProyectoVinculado();
+            const ordenIdMat = compraActual?.vinculacion?.id || ventasWizardCerebro?.orden_id || cotEdit?.orden_origen_id;
+            const totalMatCompra = ordenIdMat ? await _fetchTotalMaterialesCompraProyecto(ordenIdMat) : 0;
+            costoDesgloseVentas = buildDesgloseDesdeFuentes({
+                base: {
+                    ...(cotEdit?.costo_desglose || {}),
+                    empresa: calculadoraClienteActual?.nombre || '',
+                    materiales: totalMatCompra || cotEdit?.costo_desglose?.materiales || 0,
+                    materiales_base: totalMatCompra || cotEdit?.costo_desglose?.materiales_base || 0,
+                    viaticos: (log.gasolina || 0) + (log.traslado || 0),
+                    gasolina: log.gasolina || 0,
+                    hr_camioneta: log.traslado || 0,
+                    credito_pct: 2,
+                    descuento_pct: 5,
+                    markup_materiales_pct: 30
+                },
+                actividades: acts,
+                aplicarIva: true
+            });
             body.innerHTML = _generarHTMLCalculadora(compraActual || {}, horasEst);
         }
         else if (paso === 3) body.innerHTML = _renderWizardPaso3();
@@ -4793,6 +5196,7 @@ const VentasModule = (function() {
 
         if (paso === 2) {
             _adjuntarEventosCalculadora();
+            _bindDesgloseVentas();
             _recalcular();
         }
         if (paso === 3) {
@@ -5295,6 +5699,7 @@ const VentasModule = (function() {
             }
             ventasAutosaveCtrl.collectPayload = () => payload;
             ventasAutosaveCtrl.schedule();
+            ventasAutosaveCtrl.flush();
         }
         if (wizardPaso === 4) return;
         (async () => { await _renderWizardPaso(wizardPaso + 1); })();
@@ -5308,7 +5713,7 @@ const VentasModule = (function() {
     function _bindWizardEvents() {
         var wizardCancel = document.getElementById('wizardCancelBtn');
         if (wizardCancel) wizardCancel.onclick = function () {
-            _afterVentasPersistOk();
+            _flushVentasAutosave();
             var m = document.getElementById('calculadoraModal');
             if (m) m.classList.remove('active');
         };
@@ -5394,13 +5799,21 @@ const VentasModule = (function() {
     function _descargarPDFDesdeWizard(preview = false) {
         const cliente = _nombreClienteWizardResuelto();
         const totalStr = document.getElementById('resTotal')?.innerText || '$0';
-        const total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
+        let total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
         const rfc = calculadoraClienteActual?.rfc || 'XAXX010101000';
         const folio = editingCotizacionId ? (cotizaciones.find(c => c.id === editingCotizacionId)?.folio || 'COT-####') : 'COT-####';
-        const items = calculadoraComponentes.map(c => ({ descripcion: c.nombre, cantidad: c.cantidad, precioUnitario: c.costo_unitario, importe: c.subtotal }));
-        const subtotal = total / 1.16;
-        const iva = total - subtotal;
         const departamento = ventasWizardCerebro?.departamento || 'Ventas';
+        const esAuto = ['Automatización', 'Proyectos', 'Soporte en planta'].includes(departamento);
+        let items = calculadoraComponentes.map(c => ({ descripcion: c.nombre, cantidad: c.cantidad, precioUnitario: c.costo_unitario, importe: c.subtotal }));
+        let subtotal = total / 1.16;
+        let iva = total - subtotal;
+        if (esAuto && costoDesgloseVentas) {
+            const pub = buildConceptosPDFPublicos(costoDesgloseVentas);
+            items = pub.items;
+            subtotal = pub.subtotal;
+            iva = pub.iva;
+            total = pub.total || total;
+        }
         if (!cliente) { _showToast('Cliente requerido para el PDF.', 'info'); return; }
         (async () => {
             try {
@@ -5429,27 +5842,38 @@ const VentasModule = (function() {
             const clienteId = document.getElementById('wizardClienteSelect')?.value;
 
             if (!clienteId) { _showToast('Selecciona un cliente.', 'warning'); return; }
+            const contacto = contactos.find(c => String(c.id) === String(clienteId));
+            if (!contacto && !String(clienteId).startsWith('tab-')) {
+                _showToast('Selecciona un cliente válido de la lista.', 'warning');
+                return;
+            }
             if (!fechaIn) { _showToast('Indica la fecha de ingreso.', 'warning'); return; }
             if (_deptUsaEquiposMulti(dept)) {
                 const eq = _getWizardEquiposSeleccionados();
                 if (!eq.length) { _showToast('Selecciona al menos un equipo.', 'warning'); return; }
                 nombreProducto = eq.join(', ');
-            } else if (!nombreProducto) { _showToast('Ingresa el nombre del producto.', 'warning'); return; }
+            } else if (!nombreProducto) {
+                _showToast(_deptUsaServiciosMulti(dept) ? 'Ingresa el nombre del proyecto / orden.' : 'Ingresa el nombre del producto.', 'warning');
+                return;
+            }
             if (_deptUsaServiciosMulti(dept) && !_getWizardServiciosSeleccionados().length) {
                 _showToast('Selecciona al menos un servicio / actividad.', 'warning'); return;
             }
             if (!falla) { _showToast('Describe la falla o requerimiento.', 'warning'); return; }
             if (!dept) { _showToast('Selecciona el departamento.', 'warning'); return; }
 
-            const contacto = contactos.find(c => String(c.id) === String(clienteId));
             const optLabel = (document.getElementById('wizardClienteSelect')?.selectedOptions?.[0]?.textContent || '').trim();
             let clienteNombre = '';
             if (contacto) {
-                clienteNombre = (contacto.nombre || contacto.empresa || contacto.email || 'Cliente').trim() || 'Cliente';
-            } else if (optLabel && optLabel !== '-- Seleccionar cliente --') {
-                clienteNombre = optLabel === 'Sin nombre' ? 'Cliente' : optLabel;
-            } else {
-                clienteNombre = 'Cliente';
+                clienteNombre = (contacto.nombre || contacto.empresa || contacto.email || '').trim();
+            } else if (String(clienteId).startsWith('tab-')) {
+                clienteNombre = decodeURIComponent(String(clienteId).slice(4));
+            } else if (optLabel && optLabel !== '-- Seleccionar cliente --' && optLabel !== 'Sin nombre') {
+                clienteNombre = optLabel;
+            }
+            if (!clienteNombre) {
+                _showToast('El cliente seleccionado no tiene nombre. Revísalo en Contactos.', 'warning');
+                return;
             }
 
             let origenCot = 'directo';
@@ -5472,8 +5896,10 @@ const VentasModule = (function() {
                     return;
                 }
                 if (creado?.ordenId) {
-                    await _crearCompraVinculada(creado.folio, creado.ordenId, creado.tipo, clienteNombre, csrfToken);
-                    await _crearFacturaVinculada(null, creado.folio, clienteNombre, 0, csrfToken);
+                    const esAuto = ['Automatización', 'Proyectos', 'Soporte en planta'].includes(dept);
+                    if (!esAuto) {
+                        await _crearCompraVinculada(creado.folio, creado.ordenId, creado.tipo, clienteNombre, csrfToken);
+                    }
                 }
             }
 
@@ -5686,7 +6112,8 @@ const VentasModule = (function() {
             telefono: calculadoraClienteActual?.telefono || '',
             rfc: calculadoraClienteActual?.rfc || '',
             adeudo_recuperado: adeudoRecuperado,
-            notas_adeudo: notasAdeudo
+            notas_adeudo: notasAdeudo,
+            costo_desglose: costoDesgloseVentas || null
         };
 
         const csrfToken = sessionStorage.getItem('csrfToken');
@@ -5712,7 +6139,8 @@ const VentasModule = (function() {
                     cerebro_registro: _cerebroRegistroPayload() || {},
                     fechas_etapas: fechasEtapas,
                     departamento: ventasWizardCerebro?.departamento || null,
-                    vendedor: vendedorNombre
+                    vendedor: vendedorNombre,
+                    costo_desglose: costoDesgloseVentas || null
                 }, csrfToken);
                 editingCotizacionId = null;
                 _showToast('✅ Cotización actualizada. Folio: ' + (updated?.folio || existing?.folio || folio), 'success');
@@ -6191,7 +6619,10 @@ const VentasModule = (function() {
                 '<td><span class="status-badge ' + moduloClass + '">' + esc(item.modulo) + '</span></td>' +
                 '<td><span class="status-badge ' + estadoClass + '">' + esc(estadoLabel) + '</span></td>' +
                 '<td style="text-align:right;">' + esc('$' + (item.total || 0).toFixed(2)) + '</td>' +
-                '<td><button class="btn-ssepi btn-ventas" style="font-size:12px;padding:4px 10px;"><i class="fas fa-eye"></i> Ver</button></td>' +
+                '<td style="white-space:nowrap;">' +
+                '<button type="button" class="btn-ssepi btn-ventas btn-hist-ver" style="font-size:12px;padding:4px 10px;margin-right:4px;"><i class="fas fa-eye"></i> Ver</button>' +
+                '<button type="button" class="btn-ssepi btn-secondary btn-hist-edit" style="font-size:12px;padding:4px 10px;"><i class="fas fa-edit"></i> Editar</button>' +
+                '</td>' +
                 '</tr>';
         }).join('');
 
@@ -6201,15 +6632,22 @@ const VentasModule = (function() {
             '<tbody>' + rows + '</tbody></table>';
 
         grid.querySelectorAll('.historia-row').forEach(function (row) {
-            row.addEventListener('click', function (e) {
-                var id = this.dataset.id;
-                var tipo = this.dataset.tipo;
-                var url = this.dataset.url;
-                if (url) {
-                    window.location.href = url;
-                } else {
-                    _abrirDetalle(id, tipo);
-                }
+            row.querySelector('.btn-hist-ver')?.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var id = row.dataset.id;
+                var tipo = row.dataset.tipo;
+                var url = row.dataset.url;
+                if (url) window.location.href = url;
+                else _abrirDetalle(id, tipo);
+            });
+            row.querySelector('.btn-hist-edit')?.addEventListener('click', function (e) {
+                e.stopPropagation();
+                ventasModule._editarVenta(row.dataset.id, row.dataset.tipo);
+            });
+            row.addEventListener('click', function () {
+                var url = row.dataset.url;
+                if (url) window.location.href = url;
+                else _abrirDetalle(row.dataset.id, row.dataset.tipo);
             });
         });
     }
@@ -6343,6 +6781,32 @@ const VentasModule = (function() {
         }
     }
 
+    function _clienteContactoParaPdf(nombreCliente) {
+        const base = calculadoraClienteActual || {};
+        const n = String(nombreCliente || base.nombre || '').trim().toLowerCase();
+        let c = null;
+        if (base.contactoId && contactos.length) {
+            c = contactos.find((x) => String(x.id) === String(base.contactoId));
+        }
+        if (!c && n && contactos.length) {
+            c = contactos.find((x) => {
+                const a = String(x.nombre || x.empresa || '').trim().toLowerCase();
+                const e = String(x.empresa || '').trim().toLowerCase();
+                return a === n || e === n || a.includes(n) || n.includes(a);
+            });
+        }
+        return {
+            nombre: c?.nombre || base.nombre || nombreCliente || '',
+            empresa: c?.empresa || base.empresa || '',
+            email: c?.email || base.email || document.getElementById('editEmail')?.value || '',
+            telefono: c?.telefono || base.telefono || document.getElementById('editTelefono')?.value || '',
+            rfc: c?.rfc || base.rfc || document.getElementById('editRFC')?.value || '',
+            direccion: c?.direccion || base.direccion || '',
+            puesto: c?.puesto || '',
+            logo_url: c?.logo_url || null
+        };
+    }
+
     function _generarPDF(preview = false) {
         const cliente = (document.getElementById('editCliente')?.value || document.getElementById('previewCliente')?.innerText || '').trim();
         const rfc = (document.getElementById('editRFC')?.value || '').trim();
@@ -6377,11 +6841,17 @@ const VentasModule = (function() {
 
         const subtotal = total / 1.16;
         const iva = total - subtotal;
+        const cc = _clienteContactoParaPdf(cliente);
 
         const pdfData = {
             folio,
-            cliente,
-            rfc: rfc || 'XAXX010101000',
+            cliente: cc.empresa || cc.nombre || cliente,
+            rfc: cc.rfc || rfc || 'XAXX010101000',
+            email: cc.email,
+            telefono: cc.telefono,
+            direccion: cc.direccion,
+            clienteContacto: cc,
+            clienteLogo: cc.logo_url,
             items,
             subtotal,
             iva,
@@ -6403,18 +6873,30 @@ const VentasModule = (function() {
     }
 
     async function _generarPDFDesdeHistorial(id, tipo) {
-        const item = [...ventas, ...cotizaciones].find(i => i.id === id);
+        const item = _findRegistroVentas(id, tipo);
         if (!item) { _showToast('Registro no encontrado', 'error'); return; }
+        const cc = _clienteContactoParaPdf(item.cliente || item.cliente_nombre);
         const datos = {
             folio: item.folio || id.slice(-6),
-            cliente: item.cliente || 'Cliente',
-            rfc: item.rfc || 'XAXX010101000',
-            items: (item.items || []).map(i => ({
-                descripcion: i.descripcion || i.desc || '',
-                cantidad: i.cantidad || i.qty || 1,
-                precio_unitario: i.precio_unitario || i.price || 0,
-                importe: i.importe || (i.cantidad || 1) * (i.precio_unitario || 0)
-            })),
+            cliente: cc.empresa || cc.nombre || item.cliente || 'Cliente',
+            rfc: cc.rfc || item.rfc || 'XAXX010101000',
+            email: cc.email || item.email || '',
+            telefono: cc.telefono || item.telefono || '',
+            direccion: cc.direccion || '',
+            clienteContacto: cc,
+            clienteLogo: cc.logo_url,
+            items: (item.items || []).map(i => {
+                const raw = String(i.nombre || i.descripcion || i.desc || '').trim();
+                const titulo = raw.includes(' — ') ? raw.split(' — ')[0].trim() : raw;
+                return {
+                    nombre: titulo,
+                    descripcion: titulo,
+                    sku: i.sku || i.especificaciones || '',
+                    cantidad: i.cantidad || i.qty || 1,
+                    precio_unitario: i.precio_unitario || i.price || 0,
+                    importe: i.importe || (i.cantidad || 1) * (i.precio_unitario || 0)
+                };
+            }),
             subtotal: item.subtotal || 0,
             iva: item.iva || 0,
             total: item.total || 0,
@@ -6439,6 +6921,81 @@ const VentasModule = (function() {
 
     // ==================== EXPOSICIÓN PÚBLICA ====================
     // ===== FLUJO COMERCIAL: Confirmación / Cancelación / Garantía =====
+    async function _clienteConfirmoOperativo(ordenId, tipo) {
+        if (!confirm('¿El cliente confirmó la cotización? El área técnica podrá continuar con el desarrollo.')) return;
+        const t = _normalizarTipoRegistro(tipo);
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        const patch = {
+            estado: 'Confirmado',
+            fecha_confirmacion_cliente: new Date().toISOString(),
+            espera_confirmacion_cliente: false,
+            updated_at: new Date().toISOString()
+        };
+        const notifPara = t === 'motor' ? 'motores' : (t === 'proyecto' ? 'automatizacion' : 'taller');
+        const smTipo = t === 'motor' ? 'motor' : (t === 'proyecto' ? 'proyecto' : 'taller');
+        try {
+            if (t === 'motor') {
+                await motoresService.update(ordenId, patch, csrfToken);
+            } else if (t === 'proyecto') {
+                await proyectosService.update(ordenId, patch, csrfToken);
+            } else {
+                await tallerService.update(ordenId, patch, csrfToken);
+            }
+            const item = _findRegistroVentas(ordenId, t);
+            if (window.SSEPIStateMachine) {
+                await SSEPIStateMachine.actualizarEstadoOrden(
+                    window.supabase, smTipo, ordenId, 'cliente_confirmo',
+                    'Cliente confirmó — ' + (item?.folio || ordenId), csrfToken
+                );
+            }
+            await notificacionesService.insert({
+                para: notifPara,
+                tipo: 'cliente_confirmo',
+                orden_id: ordenId,
+                folio: item?.folio || '',
+                cliente: item?.cliente || item?.cliente_nombre || item?.nombre || '',
+                mensaje: `Ventas: el cliente confirmó ${item?.folio || 'la orden'}. Puede continuar desarrollo/ejecución.`,
+                leido: false,
+                fecha: new Date().toISOString()
+            }, csrfToken);
+            if (item) item.estado = 'Confirmado';
+            _showToast('Cliente confirmó. Área técnica notificada.', 'success');
+            _loadTaller();
+            _loadMotores();
+            _loadProyectos();
+            _renderOperativasVentasList();
+            _renderPipelineCards();
+            document.getElementById('historialModal')?.classList.remove('active');
+        } catch (e) {
+            console.error(e);
+            _showToast('Error al confirmar: ' + (e.message || e), 'error');
+        }
+    }
+
+    async function _clienteCanceloOperativo(ordenId, tipo) {
+        const motivo = prompt('Motivo de cancelación (opcional):') || '';
+        if (!confirm('¿El cliente canceló? Se cerrará la orden operativa.')) return;
+        const t = _normalizarTipoRegistro(tipo);
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        try {
+            const patch = { estado: 'Cancelado', motivo_cancelacion: motivo, updated_at: new Date().toISOString() };
+            if (t === 'motor') await motoresService.update(ordenId, patch, csrfToken);
+            else if (t === 'proyecto') await proyectosService.update(ordenId, patch, csrfToken);
+            else await tallerService.update(ordenId, patch, csrfToken);
+            const item = _findRegistroVentas(ordenId, t);
+            if (item) item.estado = 'Cancelado';
+            _showToast('Orden cancelada por decisión del cliente.', 'warning');
+            _loadTaller();
+            _loadMotores();
+            _loadProyectos();
+            _renderOperativasVentasList();
+            document.getElementById('historialModal')?.classList.remove('active');
+        } catch (e) {
+            console.error(e);
+            _showToast('Error al cancelar: ' + (e.message || e), 'error');
+        }
+    }
+
     async function _clienteConfirmo(cotizacionId) {
         if (!confirm('¿El cliente confirmó la cotización? Se notificará al departamento técnico para proceder.')) return;
         const csrfToken = sessionStorage.getItem('csrfToken');
@@ -6570,7 +7127,9 @@ const VentasModule = (function() {
         _enviarAFacturacionSuministro,
         _clienteCanceloSuministro,
         _clienteConfirmo,
+        _clienteConfirmoOperativo,
         _clienteCancelo,
+        _clienteCanceloOperativo,
         _activarGarantia
     };
 })();

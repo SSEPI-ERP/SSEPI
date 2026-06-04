@@ -6,6 +6,7 @@
 
 import { sha256, calculateRecordHash } from './encryption-utils.js';
 import { checkRateLimit } from './security-middleware.js';
+import { filterVisibleProfiles } from './hidden-profiles.js';
 
 export class AuthService {
   constructor() {}
@@ -595,15 +596,15 @@ export class AuthService {
         if (!resp.ok) throw new Error('Error cargando usuarios offline');
         var json = await resp.json();
         var rows = json.data || [];
-        return rows.filter(function(u) { return roles.includes(u.rol); }).map(function(u) {
+        return filterVisibleProfiles(rows.filter(function(u) { return roles.includes(u.rol); }).map(function(u) {
           return { id: u.id, nombre: u.nombre, email: u.email, rol: u.rol, departamento: u.departamento };
-        });
+        }));
       }
       var _ref4 = await this.supabase.from('usuarios').select('id, nombre, email, rol, departamento').in('rol', roles);
       var data = _ref4.data;
       var error = _ref4.error;
       if (error) throw error;
-      return data || [];
+      return filterVisibleProfiles(data || []);
     } catch (e) {
       console.error('[AuthService] Error getUsersByRol:', e);
       return [];

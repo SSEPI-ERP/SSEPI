@@ -7,10 +7,12 @@
 import { authService } from '../core/auth-service.js';
 import { createDataService } from '../core/data-service.js';
 import { CostosEngine } from '../core/costos-engine.js';
-import { pdfGenerator } from '../core/pdf-generator.js';
+import { pdfGenerator } from '../core/pdf-generator.js?v=8';
 import { enqueueCoiJob } from '../core/coi-queue.js';
 import { createAutosaveController } from '../core/ssepi-runtime/autosave-coordinator.js';
 import { loadLocalDraft } from '../core/ssepi-runtime/draft-local-store.js';
+import { ssepiOn, SSEPI_EVENTS } from '../core/ssepi-runtime/ssepi-event-bus.js';
+import { canSeeCostsInModule, isSuministrosAdmin, applyBodyFinancialClass } from '../core/ssepi-runtime/cost-visibility.js';
 
 const SuministrosModule = (function() {
     // ==================== ESTADO ====================
@@ -32,6 +34,7 @@ const SuministrosModule = (function() {
 
     const SUMINISTROS_PIPELINE = [
         { id: 'cotizacion', label: 'Cotización' },
+        { id: 'pendiente_admin', label: 'Revisión Admin' },
         { id: 'en_compra', label: 'En compras' },
         { id: 'aprobada', label: 'Aprobada' },
         { id: 'entregada', label: 'Entregada' }
@@ -47,6 +50,10 @@ const SuministrosModule = (function() {
 
     // ==================== INICIALIZACIÓN ====================
     var perfilUsuario = null;
+
+    function _verCostosSuministros() {
+        return canSeeCostsInModule(perfilUsuario, 'suministros');
+    }
 
     function _suministrosRecordKey() {
         const folio = (document.getElementById('cotFolio') || {}).value || '';
@@ -82,37 +89,103 @@ const SuministrosModule = (function() {
         }, true);
     }
 
+    function _applySuministrosDraft(w) {
+        if (!w?.payload) return;
+        if (w.payload.carrito) carrito = w.payload.carrito.slice();
+        const setv = (id, val) => {
+            const el = document.getElementById(id);
+            if (el && val !== undefined) el.value = val == null ? '' : val;
+        };
+        setv('cotFolio', w.payload.cotFolio);
+        setv('cotCliente', w.payload.cotCliente);
+        setv('cotDias', w.payload.cotDias);
+        setv('cotKm', w.payload.cotKm);
+        setv('cotUtilidad', w.payload.cotUtilidad);
+        _renderCarrito();
+        _renderKPIs();
+        _updateCotResumen();
+    }
+
+    function _resumeSuministrosDraftKey(recordKey) {
+        const w = loadLocalDraft('suministros', recordKey);
+        if (!w?.payload) {
+            _showToast('No se encontró el borrador', 'warning');
+            return;
+        }
+        _applySuministrosDraft(w);
+        document.getElementById('cotizacionSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     function _tryResumeSuministrosDraft() {
         const resume = new URLSearchParams(window.location.search).get('resume');
         if (!resume) return;
         const w = loadLocalDraft('suministros', resume);
         if (!w?.payload?.carrito) return;
         if (!confirm('¿Recuperar borrador de suministros guardado en este equipo?')) return;
-        carrito = w.payload.carrito.slice();
-        _renderCarrito();
-        _renderKPIs();
+        _applySuministrosDraft(w);
         history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    function _flushSuministrosAutosave() {
+        if (suministrosAutosaveCtrl) suministrosAutosaveCtrl.flush();
     }
 
     async function init() {
         console.log('[Suministros] Inicializando módulo...');
-        try { perfilUsuario = await authService.getCurrentProfile(); } catch(e) {}
+        try {
+            perfilUsuario = await authService.getCurrentProfile();
+            applyBodyFinancialClass(perfilUsuario);
+        } catch(e) {}
         _cargarCarritoPersistido();
         await _loadData();
         _bindEvents();
         _initSuministrosAutosave();
         _tryResumeSuministrosDraft();
+        ssepiOn(SSEPI_EVENTS.RESUME_DRAFT, (detail) => {
+            if (!detail || detail.module !== 'suministros') return;
+            _resumeSuministrosDraftKey(detail.recordKey);
+        });
+        window.addEventListener('beforeunload', _flushSuministrosAutosave);
         _aplicarVisibilidadCostos();
         _renderCarrito();
         _renderKPIs();
-        await _ensureCotFolio();
+        _updateCotResumen();
         _renderSuministrosPipeline();
         await _initHistorialFiltros();
+        _configurarPermisosSuministrosUI();
+        const editFolio = new URLSearchParams(window.location.search).get('edit');
+        if (editFolio) {
+            setTimeout(function () {
+                _editarCotizacion(editFolio);
+                document.getElementById('cotizacionSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 400);
+        }
+    }
+
+    function _configurarPermisosSuministrosUI() {
+        const verCostos = _verCostosSuministros();
+        const admin = isSuministrosAdmin(perfilUsuario);
+        document.body.classList.toggle('suministros-sin-costos', !verCostos);
+        document.body.classList.toggle('suministros-es-admin', admin);
+        const bandeja = document.getElementById('adminBandejaSection');
+        if (bandeja) bandeja.hidden = !admin;
+        const btnEnv = document.getElementById('btnEnviarCompras');
+        if (btnEnv) {
+            if (admin) {
+                btnEnv.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar a Compras';
+                btnEnv.title = 'Crear orden de compra y notificar a Compras';
+            } else {
+                btnEnv.innerHTML = '<i class="fas fa-user-shield"></i> Enviar a revisión Admin';
+                btnEnv.title = 'Un administrador revisará costos antes de enviar a Compras';
+            }
+        }
+        _aplicarVisibilidadCostos();
+        _renderAdminBandeja();
+        document.body.addEventListener('ssepi:cost-visibility-changed', _aplicarVisibilidadCostos);
     }
 
     function _esAdminSuministros() {
-        const rol = (perfilUsuario?.rol || document.body.dataset.rol || '').toLowerCase();
-        return ['admin', 'superadmin', 'contabilidad'].includes(rol);
+        return isSuministrosAdmin(perfilUsuario);
     }
 
     async function _initHistorialFiltros() {
@@ -216,8 +289,20 @@ const SuministrosModule = (function() {
     }
 
     function _aplicarVisibilidadCostos() {
-        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
-        document.querySelectorAll('.col-costo-compra').forEach(el => { el.style.display = verCostos ? '' : 'none'; });
+        const verCostos = _verCostosSuministros();
+        const hide = (sel) => document.querySelectorAll(sel).forEach((el) => { el.style.display = verCostos ? '' : 'none'; });
+        hide('.col-costo-compra');
+        hide('.col-precio-suministros');
+        hide('#costosDesglose');
+        hide('.cot-resumen-total');
+        hide('#kpiCarritoTotalWrap');
+        hide('.form-group-utilidad');
+        hide('.carrito-col-precio');
+        hide('.historial-col-total');
+        if (!verCostos) {
+            const t = document.getElementById('cotResumenTotal');
+            if (t) t.textContent = '—';
+        }
     }
 
     async function _loadClientesSuministros() {
@@ -389,7 +474,7 @@ const SuministrosModule = (function() {
 
     function _renderKPIs() {
         const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+        const verCostos = _verCostosSuministros();
         set('kpiTotalItems', catalogoUnificado.length);
         set('kpiCarritoItems', carrito.reduce((s, i) => s + i.qty, 0));
         set('kpiCarritoTotal', verCostos ? '$' + carrito.reduce((s, i) => s + (i.precio || 0) * i.qty, 0).toLocaleString('es-MX', {minimumFractionDigits: 2}) : '—');
@@ -439,8 +524,8 @@ const SuministrosModule = (function() {
                       '<span class="source-badge source-badge-stock">STOCK</span>';
         const costoCompra = item.precio || 0;
         const precioVenta = costoCompra > 0 ? costoCompra * 1.4 : 0;
-        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
-        const precioBadge = precioVenta > 0 ? `<span class="card-price-venta">Venta: $${Number(precioVenta).toLocaleString('es-MX',{minimumFractionDigits:2})}</span>` : '';
+        const verCostos = _verCostosSuministros();
+        const precioBadge = verCostos && precioVenta > 0 ? `<span class="card-price-venta col-precio-suministros">Venta: $${Number(precioVenta).toLocaleString('es-MX',{minimumFractionDigits:2})}</span>` : '';
         const costoBadge = verCostos && costoCompra > 0 ? `<span class="card-price-costo">Costo: $${Number(costoCompra).toLocaleString('es-MX',{minimumFractionDigits:2})}</span>` : '';
         const provArr = Array.isArray(item.proveedores) ? item.proveedores : [];
         const stockInfo = item.stock !== null && item.stock !== undefined ? `<span class="card-stock">${item.stock} pzas</span>` :
@@ -463,7 +548,7 @@ const SuministrosModule = (function() {
                     ${stockInfo}
                     ${inCart ? '<span class="card-added">✓</span>' : `<button class="btn-add-item" onclick="suministrosModule._addToCartDirect('${item.id}','${item.source}')">+ Agregar</button>`}
                 </div>
-                ${provArr.length > 0 ? `<div class="card-prov-row">${provArr.slice(0,2).map(p => p.precio > 0 ? `<span class="card-prov-chip">${_esc(p.nombre)}: $${Number(p.precio).toLocaleString('es-MX',{minimumFractionDigits:2})}</span>` : '').join('')}</div>` : ''}
+                ${provArr.length > 0 ? `<div class="card-prov-row">${provArr.slice(0,2).map(p => `<span class="card-prov-chip">${_esc(p.nombre)}${verCostos && p.precio > 0 ? ': $' + Number(p.precio).toLocaleString('es-MX',{minimumFractionDigits:2}) : ''}</span>`).join('')}</div>` : ''}
             </div>
         </div>`;
         } catch(e) { console.error('[Suministros] Error rendering card:', e, item); return ''; }
@@ -477,8 +562,8 @@ const SuministrosModule = (function() {
                       '<span class="source-badge source-badge-stock">STOCK</span>';
         const costoCompra = item.precio || 0;
         const precioVenta = costoCompra > 0 ? costoCompra * 1.4 : 0;
-        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
-        const precioVentaStr = precioVenta > 0 ? `$${Number(precioVenta).toLocaleString('es-MX',{minimumFractionDigits:2})}` : '—';
+        const verCostos = _verCostosSuministros();
+        const precioVentaStr = verCostos && precioVenta > 0 ? `$${Number(precioVenta).toLocaleString('es-MX',{minimumFractionDigits:2})}` : '—';
         const costoCompraStr = verCostos && costoCompra > 0 ? `$${Number(costoCompra).toLocaleString('es-MX',{minimumFractionDigits:2})}` : '—';
         const stockInfo = item.stock !== null && item.stock !== undefined ? `<strong>${item.stock}</strong> pzas` :
                           provArr.length > 0 ? `${provArr.length} prov.` : '—';
@@ -487,7 +572,7 @@ const SuministrosModule = (function() {
         return `<tr>
             <td>${badge}</td><td><strong>${_esc(item.codigo)}</strong></td>
             <td title="${_esc(desc)}">${_esc(desc.substring(0,60))}${desc.length>60?'…':''}</td>
-            <td>${_esc(item.categoria)}</td><td>${precioVentaStr}</td><td class="col-costo-compra">${costoCompraStr}</td><td>${stockInfo}</td>
+            <td>${_esc(item.categoria)}</td><td class="col-precio-suministros">${precioVentaStr}</td><td class="col-costo-compra">${costoCompraStr}</td><td>${stockInfo}</td>
             <td>${inCart ? '<span style="color:#10b981">✓</span>' : `<button class="btn-add-item" onclick="suministrosModule._addToCartDirect('${item.id}','${item.source}')">+</button>`}</td>
         </tr>`;
         } catch(e) { console.error('[Suministros] Error rendering row:', e, item); return '<tr><td colspan="8">Error</td></tr>'; }
@@ -557,7 +642,7 @@ const SuministrosModule = (function() {
         const totalItems = document.getElementById('carritoTotalItems');
         const totalPrecio = document.getElementById('carritoTotalPrecio');
         if (!tbody) return;
-        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+        const verCostos = _verCostosSuministros();
         if (carrito.length === 0) {
             tbody.innerHTML = `<tr><td colspan="8" class="carrito-empty">Agrega artículos del catálogo</td></tr>`;
             if (totalItems) totalItems.textContent = '0';
@@ -579,9 +664,9 @@ const SuministrosModule = (function() {
                 <td>${badge}</td>
                 <td><strong>${_esc(item.codigo)}</strong> — ${_esc(item.descripcion.substring(0,40))}</td>
                 <td><input type="number" value="${item.qty}" min="1" style="width:55px" onchange="suministrosModule._updateCartQty(${idx},parseInt(this.value))">${stockWarn}</td>
-                <td>${costoCompraStr}</td>
-                <td class="col-costo-compra">${costoCompraStr}</td>
-                <td><strong>${subtotalStr}</strong></td>
+                <td class="carrito-col-precio col-precio-suministros">${verCostos ? `$${(item.precio||0).toLocaleString('es-MX',{minimumFractionDigits:2})}` : '—'}</td>
+                <td class="col-costo-compra carrito-col-precio">${costoCompraStr}</td>
+                <td class="carrito-col-precio"><strong>${subtotalStr}</strong></td>
                 <td>${item.link ? `<a href="${item.link}" target="_blank" class="supplier-link"><i class="fas fa-external-link-alt"></i></a>` : '—'}</td>
                 <td><button class="btn-remove" onclick="suministrosModule._removeFromCart(${idx})">✖</button></td>
             </tr>`;
@@ -597,7 +682,7 @@ const SuministrosModule = (function() {
         const utilidadPct = parseInt(document.getElementById('cotUtilidad')?.value) || 40;
         const proveedor = carrito.reduce((s, i) => s + (i.precio || 0) * i.qty, 0);
         const resultado = CostosEngine.calcularSuministros(dias, km, proveedor, utilidadPct / 100 + 1);
-        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+        const verCostos = _verCostosSuministros();
         const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = verCostos ? '$' + (val||0).toLocaleString('es-MX',{minimumFractionDigits:2}) : '—'; };
         set('costoProveedor', resultado.proveedor);
         set('costoGasolina', resultado.gasolina);
@@ -625,18 +710,34 @@ const SuministrosModule = (function() {
                 : '—';
         }
         if (itemsEl) itemsEl.textContent = String(carrito.reduce((s, i) => s + i.qty, 0));
-        if (totalEl) totalEl.textContent = '$' + (totalEst || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 });
+        if (totalEl) {
+            totalEl.textContent = _verCostosSuministros()
+                ? '$' + (totalEst || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })
+                : '—';
+        }
         if (estadoEl) {
-            const step = SUMINISTROS_PIPELINE.find(s => s.id === cotEstadoActual);
-            estadoEl.textContent = step ? step.label : cotEstadoActual;
+            const folioVal = folioIn && folioIn.value.trim();
+            if (!folioVal) estadoEl.textContent = 'Sin registrar';
+            else {
+                const step = SUMINISTROS_PIPELINE.find(s => s.id === cotEstadoActual);
+                estadoEl.textContent = step ? step.label : cotEstadoActual;
+            }
+        }
+        const tipoEl = document.getElementById('cotResumenTipo');
+        const tipoHidden = document.getElementById('cotTipoOrden');
+        if (tipoEl) {
+            tipoEl.textContent = (tipoHidden && tipoHidden.value) || (folioIn && folioIn.value.trim() ? COT_TIPO_ORDEN_LABEL : '—');
         }
     }
 
-    async function _guardarCotizacion() {
-        if (carrito.length === 0) { _showToast('Agrega artículos al carrito', 'warning'); return; }
+    async function _guardarCotizacion(opts) {
+        const skipClear = opts && opts.skipClear;
+        const estadoOverride = opts && opts.estadoOverride;
+        const silent = opts && opts.silent;
+        if (carrito.length === 0) { _showToast('Agrega artículos al carrito', 'warning'); return null; }
         const clienteId = document.getElementById('cotCliente')?.value;
         const cliente = contactos.find(c => (c.id || c.nombre) == clienteId);
-        if (!cliente) { _showToast('Selecciona un cliente', 'warning'); return; }
+        if (!cliente) { _showToast('Selecciona un cliente', 'warning'); return null; }
 
         const dias = parseInt(document.getElementById('cotDias')?.value) || 1;
         const km = parseInt(document.getElementById('cotKm')?.value) || 0;
@@ -675,8 +776,9 @@ const SuministrosModule = (function() {
             folio,
             cliente_nombre: cliente.nombre || '',
             cliente_id: cliente.id || cliente.nombre,
-            estado: cotEstadoActual || 'cotizacion',
+            estado: estadoOverride || cotEstadoActual || 'cotizacion',
             origen: 'suministro',
+            tipo_orden: COT_TIPO_ORDEN,
             departamento: 'Suministro',
             creado_por_id: perfilUsuario?.id || perfilUsuario?.auth_user_id || '',
             creado_por_nombre: perfilUsuario?.nombre || sessionStorage.getItem('ssepi_nombre') || '',
@@ -692,29 +794,79 @@ const SuministrosModule = (function() {
         try {
             if (editingCotizacionId) {
                 await cotizacionService.update(editingCotizacionId, cotizacionData);
-                _showToast(`Cotización ${folio} actualizada`, 'success');
+                if (!silent) _showToast(`Cotización ${folio} actualizada`, 'success');
             } else {
                 const existe = cotizaciones.find(c => (c.folio || (c.data && c.data.folio)) === folio);
-                if (existe) { _showToast('Ya existe una cotización con ese folio', 'warning'); return; }
-                await cotizacionService.insert(cotizacionData);
+                if (existe) { _showToast('Ya existe una cotización con ese folio', 'warning'); return null; }
+                const inserted = await cotizacionService.insert(cotizacionData);
+                editingCotizacionId = inserted?.id || editingCotizacionId;
                 try {
                     await enqueueCoiJob({ erp_source: 'cotizacion_suministro', erp_id: folio, folio, idempotency_key: `suministro:${folio}:cotizacion`, payload_json: cotizacionData });
                     console.log('[Suministros] Cotización encolada en COI:', folio);
                 } catch (coiErr) { console.warn('[Suministros] COI queue error:', coiErr?.message || coiErr); }
-                _showToast(`Cotización ${folio} guardada`, 'success');
+                if (!silent) _showToast(`Cotización ${folio} guardada`, 'success');
             }
             document.getElementById('cotFolio').value = folio;
+            _setCotTipoOrden();
             cotEstadoActual = cotizacionData.estado;
             _renderSuministrosPipeline();
-            _limpiarCot();
-            _loadCotizaciones();
+            if (!skipClear) _limpiarCot();
+            await _loadCotizaciones();
+            return { folio, cotizacionData, cotId: editingCotizacionId };
         } catch (e) {
             console.error('[Suministros] Error guardando:', e);
             _showToast('Error al guardar: ' + e.message, 'error');
+            return null;
+        }
+    }
+
+    async function _enviarRevisionAdmin() {
+        if (isSuministrosAdmin(perfilUsuario)) {
+            return _enviarACompras();
+        }
+        return _enviarAAdmin();
+    }
+
+    async function _enviarAAdmin() {
+        if (carrito.length === 0) { _showToast('Agrega artículos al carrito', 'warning'); return; }
+        const saved = await _guardarCotizacion({ skipClear: true, estadoOverride: 'pendiente_admin', silent: true });
+        if (!saved) return;
+        const { folio } = saved;
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        const clienteTxt = document.getElementById('cotCliente')?.options?.[document.getElementById('cotCliente')?.selectedIndex]?.text || '';
+        const solicitante = perfilUsuario?.nombre || sessionStorage.getItem('ssepi_nombre') || 'Ventas';
+        try {
+            if (saved.cotId) {
+                await cotizacionService.update(saved.cotId, {
+                    ...saved.cotizacionData,
+                    estado: 'pendiente_admin',
+                    enviado_admin_at: new Date().toISOString(),
+                });
+            }
+            cotEstadoActual = 'pendiente_admin';
+            _renderSuministrosPipeline();
+            await notificacionesService.insert({
+                para: 'admin',
+                tipo: 'suministro_revision_admin',
+                folio,
+                cliente: clienteTxt,
+                mensaje: `${solicitante} envió cotización de suministros ${folio} para revisión de costos antes de Compras.`,
+                leido: false,
+                fecha: new Date().toISOString(),
+            }, csrfToken);
+            _showToast(`Cotización ${folio} enviada a revisión del administrador`, 'success');
+            _limpiarCot();
+            await _loadCotizaciones();
+        } catch (e) {
+            console.error('[Suministros] Enviar a admin:', e);
+            _showToast('Error al enviar a admin: ' + (e.message || e), 'error');
         }
     }
 
     async function _enviarACompras() {
+        if (!isSuministrosAdmin(perfilUsuario)) {
+            return _enviarAAdmin();
+        }
         if (carrito.length === 0) { _showToast('Agrega artículos al carrito', 'warning'); return; }
         const folio = document.getElementById('cotFolio')?.value;
         if (!folio) { _showToast('Guarda la cotización primero', 'warning'); return; }
@@ -814,11 +966,80 @@ const SuministrosModule = (function() {
         return deducidos;
     }
 
+    const COT_TIPO_ORDEN = 'suministro';
+    const COT_TIPO_ORDEN_LABEL = 'Suministro (SP-S)';
+
+    function _setCotTipoOrden() {
+        const hidden = document.getElementById('cotTipoOrden');
+        if (hidden) hidden.value = COT_TIPO_ORDEN;
+        const tipoEl = document.getElementById('cotResumenTipo');
+        if (tipoEl) tipoEl.textContent = COT_TIPO_ORDEN_LABEL;
+    }
+
+    function _expandCotForm() {
+        const panel = document.getElementById('cotFormPanel');
+        const btn = document.getElementById('btnToggleCotRegistro');
+        const icon = document.getElementById('cotToggleIcon');
+        const label = document.getElementById('cotToggleLabel');
+        if (panel) panel.classList.remove('is-collapsed');
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+        if (icon) icon.className = 'fas fa-chevron-up';
+        if (label) label.textContent = 'Ocultar datos de la orden';
+    }
+
+    function _collapseCotForm() {
+        const panel = document.getElementById('cotFormPanel');
+        const btn = document.getElementById('btnToggleCotRegistro');
+        const icon = document.getElementById('cotToggleIcon');
+        const label = document.getElementById('cotToggleLabel');
+        if (panel) panel.classList.add('is-collapsed');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+        if (icon) icon.className = 'fas fa-chevron-down';
+        if (label) label.textContent = 'Registrar datos de la orden';
+    }
+
+    function _toggleCotForm() {
+        const panel = document.getElementById('cotFormPanel');
+        if (!panel) return;
+        if (panel.classList.contains('is-collapsed')) _expandCotForm();
+        else _collapseCotForm();
+    }
+
     async function _ensureCotFolio() {
         const el = document.getElementById('cotFolio');
-        if (!el || el.value.trim()) {
-            const folio = await _generateFolio();
-            if (el) el.value = folio;
+        if (!el || el.value.trim()) return el ? el.value.trim() : '';
+        const folio = await _generateFolio();
+        el.value = folio;
+        _setCotTipoOrden();
+        _updateCotResumen();
+        return folio;
+    }
+
+    async function _iniciarRegistroOrdenSuministro() {
+        editingCotizacionId = null;
+        cotEstadoActual = 'cotizacion';
+        _renderSuministrosPipeline();
+        document.getElementById('cotCliente').value = '';
+        document.getElementById('cotDias').value = '1';
+        document.getElementById('cotKm').value = '0';
+        document.getElementById('cotUtilidad').value = '40';
+        ['cotFechaConfirmacion', 'cotFechaCertificacion', 'cotEntregaEsperada', 'cotLlegada', 'cotPrecorsoImportes', 'cotPrecorsoImporto'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        const folioEl = document.getElementById('cotFolio');
+        if (folioEl) folioEl.value = '';
+        const btnGuardar = document.getElementById('btnGuardarCot');
+        if (btnGuardar) btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Cotización';
+        _recalcularCostos();
+        _expandCotForm();
+        try {
+            const folio = await _ensureCotFolio();
+            _showToast(`Orden ${folio} — tipo ${COT_TIPO_ORDEN_LABEL}`, 'success');
+            document.getElementById('cotizacionSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (e) {
+            console.warn('[Suministros] Folio:', e);
+            _showToast('No se pudo generar el folio. Reintenta.', 'warning');
         }
     }
 
@@ -832,6 +1053,68 @@ const SuministrosModule = (function() {
             const cls = active ? 'sum-pipe-step active' : (done ? 'sum-pipe-step done' : 'sum-pipe-step');
             return `<div class="${cls}" data-step="${s.id}"><span class="sum-pipe-num">${i + 1}</span><span class="sum-pipe-label">${s.label}</span></div>`;
         }).join('');
+        _actualizarBtnSiguiente();
+    }
+
+    function _actualizarBtnSiguiente() {
+        const btn = document.getElementById('btnSiguientePipeline');
+        if (!btn) return;
+        const idx = SUMINISTROS_PIPELINE.findIndex(s => s.id === cotEstadoActual);
+        if (idx < 0 || idx >= SUMINISTROS_PIPELINE.length - 1) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-check"></i> Flujo completo';
+            btn.title = 'La orden ya está en el último paso';
+            return;
+        }
+        const next = SUMINISTROS_PIPELINE[idx + 1];
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fas fa-arrow-right"></i> Siguiente: ${next.label}`;
+        btn.title = `Avanzar a ${next.label}`;
+    }
+
+    async function _avanzarPipelineSiguiente() {
+        const idx = SUMINISTROS_PIPELINE.findIndex(s => s.id === cotEstadoActual);
+        if (idx < 0 || idx >= SUMINISTROS_PIPELINE.length - 1) {
+            _showToast('Ya estás en el último paso del flujo', 'info');
+            return;
+        }
+        const next = SUMINISTROS_PIPELINE[idx + 1];
+
+        if (cotEstadoActual === 'cotizacion' && next.id === 'pendiente_admin') {
+            if (isSuministrosAdmin(perfilUsuario)) {
+                const saved = await _guardarCotizacion({ skipClear: true, estadoOverride: 'pendiente_admin', silent: true });
+                if (!saved) return;
+                cotEstadoActual = 'pendiente_admin';
+                _renderSuministrosPipeline();
+                _updateCotResumen();
+                _showToast(`Avanzado a: ${next.label}`, 'success');
+                await _loadCotizaciones();
+            } else {
+                await _enviarAAdmin();
+            }
+            return;
+        }
+
+        if (cotEstadoActual === 'pendiente_admin' && next.id === 'en_compra') {
+            if (!isSuministrosAdmin(perfilUsuario)) {
+                _showToast('Solo un administrador puede enviar a Compras', 'warning');
+                return;
+            }
+            await _enviarACompras();
+            return;
+        }
+
+        if (carrito.length === 0) { _showToast('Agrega artículos al carrito', 'warning'); return; }
+        const saved = await _guardarCotizacion({ skipClear: true, estadoOverride: next.id, silent: true });
+        if (!saved) return;
+        cotEstadoActual = next.id;
+        _renderSuministrosPipeline();
+        _updateCotResumen();
+        if (next.id === 'entregada' && saved.cotizacionData?.componentes?.length) {
+            await _deducirInventario(saved.cotizacionData.componentes, saved.folio);
+        }
+        _showToast(`Avanzado a: ${next.label}`, 'success');
+        await _loadCotizaciones();
     }
 
     function _limpiarCot() {
@@ -841,7 +1124,13 @@ const SuministrosModule = (function() {
         document.getElementById('cotCliente').value = '';
         cotEstadoActual = 'cotizacion';
         _renderSuministrosPipeline();
-        _ensureCotFolio();
+        const folioEl = document.getElementById('cotFolio');
+        if (folioEl) folioEl.value = '';
+        const tipoHidden = document.getElementById('cotTipoOrden');
+        if (tipoHidden) tipoHidden.value = '';
+        const tipoRes = document.getElementById('cotResumenTipo');
+        if (tipoRes) tipoRes.textContent = '—';
+        _collapseCotForm();
         document.getElementById('cotDias').value = '1';
         document.getElementById('cotKm').value = '0';
         document.getElementById('cotUtilidad').value = '40';
@@ -858,12 +1147,22 @@ const SuministrosModule = (function() {
     }
 
     async function _generateFolio() {
+        if (window.folioFormats && window.folioFormats.getNextFolioCotizacionSuministro) {
+            return window.folioFormats.getNextFolioCotizacionSuministro();
+        }
         const now = new Date();
         const y = now.getFullYear().toString().slice(-2);
-        const m = String(now.getMonth()+1).padStart(2,'0');
-        const d = String(now.getDate()).padStart(2,'0');
-        const count = cotizaciones.filter(c => (c.origen || (c.data && c.data.origen)) === 'suministro').length + 1;
-        return `SP-S${y}${m}${d}-${String(count).padStart(2,'0')}`;
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const prefix = `SP-S${y}${m}${d}-`;
+        let max = 0;
+        cotizaciones.forEach((c) => {
+            const f = c.folio || (c.data && c.data.folio) || '';
+            if (!String(f).startsWith(prefix)) return;
+            const m2 = String(f).match(/-(\d+)$/);
+            if (m2) max = Math.max(max, parseInt(m2[1], 10) || 0);
+        });
+        return prefix + (max + 1);
     }
 
     // ==================== COTIZACIONES / HISTORIAL ====================
@@ -873,7 +1172,106 @@ const SuministrosModule = (function() {
         } catch(e) { cotizaciones = []; }
         _aplicarFiltrosHistorial();
         _renderCotizaciones();
+        _renderAdminBandeja();
         _renderKPIs();
+    }
+
+    function _renderAdminBandeja() {
+        const tbody = document.getElementById('adminBandejaBody');
+        if (!tbody || !isSuministrosAdmin(perfilUsuario)) return;
+        const pending = cotizaciones.filter((c) => (_cotData(c).estado || '') === 'pendiente_admin');
+        const badge = document.getElementById('adminBandejaCount');
+        if (badge) badge.textContent = String(pending.length);
+        if (!pending.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:16px;">Sin solicitudes pendientes de revisión</td></tr>';
+            return;
+        }
+        tbody.innerHTML = pending.map((c) => {
+            const data = _cotData(c);
+            const folio = data.folio || '—';
+            const folioEsc = _esc(folio).replace(/'/g, "\\'");
+            const comps = data.componentes || [];
+            return `<tr>
+                <td><strong>${_esc(folio)}</strong></td>
+                <td>${_esc(data.cliente_nombre || '—')}</td>
+                <td>${comps.length}</td>
+                <td>${_esc(data.creado_por_nombre || '—')}</td>
+                <td>${(data.enviado_admin_at || data.updated_at || data.created_at || '').substring(0, 16).replace('T', ' ')}</td>
+                <td class="historial-acciones">
+                    <button type="button" class="btn btn-sm btn-outline" onclick="suministrosModule._verCotizacion('${folioEsc}')" title="Ver detalle"><i class="fas fa-eye"></i></button>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="suministrosModule._aprobarBandejaYEnviarCompras('${folioEsc}')" title="Aprobar y enviar a Compras"><i class="fas fa-check"></i> Aprobar → Compras</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    async function _crearCompraDesdeCotizacion(folio, data) {
+        const comps = data.componentes || [];
+        const itemsCompra = comps.map((comp) => ({
+            sku: comp.codigo || '',
+            descripcion: comp.descripcion || '',
+            cantidad: comp.cantidad || 1,
+            costo_unitario: comp.costo_compra || comp.precio_unitario || 0,
+            costo_total: (comp.cantidad || 1) * (comp.costo_compra || comp.precio_unitario || 0),
+            link_proveedor: comp.link || '',
+        }));
+        const compraData = {
+            folio: 'CMP-' + folio,
+            proveedor_nombre: '',
+            departamento: 'Suministro',
+            estado: 0,
+            estado_interno: 'esperando_diagnostico',
+            vinculacion: { tipo: 'cotizacion_suministro', folio, cliente: data.cliente_nombre || data.cliente_id || '' },
+            items: itemsCompra,
+            observaciones: `Suministros ${folio} aprobado por admin. Verificar stock y cotizar.`,
+        };
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        const comprasService = createDataService('compras');
+        const inserted = await comprasService.insert(compraData, csrfToken);
+        const compraId = inserted?.id || inserted?.[0]?.id;
+        if (compraId) {
+            const itemsService = createDataService('compras_items');
+            for (const item of itemsCompra) {
+                await itemsService.insert({ compra_id: compraId, ...item }, csrfToken);
+            }
+        }
+        await notificacionesService.insert({
+            para: 'compras',
+            tipo: 'solicitud_cotizacion',
+            orden_id: compraId,
+            folio: compraData.folio,
+            cliente: data.cliente_nombre || '',
+            mensaje: `Admin aprobó suministro ${folio}. Cotización ${compraData.folio} lista para Compras.`,
+            leido: false,
+            fecha: new Date().toISOString(),
+        }, csrfToken);
+        const cot = cotizaciones.find((c) => (_cotData(c).folio) === folio);
+        const cotId = cot?.id;
+        if (cotId) {
+            await cotizacionService.update(cotId, { ...data, estado: 'en_compra', folio, aprobado_admin_at: new Date().toISOString() });
+        }
+        try {
+            await enqueueCoiJob({ erp_source: 'compra', erp_id: compraData.folio, folio: compraData.folio, idempotency_key: `compra:suministro:${folio}`, payload_json: compraData });
+        } catch (coiErr) { console.warn('[Suministros] COI compra error:', coiErr); }
+        return compraData.folio;
+    }
+
+    async function _aprobarBandejaYEnviarCompras(folio) {
+        if (!isSuministrosAdmin(perfilUsuario)) return;
+        const cot = cotizaciones.find((c) => (_cotData(c).folio) === folio);
+        if (!cot) { _showToast('Cotización no encontrada', 'warning'); return; }
+        const data = _cotData(cot);
+        if ((data.estado || '') !== 'pendiente_admin') {
+            _showToast('Esta cotización no está pendiente de revisión', 'warning');
+            return;
+        }
+        try {
+            const compraFolio = await _crearCompraDesdeCotizacion(folio, data);
+            _showToast(`Aprobada y enviada a Compras (${compraFolio})`, 'success');
+            await _loadCotizaciones();
+        } catch (e) {
+            _showToast('Error al aprobar: ' + (e.message || e), 'error');
+        }
     }
 
     function _renderCotizaciones() {
@@ -894,8 +1292,10 @@ const SuministrosModule = (function() {
             const data = _cotData(c);
             const folio = data.folio || '—';
             const estado = data.estado || 'cotizacion';
-            const estadoLabel = { cotizacion: 'Cotización', en_compra: 'En compras', aprobada: 'Aprobada', entregada: 'Entregada', cancelada: 'Cancelada' }[estado] || estado;
-            const estadoClass = { cotizacion:'estado-cotizacion', aprobada:'estado-aprobada', cancelada:'estado-cancelada', en_compra:'estado-en-compra', entregada:'estado-entregada' }[estado] || 'estado-cotizacion';
+            const estadoLabel = { cotizacion: 'Cotización', pendiente_admin: 'Revisión Admin', en_compra: 'En compras', aprobada: 'Aprobada', entregada: 'Entregada', cancelada: 'Cancelada' }[estado] || estado;
+            const estadoClass = { cotizacion:'estado-cotizacion', pendiente_admin:'estado-pendiente-admin', aprobada:'estado-aprobada', cancelada:'estado-cancelada', en_compra:'estado-en-compra', entregada:'estado-entregada' }[estado] || 'estado-cotizacion';
+            const verCostos = _verCostosSuministros();
+            const totalStr = verCostos ? `$${(data.total||0).toLocaleString('es-MX',{minimumFractionDigits:2})}` : '—';
             const comps = data.componentes || [];
             const creador = data.creado_por_nombre || '—';
             const folioEsc = _esc(folio).replace(/'/g, "\\'");
@@ -903,7 +1303,7 @@ const SuministrosModule = (function() {
                 <td><strong>${_esc(folio)}</strong></td>
                 <td>${_esc(data.cliente_nombre || '—')}</td>
                 <td>${comps.length}</td>
-                <td>$${(data.total||0).toLocaleString('es-MX',{minimumFractionDigits:2})}</td>
+                <td class="historial-col-total">${totalStr}</td>
                 <td><span class="estado-badge ${estadoClass}">${estadoLabel}</span></td>
                 <td>${(data.created_at||'').substring(0,10)}</td>
                 <td class="historial-creador">${_esc(creador)}</td>
@@ -927,7 +1327,7 @@ const SuministrosModule = (function() {
         const modal = document.getElementById('modalDetalleBom');
         const titulo = document.getElementById('modalDetalleTitulo');
         const body = document.getElementById('modalDetalleBody');
-        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+        const verCostos = _verCostosSuministros();
         titulo.textContent = `Cotización ${folio}`;
 
         // --- Recuperar datos del cerebro_registro o del root ---
@@ -962,18 +1362,24 @@ const SuministrosModule = (function() {
             totalCosto += subtotalCosto;
             totalVenta += subtotalVenta;
             const costoCol = verCostos ? `<td>$${costoCompra.toLocaleString('es-MX',{minimumFractionDigits:2})}</td><td>$${subtotalCosto.toLocaleString('es-MX',{minimumFractionDigits:2})}</td>` : '';
-            return `<tr><td>${c.source}</td><td>${c.codigo||'—'}</td><td>${_esc((c.descripcion||'').substring(0,60))}</td><td>${c.cantidad}</td>${costoCol}<td>$${precioVenta.toLocaleString('es-MX',{minimumFractionDigits:2})}</td><td>$${subtotalVenta.toLocaleString('es-MX',{minimumFractionDigits:2})}</td></tr>`;
+            const ventaCols = verCostos
+                ? `<td>$${precioVenta.toLocaleString('es-MX',{minimumFractionDigits:2})}</td><td>$${subtotalVenta.toLocaleString('es-MX',{minimumFractionDigits:2})}</td>`
+                : '';
+            return `<tr><td>${c.source}</td><td>${c.codigo||'—'}</td><td>${_esc((c.descripcion||'').substring(0,60))}</td><td>${c.cantidad}</td>${costoCol}${ventaCols}</tr>`;
         }).join('');
         const utilidadBruta = totalVenta - totalCosto;
         const headerCostos = verCostos ? '<th>Costo Unit.</th><th>Subtotal Costo</th>' : '';
+        const headerVenta = verCostos ? '<th>Precio Venta</th><th>Subtotal Venta</th>' : '';
         const totalesRow = verCostos ? `
             <tr style="font-weight:bold;background:#f8fafc"><td colspan="5">Totales</td><td>$${totalCosto.toLocaleString('es-MX',{minimumFractionDigits:2})}</td><td></td><td>$${totalVenta.toLocaleString('es-MX',{minimumFractionDigits:2})}</td></tr>
-            <tr style="font-weight:bold;background:#f0fdf4"><td colspan="6">Utilidad bruta</td><td colspan="2" style="color:#166534">$${utilidadBruta.toLocaleString('es-MX',{minimumFractionDigits:2})}</td></tr>` : `
-            <tr style="font-weight:bold;background:#f8fafc"><td colspan="3">Totales</td><td></td><td>$${totalVenta.toLocaleString('es-MX',{minimumFractionDigits:2})}</td></tr>`;
+            <tr style="font-weight:bold;background:#f0fdf4"><td colspan="6">Utilidad bruta</td><td colspan="2" style="color:#166534">$${utilidadBruta.toLocaleString('es-MX',{minimumFractionDigits:2})}</td></tr>` : '';
 
         // --- Fechas formateadas ---
         const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-MX') : '—';
-        const estadoClass = { cotizacion:'estado-cotizacion', aprobada:'estado-aprobada', cancelada:'estado-cancelada', en_compra:'estado-en-compra', entregada:'estado-entregada' }[data.estado] || 'estado-cotizacion';
+        const estadoClass = { cotizacion:'estado-cotizacion', pendiente_admin:'estado-pendiente-admin', aprobada:'estado-aprobada', cancelada:'estado-cancelada', en_compra:'estado-en-compra', entregada:'estado-entregada' }[data.estado] || 'estado-cotizacion';
+        const totalHeader = verCostos
+            ? `<div style="text-align:right;"><div style="font-size:1.1rem;font-weight:700;color:var(--primary,#0052cc);">$${(data.total||0).toLocaleString('es-MX',{minimumFractionDigits:2})}</div><div style="font-size:.75rem;color:var(--text-muted,#9ca3af);">Total con IVA</div></div>`
+            : '';
 
         body.innerHTML = `
             <div class="cot-preview-header" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
@@ -982,10 +1388,7 @@ const SuministrosModule = (function() {
                     <div style="font-size:.95rem;color:var(--text-primary,#111827);"><strong>Cliente:</strong> ${data.cliente_nombre || '—'}</div>
                     <div style="font-size:.8rem;color:var(--text-muted,#9ca3af);margin-top:2px;">Creada: ${fmtDate(data.created_at)} · Estado: <span class="estado-badge ${estadoClass}">${data.estado}</span></div>
                 </div>
-                <div style="text-align:right;">
-                    <div style="font-size:1.1rem;font-weight:700;color:var(--primary,#0052cc);">$${(data.total||0).toLocaleString('es-MX',{minimumFractionDigits:2})}</div>
-                    <div style="font-size:.75rem;color:var(--text-muted,#9ca3af);">Total con IVA</div>
-                </div>
+                ${totalHeader}
             </div>
 
             <div class="cot-preview-fields" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:14px;background:var(--bg-tertiary,#f9fafb);padding:12px;border-radius:8px;font-size:.82rem;">
@@ -996,11 +1399,11 @@ const SuministrosModule = (function() {
                 <div><span style="color:#9ca3af;font-size:.7rem;">Fecha certificación</span><br><strong>${fmtDate(fechaCertificacion)}</strong></div>
                 <div><span style="color:#9ca3af;font-size:.7rem;">Entrega esperada</span><br><strong>${entregaEsperada || '—'}</strong></div>
                 <div><span style="color:#9ca3af;font-size:.7rem;">Llegada oficina</span><br><strong>${fmtDate(llegada)}</strong></div>
-                <div><span style="color:#9ca3af;font-size:.7rem;">Precorso Importes</span><br><strong>${precorsoImportes || '—'}</strong></div>
-                <div><span style="color:#9ca3af;font-size:.7rem;">Precorso Importo</span><br><strong>${precorsoImporto || '—'}</strong></div>
+                <div><span style="color:#9ca3af;font-size:.7rem;">Notas — lista o referencia de importes</span><br><strong>${precorsoImportes || '—'}</strong></div>
+                <div><span style="color:#9ca3af;font-size:.7rem;">Notas — importador o proveedor extranjero</span><br><strong>${precorsoImporto || '—'}</strong></div>
             </div>
 
-            <div class="costos-desglose" style="margin-bottom:14px;">
+            ${verCostos ? `<div class="costos-desglose" style="margin-bottom:14px;">
                 <div class="costo-linea"><span>Costo suministros</span><span>$${proveedor.toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div>
                 <div class="costo-linea"><span>Gasolina</span><span>$${gasolina.toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div>
                 <div class="costo-linea"><span>Gastos generales</span><span>$${gastosGenerales.toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div>
@@ -1008,9 +1411,9 @@ const SuministrosModule = (function() {
                 <div class="costo-linea"><span>Crédito (3%)</span><span>$${creditoMonto.toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div>
                 <div class="costo-linea total"><span>IVA (16%)</span><span>$${ivaMonto.toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div>
                 <div class="costo-linea gran-total"><strong>GRAN TOTAL</strong><strong>$${granTotal.toLocaleString('es-MX',{minimumFractionDigits:2})}</strong></div>
-            </div>
+            </div>` : '<p style="font-size:.85rem;color:#64748b;margin-bottom:14px;">Los importes se muestran al administrador tras la revisión.</p>'}
 
-            <table class="data-table" style="margin-bottom:14px;"><thead><tr><th>Fuente</th><th>Código</th><th>Descripción</th><th>Cant</th>${headerCostos}<th>Precio Venta</th><th>Subtotal Venta</th></tr></thead><tbody>
+            <table class="data-table" style="margin-bottom:14px;"><thead><tr><th>Fuente</th><th>Código</th><th>Descripción</th><th>Cant</th>${headerCostos}${headerVenta}</tr></thead><tbody>
             ${filas}
             ${totalesRow}
             </tbody></table>
@@ -1022,7 +1425,8 @@ const SuministrosModule = (function() {
                 <button class="btn btn-secondary" onclick="suministrosModule._imprimirCotizacion('${folio}')"><i class="fas fa-print"></i> Imprimir</button>
                 <button class="btn btn-secondary" onclick="suministrosModule._generarPDF('${folio}', true)"><i class="fas fa-eye"></i> Visualizar PDF</button>
                 <button class="btn btn-primary" onclick="suministrosModule._generarPDF('${folio}', false)"><i class="fas fa-download"></i> Descargar PDF</button>
-                <button class="btn btn-primary" onclick="suministrosModule._enviarAComprasDesdeHistorial('${folio}')"><i class="fas fa-paper-plane"></i> Enviar a Compras</button>
+                ${isSuministrosAdmin(perfilUsuario) && data.estado === 'pendiente_admin' ? `<button class="btn btn-primary" onclick="suministrosModule._aprobarBandejaYEnviarCompras('${folio}')"><i class="fas fa-check"></i> Aprobar → Compras</button>` : ''}
+                ${isSuministrosAdmin(perfilUsuario) && data.estado !== 'pendiente_admin' && data.estado !== 'en_compra' ? `<button class="btn btn-primary" onclick="suministrosModule._enviarAComprasDesdeHistorial('${folio}')"><i class="fas fa-paper-plane"></i> Enviar a Compras</button>` : ''}
             </div>`;
         modal.classList.add('active');
     }
@@ -1056,6 +1460,10 @@ const SuministrosModule = (function() {
         }
 
         document.getElementById('cotFolio').value = data.folio || '';
+        cotEstadoActual = data.estado || 'cotizacion';
+        _renderSuministrosPipeline();
+        _setCotTipoOrden();
+        _expandCotForm();
         document.getElementById('cotDias').value = (data.cerebro_registro?.dias) || 1;
         document.getElementById('cotKm').value = (data.cerebro_registro?.km) || 0;
         document.getElementById('cotUtilidad').value = (data.cerebro_registro?.utilidadPct) || 40;
@@ -1121,7 +1529,7 @@ const SuministrosModule = (function() {
         if (!cot) { _showToast('Cotización no encontrada', 'warning'); return; }
         const data = cot.data || cot;
         const comps = data.componentes || [];
-        const verCostos = perfilUsuario && (perfilUsuario.ver_costos || ['admin','superadmin','contabilidad'].includes(perfilUsuario.rol));
+        const verCostos = _verCostosSuministros();
         const cr = data.cerebro_registro || {};
         const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-MX') : '—';
         const dias = cr.dias || data.dias_gestion || '—';
@@ -1175,7 +1583,8 @@ const SuministrosModule = (function() {
                 <div><span style="color:#9ca3af;font-size:.7rem;">Fecha certificación</span><br><strong>${fmtDate(cr.fecha_certificacion || data.fecha_certificacion)}</strong></div>
                 <div><span style="color:#9ca3af;font-size:.7rem;">Entrega esperada</span><br><strong>${cr.entrega_esperada || data.entrega_esperada || '—'}</strong></div>
                 <div><span style="color:#9ca3af;font-size:.7rem;">Llegada oficina</span><br><strong>${fmtDate(cr.llegada || data.llegada_oficina)}</strong></div>
-                <div><span style="color:#9ca3af;font-size:.7rem;">Precorso</span><br><strong>${cr.precorso_importes || data.precorso_importes || '—'} / ${cr.precorso_importo || data.precorso_importo || '—'}</strong></div>
+                <div><span style="color:#9ca3af;font-size:.7rem;">Notas — lista o referencia de importes</span><br><strong>${cr.precorso_importes || data.precorso_importes || '—'}</strong></div>
+                <div><span style="color:#9ca3af;font-size:.7rem;">Notas — importador o proveedor extranjero</span><br><strong>${cr.precorso_importo || data.precorso_importo || '—'}</strong></div>
             </div>
 
             ${verCostos ? `<div class="costos-box">
@@ -1306,8 +1715,18 @@ const SuministrosModule = (function() {
 
         document.getElementById('btnVaciarCarrito')?.addEventListener('click', _vaciarCarrito);
         document.getElementById('btnGuardarCot')?.addEventListener('click', _guardarCotizacion);
-        document.getElementById('btnEnviarCompras')?.addEventListener('click', _enviarACompras);
+        document.getElementById('btnSiguientePipeline')?.addEventListener('click', _avanzarPipelineSiguiente);
+        document.getElementById('btnEnviarCompras')?.addEventListener('click', _enviarRevisionAdmin);
         document.getElementById('btnLimpiarCot')?.addEventListener('click', _limpiarCot);
+        document.getElementById('btnNuevaOrdenSuministro')?.addEventListener('click', () => { _iniciarRegistroOrdenSuministro(); });
+        document.getElementById('btnToggleCotRegistro')?.addEventListener('click', async () => {
+            const panel = document.getElementById('cotFormPanel');
+            const willOpen = panel && panel.classList.contains('is-collapsed');
+            _toggleCotForm();
+            if (willOpen && !(document.getElementById('cotFolio')?.value || '').trim()) {
+                await _ensureCotFolio();
+            }
+        });
         document.getElementById('btnVistaGrid')?.addEventListener('click', () => {
             vistaActual = 'grid';
             document.getElementById('btnVistaGrid')?.classList.add('active');
@@ -1367,7 +1786,7 @@ const SuministrosModule = (function() {
         init, _addToCartDirect, _removeFromCart, _updateCartQty, _vaciarCarrito,
         _goToPage, _showBomDetail, _guardarCotizacion, _enviarACompras,
         _deducirInventario, _limpiarCot, _verCotizacion, _editarCotizacion,
-        _generarPDF, _imprimirCotizacion, _enviarAComprasDesdeHistorial,
+        _generarPDF, _imprimirCotizacion, _enviarAComprasDesdeHistorial, _aprobarBandejaYEnviarCompras,
         getCarrito: () => carrito, getCatalogo: () => catalogoUnificado
     };
 })();
