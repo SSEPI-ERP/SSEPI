@@ -23,6 +23,10 @@ const ComprasModule = (function() {
     let ordenesTaller = [];
     let ordenesMotores = [];
     let proyectos = [];
+    /** Tabulador Excel cargado en memoria (clientes_tabulador) para enriquecer PDFs
+     *  con RFC/dirección/contacto_referencia/km cuando el contacto Pac no lo trae. */
+    let _tabuladorLookup = new Map();
+    let _tabuladorLookupReady = null;
     /** Pestaña activa en el panel Laboratorio / Motores / Automatización */
     let operativasTabCompras = 'taller';
     let currentCompra = null;
@@ -2182,56 +2186,170 @@ const ComprasModule = (function() {
         _showToast('Captura precios reales de proveedores y guarda para enviar a Ventas', 'info');
     }
 
-    async function _crearOrdenDesdeSolicitud(id, tipo) {
-        console.log('[Compras] Crear orden desde solicitud', { id, tipo });
+    function _vincTipoCompra(tipo) {
+        return tipo === 'automatizacion' ? 'proyecto' : tipo;
+    }
 
-        let compraData = null;
-        let ordenTallerData = null;
-        let departamentoPorDefecto = 'Laboratorio de Electrónica';
+    function _compraVinculadaLocal(id, tipo) {
+        const vincTipo = _vincTipoCompra(tipo);
+        return compras.find((c) => {
+            let v = c.vinculacion;
+            if (typeof v === 'string') {
+                try { v = JSON.parse(v); } catch { v = null; }
+            }
+            return v
+                && (v.tipo === vincTipo || (tipo === 'automatizacion' && v.tipo === 'automatizacion'))
+                && String(v.id) === String(id);
+        }) || null;
+    }
 
+    async function _buscarCompraVinculada(id, tipo) {
+        const vincTipo = _vincTipoCompra(tipo);
         try {
-            if (tipo === 'taller') {
-                ordenTallerData = await tallerService.getById(id);
-                departamentoPorDefecto = 'Laboratorio de Electrónica';
-                console.log('[Compras] Orden taller:', ordenTallerData);
-            } else if (tipo === 'motor') {
-                ordenTallerData = await motoresService.getById(id);
-                departamentoPorDefecto = 'Taller Motores';
-            } else if (tipo === 'proyecto' || tipo === 'automatizacion') {
-                ordenTallerData = await proyectosService.getById(id);
-                departamentoPorDefecto = tipo === 'automatizacion' ? 'Automatización' : 'Proyectos';
-            }
+            const { data: comprasList, error } = await window.supabase
+                .from('compras')
+                .select('*')
+                .eq('vinculacion->>tipo', vincTipo)
+                .eq('vinculacion->>id', String(id))
+                .order('created_at', { ascending: false })
+                .limit(1);
+            if (!error && comprasList?.length) return _normalizeCompraRow(comprasList[0]);
+        } catch (_) { /* proxy local */ }
+        return _compraVinculadaLocal(id, tipo);
+    }
 
-            if (ordenTallerData) {
-                const vincTipo = tipo === 'automatizacion' ? 'proyecto' : tipo;
-                try {
-                    const { data: comprasList, error } = await window.supabase
-                        .from('compras')
-                        .select('*')
-                        .eq('vinculacion->>tipo', vincTipo)
-                        .eq('vinculacion->>id', id)
-                        .order('created_at', { ascending: false })
-                        .limit(1);
-                    if (!error && comprasList?.length) compraData = comprasList[0];
-                } catch (qErr) { /* proxy local puede no soportar JSON */ }
-                if (!compraData) {
-                    compraData = compras.find((c) => {
-                        let v = c.vinculacion;
-                        if (typeof v === 'string') {
-                            try { v = JSON.parse(v); } catch { v = null; }
-                        }
-                        return v
-                            && (v.tipo === vincTipo || (tipo === 'automatizacion' && v.tipo === 'automatizacion'))
-                            && String(v.id) === String(id);
-                    }) || null;
-                }
-                if (compraData) console.log('[Compras] Solicitud de compra encontrada:', compraData.folio);
+    function _labelEstadoCompra(estado) {
+        const labels = { 0: 'Borrador', 1: 'Solicitud', 2: 'Cotización', 3: 'Confirmada', 4: 'Recibida', 5: 'Entregada' };
+        return labels[Number(estado)] || '—';
+    }
+
+    async function _resolverClienteInfoOperativa(ordenData) {
+        const clienteNombre = ordenData?.cliente_nombre || ordenData?.cliente || '';
+        let clienteInfo = { nombre: clienteNombre };
+        if (!clienteNombre) return clienteInfo;
+        try {
+            const n = clienteNombre.toLowerCase().trim();
+            const contacto = (contactos || []).find((c) => {
+                const a = String(c.nombre || '').trim().toLowerCase();
+                const e = String(c.empresa || '').trim().toLowerCase();
+                return a === n || e === n;
+            });
+            if (contacto) {
+                clienteInfo = {
+                    nombre: contacto.nombre || clienteNombre,
+                    rfc: contacto.rfc || '',
+                    direccion: contacto.direccion || '',
+                    cp: contacto.cp || contacto.codigo_postal || '',
+                    telefono: contacto.telefono || '',
+                    email: contacto.email || '',
+                    ciudad: contacto.ciudad || ''
+                };
             }
-        } catch (e) {
-            console.error('[Compras] Error obteniendo datos:', e);
+        } catch (e) { console.warn('[Compras] Error buscando contacto operativa:', e); }
+        return clienteInfo;
+    }
+
+    async function _itemsConfirmadosDesdeOperativa(tipo, id, ordenData) {
+        const res = await _itemsDesdeVinculacion(tipo, id);
+        let enlaces = res.enlaces || [];
+        let inventario = res.inventario || [];
+        const invCache = await _loadInventarioCache();
+        if (invCache.length && enlaces.length) {
+            const split = _mapInventarioMatch(enlaces, invCache);
+            enlaces = split.enlaces;
+            inventario = inventario.concat(split.inventario);
         }
+        const mats = ordenData?.materiales || ordenData?.data?.materiales || [];
+        const costByKey = {};
+        mats.forEach((m) => {
+            if (m.sku) costByKey[String(m.sku).toLowerCase()] = Number(m.costo_unitario) || 0;
+            if (m.nombre) costByKey[String(m.nombre).toLowerCase()] = Number(m.costo_unitario) || 0;
+        });
+        const toItem = (it, origen) => {
+            const skuK = String(it.sku || '').toLowerCase();
+            const nomK = String(it.nombre || '').toLowerCase();
+            const costo = costByKey[skuK] || costByKey[nomK] || Number(it.costo_unitario) || 0;
+            return {
+                nombre: it.nombre || '',
+                descripcion: it.descripcion || it.nombre || '',
+                sku: it.sku || '',
+                cantidad: Number(it.cantidad) || 1,
+                costo_unitario: costo,
+                link_proveedor: it.link || it.link_proveedor || '',
+                proveedor: origen === 'inventario' ? 'INVENTARIO SSEPI' : ''
+            };
+        };
+        let items = enlaces.map((it) => toItem(it, 'proveedor')).concat(inventario.map((it) => toItem(it, 'inventario')));
+        if (!items.length && ordenData) {
+            const equipo = ordenData.equipo || ordenData.nombre || 'Servicio vinculado';
+            items = [{
+                nombre: equipo,
+                descripcion: ordenData.falla_reportada || ordenData.descripcion || equipo,
+                sku: '',
+                cantidad: 1,
+                costo_unitario: 0,
+                link_proveedor: ''
+            }];
+        }
+        return items;
+    }
 
-        // Precargar formulario
+    async function _autoCrearCompraConfirmadaDesdeOperativa(id, tipo, ordenData, departamento) {
+        const vincTipo = _vincTipoCompra(tipo);
+        const clienteInfo = await _resolverClienteInfoOperativa(ordenData);
+        const items = await _itemsConfirmadosDesdeOperativa(tipo, id, ordenData);
+        const total = items.reduce((s, i) => s + (Number(i.cantidad) || 0) * (Number(i.costo_unitario) || 0), 0);
+        const folio = (window.folioFormats && window.folioFormats.getNextFolioOrdenCompra)
+            ? await window.folioFormats.getNextFolioOrdenCompra()
+            : 'SP-OC' + Date.now().toString().slice(-8);
+        const user = (await authService.getCurrentProfile()) || { nombre: 'Sistema' };
+        const now = new Date().toISOString();
+        const vinculacion = {
+            tipo: vincTipo,
+            id: String(id),
+            folio: ordenData?.folio || '',
+            cliente: clienteInfo.nombre || ordenData?.cliente || ordenData?.cliente_nombre || '',
+            nombre: ordenData?.nombre || ordenData?.equipo || ordenData?.folio || ''
+        };
+        const proveedor = ordenData?.proveedor_preferido || (tipo === 'automatizacion' ? 'DIMEINT / Siemens' : 'PENDIENTE PROVEEDOR');
+        const payload = {
+            folio,
+            proveedor,
+            departamento,
+            fecha_requerida: new Date().toISOString().split('T')[0],
+            prioridad: 'Normal',
+            vinculacion,
+            items: _itemsParaPayloadDb(items),
+            total,
+            estado: 3,
+            estado_interno: 'confirmada',
+            pasos: [
+                { paso: 1, fecha: now, usuario: user.nombre || 'Sistema', accion: 'Orden creada desde operativa vinculada' },
+                { paso: 2, fecha: now, usuario: user.nombre || 'Sistema', accion: 'Materiales importados de ' + (ordenData?.folio || tipo) },
+                { paso: 3, fecha: now, usuario: user.nombre || 'Sistema', accion: 'Orden confirmada' }
+            ],
+            confirmado_ventas: false,
+            created_at: now,
+            updated_at: now,
+            data: {
+                orden_tipo: 'sencilla',
+                fecha_generacion_bom: now.split('T')[0],
+                fecha_esperada_llegada: now.split('T')[0],
+                cliente_info: clienteInfo
+            }
+        };
+        const csrfToken = sessionStorage.getItem('csrfToken');
+        const inserted = await comprasService.insert(payload, csrfToken);
+        const newId = inserted?.id || inserted?.local_id;
+        if (!newId) throw new Error('No se pudo crear la orden de compra');
+        await _loadCompras();
+        _renderOperativasComprasList();
+        _addToFeed('✅', `OC ${folio} confirmada desde ${ordenData?.folio || tipo}`);
+        _showToast(`Orden ${folio} creada en Confirmada`, 'success');
+        _abrirDetalle(newId);
+    }
+
+    async function _precargarFormularioCompraVinculada(id, tipo, ordenTallerData, departamentoPorDefecto, compraData) {
         isNewCompra = true;
         currentCompra = null;
         compraId = null;
@@ -2253,27 +2371,8 @@ const ComprasModule = (function() {
         clienteInfoDiv.style.display = 'none';
         clienteInfoGrid.innerHTML = '';
 
-        // === IMPORTAR DATOS DEL CLIENTE ===
         if (ordenTallerData) {
-            const clienteNombre = ordenTallerData.cliente_nombre || ordenTallerData.cliente || '';
-            let clienteInfo = { nombre: clienteNombre };
-            if (clienteNombre) {
-                try {
-                    const contactosList = await contactosService.select({ tipo: 'client' }, { page: 0, pageSize: 500 });
-                    const contacto = contactosList.find(c => (c.nombre || '').toLowerCase().trim() === clienteNombre.toLowerCase().trim());
-                    if (contacto) {
-                        clienteInfo = {
-                            nombre: contacto.nombre || clienteNombre,
-                            rfc: contacto.rfc || '',
-                            direccion: contacto.direccion || '',
-                            cp: contacto.cp || contacto.codigo_postal || '',
-                            telefono: contacto.telefono || '',
-                            email: contacto.email || '',
-                            ciudad: contacto.ciudad || ''
-                        };
-                    }
-                } catch (e) { console.warn('[Compras] Error buscando contacto:', e); }
-            }
+            const clienteInfo = await _resolverClienteInfoOperativa(ordenTallerData);
             if (clienteInfo.nombre) {
                 clienteInfoDiv.style.display = 'block';
                 clienteInfoGrid.innerHTML = `
@@ -2288,15 +2387,12 @@ const ComprasModule = (function() {
             }
         }
 
-        // === IMPORTAR ITEMS: dos listas separadas ===
         let enlaces = [];
         let inventario = [];
-
         if (ordenTallerData) {
             const res = await _itemsDesdeVinculacion(tipo, id);
             enlaces = res.enlaces;
             inventario = res.inventario;
-            // Auto-clasificar contra stock físico (mismo criterio que _cargarItemsDesdeVinculacion)
             const invCache = await _loadInventarioCache();
             if (invCache.length && enlaces.length) {
                 const split = _mapInventarioMatch(enlaces, invCache);
@@ -2304,18 +2400,14 @@ const ComprasModule = (function() {
                 inventario = inventario.concat(split.inventario);
             }
         }
-
-        // Fallback: si no hay arrays directos, usar items de compra existente
         if (enlaces.length === 0 && inventario.length === 0 && compraData) {
             const itemsFallback = compraData.items || [];
             enlaces = itemsFallback.map(it => ({ nombre: it.nombre || '', descripcion: it.descripcion || '', sku: it.sku || '', cantidad: Number(it.cantidad) || 1, link: it.link || '' }));
         }
-
-        // Fallback DB
         if (enlaces.length === 0 && inventario.length === 0 && compraData?.id) {
             try {
                 const itemsDB = await _fetchItemsCompraDb(compraData, compraData.id);
-                if (itemsDB && itemsDB.length > 0) {
+                if (itemsDB?.length) {
                     enlaces = itemsDB.map(it => ({
                         nombre: it.nombre || it.descripcion || '',
                         descripcion: it.descripcion || '',
@@ -2327,7 +2419,6 @@ const ComprasModule = (function() {
             } catch (e) { console.warn('[Compras] Error cargando items DB:', e); }
         }
 
-        // Renderizar enlaces (proveedores)
         if (enlaces.length > 0) {
             enlaces.forEach(item => {
                 const row = document.createElement('tr');
@@ -2336,15 +2427,13 @@ const ComprasModule = (function() {
                     <td><input type="text" value="${item.descripcion || ''}" class="item-desc"></td>
                     <td><input type="text" value="${item.sku || ''}" class="item-sku"></td>
                     <td><input type="number" value="${item.cantidad || 1}" min="1" class="item-qty"></td>
-                    <td><input type="number" value="${item.precio_unitario || 0}" step="0.01" class="item-price"></td>
+                    <td><input type="number" value="${item.precio_unitario || item.costo_unitario || 0}" step="0.01" class="item-price"></td>
                     <td><input type="url" value="${item.link || ''}" placeholder="Link" class="item-link"></td>
                     <td><button type="button" class="btn-remove" onclick="this.closest('tr').remove()">✖</button></td>
                 `;
                 itemsBody.appendChild(row);
             });
         }
-
-        // Renderizar inventario
         if (inventario.length > 0) {
             inventario.forEach(item => {
                 const row = document.createElement('tr');
@@ -2353,14 +2442,12 @@ const ComprasModule = (function() {
                     <td><input type="text" value="${item.descripcion || ''}" class="item-desc"></td>
                     <td><input type="text" value="${item.sku || ''}" class="item-sku"></td>
                     <td><input type="number" value="${item.cantidad || 1}" min="1" class="item-qty"></td>
-                    <td><input type="number" value="${item.precio_unitario || 0}" step="0.01" class="item-price"></td>
+                    <td><input type="number" value="${item.precio_unitario || item.costo_unitario || 0}" step="0.01" class="item-price"></td>
                     <td><button type="button" class="btn-remove" onclick="this.closest('tr').remove()">✖</button></td>
                 `;
                 itemsBodyInv.appendChild(row);
             });
         }
-
-        // Si no hay nada y la compra es un preregistro de Laboratorio, mostrar banner claro
         if (enlaces.length === 0 && inventario.length === 0) {
             const esPreregTaller = compraData?.vinculacion?.tipo === 'taller'
                 && (compraData?.estado_interno === 'preregistro' || !compraData);
@@ -2369,13 +2456,12 @@ const ComprasModule = (function() {
                     folio: compraData?.folio || `PO-${ordenTallerData?.folio || '—'}`,
                     cliente: ordenTallerData?.cliente_nombre || ordenTallerData?.cliente || ''
                 });
-            } else {
-                // Otros casos (motores, proyectos, sin vinculacion): fila placeholder como antes
-                const equipo = ordenTallerData?.equipo || 'Equipo sin nombre';
-                const marca = ordenTallerData?.marca || '';
-                const modelo = ordenTallerData?.modelo || '';
-                const serie = ordenTallerData?.serie || '';
-                const falla = ordenTallerData?.falla_reportada || 'Servicio requerido';
+            } else if (ordenTallerData) {
+                const equipo = ordenTallerData.equipo || 'Equipo sin nombre';
+                const marca = ordenTallerData.marca || '';
+                const modelo = ordenTallerData.modelo || '';
+                const serie = ordenTallerData.serie || '';
+                const falla = ordenTallerData.falla_reportada || 'Servicio requerido';
                 const desc = `${falla} - ${equipo}${marca ? ' ' + marca : ''}${modelo ? ' ' + modelo : ''}${serie ? ' S/N: ' + serie : ''}`;
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -2390,9 +2476,49 @@ const ComprasModule = (function() {
                 itemsBody.appendChild(row);
             }
         }
-
         document.getElementById('nuevaOrdenModal').classList.add('active');
         _showToast(`Importados: ${enlaces.length} proveedor, ${inventario.length} inventario`, 'success');
+    }
+
+    async function _crearOrdenDesdeSolicitud(id, tipo) {
+        console.log('[Compras] Crear orden desde operativa', { id, tipo });
+        let ordenTallerData = null;
+        let departamentoPorDefecto = 'Laboratorio de Electrónica';
+        try {
+            if (tipo === 'taller') {
+                ordenTallerData = await tallerService.getById(id);
+                departamentoPorDefecto = 'Laboratorio de Electrónica';
+            } else if (tipo === 'motor') {
+                ordenTallerData = await motoresService.getById(id);
+                departamentoPorDefecto = 'Taller Motores';
+            } else if (tipo === 'proyecto' || tipo === 'automatizacion') {
+                ordenTallerData = await proyectosService.getById(id);
+                departamentoPorDefecto = tipo === 'automatizacion' ? 'Automatización' : 'Proyectos';
+            }
+        } catch (e) {
+            console.error('[Compras] Error obteniendo operativa:', e);
+            _showToast('No se pudo cargar la orden operativa', 'error');
+            return;
+        }
+
+        const compraData = await _buscarCompraVinculada(id, tipo);
+        if (compraData?.id) {
+            _showToast('Abriendo OC vinculada ' + (compraData.folio || ''), 'info');
+            _abrirDetalle(compraData.id);
+            return;
+        }
+
+        if (!ordenTallerData) {
+            _showToast('Orden operativa no encontrada', 'error');
+            return;
+        }
+
+        try {
+            await _autoCrearCompraConfirmadaDesdeOperativa(id, tipo, ordenTallerData, departamentoPorDefecto);
+        } catch (e) {
+            console.warn('[Compras] Auto-confirm falló, abriendo formulario:', e);
+            await _precargarFormularioCompraVinculada(id, tipo, ordenTallerData, departamentoPorDefecto, compraData);
+        }
     }
 
     function _verProveedor(id) {
@@ -2422,26 +2548,96 @@ const ComprasModule = (function() {
     }
 
     // ==================== PDF ====================
+    /** Normaliza para matchear contra el tabulador: lowercase + sin acentos + sin símbolos. */
+    function _normTabuladorKey(s) {
+        return String(s || '')
+            .toLowerCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/[^a-z0-9\s]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    /** Carga perezosamente el tabulador Excel (clientes_tabulador) y construye un
+     *  Map<key, row> con normalización. Si falla o no hay supabase, devuelve Map vacío. */
+    async function _loadTabuladorLookup() {
+        if (_tabuladorLookupReady) return _tabuladorLookupReady;
+        _tabuladorLookupReady = (async () => {
+            const map = new Map();
+            const sb = _supabase();
+            if (!sb) return map;
+            try {
+                const { data, error } = await sb
+                    .from('clientes_tabulador')
+                    .select('nombre_cliente,rfc,direccion_fiscal,contacto_referencia,km,empresa_alias');
+                if (error) {
+                    console.warn('[Compras] clientes_tabulador enriquecer PDF:', error.message);
+                    return map;
+                }
+                (data || []).forEach((r) => {
+                    const k = _normTabuladorKey(r.nombre_cliente);
+                    if (k && !map.has(k)) map.set(k, r);
+                    // Alias opcional para clientes con nombre distinto al tabulador
+                    const aliasK = _normTabuladorKey(r.empresa_alias);
+                    if (aliasK && !map.has(aliasK)) map.set(aliasK, r);
+                });
+            } catch (e) {
+                console.warn('[Compras] clientes_tabulador enriquecer PDF:', e?.message || e);
+            }
+            _tabuladorLookup = map;
+            return map;
+        })();
+        return _tabuladorLookupReady;
+    }
+
     async function _resolverClienteContactoPdf(nombreCliente) {
-        if (!nombreCliente || !contactos?.length) {
-            return { nombre: nombreCliente || '', empresa: '', email: '', telefono: '', rfc: '', direccion: '', puesto: '', logo_url: null };
+        const empty = { nombre: nombreCliente || '', empresa: '', email: '', telefono: '', rfc: '', direccion: '', puesto: '', logo_url: null };
+        if (!nombreCliente) return empty;
+        // 1) Lookup principal: contactos Pac_Contactos / Odoo
+        let c = null;
+        if (contactos?.length) {
+            const n = String(nombreCliente).trim().toLowerCase();
+            c = contactos.find((x) => {
+                const a = String(x.nombre || x.empresa || '').trim().toLowerCase();
+                const e = String(x.empresa || '').trim().toLowerCase();
+                return a === n || e === n || a.includes(n) || n.includes(a) || (e && (e.includes(n) || n.includes(e)));
+            });
         }
-        const n = String(nombreCliente).trim().toLowerCase();
-        const c = contactos.find((x) => {
-            const a = String(x.nombre || x.empresa || '').trim().toLowerCase();
-            const e = String(x.empresa || '').trim().toLowerCase();
-            return a === n || e === n || a.includes(n) || n.includes(a) || (e && (e.includes(n) || n.includes(e)));
-        });
-        if (!c) return { nombre: nombreCliente, empresa: '', email: '', telefono: '', rfc: '', direccion: '', puesto: '', logo_url: null };
+        // 2) Fallback enriquecido: clientes_tabulador (RFC/dir/km del Excel maestro)
+        const tabMap = await _loadTabuladorLookup();
+        const tabKey = _normTabuladorKey(nombreCliente);
+        const tabRow = tabKey ? tabMap.get(tabKey) : null;
+
+        if (!c) {
+            // Sin contacto: usa tabulador para RFC/dirección/km
+            if (tabRow) {
+                return {
+                    nombre: nombreCliente,
+                    empresa: tabRow.nombre_cliente || nombreCliente,
+                    email: '',
+                    telefono: '',
+                    rfc: tabRow.rfc || '',
+                    direccion: tabRow.direccion_fiscal || '',
+                    puesto: tabRow.contacto_referencia || '',
+                    km: tabRow.km ?? null,
+                    logo_url: null,
+                    fuente: 'tabulador',
+                };
+            }
+            return { ...empty, fuente: 'sin_datos' };
+        }
+        // 3) Mezcla: contacto real + hueco de tabulador
         return {
             nombre: c.nombre || nombreCliente,
-            empresa: c.empresa || '',
+            empresa: c.empresa || tabRow?.nombre_cliente || '',
             email: c.email || '',
             telefono: c.telefono || '',
-            rfc: c.rfc || '',
-            direccion: c.direccion || '',
-            puesto: c.puesto || '',
-            logo_url: c.logo_url || null
+            rfc: (c.rfc && String(c.rfc).trim()) || tabRow?.rfc || '',
+            direccion: (c.direccion && String(c.direccion).trim()) || tabRow?.direccion_fiscal || '',
+            puesto: c.puesto || tabRow?.contacto_referencia || '',
+            km: c.km ?? tabRow?.km ?? null,
+            logo_url: c.logo_url || null,
+            fuente: (tabRow && (c.rfc || c.direccion) ? 'contacto+tabulador' : (tabRow ? 'contacto+tabulador' : 'contacto')),
         };
     }
 
@@ -2711,10 +2907,15 @@ const ComprasModule = (function() {
             const cliente = r.cliente_nombre || r.cliente || r.nombre || '—';
             const st = r.estado || '—';
             const id = r.id;
+            const ocVinc = _compraVinculadaLocal(id, tipoVinc);
+            const ocMeta = ocVinc
+                ? '<br><span class="op-meta">OC: <strong>' + esc(ocVinc.folio || '—') + '</strong> · ' + esc(_labelEstadoCompra(ocVinc.estado)) + '</span>'
+                : '';
+            const btnLabel = ocVinc ? 'Ver OC vinculada' : 'Nueva compra vinculada';
             return '<div class="op-row">' +
-                '<div><strong>' + esc(folio) + '</strong> · ' + esc(cliente) + '<br><span class="op-meta">' + esc(st) + '</span></div>' +
+                '<div><strong>' + esc(folio) + '</strong> · ' + esc(cliente) + '<br><span class="op-meta">' + esc(st) + '</span>' + ocMeta + '</div>' +
                 '<div class="op-actions">' +
-                '<button type="button" class="btn-ssepi btn-compras op-go" style="font-size:12px;padding:6px 12px;" data-vinc-tipo="' + esc(tipoVinc) + '" data-vinc-id="' + esc(id) + '">Nueva compra vinculada</button>' +
+                '<button type="button" class="btn-ssepi btn-compras op-go" style="font-size:12px;padding:6px 12px;" data-vinc-tipo="' + esc(tipoVinc) + '" data-vinc-id="' + esc(id) + '">' + esc(btnLabel) + '</button>' +
                 '</div></div>';
         }).join('');
         list.querySelectorAll('.op-go').forEach(function (btn) {

@@ -197,7 +197,10 @@
       "Bash(cmd.exe //c \"E:\\\\SSEPI\\\\reiniciar-ssepi.bat\")",
       "Bash(curl.exe -s -m 5 \"http://127.0.0.1:3333/api/health\")",
       "Bash(curl.exe -s -m 5 \"http://127.0.0.1:3333/panel/login.html\" -o /dev/null -w \"HTTP=%{http_code} TIME=%{time_total}s\\\\n\")",
-      "Bash(Select-Object -First 50)"
+      "Bash(Select-Object -First 50)",
+      "Bash(xxd /e/SSEPI/reiniciar-ssepi-fuerte.bat)",
+      "Bash(unix2dos reiniciar-ssepi.bat reiniciar-ssepi-fuerte.bat)",
+      "Bash(xxd reiniciar-ssepi-fuerte.bat)"
     ]
   }
 }

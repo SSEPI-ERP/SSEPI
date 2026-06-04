@@ -1711,21 +1711,21 @@ const VentasModule = (function() {
             _loadVentas(),
             _loadCotizaciones(),
             _loadInventario(),
-            _loadContactos()
+            _loadContactos(),
+            _loadProyectos(),
+            _loadTaller(),
+            _loadMotores()
         ]);
         _populateVendedoresFilter();
         _applyFilters();
         _renderPipelineCards();
 
-        // Fase 2: vínculos a taller/motores/proyectos/compras — no bloquea el primer pintado
         Promise.all([
-            _loadProyectos(),
-            _loadTaller(),
-            _loadMotores(),
             _loadCompras(),
             _loadSuministrosVentas()
         ])
             .then(() => {
+                _applyFilters();
                 _renderPipelineCards();
                 _renderOperativasVentasList();
             })
@@ -2347,9 +2347,10 @@ const VentasModule = (function() {
         return [...v, ...c];
     }
 
-    /** Compara solo la fecha local (evita que cotizaciones del último día del mes queden fuera por zona horaria). */
+    /** Compara solo la fecha local. Órdenes de venta terminadas siempre visibles (no las oculta el filtro de mes). */
     function _fechaItemEnRango(item) {
         if (!filtroFechaInicio || !filtroFechaFin) return true;
+        if (item.tipo === 'cotizacion' && _estadoKanbanEfectivo(item) === 'entregado') return true;
         const raw = item.fecha ?? item.fecha_cotizacion ?? item.fecha_creacion;
         if (!raw) return true;
         const t = new Date(raw);
@@ -2399,13 +2400,20 @@ const VentasModule = (function() {
             } else if (filtroEstado === 'confirmado') {
                 filtered = filtered.filter(item => item.estado === 'confirmado' || item.estado === 'confirmada_por_cliente');
             } else if (filtroEstado === 'autorizado') {
-                filtered = filtered.filter(item => ['autorizado', 'autorizada_por_ventas', 'autorizada'].includes(String(item.estado || '').toLowerCase()));
+                filtered = filtered.filter(item => {
+                    const ef = _estadoKanbanEfectivo(item);
+                    return ef !== 'entregado' && ['autorizado', 'autorizada_por_ventas', 'autorizada'].includes(String(item.estado || '').toLowerCase());
+                });
             } else if (filtroEstado === 'compra') {
                 filtered = filtered.filter(item => item.estado === 'compra' || item.estado === 'en_compra');
             } else if (filtroEstado === 'ejecucion') {
                 filtered = filtered.filter(item => item.estado === 'ejecucion' || item.estado === 'en_ejecucion');
             } else if (filtroEstado === 'entregado') {
-                filtered = filtered.filter(item => item.estado === 'entregado' || item.estatus_pago === 'Pendiente');
+                filtered = filtered.filter(item => {
+                    const ef = _estadoKanbanEfectivo(item);
+                    return ef === 'entregado' || ef === 'completado' || ef === 'cerrado'
+                        || (item.tipo !== 'cotizacion' && item.estatus_pago === 'Pendiente');
+                });
             } else if (filtroEstado === 'pagado') {
                 filtered = filtered.filter(item => item.estatus_pago === 'Pagado' || item.estado === 'pagado');
             } else if (filtroEstado === 'cancelado') {
@@ -2445,12 +2453,90 @@ const VentasModule = (function() {
         });
     }
 
+    function _operativaEstaTerminada(estado) {
+        const s = String(estado || '').toLowerCase().trim();
+        return ['completado', 'terminado', 'entregado', 'cerrado', 'reparado', 'reparado / listo', 'listo para facturar', 'completada'].includes(s)
+            || /completad|entregad|terminad/.test(s);
+    }
+
+    function _matchOperativaId(row, id) {
+        if (!row || id == null) return false;
+        const sid = String(id);
+        return String(row.id) === sid || String(row.local_id) === sid;
+    }
+
+    function _ordenOperativaPorCotizacion(cot) {
+        if (!cot) return null;
+        const orig = String(cot.origen || cot.departamento || '').toLowerCase();
+        const byId = (list, id) => (list || []).find((o) => _matchOperativaId(o, id)) || null;
+        if (cot.orden_origen_id) {
+            const id = String(cot.orden_origen_id);
+            if (/taller|laboratorio|electr/.test(orig)) return byId(taller, id);
+            if (/motor/.test(orig)) return byId(motores, id);
+            if (/automat|proyecto|soporte/.test(orig)) return byId(proyectos, id);
+            return byId(proyectos, id) || byId(motores, id) || byId(taller, id);
+        }
+        const folioOp = cot.cerebro_registro?.folio_operativo;
+        if (folioOp) {
+            return (proyectos || []).find((p) => p.folio === folioOp)
+                || (motores || []).find((p) => p.folio === folioOp)
+                || (taller || []).find((p) => p.folio === folioOp)
+                || null;
+        }
+        return null;
+    }
+
+    /** Cotización / orden de venta vinculada a operativa (servicios + materiales + desglose). */
+    function _cotizacionPorOperativa(operativaId, folioOperativo) {
+        return (cotizaciones || []).find((c) => {
+            if (operativaId != null && String(c.orden_origen_id) === String(operativaId)) return true;
+            if (folioOperativo && c.cerebro_registro?.folio_operativo === folioOperativo) return true;
+            return false;
+        }) || null;
+    }
+
+    function _resumenOrdenVenta(item) {
+        if (!item || item.tipo !== 'cotizacion') return '';
+        const items = Array.isArray(item.items) ? item.items : [];
+        const partes = [];
+        const tieneServicios = items.some((i) => /servicio|ingenier|traslado|gasolina|horas|actividad/i.test(String(i.descripcion || i.nombre || '')))
+            || !!(item.costo_desglose && Object.keys(item.costo_desglose).length);
+        const nMat = items.filter((i) => !/servicio|ingenier/i.test(String(i.descripcion || i.nombre || ''))).length;
+        if (tieneServicios) partes.push('Servicios');
+        if (nMat > 0) partes.push(nMat + ' concepto' + (nMat > 1 ? 's' : ''));
+        if (item.km_distancia || item.costo_traslado) partes.push('Traslado');
+        return partes.length ? partes.join(' · ') : 'Orden de venta';
+    }
+
+    /** Estado efectivo en Kanban: si la orden Lab/Motor/Auto está terminada → columna Terminado. */
+    function _estadoKanbanEfectivo(item) {
+        const raw = String(item.estado || item.estatus_pago || '').trim().toLowerCase();
+        if (item.tipo === 'cotizacion') {
+            const ord = _ordenOperativaPorCotizacion(item);
+            if (ord && _operativaEstaTerminada(ord.estado)) return 'entregado';
+        }
+        if (_operativaEstaTerminada(raw)) return 'entregado';
+        return raw;
+    }
+
+    function _estadoVentasDisplay(item) {
+        const ef = _estadoKanbanEfectivo(item);
+        if (ef === 'entregado') return 'Terminado';
+        if (['autorizado', 'autorizada', 'autorizada_por_ventas'].includes(ef)) return 'Autorizado';
+        return item.estado || item.estatus_pago || 'Pendiente';
+    }
+
+    function _labelEstadoOperativaVentas(st) {
+        const s = String(st || '').toLowerCase().trim();
+        if (_operativaEstaTerminada(s)) return 'Terminado';
+        return st || '—';
+    }
+
     async function _renderKanban(items) {
         const container = document.getElementById('kanbanContainer');
         if (!container) return;
 
-        // Nuevos estatus para kanban
-        const es = (i) => String(i.estado || '').trim().toLowerCase();
+        const es = (i) => _estadoKanbanEfectivo(i);
         const registro = items.filter((i) => es(i) === 'registro' || es(i) === 'nuevo' || es(i) === 'borrador');
         const diagnostico = items.filter((i) => es(i) === 'diagnostico' || es(i) === 'en_diagnostico');
         const cotizacion = items.filter((i) => es(i) === 'cotizacion' || es(i) === 'pendiente_autorizacion_ventas');
@@ -2535,7 +2621,7 @@ const VentasModule = (function() {
             </div>
             <div class="kanban-column">
                 <div class="kanban-header" style="border-bottom-color: #00bcd4;">
-                    <span>Entregado</span>
+                    <span>Terminado</span>
                     <span class="badge" style="background: #00bcd4;">${entregado.length}</span>
                 </div>
                 <div class="kanban-cards">${cardsEntregado}</div>
@@ -2642,6 +2728,16 @@ const VentasModule = (function() {
 
         return items.map((item, idx) => {
             const folioVinculado = foliosVinculados[idx];
+            const ordOp = item.tipo === 'cotizacion' ? _ordenOperativaPorCotizacion(item) : null;
+            const terminadoBadge = ordOp && _operativaEstaTerminada(ordOp.estado)
+                ? `<div class="vinculacion-badge" style="background:#e0f7fa;color:#006064;" title="Ejecución terminada en ${ordOp.folio || 'operativa'}">
+                    <span>✅</span> Terminado · ${ordOp.folio || ''}
+                   </div>`
+                : '';
+            const resumenOv = item.tipo === 'cotizacion' ? _resumenOrdenVenta(item) : '';
+            const resumenHtml = resumenOv
+                ? `<div class="op-meta" style="font-size:11px;color:var(--text-muted);margin-top:4px;">Orden venta: ${resumenOv}</div>`
+                : '';
             const etiquetaHtml = folioVinculado
                 ? `<div class="vinculacion-badge" title="Orden creada en ${etiquetas[folioVinculado.tipo]}: ${folioVinculado.folio}">
                     <span>${iconos[folioVinculado.tipo]}</span> ${etiquetas[folioVinculado.tipo]}: ${folioVinculado.folio}
@@ -2666,14 +2762,16 @@ const VentasModule = (function() {
                             </button>` : ''}
                         </div>
                     </div>
+                    ${terminadoBadge ? `<div class="card-vinculacion">${terminadoBadge}</div>` : ''}
                     ${etiquetaHtml ? `<div class="card-vinculacion">${etiquetaHtml}</div>` : ''}
                     <div class="card-body" onclick="ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')" style="cursor:pointer;">
                         <div class="cliente">${item.cliente_nombre || item.cliente || 'Cliente'}</div>
+                        ${resumenHtml}
                         ${esAdminV ? `<div class="total">$${(item.total || 0).toFixed(2)}</div>` : ''}
                     </div>
                     <div class="card-footer">
                         <small>${item.fecha_cotizacion || item.fecha || item.fecha_creacion ? new Date(item.fecha_cotizacion || item.fecha || item.fecha_creacion).toLocaleDateString() : ''}</small>
-                        <small>${item.vendedor || ''}</small>
+                        <small>${_estadoVentasDisplay(item)}</small>
                     </div>
                 </div>
             `;
@@ -2730,11 +2828,12 @@ const VentasModule = (function() {
             const folio = item.folio || item.id.slice(-6);
             const cliente = item.cliente_nombre || item.cliente || 'N/A';
             const tipo = item.tipo === 'cotizacion' ? 'Cotización' : 'Venta';
-            const estatus = item.tipo === 'cotizacion' ? (item.estado || 'Pendiente') : (item.estatus_pago || 'Pendiente');
+            const estatus = item.tipo === 'cotizacion' ? _estadoVentasDisplay(item) : (item.estatus_pago || 'Pendiente');
             const total = item.total || 0;
             let estatusClass = '';
             if (estatus === 'Pagado') estatusClass = 'status-pagado';
             else if (estatus === 'Pendiente') estatusClass = 'status-pendiente';
+            else if (estatus === 'Terminado') estatusClass = 'status-pagado';
             else if (item.tipo === 'cotizacion') estatusClass = 'status-cotizacion';
             return `
                 <tr onclick="ventasModule._abrirDetalle('${item.id}', '${item.tipo || 'venta'}')">
@@ -3177,19 +3276,28 @@ const VentasModule = (function() {
         list.innerHTML = rows.map(function (r) {
             const folio = r.folio || (r.id && String(r.id).slice(-8)) || '—';
             const cliente = r.cliente_nombre || r.cliente || r.nombre || '—';
-            const st = r.estado || '—';
+            const stRaw = r.estado || '—';
+            const stLabel = _labelEstadoOperativaVentas(stRaw);
+            const stClass = _operativaEstaTerminada(stRaw) ? ' style="color:#059669;font-weight:600;"' : '';
             const id = encodeURIComponent(r.id);
             const hrefCompras = '/panel/pages/ssepi_compras.html?vincTipo=' + encodeURIComponent(tipoVinc) + '&vincId=' + id;
-            const esperaConf = _estadoEsperandoConfirmacionCliente(st);
+            const cotOv = _cotizacionPorOperativa(r.id, folio);
+            const cotMeta = cotOv
+                ? '<br><span class="op-meta">Orden venta: <strong>' + esc(cotOv.folio || '—') + '</strong> · ' + esc(_resumenOrdenVenta({ ...cotOv, tipo: 'cotizacion' })) + '</span>'
+                : '';
+            const btnOrdenVenta = cotOv
+                ? '<button type="button" class="btn-ssepi btn-ventas op-link" style="font-size:12px;padding:6px 12px;" onclick="ventasModule._abrirDetalle(\'' + String(cotOv.id).replace(/'/g, "\\'") + '\', \'cotizacion\')"><i class="fas fa-file-invoice-dollar"></i> Ver orden venta</button> '
+                : '';
+            const esperaConf = _estadoEsperandoConfirmacionCliente(stRaw);
             const tipoOp = operativasTabVentas === 'motor' ? 'motor' : (operativasTabVentas === 'auto' ? 'proyecto' : 'taller');
             const btnConf = esperaConf
                 ? '<button type="button" class="btn-ssepi btn-success op-link" style="font-size:12px;padding:6px 12px;" onclick="ventasModule._clienteConfirmoOperativo(\'' + String(r.id).replace(/'/g, "\\'") + '\', \'' + tipoOp + '\')"><i class="fas fa-check-circle"></i> Cliente confirmó</button> '
                 : '';
             return '<div class="op-row">' +
-                '<div><strong>' + esc(folio) + '</strong> · ' + esc(cliente) + '<br><span class="op-meta">' + esc(st) + '</span></div>' +
-                '<div class="op-actions">' + btnConf +
+                '<div><strong>' + esc(folio) + '</strong> · ' + esc(cliente) + '<br><span class="op-meta"' + stClass + '>' + esc(stLabel) + '</span>' + cotMeta + '</div>' +
+                '<div class="op-actions">' + btnConf + btnOrdenVenta +
                 '<a class="btn-ssepi btn-ventas op-link" style="font-size:12px;padding:6px 12px;text-decoration:none;display:inline-block;" href="' + esc(modUrl) + '">Abrir módulo</a> ' +
-                '<a class="btn-ssepi btn-ventas op-link" style="font-size:12px;padding:6px 12px;text-decoration:none;display:inline-block;" href="' + hrefCompras + '">Compras vinculadas</a>' +
+                '<a class="btn-ssepi btn-ventas op-link" style="font-size:12px;padding:6px 12px;text-decoration:none;display:inline-block;" href="' + hrefCompras + '" title="Solo materiales / OC">Compras (materiales)</a>' +
                 '</div></div>';
         }).join('');
     }

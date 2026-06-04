@@ -45,6 +45,13 @@ ollama-data/
 .DS_Store
 Thumbs.db
 
+# Cloudflare tunnel efímero (cambia con cada reinicio)
+ssepinext/URL-TUNEL-ACTIVA.txt
+
+# Python cache (comparadores Odoo/Excel en simulaciones)
+__pycache__/
+*.pyc
+
 .vercel
 .env.cloudflare
 ssepinext/data/ssepi-local.db
