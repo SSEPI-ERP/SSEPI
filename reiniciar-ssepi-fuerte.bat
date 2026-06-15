@@ -3,11 +3,12 @@ chcp 65001 >nul
 setlocal EnableDelayedExpansion
 cls
 echo =========================================
-echo   SSEPI - REINICIO RAPIDO V16
+echo   SSEPI - REINICIO RAPIDO V17
 echo   Mata procesos + seed demo + verify + server + tunel
 echo.
 echo   NO reimporta Pac_Contactos ni reportes ERP.
 echo   Para importacion completa: reiniciar-ssepi.bat
+echo   Valida n8n (puerto 5679) tras arrancar el VPS.
 echo =========================================
 echo.
 pause
@@ -20,7 +21,7 @@ taskkill /F /FI "WINDOWTITLE eq SSEPI Chrome*" 2>nul
 taskkill /F /IM node.exe 2>nul
 taskkill /F /IM cloudflared.exe 2>nul
 timeout /t 3 /nobreak >nul
-for %%P in (3333 3443) do (
+for %%P in (3333 3443 5679) do (
     for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%%P" ^| findstr "LISTENING"') do taskkill /F /PID %%a 2>nul
 )
 timeout /t 2 /nobreak >nul
@@ -63,13 +64,25 @@ echo [4/4] Tunel Cloudflare...
 start "Cloudflare Tunnel SSEPI" /D "%~dp0ssepinext" cmd /k "title Cloudflare Tunnel SSEPI && iniciar-tunel-cloudflare.bat"
 
 echo.
+echo [5/5] Validando n8n (cerebro IA)...
+curl -s http://localhost:5679/healthz >nul 2>nul
+if %errorlevel%==0 (
+    echo      OK - n8n activo en http://localhost:5679
+) else (
+    echo      AVISO: n8n no responde ^(puerto 5679^).
+    echo              Si docker esta caido: docker compose up -d
+)
+
+echo.
 echo =========================================
 echo   LISTO — usa URL NUEVA del tunel
-echo   Local: http://localhost:3333/panel/login.html
+echo   Local:  http://localhost:3333/panel/login.html
+echo   n8n:    http://localhost:5679
 echo.
 echo   Tras abrir el ERP: Ctrl+F5 en cada modulo
 echo   Ventas: ventas.js v12, pdf v8
 echo   Compras: compras.js v12, pdf v8
 echo   Auto: servicios.js v21 ^| Motores: v3
+echo   Cerebro: 11 workflows n8n ejecutandose contra Supabase
 echo =========================================
 pause
