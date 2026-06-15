@@ -5,7 +5,7 @@ echo =========================================
 echo   n8n - Cloudflare Tunnel (trycloudflare)
 echo =========================================
 echo.
-echo  Iniciando tunel para n8n localhost:5678...
+echo  Iniciando tunel para n8n localhost:5679 (mapeo docker 5679:5678)...
 echo  Esto puede tardar 5-10 segundos.
 echo.
 
@@ -28,7 +28,7 @@ echo Nota: Si n8n no esta corriendo, abre otra terminal y corre:
 echo   docker-compose up -d
 echo.
 
-"%CF%" tunnel --url http://localhost:5678
+"%CF%" tunnel --url http://localhost:5679
 
 :: Si llega aqui, el tunel se ceró
 echo.
