@@ -12,6 +12,9 @@ services:
     environment:
       - OLLAMA_KEEP_ALIVE=24h
       - OLLAMA_HOST=0.0.0.0
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
 
   n8n:
     image: n8nio/n8n:1.82.0
@@ -20,7 +23,7 @@ services:
     ports:
       - "127.0.0.1:5679:5678"
     environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
+      # N8N_BASIC_AUTH_ACTIVE=true   # DESACTIVADO 2026-06-15 para que n8n use user-mgmt interno
       - N8N_BASIC_AUTH_USER=ssepi
       - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD}
       - N8N_HOST=localhost
@@ -38,6 +41,8 @@ services:
       - TZ=America/Mexico_City
       - N8N_METRICS=true
       - N8N_DIAGNOSTICS_ENABLED=false
+      # API pública para importar workflows vía CLI (activada 2026-06-15)
+      - N8N_PUBLIC_API=true
       # Variables accesibles en workflows como $env.X
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
@@ -48,6 +53,9 @@ services:
         condition: service_healthy
       ollama:
         condition: service_started
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
 
   n8n-db:
     image: postgres:16-alpine
@@ -66,6 +74,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
 
 volumes:
   n8n_data:
