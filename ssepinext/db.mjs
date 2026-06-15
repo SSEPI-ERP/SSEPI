@@ -46,6 +46,7 @@ export const TABLES = [
   { name: 'local_servicios_automatizacion', indexCols: ['nombre','categoria'] },
   { name: 'local_ingresos_contabilidad', indexCols: ['estatus','monto_total'] },
   { name: 'local_notificaciones', indexCols: ['para','leido','tipo'] },
+  { name: 'local_alarmas', indexCols: ['estado','disparar_at','para_modulo'] },
   { name: 'local_suministros_items', indexCols: ['suministro_id','source','sku'] },
   { name: 'local_soporte_visitas', indexCols: ['folio','estado','cliente','origen'] },
   { name: 'local_actividades_diarias', indexCols: ['fecha','estado','user_id'] },

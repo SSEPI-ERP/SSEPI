@@ -1,0 +1,208 @@
+{
+  "name": "SSEPI - Alarmas Templates Checker",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [ { "field": "hours", "hoursInterval": 6 } ]
+        }
+      },
+      "id": "templates-schedule",
+      "name": "Every 6 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/cotizaciones?estado=eq.Pendiente&created_at=lt.{{$now.minus({days:7}).toISO()}}&select=id,folio,cliente_nombre,created_at&limit=10",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "fetch-cotizaciones-vencidas",
+      "name": "Fetch Cotizaciones > 7d",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/rpc/upsert_alarma_template",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "p_tipo", "value": "cotizacion_vencida" },
+            { "name": "p_titulo", "value": "Cotización pendiente > 7 días" },
+            { "name": "p_mensaje", "value": "Hay cotizaciones en estado Pendiente con más de 7 días sin respuesta del cliente." },
+            { "name": "p_para_modulo", "value": "ventas" },
+            { "name": "p_count", "value": "={{$json.length()}}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "upsert-cotizacion-alarma",
+      "name": "Upsert Cotizacion Alarma",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/facturas?estatus=eq.activa&fecha_emision=lt.{{$now.minus({days:30}).toISO()}}&select=id,folio_factura,cliente,fecha_emision&limit=10",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "fetch-facturas-vencidas",
+      "name": "Fetch Facturas > 30d",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/rpc/upsert_alarma_template",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "p_tipo", "value": "factura_vencida" },
+            { "name": "p_titulo", "value": "Factura sin pago > 30 días" },
+            { "name": "p_mensaje", "value": "Hay facturas activas con más de 30 días sin registro de pago." },
+            { "name": "p_para_modulo", "value": "facturacion" },
+            { "name": "p_count", "value": "={{$json.length()}}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "upsert-factura-alarma",
+      "name": "Upsert Factura Alarma",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/vacaciones_solicitudes?estado=eq.aprobada&fecha_desde=gte.{{$now.toISO()}}&fecha_desde=lte.{{$now.plus({days:7}).toISO()}}&select=id,user_id,fecha_desde,fecha_hasta&limit=10",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "fetch-vacaciones-proximas",
+      "name": "Fetch Vacaciones 7d",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/rpc/upsert_alarma_template",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "p_tipo", "value": "vacacion_proxima" },
+            { "name": "p_titulo", "value": "Vacaciones inician esta semana" },
+            { "name": "p_mensaje", "value": "Hay solicitudes de vacaciones aprobadas que inician en los próximos 7 días." },
+            { "name": "p_para_modulo", "value": "vacaciones" },
+            { "name": "p_count", "value": "={{$json.length()}}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "upsert-vacacion-alarma",
+      "name": "Upsert Vacacion Alarma",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_SERVICE_ROLE_CRED_ID",
+          "name": "Supabase Service Role"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 6 hours": {
+      "main": [ [ { "node": "Fetch Cotizaciones > 7d", "type": "main", "index": 0 } ] ]
+    },
+    "Fetch Cotizaciones > 7d": {
+      "main": [ [ { "node": "Upsert Cotizacion Alarma", "type": "main", "index": 0 } ] ]
+    },
+    "Upsert Cotizacion Alarma": {
+      "main": [ [ { "node": "Fetch Facturas > 30d", "type": "main", "index": 0 } ] ]
+    },
+    "Fetch Facturas > 30d": {
+      "main": [ [ { "node": "Upsert Factura Alarma", "type": "main", "index": 0 } ] ]
+    },
+    "Upsert Factura Alarma": {
+      "main": [ [ { "node": "Fetch Vacaciones 7d", "type": "main", "index": 0 } ] ]
+    },
+    "Fetch Vacaciones 7d": {
+      "main": [ [ { "node": "Upsert Vacacion Alarma", "type": "main", "index": 0 } ] ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
