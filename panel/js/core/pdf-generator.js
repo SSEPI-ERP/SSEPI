@@ -796,26 +796,30 @@ export class PDFGenerator {
         }
 
         if (preview) {
-            const blobUrl = doc.output('bloburl');
+            // Para preview embebido usamos data URL (base64) en lugar de blob:
+            // así NO requiere 'frame-src blob:' en CSP — funciona bajo
+            // trycloudflare.com y otros túneles con CSP automática.
+            const dataUrl = doc.output('datauristring');
             const embedId = data.embedPreviewId;
             if (embedId) {
                 const el = document.getElementById(embedId);
                 if (el) {
-                    if (el.tagName === 'IFRAME') el.src = blobUrl;
+                    if (el.tagName === 'IFRAME') el.src = dataUrl;
                     else {
-                        el.innerHTML = '<iframe src="' + blobUrl + '" title="Vista previa cotización" style="width:100%;height:100%;border:0;"></iframe>';
+                        el.innerHTML = '<iframe src="' + dataUrl + '" title="Vista previa cotización" style="width:100%;height:100%;border:0;"></iframe>';
                     }
-                    return blobUrl;
+                    return dataUrl;
                 }
             }
+            // Sin embedId: descarga directa con data URL
             const a = document.createElement('a');
-            a.href = blobUrl;
-            a.target = '_blank';
+            a.href = dataUrl;
+            a.download = 'Cotizacion_' + folio + '.pdf';
             a.rel = 'noopener';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            return blobUrl;
+            return dataUrl;
         }
         doc.save('Cotizacion_' + folio + '.pdf');
     }
