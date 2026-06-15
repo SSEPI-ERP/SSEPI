@@ -67,7 +67,13 @@
     /** Para pipeline Ventas: deriva id de paso (recepcion, diagnostico, …) desde estado nativo de cada tabla. */
     function derivarEstatusActualDesdeNativo(tabla, item) {
         if (!item) return null;
-        if (item.estatus_actual) return item.estatus_actual;
+        // Si estatus_actual es uno de los IDs canónicos del pipeline, devolverlo.
+        // Si es texto crudo (p.ej. "Entregado" en lugar de "entregado"),
+        // normalizar pasando por obtenerPasoUnificado.
+        const PIPELINE_IDS = PIPELINE_PASOS.map(p => p.id);
+        if (item.estatus_actual && PIPELINE_IDS.includes(String(item.estatus_actual))) {
+            return item.estatus_actual;
+        }
         const raw = item.estado != null ? item.estado : item.estatus;
         if (raw === undefined || raw === null || String(raw).trim() === '') return null;
         const candidates = [];

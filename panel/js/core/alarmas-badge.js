@@ -3,7 +3,7 @@
  * Polling 60s a Supabase. Emite evento 'ssepi:alarmas-new' por el event-bus
  * cuando detecta una alarma nueva.
  */
-import { ssepiEmit, SSEPI_EVENTS } from './ssepi-event-bus.js';
+import { ssepiEmit, SSEPI_EVENTS } from './ssepi-runtime/ssepi-event-bus.js';
 
 const POLL_MS = 60_000;
 const SSEPI_EVENTS_ALARMAS_NEW = 'ssepi:alarmas-new';

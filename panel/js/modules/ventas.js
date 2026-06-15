@@ -4151,16 +4151,15 @@ const VentasModule = (function() {
         const gastoFijoHora = (totalGastosFijos / 160).toFixed(2); // 160 hrs/mes
 
         const modal = document.createElement('div');
-        modal.className = 'modal active';
+        modal.className = 'modal-backdrop active';
+        modal.id = 'ventasEditorCostosModal';
         modal.innerHTML = `
-            <div class="modal-backdrop"></div>
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header" style="background: linear-gradient(135deg, var(--c-ventas), #059669); color: white;">
-                        <h3><i class="fas fa-calculator"></i> Configuración de Costos</h3>
-                        <button type="button" class="btn-close" style="filter: brightness(0) invert(1);" onclick="this.closest('.modal').remove()"></button>
-                    </div>
-                    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+            <div class="modal" style="max-width: 900px;">
+                <div class="modal-header" style="background: linear-gradient(135deg, var(--c-ventas), #059669); color: white;">
+                    <h3 class="modal-title"><i class="fas fa-calculator"></i> Configuración de Costos</h3>
+                    <button type="button" class="modal-close" style="color: white;" onclick="document.getElementById('ventasEditorCostosModal')?.remove()" aria-label="Cerrar">&times;</button>
+                </div>
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                         <div style="display: grid; gap: 24px;">
                             <!-- PARÁMETROS -->
                             <div>
@@ -4261,12 +4260,11 @@ const VentasModule = (function() {
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
-                        <button type="button" class="btn btn-primary" onclick="ventasModule._guardarConfiguracionCostos()">
-                            <i class="fas fa-save"></i> Guardar Cambios
-                        </button>
-                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-ssepi btn-secondary" onclick="document.getElementById('ventasEditorCostosModal')?.remove()">Cancelar</button>
+                    <button type="button" class="btn-ssepi btn-ventas" onclick="ventasModule._guardarConfiguracionCostos()">
+                        <i class="fas fa-save"></i> Guardar Cambios
+                    </button>
                 </div>
             </div>
         `;
@@ -4335,7 +4333,7 @@ const VentasModule = (function() {
         CostosEngine.applyConfig(nuevosParametros);
 
         _showToast('Configuración guardada. Los cálculos se actualizarán automáticamente.', 'info');
-        document.querySelector('.modal.active')?.remove();
+        document.getElementById('ventasEditorCostosModal')?.remove();
 
         // Recalcular si hay calculadora abierta
         _recalcular();
@@ -4845,7 +4843,18 @@ const VentasModule = (function() {
         }
 
         const item = _findRegistroVentas(id, tipo);
-        const estadoActual = item?.estado || item?.estatus_pago || item?.estatus_actual || 'registro';
+        let estadoActual = null;
+        if (window.SSEPIStateMachine?.derivarEstatusActualDesdeNativo) {
+            const tablaMap = {
+                cotizacion: 'cotizaciones', venta: 'cotizaciones', suministro: 'cotizaciones',
+                taller: 'ordenes_taller', motor: 'ordenes_motores',
+                proyecto: 'proyectos_automatizacion', automatizacion: 'proyectos_automatizacion'
+            };
+            estadoActual = SSEPIStateMachine.derivarEstatusActualDesdeNativo(tablaMap[tNorm] || 'cotizaciones', item);
+        }
+        if (!estadoActual) {
+            estadoActual = item?.estatus_actual || 'recepcion';
+        }
         const cerebro = item?.cerebro_registro || {};
         const equipoInfo = cerebro.producto_servicio || cerebro.nombre_producto || item?.descripcion || item?.equipo || null;
         const marcaInfo = cerebro.marca || null;
