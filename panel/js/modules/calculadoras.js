@@ -1668,56 +1668,127 @@
         var labels = document.querySelectorAll('.sim-depto-label');
         var deptoName = sel.options[sel.selectedIndex].text;
         labels.forEach(function(l) { l.textContent = deptoName; });
+
+        // Recargar tarifas desde BD para el depto seleccionado y refrescar inputs T1-T5
+        if (window.CostosEngine && typeof window.CostosEngine.loadFromDatabase === 'function') {
+            window.CostosEngine.loadFromDatabase(depto).then(function() {
+                refrescarInputsTarifas(depto);
+            }).catch(function(e) {
+                console.warn('[calculadoras] loadFromDatabase', e);
+            });
+        }
     }
 
     function onCambioCliente() {
         var sel = document.getElementById('selClienteCotizacion');
+        var deptoSel = document.getElementById('selDeptoCotizacion');
         if (!sel) return;
         var opt = sel.options[sel.selectedIndex];
         if (!opt || !opt.value) return;
         var km = parseFloat(opt.getAttribute('data-km')) || 0;
         var horas = parseFloat(opt.getAttribute('data-horas')) || 0;
-        var kmInp = document.getElementById('labKm');
-        var hvInp = document.getElementById('labHorasViaje');
-        if (kmInp) kmInp.value = km;
-        if (hvInp && horas > 0) hvInp.value = horas;
+        var depto = deptoSel ? deptoSel.value : 'laboratorio';
+
+        // Mapeo de depto → {inputKm, inputHoras, btnCalcular}
+        var targets = {
+            laboratorio:    { km: 'labKm',         horas: 'labHorasViaje',  btn: 'btnCalcLaboratorio' },
+            motores:        { km: 'motKm',         horas: 'motHorasViaje',  btn: 'btnCalcMotores' },
+            suministros:    { km: 'sumKm',         horas: 'sumHorasViaje',  btn: 'btnCalcSuministros' },
+            automatizacion: { km: 'autoKm',        horas: 'autoHorasPlanta', btn: 'btnCalcAuto' },
+            soporte:        { km: 'sopKm',         horas: 'sopHorasViaje',  btn: 'btnCalcSoporte' }
+        };
+        var t = targets[depto];
+        if (t) {
+            var kmInp = document.getElementById(t.km);
+            var hvInp = document.getElementById(t.horas);
+            if (kmInp) kmInp.value = km;
+            if (hvInp && horas > 0) hvInp.value = horas;
+            // Disparar el simulador del depto activo para recalcular al instante
+            var btn = document.getElementById(t.btn);
+            if (btn) btn.click();
+        } else {
+            // Fallback: si no hay depto seleccionado, propagar al input de Laboratorio
+            var kmInp = document.getElementById('labKm');
+            var hvInp = document.getElementById('labHorasViaje');
+            if (kmInp) kmInp.value = km;
+            if (hvInp && horas > 0) hvInp.value = horas;
+        }
+    }
+
+    /**
+     * Refresca los inputs de tarifas T1-T5 con los valores del CostosEngine.CONFIG
+     * para el departamento activo. Llamado tras cambiar de depto.
+     */
+    function refrescarInputsTarifas(depto) {
+        if (!window.CostosEngine) return;
+        var cfg = window.CostosEngine.CONFIG || {};
+        // Mapa: inputId → clave en CONFIG (con prefijo del depto)
+        var map = {
+            'viajeGasPrecio': 'gasolina_precio_litro',
+            'labGasPrecio':   'gasolina_precio_litro',
+            'motGasPrecio':   'gasolina_precio_litro',
+            'sumGasPrecio':   'gasolina_precio_litro',
+            'autoPLC':        'automatizacion_tarifa_plc',
+            'autoServo':      'automatizacion_tarifa_servo',
+            'autoHmi':        'automatizacion_tarifa_hmi',
+            'autoVfd':        'automatizacion_tarifa_vfd',
+            'autoCableado':   'automatizacion_tarifa_cableado',
+            'autoPanel':      'automatizacion_tarifa_panel',
+            'autoPuesta':     'automatizacion_tarifa_puesta',
+            'autoCapacitacion': 'automatizacion_tarifa_capacitacion'
+        };
+        Object.keys(map).forEach(function(inputId) {
+            var el = document.getElementById(inputId);
+            if (!el) return;
+            var key = depto + '_' + map[inputId];
+            var val = cfg[key];
+            if (val == null) val = cfg['general_' + map[inputId]];
+            if (val != null && !isNaN(val)) el.value = val;
+        });
     }
 
     function runAutomatizacionSim() {
-        var calc = findCalculadoraNombre('automatiz');
-        if (!calc) { alert('No hay calculadora Automatización.'); return; }
-        var m = costosMapByCalculadoraId(calc.id);
-        var lines = 0;
+        var el = document.getElementById('autoSimResult');
+        if (!el) return;
+        if (!window.CostosEngine || typeof window.CostosEngine.calcularAutomatizacion !== 'function') {
+            el.innerHTML = '<div class="calc-sim-breakdown"><p style="color:#dc2626;">CostosEngine.calcularAutomatizacion no disponible.</p></div>';
+            return;
+        }
+
+        // Servicios: 8 checkboxes/inputs con data-tarifa-i (de simAutoTarifas)
+        var servicios = [];
         document.querySelectorAll('#simAutoBody tr[data-tarifa-i]').forEach(function(tr) {
             var idx = parseInt(tr.getAttribute('data-tarifa-i'), 10);
             var t = simAutoTarifas[idx];
             if (!t) return;
             var hr = parseFloat(tr.querySelector('.sim-auto-hr') && tr.querySelector('.sim-auto-hr').value) || 0;
-            var rate = Number(t.costo);
-            if (hr > 0 && !isNaN(rate)) lines += hr * rate;
+            if (hr > 0) servicios.push({ id: t.concepto || t.id || ('srv_' + idx), nombre: t.nombre || '', horas: hr, tarifa: Number(t.costo) || 0 });
         });
-        var tPlantaHr = parseFloat(document.getElementById('autoHrPlanta').value) || 0;
-        var tPlantaRate = m['auto:tarifaTiempoPlanta'];
-        if (tPlantaRate != null && tPlantaHr > 0) lines += tPlantaHr * tPlantaRate;
-        var mat = parseFloat(document.getElementById('autoMateriales').value) || 0;
-        var via = parseFloat(document.getElementById('autoViaticos').value) || 0;
-        var hrCam = parseFloat(document.getElementById('autoHrCamioneta').value) || 0;
-        var camH = m['auto:camionetaHora'] || 0;
-        var hrGG = parseFloat(document.getElementById('autoHrGastoGen').value) || 0;
-        var ggH = m['auto:horaGastoGeneral'] || 0;
+        // Tiempo en planta (horas investigación)
+        var horasInvestigacion = parseFloat(document.getElementById('autoHrPlanta').value) || 0;
+        var km = parseFloat(document.getElementById('autoKm') && document.getElementById('autoKm').value) || 0;
+        var materiales = parseFloat(document.getElementById('autoMateriales').value) || 0;
+        var viaticos = parseFloat(document.getElementById('autoViaticos').value) || 0;
+        // Si hay viáticos como input separado y no se computan por km, los añadimos
         var gasInp = document.getElementById('autoGasolina');
-        var gasVal = parseFloat(gasInp && gasInp.value);
-        var gas = !isNaN(gasVal) ? gasVal : (m['auto:paramGasolina'] != null ? m['auto:paramGasolina'] : 0);
-        var markupPct = m['auto:markupMaterialesPct'] != null ? m['auto:markupMaterialesPct'] : 0;
-        var markup = mat * (markupPct / 100);
-        var base = lines + markup + via + hrCam * camH + gas + hrGG * ggH;
-        var credPct = m['auto:creditoPct'] != null ? m['auto:creditoPct'] : 0;
-        var descPct = m['auto:descuentoPct'] != null ? m['auto:descuentoPct'] : 0;
-        var conCred = base * (1 + credPct / 100);
-        var final = conCred * (1 - descPct / 100);
-        var el = document.getElementById('autoSimResult');
-        if (!el) return;
-        el.innerHTML = '<div class="calc-sim-breakdown"><p>Servicios (líneas): <strong>' + lines.toFixed(2) + '</strong></p><p>Materiales + ' + markupPct + '%: <strong>' + (mat + markup).toFixed(2) + '</strong> · Viáticos: <strong>' + via.toFixed(2) + '</strong> · Camioneta: <strong>' + (hrCam * camH).toFixed(2) + '</strong> · Gas/trasl.: <strong>' + gas.toFixed(2) + '</strong> · G.gral: <strong>' + (hrGG * ggH).toFixed(2) + '</strong></p><p>Base: <strong>' + base.toFixed(2) + '</strong> · +Crédito ' + credPct + '%: <strong>' + conCred.toFixed(2) + '</strong> · −Desc. ' + descPct + '%: <strong>' + final.toFixed(2) + '</strong></p></div>';
+        if (gasInp && gasInp.value) {
+            var gasVal = parseFloat(gasInp.value);
+            if (!isNaN(gasVal) && gasVal > 0) viaticos += gasVal;
+        }
+
+        try {
+            var r = window.CostosEngine.calcularAutomatizacion(servicios, km, horasInvestigacion, materiales, viaticos);
+            el.innerHTML = '<div class="calc-sim-breakdown">' +
+                '<p>Servicios (' + servicios.length + '): <strong>$' + (r.serviciosTotal || 0).toFixed(2) + '</strong></p>' +
+                '<p>Horas planta: <strong>' + horasInvestigacion + '</strong> · Materiales: <strong>$' + materiales.toFixed(2) + '</strong> · Viáticos: <strong>$' + viaticos.toFixed(2) + '</strong></p>' +
+                '<p>Subtotal: <strong>$' + (r.subtotal || 0).toFixed(2) + '</strong></p>' +
+                '<p>Utilidad ' + (r.utilidadPct || 0) + '%: <strong>$' + (r.utilidad || 0).toFixed(2) + '</strong> · Crédito ' + (r.creditoPct || 0) + '%: <strong>$' + (r.credito || 0).toFixed(2) + '</strong></p>' +
+                '<p style="font-size:16px;color:var(--c-automatizacion);">TOTAL: <strong>$' + (r.total || 0).toFixed(2) + '</strong></p>' +
+                '</div>';
+        } catch (e) {
+            el.innerHTML = '<div class="calc-sim-breakdown"><p style="color:#dc2626;">Error: ' + (e && e.message ? e.message : e) + '</p></div>';
+            console.error('[runAutomatizacionSim]', e);
+        }
     }
 
     function validar() {

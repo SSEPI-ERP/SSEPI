@@ -579,6 +579,18 @@ const VentasModule = (function() {
             deptEl.addEventListener('change', () => {
                 _wizardSetPaso1Error('');
                 _toggleWizardDeptFields();
+                // Mapear etiqueta de depto a slug del CostosEngine y aplicar tarifas
+                try {
+                    if (window.DeptosHelper && window.CostosEngine) {
+                        const slug = window.DeptosHelper.ventasToEngine(deptEl.value);
+                        if (window.CostosEngine.setDepartamento) {
+                            window.CostosEngine.setDepartamento(slug);
+                        }
+                        if (window.CostosEngine.loadFromDatabase) {
+                            window.CostosEngine.loadFromDatabase(slug).catch(() => { /* no bloquear UI */ });
+                        }
+                    }
+                } catch (e) { console.warn('[ventas] setDepartamento wizard depto', e); }
             });
         }
 
@@ -650,6 +662,12 @@ const VentasModule = (function() {
                         rfc,
                         producto: ''
                     };
+
+                    // Autoload KM/gasolina en tiempo real: prellenar inputs logísticos
+                    // y recalcular gasolina+traslado con CostosEngine. Si el bloque
+                    // logístico del paso 2 no está renderizado aún, no hace nada
+                    // (el render del paso 2 ya pinta los inputs con `cliente.km/horas`).
+                    _renderLogisticaInputs(km, horas);
 
                     // Consultar adeudo y mostrar banner
                     (async () => {
@@ -3870,6 +3888,20 @@ const VentasModule = (function() {
         _renderWizardBomSeleccionados();
         _recalcular();
         if (ventasAutosaveCtrl) ventasAutosaveCtrl.schedule();
+    }
+
+    /**
+     * Prellena los inputs logísticos del paso 2 (si están renderizados) y
+     * recalcula gasolina+traslado en tiempo real. Llamado desde el handler
+     * de cambio de cliente en paso 1 del wizard.
+     */
+    function _renderLogisticaInputs(km, horas) {
+        const kmIn = document.getElementById('inpLogisticaKm');
+        const hrsIn = document.getElementById('inpLogisticaHoras');
+        if (kmIn) kmIn.value = Number(km) || 0;
+        if (hrsIn) hrsIn.value = Number(horas) || 0;
+        // Si los inputs existen, recalcular; si no, esperar al render del paso 2
+        if (kmIn && hrsIn) _refreshLogisticaFromInputs();
     }
 
     function _refreshLogisticaFromInputs() {

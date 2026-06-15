@@ -100,7 +100,7 @@
                 <a href="/panel/pdfs-politicas.html" class="nav-item" data-module="pdfs_politicas"><span class="icon-box"><i class="fas fa-file-pdf"></i></span> PDFs y Políticas</a>
 
         <div class="menu-category">EXTERNOS</div>
-        <a href="#" class="nav-item" target="_blank" rel="noopener" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <a href="/panel/pages/ssepi_paginas.html" class="nav-item" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
         <div class="menu-category">PERSONAL</div>
         <a href="/panel/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
     </nav>
@@ -404,7 +404,7 @@
                             <button class="btn-etapa" id="terminarEtapa2" data-etapa="2"><i class="fas fa-flag-checkered"></i> Terminar etapa</button>
                             <button class="btn-primary" id="btnEnviarEstimacionVentas"><i class="fas fa-calculator"></i> Enviar estimación a Ventas</button>
                             <button class="btn-secondary" id="generarCompraBtn"><i class="fas fa-paper-plane"></i> Enviar faltantes a Compras</button>
-                            <button class="btn-secondary" id="sinReparacionBtn" style="background:#f59e0b; color:white;"><i class="fas fa-ban"></i> Sin reparación</button>
+                            <button class="btn-ssepi btn-warning" id="sinReparacionBtn"><i class="fas fa-ban"></i> Sin reparación</button>
                         </div>
                     </div>
                 </div>
@@ -419,7 +419,7 @@
                             <div><strong>Fecha de envío a Compras:</strong> <span id="fechaEsperaDisplay"></span></div>
                             <div style="display:flex; gap:8px;">
                                 <button class="btn-etapa" id="terminarEtapa3" data-etapa="3" disabled style="opacity:0.5;"><i class="fas fa-lock"></i> Esperando confirmación...</button>
-                                <button class="btn-etapa" id="btnClienteConfirmadoTaller" style="background:#10b981; color:white; display:none;"><i class="fas fa-check-circle"></i> Cliente confirmó — Avanzar a Reparación</button>
+                                <button class="btn-ssepi btn-success" id="btnClienteConfirmadoTaller" style="display:none;"><i class="fas fa-check-circle"></i> Cliente confirmó — Avanzar a Reparación</button>
                             </div>
                         </div>
                     </div>
@@ -523,7 +523,7 @@
 
                         <div style="display:flex; gap:15px; justify-content:flex-end; margin-top:30px; flex-wrap: wrap;">
                             <button class="btn-etapa" id="terminarReparacionBtn"><i class="fas fa-check-double"></i> Terminar reparación</button>
-                            <button class="btn-primary" id="btnNotificarVentasReparado" style="background:#10b981;"><i class="fas fa-bell"></i> Notificar a Ventas que equipo está reparado</button>
+                            <button class="btn-ssepi btn-success" id="btnNotificarVentasReparado"><i class="fas fa-bell"></i> Notificar a Ventas que equipo está reparado</button>
                         </div>
                     </div>
                 </div>

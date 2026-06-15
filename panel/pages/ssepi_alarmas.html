@@ -16,6 +16,7 @@
     <script src="/panel/js/core/user-menu.js?v=2"></script>
     <script src="/panel/js/core/nav-by-role.js?v=2"></script>
     <script src="/panel/js/core/ssepi-toast.js?v=3"></script>
+    <script type="module" src="/panel/js/core/alarmas-badge.js?v=1"></script>
     <script type="module" src="/panel/js/modules/alarmas.js?v=1"></script>
 </head>
 <body class="page-alarmas nav-loading">
@@ -37,6 +38,10 @@
         <div class="header-right">
             <div class="live-clock" id="clock">00:00:00</div>
             <button class="theme-btn" id="themeBtn"><i class="fas fa-moon"></i></button>
+            <a href="/panel/pages/ssepi_alarmas.html" class="notification-badge" id="ssepiAlarmasBadgeLink" title="Alarmas pendientes">
+                <i class="fas fa-bell"></i>
+                <span class="badge-count" id="ssepiAlarmasBadge" style="display:none;">0</span>
+            </a>
             <div class="user-pill" id="userMenu">
                 <div class="avatar-circle" id="userAvatar">A</div>
                 <span id="userName">Admin</span>
@@ -44,13 +49,14 @@
         </div>
     </header>
 
-    <!-- SIDEBAR -->
+    <!-- SIDEBAR (canónico: 5 categorías + SISTEMA) -->
     <nav class="sidebar-left" id="sidebar">
         <div class="menu-category">OPERACIONES</div>
         <a href="/panel/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
         <a href="/panel/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
         <a href="/panel/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
         <a href="/panel/pages/ssepi_actividades.html" class="nav-item" data-module="actividades_automatizacion"><span class="icon-box"><i class="fas fa-calendar-week"></i></span> Actividades</a>
+        <a href="/panel/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
         <div class="menu-category">COMERCIAL</div>
         <a href="/panel/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
         <a href="/panel/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
@@ -61,6 +67,12 @@
         <a href="/panel/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
         <a href="/panel/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
         <a href="/panel/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <a href="/panel/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <a href="/panel/pdfs-politicas.html" class="nav-item" data-module="pdfs_politicas"><span class="icon-box"><i class="fas fa-file-pdf"></i></span> PDFs y Políticas</a>
+        <div class="menu-category">EXTERNOS</div>
+        <a href="/panel/pages/ssepi_paginas.html" class="nav-item" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/panel/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
         <div class="menu-category">SISTEMA</div>
         <a href="/panel/pages/ssepi_alarmas.html" class="nav-item active" data-module="alarmas"><span class="icon-box"><i class="fas fa-bell"></i></span> Alarmas</a>
         <a href="/panel/pages/ssepi_configuracion.html" class="nav-item" data-module="configuracion"><span class="icon-box"><i class="fas fa-cog"></i></span> Configuración</a>
@@ -74,12 +86,12 @@
         </div>
 
         <!-- FILTROS + BOTÓN NUEVA -->
-        <section class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+        <section class="panel">
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
                 <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
                     <div>
                         <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:3px;">Estado</label>
-                        <select id="filtroEstado" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-panel);color:var(--text-primary);">
+                        <select id="filtroEstado" class="form-control">
                             <option value="">Todas</option>
                             <option value="pendiente">Pendiente</option>
                             <option value="disparada">Disparada</option>
@@ -88,7 +100,7 @@
                     </div>
                     <div>
                         <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:3px;">Módulo</label>
-                        <select id="filtroModulo" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-panel);color:var(--text-primary);">
+                        <select id="filtroModulo" class="form-control">
                             <option value="">Todos</option>
                             <option value="ventas">Ventas</option>
                             <option value="compras">Compras</option>
@@ -103,7 +115,7 @@
                     </div>
                     <div>
                         <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:3px;">Prioridad</label>
-                        <select id="filtroPrioridad" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-panel);color:var(--text-primary);">
+                        <select id="filtroPrioridad" class="form-control">
                             <option value="">Todas</option>
                             <option value="critica">Crítica</option>
                             <option value="alta">Alta</option>
@@ -121,10 +133,10 @@
         </section>
 
         <!-- TABLA DE ALARMAS -->
-        <section class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+        <section class="panel">
             <h2 style="font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
                 <i class="fas fa-list" style="color:var(--c-ventas);"></i> Alarmas
-                <span id="alarmasCount" style="background:#e2e8f0;color:#475569;padding:2px 8px;border-radius:10px;font-size:12px;">0</span>
+                <span id="alarmasCount" class="badge-count">0</span>
             </h2>
             <div style="overflow-x:auto;">
                 <table class="lista-table" id="alarmasTable">
@@ -147,67 +159,69 @@
         </section>
     </main>
 
-    <!-- MODAL CREAR/EDITAR -->
-    <div id="alarmaModal" class="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;align-items:center;justify-content:center;">
-        <div style="background:var(--bg-panel);border-radius:10px;max-width:540px;width:90%;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 12px 32px rgba(0,0,0,0.3);">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-                <h3 id="alarmaModalTitle" style="font-size:18px;font-weight:700;margin:0;">Nueva alarma</h3>
-                <button id="btnCerrarAlarmaModal" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:22px;line-height:1;">&times;</button>
+    <!-- MODAL CREAR/EDITAR (patrón estándar .modal-backdrop.active) -->
+    <div class="modal-backdrop" id="alarmaModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="alarmaModalTitle">Nueva alarma</h3>
+                <button class="modal-close" id="btnCerrarAlarmaModal" aria-label="Cerrar">&times;</button>
             </div>
             <form id="alarmaForm">
-                <input type="hidden" id="alarmaId">
-                <div style="display:grid;gap:14px;">
-                    <div>
-                        <label style="display:block;font-weight:600;margin-bottom:4px;font-size:13px;">Título *</label>
-                        <input type="text" id="alarmaTitulo" required style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:var(--bg-panel);color:var(--text-primary);" placeholder="Ej. Llamar a cliente X">
-                    </div>
-                    <div>
-                        <label style="display:block;font-weight:600;margin-bottom:4px;font-size:13px;">Mensaje *</label>
-                        <textarea id="alarmaMensaje" required rows="3" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:var(--bg-panel);color:var(--text-primary);" placeholder="Detalle de la acción o contexto..."></textarea>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="modal-body">
+                    <input type="hidden" id="alarmaId">
+                    <div style="display:grid;gap:14px;">
                         <div>
-                            <label style="display:block;font-weight:600;margin-bottom:4px;font-size:13px;">Tipo</label>
-                            <select id="alarmaTipo" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:var(--bg-panel);color:var(--text-primary);">
-                                <option value="manual">Manual</option>
-                                <option value="custom">Personalizada</option>
-                            </select>
+                            <label style="display:block;font-weight:600;margin-bottom:4px;font-size:13px;">Título *</label>
+                            <input type="text" id="alarmaTitulo" required class="form-input" placeholder="Ej. Llamar a cliente X">
                         </div>
                         <div>
-                            <label style="display:block;font-weight:600;margin-bottom:4px;font-size:13px;">Prioridad</label>
-                            <select id="alarmaPrioridad" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:var(--bg-panel);color:var(--text-primary);">
-                                <option value="baja">Baja</option>
-                                <option value="media" selected>Media</option>
-                                <option value="alta">Alta</option>
-                                <option value="critica">Crítica</option>
-                            </select>
+                            <label style="display:block;font-weight:600;margin-bottom:4px;font-size:13px;">Mensaje *</label>
+                            <textarea id="alarmaMensaje" required rows="3" class="form-input" placeholder="Detalle de la acción o contexto..."></textarea>
                         </div>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                        <div>
-                            <label style="display:block;font-weight:600;margin-bottom:4px;font-size:13px;">Módulo destinatario</label>
-                            <select id="alarmaModulo" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:var(--bg-panel);color:var(--text-primary);">
-                                <option value="">Todos (broadcast)</option>
-                                <option value="ventas">Ventas</option>
-                                <option value="compras">Compras</option>
-                                <option value="taller">Laboratorio</option>
-                                <option value="motores">Motores</option>
-                                <option value="automatizacion">Automatización</option>
-                                <option value="suministros">Suministros</option>
-                                <option value="facturacion">Facturación</option>
-                                <option value="contabilidad">Contabilidad</option>
-                                <option value="vacaciones">Vacaciones</option>
-                            </select>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div>
+                                <label style="display:block;font-weight:600;margin-bottom:4px;font-size:13px;">Tipo</label>
+                                <select id="alarmaTipo" class="form-input">
+                                    <option value="manual">Manual</option>
+                                    <option value="custom">Personalizada</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display:block;font-weight:600;margin-bottom:4px;font-size:13px;">Prioridad</label>
+                                <select id="alarmaPrioridad" class="form-input">
+                                    <option value="baja">Baja</option>
+                                    <option value="media" selected>Media</option>
+                                    <option value="alta">Alta</option>
+                                    <option value="critica">Crítica</option>
+                                </select>
+                            </div>
                         </div>
-                        <div>
-                            <label style="display:block;font-weight:600;margin-bottom:4px;font-size:13px;">Disparar el *</label>
-                            <input type="datetime-local" id="alarmaDispararAt" required style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:var(--bg-panel);color:var(--text-primary);">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div>
+                                <label style="display:block;font-weight:600;margin-bottom:4px;font-size:13px;">Módulo destinatario</label>
+                                <select id="alarmaModulo" class="form-input">
+                                    <option value="">Todos (broadcast)</option>
+                                    <option value="ventas">Ventas</option>
+                                    <option value="compras">Compras</option>
+                                    <option value="taller">Laboratorio</option>
+                                    <option value="motores">Motores</option>
+                                    <option value="automatizacion">Automatización</option>
+                                    <option value="suministros">Suministros</option>
+                                    <option value="facturacion">Facturación</option>
+                                    <option value="contabilidad">Contabilidad</option>
+                                    <option value="vacaciones">Vacaciones</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display:block;font-weight:600;margin-bottom:4px;font-size:13px;">Disparar el *</label>
+                                <input type="datetime-local" id="alarmaDispararAt" required class="form-input">
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
-                    <button type="button" id="btnCancelarAlarma" style="background:#e2e8f0;color:#475569;border:none;padding:9px 16px;border-radius:6px;cursor:pointer;font-weight:600;">Cancelar</button>
-                    <button type="submit" class="btn-ssepi btn-ventas" style="border:none;padding:9px 16px;border-radius:6px;cursor:pointer;font-weight:600;">
+                <div class="modal-footer">
+                    <button type="button" id="btnCancelarAlarma" class="btn-ssepi btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-ssepi btn-ventas">
                         <i class="fas fa-save"></i> Guardar
                     </button>
                 </div>
