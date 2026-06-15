@@ -57,36 +57,29 @@ function addAlarmToast(alarma, onMarcarLeida) {
         document.body.appendChild(container);
     }
     var prioridad = (alarma.prioridad || 'media').toLowerCase();
-    var colorByPrioridad = {
-        baja: '#3b82f6',
-        media: '#f59e0b',
-        alta: '#ef4444',
-        critica: '#dc2626'
-    };
     var iconByPrioridad = {
         baja: 'fa-bell',
         media: 'fa-exclamation-circle',
         alta: 'fa-exclamation-triangle',
         critica: 'fa-radiation'
     };
-    var color = colorByPrioridad[prioridad] || colorByPrioridad.media;
     var icon = iconByPrioridad[prioridad] || iconByPrioridad.media;
     var toast = document.createElement('div');
-    toast.className = 'toast-alarma';
+    // Estructura con clases CSS (tokens). El color del border-left viene de .prio-*
+    toast.className = 'toast-alarma prio-' + prioridad;
     toast.dataset.alarmaId = alarma.id;
-    toast.style.cssText = 'pointer-events:auto;background:white;border-left:5px solid ' + color + ';border-radius:8px;padding:14px 16px;box-shadow:0 4px 12px rgba(0,0,0,0.12);min-width:320px;max-width:420px;display:flex;flex-direction:column;gap:6px;font-family:Inter,system-ui,sans-serif;';
     toast.innerHTML =
         '<div style="display:flex;align-items:flex-start;gap:10px;">' +
-            '<i class="fas ' + icon + '" style="color:' + color + ';font-size:20px;margin-top:2px;"></i>' +
+            '<i class="fas ' + icon + ' toast-alarma-icon"></i>' +
             '<div style="flex:1;">' +
-                '<div style="font-weight:700;color:#0f172a;font-size:14px;">' + (alarma.titulo || 'Alarma') + '</div>' +
-                '<div style="color:#475569;font-size:13px;margin-top:2px;">' + (alarma.mensaje || '') + '</div>' +
-                (alarma.para_modulo ? '<div style="color:#94a3b8;font-size:11px;margin-top:4px;text-transform:uppercase;">→ ' + alarma.para_modulo + '</div>' : '') +
+                '<div class="toast-alarma-title">' + (alarma.titulo || 'Alarma') + '</div>' +
+                '<div class="toast-alarma-msg">' + (alarma.mensaje || '') + '</div>' +
+                (alarma.para_modulo ? '<div class="toast-alarma-para">→ ' + alarma.para_modulo + '</div>' : '') +
             '</div>' +
-            '<button class="toast-close" aria-label="Cerrar" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:18px;line-height:1;padding:0 4px;">&times;</button>' +
+            '<button class="toast-close toast-alarma-close" aria-label="Cerrar">&times;</button>' +
         '</div>' +
         '<div style="display:flex;gap:8px;margin-top:6px;">' +
-            '<button class="btn-marcar-leida" style="flex:1;background:' + color + ';color:white;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Marcar leída</button>' +
+            '<button class="btn-marcar-leida toast-alarma-action">Marcar leída</button>' +
         '</div>';
     toast.querySelector('.toast-close').addEventListener('click', function () {
         if (toast.parentNode) toast.parentNode.removeChild(toast);

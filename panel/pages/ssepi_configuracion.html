@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="/panel/assets/logo-ssepi.png">
     <link rel="shortcut icon" type="image/png" href="/panel/assets/logo-ssepi.png">
-    <title>SSEPI · Configuración</title>
+    <title>SSEPI Â· ConfiguraciÃ³n</title>
     <style>html { scroll-behavior: smooth; scroll-padding-top: 80px; }</style>
     <link rel="stylesheet" href="/panel/css/main.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -29,8 +29,8 @@
             <div class="brand-container">
                 <img src="/assets/logo-ssepi.png" alt="SSEPI" class="brand-logo">
                 <div>
-                    <div class="brand-text">CONFIGURACIÓN DEL SISTEMA</div>
-                    <div class="brand-sub">Permisos · Roles · Módulos</div>
+                    <div class="brand-text">CONFIGURACIÃ“N DEL SISTEMA</div>
+                    <div class="brand-sub">Permisos Â· Roles Â· MÃ³dulos</div>
                 </div>
             </div>
             <a href="/panel/panel.html" class="home-link"><i class="fas fa-house"></i> Panel Principal</a>
@@ -45,46 +45,54 @@
         </div>
     </header>
 
-    <!-- SIDEBAR -->
+    <!-- SIDEBAR (canÃ³nico: 5 categorÃ­as + SISTEMA) -->
     <nav class="sidebar-left" id="sidebar">
         <div class="menu-category">OPERACIONES</div>
         <a href="/panel/pages/ssepi_taller.html" class="nav-item" data-module="ordenes_taller"><span class="icon-box"><i class="fas fa-microchip"></i></span> Laboratorio</a>
         <a href="/panel/pages/ssepi_motores.html" class="nav-item" data-module="ordenes_motores"><span class="icon-box"><i class="fas fa-industry"></i></span> Motores</a>
-        <a href="/panel/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> Automatización</a>
+        <a href="/panel/pages/ssepi_servicios.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-robot"></i></span> AutomatizaciÃ³n</a>
         <a href="/panel/pages/ssepi_actividades.html" class="nav-item" data-module="actividades_automatizacion"><span class="icon-box"><i class="fas fa-calendar-week"></i></span> Actividades</a>
+        <a href="/panel/pages/ssepi_proyectos.html" class="nav-item" data-module="proyectos_automatizacion"><span class="icon-box"><i class="fas fa-tools"></i></span> Soporte en planta</a>
         <div class="menu-category">COMERCIAL</div>
         <a href="/panel/pages/ssepi_ventas.html" class="nav-item" data-module="ventas"><span class="icon-box"><i class="fas fa-file-invoice-dollar"></i></span> Ventas</a>
         <a href="/panel/pages/ssepi_compras.html" class="nav-item" data-module="compras"><span class="icon-box"><i class="fas fa-shopping-cart"></i></span> Compras</a>
         <a href="/panel/pages/ssepi_suministros.html" class="nav-item" data-module="suministros"><span class="icon-box"><i class="fas fa-boxes-stacked"></i></span> Suministros</a>
-        <div class="menu-category">ADMINISTRACIÓN</div>
+        <div class="menu-category">ADMINISTRACIÃ“N</div>
         <a href="/panel/pages/ssepi_contactos.html" class="nav-item" data-module="contactos"><span class="icon-box"><i class="fas fa-address-book"></i></span> Contactos</a>
-        <a href="/panel/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> Facturación</a>
+        <a href="/panel/pages/ssepi_facturacion.html" class="nav-item" data-module="facturas"><span class="icon-box"><i class="fas fa-file-invoice"></i></span> FacturaciÃ³n</a>
         <a href="/panel/pages/ssepi_contabilidad.html" class="nav-item" data-module="contabilidad"><span class="icon-box"><i class="fas fa-coins"></i></span> Contabilidad</a>
         <a href="/panel/pages/ssepi_productos.html" class="nav-item" data-module="inventario"><span class="icon-box"><i class="fas fa-boxes"></i></span> Inventario</a>
-        <a href="/panel/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> Nómina</a>
+        <a href="/panel/pages/ssepi_nomina.html" class="nav-item" data-module="pagos_nomina"><span class="icon-box"><i class="fas fa-users"></i></span> NÃ³mina</a>
+        <a href="/panel/pages/ssepi_calculadoras.html" class="nav-item" data-module="calculadoras"><span class="icon-box"><i class="fas fa-calculator"></i></span> Calculadoras</a>
+        <a href="/panel/pdfs-politicas.html" class="nav-item" data-module="pdfs_politicas"><span class="icon-box"><i class="fas fa-file-pdf"></i></span> PDFs y PolÃ­ticas</a>
+        <div class="menu-category">EXTERNOS</div>
+        <a href="/panel/pages/ssepi_paginas.html" class="nav-item" data-module="paginas"><span class="icon-box"><i class="fas fa-globe"></i></span> Sitio Web</a>
+        <div class="menu-category">PERSONAL</div>
+        <a href="/panel/pages/ssepi_vacaciones.html" class="nav-item" data-module="vacaciones"><span class="icon-box"><i class="fas fa-umbrella-beach"></i></span> Vacaciones</a>
         <div class="menu-category">SISTEMA</div>
-        <!-- Menú desplegable Configuración (solo admins y roles autorizados) -->
-        <div class="nav-item nav-item-has-submenu" data-module="configuracion" id="configSubmenuToggle">
+        <a href="/panel/pages/ssepi_alarmas.html" class="nav-item" data-module="alarmas"><span class="icon-box"><i class="fas fa-bell"></i></span> Alarmas</a>
+        <!-- MenÃº desplegable ConfiguraciÃ³n (solo admins y roles autorizados) -->
+        <div class="nav-item nav-item-has-submenu active" data-module="configuracion" id="configSubmenuToggle">
             <div class="submenu-toggle">
                 <span class="icon-box"><i class="fas fa-cog"></i></span>
-                <span>Configuración</span>
+                <span>ConfiguraciÃ³n</span>
             </div>
             <i class="fas fa-chevron-right submenu-chevron"></i>
         </div>
         <ul class="nav-submenu" id="configSubmenu">
             <li><a href="/panel/pages/ssepi_configuracion.html#usuarios" class="nav-item" data-module="configuracion"><i class="fas fa-users"></i> Usuarios y Roles</a></li>
             <li><a href="/panel/pages/ssepi_configuracion.html#permisos" class="nav-item" data-module="configuracion"><i class="fas fa-shield-alt"></i> Permisos por Rol</a></li>
-            <li><a href="/panel/pages/ssepi_configuracion.html#modulos-usuario" class="nav-item" data-module="configuracion"><i class="fas fa-toggle-on"></i> Módulos por Usuario</a></li>
+            <li><a href="/panel/pages/ssepi_configuracion.html#modulos-usuario" class="nav-item" data-module="configuracion"><i class="fas fa-toggle-on"></i> MÃ³dulos por Usuario</a></li>
             <li><a href="/panel/pages/ssepi_configuracion.html#import-export" class="nav-item" data-module="configuracion"><i class="fas fa-file-csv"></i> Importar/Exportar</a></li>
-            <li><a href="/panel/pages/ssepi_configuracion.html#auditoria" class="nav-item" data-module="configuracion"><i class="fas fa-history"></i> Bitácora Auditoría</a></li>
+            <li><a href="/panel/pages/ssepi_configuracion.html#auditoria" class="nav-item" data-module="configuracion"><i class="fas fa-history"></i> BitÃ¡cora AuditorÃ­a</a></li>
         </ul>
     </nav>
 
     <!-- MAIN -->
     <main>
         <div class="welcome-header">
-            <h1><i class="fas fa-cog"></i> Configuración de Permisos</h1>
-            <p class="welcome-subtitle">Gestión de roles y módulos del sistema</p>
+            <h1><i class="fas fa-cog"></i> ConfiguraciÃ³n de Permisos</h1>
+            <p class="welcome-subtitle">GestiÃ³n de roles y mÃ³dulos del sistema</p>
         </div>
 
         <!-- ALERTA DE SEGURIDAD -->
@@ -93,25 +101,25 @@
             <strong>Acceso restringido:</strong> Solo administradores pueden modificar permisos. Los cambios se aplican inmediatamente.
         </div>
 
-        <!-- SECCIÓN 0: MI PERFIL (todos los usuarios) -->
+        <!-- SECCIÃ“N 0: MI PERFIL (todos los usuarios) -->
     <section id="perfil" class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 24px;">
         <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
             <i class="fas fa-user-circle" style="color: var(--c-ventas);"></i>
             Mi Perfil
         </h2>
-        <p style="color: var(--text-secondary); margin-bottom: 16px;">Actualiza tu información personal.</p>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">Actualiza tu informaciÃ³n personal.</p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 700px;">
             <div>
                 <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text-primary);">Nombre</label>
-                <input type="text" id="perfilNombre" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: var(--text-primary); font-size: 14px;" placeholder="Tu nombre">
+                <input type="text" id="perfilNombre" class="form-input" placeholder="Tu nombre">
             </div>
             <div>
                 <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text-primary);">Email</label>
                 <input type="text" id="perfilEmail" readonly style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-hover); color: var(--text-secondary); font-size: 14px;">
             </div>
             <div>
-                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text-primary);">Teléfono</label>
-                <input type="text" id="perfilTelefono" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: var(--text-primary); font-size: 14px;" placeholder="Teléfono">
+                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text-primary);">TelÃ©fono</label>
+                <input type="text" id="perfilTelefono" class="form-input" placeholder="TelÃ©fono">
             </div>
             <div>
                 <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--text-primary);">Rol</label>
@@ -126,7 +134,7 @@
         <div id="perfilStatus" style="display: none; margin-top: 12px; padding: 12px; border-radius: 6px; font-size: 13px;"></div>
     </section>
 
-    <!-- SECCIÓN 1: USUARIOS Y ROLES -->
+    <!-- SECCIÃ“N 1: USUARIOS Y ROLES -->
         <section id="usuarios" class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 24px;">
             <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
                 <i class="fas fa-users" style="color: var(--c-ventas);"></i>
@@ -151,26 +159,26 @@
             </div>
         </section>
 
-        <!-- SECCIÓN 2: PERMISOS POR ROL -->
+        <!-- SECCIÃ“N 2: PERMISOS POR ROL -->
         <section id="permisos" class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 24px;">
             <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
                 <i class="fas fa-shield-alt" style="color: var(--c-ventas);"></i>
                 Permisos por Rol
             </h2>
-            <p style="color: var(--text-secondary); margin-bottom: 16px;">Configura qué módulos y acciones puede realizar cada rol.</p>
+            <p style="color: var(--text-secondary); margin-bottom: 16px;">Configura quÃ© mÃ³dulos y acciones puede realizar cada rol.</p>
 
             <div style="margin-bottom: 16px;">
                 <label style="font-weight: 600; font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Seleccionar Rol:</label>
-                <select id="rolSelector" style="padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: var(--text-primary); font-size: 14px; min-width: 200px;">
+                <select id="rolSelector" class="form-input" style="min-width: 200px;">
                     <option value="admin">Admin</option>
                     <option value="ventas">Ventas</option>
                     <option value="ventas_sin_compras">Ventas (sin Compras)</option>
-                    <option value="administracion">Administración</option>
-                    <option value="taller">Laboratorio de Electrónica</option>
+                    <option value="administracion">AdministraciÃ³n</option>
+                    <option value="taller">Laboratorio de ElectrÃ³nica</option>
                     <option value="motores">Motores</option>
-                    <option value="automatizacion">Automatización</option>
+                    <option value="automatizacion">AutomatizaciÃ³n</option>
                     <option value="compras">Compras</option>
-                    <option value="facturacion">Facturación</option>
+                    <option value="facturacion">FacturaciÃ³n</option>
                 </select>
             </div>
 
@@ -178,7 +186,7 @@
                 <table class="lista-table" id="permisosTable">
                     <thead>
                         <tr>
-                            <th>Módulo</th>
+                            <th>MÃ³dulo</th>
                             <th>Lectura</th>
                             <th>Crear</th>
                             <th>Actualizar</th>
@@ -202,19 +210,19 @@
         </section>
 
 
-        <!-- SECCIÓN 4: PERMISOS POR USUARIO (SWITCHES) -->
+        <!-- SECCIÃ“N 4: PERMISOS POR USUARIO (SWITCHES) -->
         <section id="modulos-usuario" class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px;">
             <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
                 <i class="fas fa-toggle-on" style="color: var(--c-ventas);"></i>
-                Módulos por Usuario
+                MÃ³dulos por Usuario
             </h2>
             <p style="color: var(--text-secondary); margin-bottom: 16px;">
-                Activa o desactiva módulos específicos para cada usuario. Estos permisos son adicionales a los del rol.
+                Activa o desactiva mÃ³dulos especÃ­ficos para cada usuario. Estos permisos son adicionales a los del rol.
             </p>
 
             <div style="margin-bottom: 16px;">
                 <label style="font-weight: 600; font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Seleccionar Usuario:</label>
-                <select id="usuarioSelector" style="padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: var(--text-primary); font-size: 14px; min-width: 300px;">
+                <select id="usuarioSelector" class="form-input" style="min-width: 300px;">
                     <option value="">Cargando usuarios...</option>
                 </select>
             </div>
@@ -223,13 +231,13 @@
                 <table class="lista-table" id="userModulesTable">
                     <thead>
                         <tr>
-                            <th>Módulo</th>
+                            <th>MÃ³dulo</th>
                             <th>Estado</th>
-                            <th>Acción</th>
+                            <th>AcciÃ³n</th>
                         </tr>
                     </thead>
                     <tbody id="userModulesBody">
-                        <tr><td colspan="3" style="text-align: center; padding: 40px; color: var(--text-secondary);">Selecciona un usuario para ver sus módulos</td></tr>
+                        <tr><td colspan="3" style="text-align: center; padding: 40px; color: var(--text-secondary);">Selecciona un usuario para ver sus mÃ³dulos</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -245,41 +253,41 @@
 
         </section>
 
-        <!-- SECCIÓN 5: IMPORTAR/EXPORTAR CSV -->
+        <!-- SECCIÃ“N 5: IMPORTAR/EXPORTAR CSV -->
         <section id="import-export" class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px;">
             <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
                 <i class="fas fa-file-csv" style="color: #28a745;"></i>
                 Importar / Exportar Datos
             </h2>
             <p style="color: var(--text-secondary); margin-bottom: 16px;">
-                Gestiona la importación y exportación de datos del sistema. Todas las acciones quedan registradas en la bitácora de auditoría.
+                Gestiona la importaciÃ³n y exportaciÃ³n de datos del sistema. Todas las acciones quedan registradas en la bitÃ¡cora de auditorÃ­a.
             </p>
 
-            <!-- Alerta de auditoría -->
+            <!-- Alerta de auditorÃ­a -->
             <div style="background: #e3f2fd; border: 1px solid #2196f3; color: #0d47a1; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 13px;">
                 <i class="fas fa-shield-alt"></i>
-                <strong>Auditoría activa:</strong> Todas las importaciones/exportaciones se registran y notifican a los administradores.
+                <strong>AuditorÃ­a activa:</strong> Todas las importaciones/exportaciones se registran y notifican a los administradores.
             </div>
 
-            <!-- Selector de módulo -->
+            <!-- Selector de mÃ³dulo -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
                 <div>
-                    <label style="font-weight: 600; font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Módulo:</label>
-                    <select id="importExportModule" style="width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: var(--text-primary); font-size: 14px;">
-                        <option value="">Seleccionar módulo...</option>
+                    <label style="font-weight: 600; font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">MÃ³dulo:</label>
+                    <select id="importExportModule" class="form-input">
+                        <option value="">Seleccionar mÃ³dulo...</option>
                         <option value="contactos">Contactos</option>
-                        <option value="inventario_automatizacion">Inventario Automatización</option>
-                        <option value="inventario_electronica">Inventario Electrónica</option>
-                        <option value="ordenes_compra">Órdenes de Compra</option>
-                        <option value="ordenes_reparacion">Órdenes de Reparación</option>
-                        <option value="ordenes_venta">Órdenes de Venta</option>
-                        <option value="bom_automatizacion">BOM Automatización</option>
+                        <option value="inventario_automatizacion">Inventario AutomatizaciÃ³n</option>
+                        <option value="inventario_electronica">Inventario ElectrÃ³nica</option>
+                        <option value="ordenes_compra">Ã“rdenes de Compra</option>
+                        <option value="ordenes_reparacion">Ã“rdenes de ReparaciÃ³n</option>
+                        <option value="ordenes_venta">Ã“rdenes de Venta</option>
+                        <option value="bom_automatizacion">BOM AutomatizaciÃ³n</option>
                         <option value="gastos_viaje">Gastos de Viaje</option>
-                        <option value="formulas_costos">Fórmulas de Costos</option>
+                        <option value="formulas_costos">FÃ³rmulas de Costos</option>
                     </select>
                 </div>
                 <div>
-                    <label style="font-weight: 600; font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Acción:</label>
+                    <label style="font-weight: 600; font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">AcciÃ³n:</label>
                     <div style="display: flex; gap: 8px; margin-top: 10px;">
                         <button class="btn-ssepi btn-ventas" id="btnExportar" style="flex: 1;">
                             <i class="fas fa-download"></i> Exportar CSV
@@ -292,14 +300,14 @@
                 </div>
             </div>
 
-            <!-- Estado de la operación -->
+            <!-- Estado de la operaciÃ³n -->
             <div id="importExportStatus" style="display: none; padding: 16px; border-radius: 6px; margin-top: 16px;"></div>
 
-            <!-- Historial de auditoría -->
+            <!-- Historial de auditorÃ­a -->
             <div style="margin-top: 24px;">
                 <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-history"></i>
-                    Bitácora de Import/Export (últimos 7 días)
+                    BitÃ¡cora de Import/Export (Ãºltimos 7 dÃ­as)
                 </h3>
                 <div id="auditHistoryContainer">
                     <table class="lista-table" id="auditHistoryTable">
@@ -307,8 +315,8 @@
                             <tr>
                                 <th>Fecha</th>
                                 <th>Usuario</th>
-                                <th>Módulo</th>
-                                <th>Acción</th>
+                                <th>MÃ³dulo</th>
+                                <th>AcciÃ³n</th>
                                 <th>Registros</th>
                                 <th>Estado</th>
                             </tr>
@@ -321,30 +329,30 @@
             </div>
         </section>
 
-        <!-- SECCIÓN 5B: BITÁCORA AUDITORÍA -->
+        <!-- SECCIÃ“N 5B: BITÃCORA AUDITORÃA -->
         <section id="auditoria" class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-top: 24px;">
             <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
                 <i class="fas fa-history" style="color: #2196f3;"></i>
-                Bitácora de Auditoría
+                BitÃ¡cora de AuditorÃ­a
             </h2>
-            <p style="color: var(--text-secondary); margin-bottom: 16px;">Historial de acciones de importación/exportación.</p>
-            <!-- El contenido ya está arriba en import-export, este es solo el ancla -->
+            <p style="color: var(--text-secondary); margin-bottom: 16px;">Historial de acciones de importaciÃ³n/exportaciÃ³n.</p>
+            <!-- El contenido ya estÃ¡ arriba en import-export, este es solo el ancla -->
         </section>
 
-        <!-- SECCIÓN 6: HERRAMIENTAS AVANZADAS (solo admin) -->
+        <!-- SECCIÃ“N 6: HERRAMIENTAS AVANZADAS (solo admin) -->
         <section id="herramientas-avanzadas" class="panel" style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-top: 24px;">
             <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
                 <i class="fas fa-tools" style="color: #dc3545;"></i>
                 Herramientas Avanzadas
             </h2>
             <p style="color: var(--text-secondary); margin-bottom: 16px;">
-                Operaciones críticas del sistema. Solo para administradores.
+                Operaciones crÃ­ticas del sistema. Solo para administradores.
             </p>
 
             <!-- Alerta de peligro -->
             <div style="background: #f8d7da; border: 1px solid #dc3545; color: #721c24; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 13px;">
                 <i class="fas fa-exclamation-triangle"></i>
-                <strong>Peligro:</strong> Estas acciones pueden afectar la integridad del sistema. Úsalas con precaución.
+                <strong>Peligro:</strong> Estas acciones pueden afectar la integridad del sistema. Ãšsalas con precauciÃ³n.
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
@@ -355,7 +363,7 @@
                         Reinicio ERP Completo
                     </h3>
                     <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
-                        Elimina TODOS los datos del sistema y reinicia a estado de fábrica.
+                        Elimina TODOS los datos del sistema y reinicia a estado de fÃ¡brica.
                     </p>
                     <button class="btn-ssepi btn-danger" id="btnResetErp" style="width: 100%;">
                         <i class="fas fa-skull"></i> Reiniciar ERP
@@ -398,16 +406,16 @@
                 </div>
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Nuevo Rol:</label>
-                    <select id="editUserRol" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: var(--text-primary); font-size: 14px;">
+                    <select id="editUserRol" class="form-input">
                         <option value="admin">Admin</option>
                         <option value="ventas">Ventas</option>
                         <option value="ventas_sin_compras">Ventas (sin Compras)</option>
-                        <option value="administracion">Administración</option>
-                        <option value="taller">Laboratorio de Electrónica</option>
+                        <option value="administracion">AdministraciÃ³n</option>
+                        <option value="taller">Laboratorio de ElectrÃ³nica</option>
                         <option value="motores">Motores</option>
-                        <option value="automatizacion">Automatización</option>
+                        <option value="automatizacion">AutomatizaciÃ³n</option>
                         <option value="compras">Compras</option>
-                        <option value="facturacion">Facturación</option>
+                        <option value="facturacion">FacturaciÃ³n</option>
                         <option value="contabilidad">Contabilidad</option>
                     </select>
                 </div>
@@ -428,7 +436,7 @@
         async function checkAdminAccess() {
             const profile = await authService.getCurrentProfile();
             if (!profile) {
-                alert('Acceso denegado. No hay sesión activa.');
+                alert('Acceso denegado. No hay sesiÃ³n activa.');
                 window.location.href = '/panel/panel.html';
                 return false;
             }
@@ -454,7 +462,7 @@
 
                 tbody.innerHTML = data.map(u => `
                     <tr>
-                        <td>${u.nombre || '—'}</td>
+                        <td>${u.nombre || 'â€”'}</td>
                         <td>${u.email}</td>
                         <td><span class="status-badge status-info">${u.rol || 'sin rol'}</span></td>
                         <td>
@@ -476,19 +484,19 @@
         // ================================================
         const MODULOS = [
             { id: 'ventas', nombre: 'Ventas' },
-            { id: 'ordenes_taller', nombre: 'Laboratorio de Electrónica' },
+            { id: 'ordenes_taller', nombre: 'Laboratorio de ElectrÃ³nica' },
             { id: 'ordenes_motores', nombre: 'Motores' },
-            { id: 'proyectos_automatizacion', nombre: 'Automatización / Proyectos' },
+            { id: 'proyectos_automatizacion', nombre: 'AutomatizaciÃ³n / Proyectos' },
             { id: 'compras', nombre: 'Compras' },
-            { id: 'facturas', nombre: 'Facturación' },
+            { id: 'facturas', nombre: 'FacturaciÃ³n' },
             { id: 'contabilidad', nombre: 'Contabilidad' },
             { id: 'inventario', nombre: 'Inventario' },
-            { id: 'pagos_nomina', nombre: 'Nómina' },
+            { id: 'pagos_nomina', nombre: 'NÃ³mina' },
             { id: 'contactos', nombre: 'Contactos' },
             { id: 'vacaciones', nombre: 'Vacaciones' },
             { id: 'calculadoras', nombre: 'Calculadoras' },
-            { id: 'analisis_ventas', nombre: 'Análisis Ventas' },
-            { id: 'configuracion', nombre: 'Configuración' }
+            { id: 'analisis_ventas', nombre: 'AnÃ¡lisis Ventas' },
+            { id: 'configuracion', nombre: 'ConfiguraciÃ³n' }
         ];
 
         let permisosActuales = new Map();
@@ -523,7 +531,7 @@
             const esAdmin = rol === 'admin' || rol === 'superadmin';
 
             if (esAdmin) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--status-success-text);"><i class="fas fa-check-circle"></i> Admin tiene acceso total a todos los módulos</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--status-success-text);"><i class="fas fa-check-circle"></i> Admin tiene acceso total a todos los mÃ³dulos</td></tr>';
                 return;
             }
 
@@ -612,7 +620,7 @@
             const nuevoRol = document.getElementById('editUserRol').value;
 
             if (!userId || !nuevoRol) {
-                alert('Datos inválidos');
+                alert('Datos invÃ¡lidos');
                 return;
             }
 
@@ -638,18 +646,18 @@
         // ================================================
         const MODULOS_PARA_USUARIOS = [
             { id: 'ventas', nombre: 'Ventas' },
-            { id: 'ordenes_taller', nombre: 'Laboratorio de Electrónica' },
+            { id: 'ordenes_taller', nombre: 'Laboratorio de ElectrÃ³nica' },
             { id: 'ordenes_motores', nombre: 'Motores' },
-            { id: 'proyectos_automatizacion', nombre: 'Automatización' },
+            { id: 'proyectos_automatizacion', nombre: 'AutomatizaciÃ³n' },
             { id: 'compras', nombre: 'Compras' },
-            { id: 'facturas', nombre: 'Facturación' },
+            { id: 'facturas', nombre: 'FacturaciÃ³n' },
             { id: 'contabilidad', nombre: 'Contabilidad' },
             { id: 'inventario', nombre: 'Inventario' },
-            { id: 'pagos_nomina', nombre: 'Nómina' },
+            { id: 'pagos_nomina', nombre: 'NÃ³mina' },
             { id: 'contactos', nombre: 'Contactos' },
             { id: 'vacaciones', nombre: 'Vacaciones' },
             { id: 'calculadoras', nombre: 'Calculadoras' },
-            { id: 'configuracion', nombre: 'Configuración' }
+            { id: 'configuracion', nombre: 'ConfiguraciÃ³n' }
         ];
 
         let usuariosLista = [];
@@ -769,7 +777,7 @@
 
                 if (deleteError) throw deleteError;
 
-                // Insertar TODOS los permisos (incluidos enabled=false para que la desactivación funcione)
+                // Insertar TODOS los permisos (incluidos enabled=false para que la desactivaciÃ³n funcione)
                 if (nuevosPermisos.length > 0) {
                     const { error: insertError } = await window.supabase
                         .from('user_module_permissions')
@@ -781,7 +789,7 @@
                 alert('Permisos guardados correctamente para "' + (usuario.nombre || usuario.email) + '"');
                 loadPermisosUsuario(userId);
             } catch (error) {
-                // Si la tabla no existe, mostrar mensaje útil
+                // Si la tabla no existe, mostrar mensaje Ãºtil
                 if (error.code === '42P01' || (error.message && error.message.includes('does not exist'))) {
                     alert('La tabla user_module_permissions no existe. Ejecuta este SQL en Supabase:\n\n' +
                         'CREATE TABLE IF NOT EXISTS public.user_module_permissions (\n' +
@@ -799,7 +807,7 @@
         }
 
         // ================================================
-        // IMPORTAR / EXPORTAR CON AUDITORÍA
+        // IMPORTAR / EXPORTAR CON AUDITORÃA
         // ================================================
         const MODULE_TABLES = {
             contactos: 'contactos',
@@ -826,7 +834,7 @@
 
                 const tbody = document.getElementById('auditHistoryBody');
                 if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-secondary);">No hay registros de import/export en los últimos 7 días</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-secondary);">No hay registros de import/export en los Ãºltimos 7 dÃ­as</td></tr>';
                     return;
                 }
 
@@ -838,7 +846,7 @@
                     return `
                         <tr>
                             <td>${new Date(log.timestamp).toLocaleString()}</td>
-                            <td>${log.user_email || '—'}</td>
+                            <td>${log.user_email || 'â€”'}</td>
                             <td>${log.module || 'general'}</td>
                             <td><span class="status-badge ${actionClass}">${log.action.toUpperCase()}</span></td>
                             <td>${log.records_processed || 0}</td>
@@ -871,14 +879,14 @@
                     timestamp: new Date().toISOString()
                 });
             } catch (error) {
-                console.error('[Audit] Error registrando acción:', error);
+                console.error('[Audit] Error registrando acciÃ³n:', error);
             }
         }
 
         async function exportarCSV() {
             const module = document.getElementById('importExportModule').value;
             if (!module) {
-                showImportExportStatus('Selecciona un módulo primero', 'error');
+                showImportExportStatus('Selecciona un mÃ³dulo primero', 'error');
                 return;
             }
 
@@ -891,7 +899,7 @@
 
             try {
                 const tableName = MODULE_TABLES[module];
-                if (!tableName) throw new Error('Tabla no encontrada para el módulo ' + module);
+                if (!tableName) throw new Error('Tabla no encontrada para el mÃ³dulo ' + module);
 
                 const { data, error } = await window.supabase
                     .from(tableName)
@@ -899,7 +907,7 @@
 
                 if (error) throw error;
                 if (!data || data.length === 0) {
-                    showImportExportStatus('No hay datos para exportar en este módulo', 'warning');
+                    showImportExportStatus('No hay datos para exportar en este mÃ³dulo', 'warning');
                     await logAuditAction('export', module, 0, 0, null, 'Sin datos para exportar');
                     return;
                 }
@@ -920,8 +928,8 @@
                 link.download = `${module}_${new Date().toISOString().split('T')[0]}.csv`;
                 link.click();
 
-                showImportExportStatus(`Exportación exitosa: ${data.length} registros`, 'success');
-                await logAuditAction('export', module, data.length, 0, null, 'Exportación completada');
+                showImportExportStatus(`ExportaciÃ³n exitosa: ${data.length} registros`, 'success');
+                await logAuditAction('export', module, data.length, 0, null, 'ExportaciÃ³n completada');
                 loadAuditHistory();
             } catch (error) {
                 showImportExportStatus('Error al exportar: ' + error.message, 'error');
@@ -932,7 +940,7 @@
         async function importarCSV(file) {
             const module = document.getElementById('importExportModule').value;
             if (!module) {
-                showImportExportStatus('Selecciona un módulo primero', 'error');
+                showImportExportStatus('Selecciona un mÃ³dulo primero', 'error');
                 return;
             }
 
@@ -945,11 +953,11 @@
 
             try {
                 const tableName = MODULE_TABLES[module];
-                if (!tableName) throw new Error('Tabla no encontrada para el módulo ' + module);
+                if (!tableName) throw new Error('Tabla no encontrada para el mÃ³dulo ' + module);
 
                 const text = await file.text();
                 const lines = text.split('\n').filter(l => l.trim());
-                if (lines.length < 2) throw new Error('Archivo CSV vacío o inválido');
+                if (lines.length < 2) throw new Error('Archivo CSV vacÃ­o o invÃ¡lido');
 
                 const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
                 const records = [];
@@ -966,17 +974,17 @@
                             row[h] = cleanValues[idx] || null;
                         });
 
-                        // Eliminar campo id si está vacío para que sea autogenerado
+                        // Eliminar campo id si estÃ¡ vacÃ­o para que sea autogenerado
                         if (!row.id || row.id.trim() === '') delete row.id;
 
                         records.push(row);
                     } catch (e) {
                         errors++;
-                        errorMessages.push(`Línea ${i + 1}: ${e.message}`);
+                        errorMessages.push(`LÃ­nea ${i + 1}: ${e.message}`);
                     }
                 }
 
-                if (records.length === 0) throw new Error('No hay registros válidos para importar');
+                if (records.length === 0) throw new Error('No hay registros vÃ¡lidos para importar');
 
                 // Insertar en Supabase
                 const { data, error } = await window.supabase
@@ -985,8 +993,8 @@
 
                 if (error) throw error;
 
-                showImportExportStatus(`Importación exitosa: ${records.length} registros${errors > 0 ? `, ${errors} errores` : ''}`, 'success');
-                await logAuditAction('import', module, records.length, errors, file.name, errors > 0 ? errorMessages.join('; ') : 'Importación completada');
+                showImportExportStatus(`ImportaciÃ³n exitosa: ${records.length} registros${errors > 0 ? `, ${errors} errores` : ''}`, 'success');
+                await logAuditAction('import', module, records.length, errors, file.name, errors > 0 ? errorMessages.join('; ') : 'ImportaciÃ³n completada');
                 loadAuditHistory();
             } catch (error) {
                 showImportExportStatus('Error al importar: ' + error.message, 'error');
@@ -1038,7 +1046,7 @@
                 }
                 const result = await authService.updateProfile({ nombre, telefono });
                 if (result && result.pendingApproval) {
-                    statusDiv.style.display = "block"; statusDiv.style.background = "#fff3cd"; statusDiv.style.border = "1px solid #ffc107"; statusDiv.style.color = "#856404"; statusDiv.innerHTML = result.message || "Solicitud enviada para aprobación.";
+                    statusDiv.style.display = "block"; statusDiv.style.background = "#fff3cd"; statusDiv.style.border = "1px solid #ffc107"; statusDiv.style.color = "#856404"; statusDiv.innerHTML = result.message || "Solicitud enviada para aprobaciÃ³n.";
                 } else {
                     statusDiv.style.display = "block"; statusDiv.style.background = "#d4edda"; statusDiv.style.border = "1px solid #28a745"; statusDiv.style.color = "#155724"; statusDiv.innerHTML = "Perfil actualizado correctamente.";
                     const headerName = document.getElementById("userName"); if (headerName) headerName.textContent = nombre;
@@ -1075,7 +1083,7 @@
 
             document.getElementById('btnGuardarPermisos').addEventListener('click', guardarPermisos);
             document.getElementById('btnResetearPermisos').addEventListener('click', () => {
-                alert('Función de resetear permisos a default: implementar según necesidad.');
+                alert('FunciÃ³n de resetear permisos a default: implementar segÃºn necesidad.');
             });
 
             // Event listeners - Permisos por Usuario
@@ -1086,7 +1094,7 @@
 
             document.getElementById('btnGuardarPermisosUsuario').addEventListener('click', guardarPermisosUsuario);
             document.getElementById('btnResetearPermisosUsuario').addEventListener('click', () => {
-                alert('Esta función restaurará los permisos del usuario a los de su rol por defecto.');
+                alert('Esta funciÃ³n restaurarÃ¡ los permisos del usuario a los de su rol por defecto.');
             });
 
             // Editar rol
@@ -1101,7 +1109,7 @@
                 }
             });
 
-            // Submenú Configuración - Toggle
+            // SubmenÃº ConfiguraciÃ³n - Toggle
             const configSubmenuToggle = document.getElementById('configSubmenuToggle');
             const configSubmenu = document.getElementById('configSubmenu');
             if (configSubmenuToggle && configSubmenu) {
@@ -1111,7 +1119,7 @@
                 });
             }
 
-            // Expandir submenú si estamos en página de configuración
+            // Expandir submenÃº si estamos en pÃ¡gina de configuraciÃ³n
             const currentPath = window.location.pathname;
             if (currentPath.includes('configuracion')) {
                 if (configSubmenuToggle) configSubmenuToggle.classList.add('expanded');
@@ -1120,22 +1128,22 @@
 
             // Herramientas Avanzadas
             document.getElementById('btnResetErp')?.addEventListener('click', function() {
-                if (!confirm('¿REINICIAR ERP COMPLETO? Se eliminarán TODOS los datos. Esta acción NO se puede deshacer.\n\n¿Continuar?')) return;
-                if (!confirm('¿Estás 100% seguro? Esto borrará ventas, compras, inventario, contactos, etc.')) return;
-                alert('Reinicio ERP: Conectando con Supabase para vaciar tablas... (implementación en proceso)');
-                // TODO: Implementar reinicio completo con confirmación por correo
+                if (!confirm('Â¿REINICIAR ERP COMPLETO? Se eliminarÃ¡n TODOS los datos. Esta acciÃ³n NO se puede deshacer.\n\nÂ¿Continuar?')) return;
+                if (!confirm('Â¿EstÃ¡s 100% seguro? Esto borrarÃ¡ ventas, compras, inventario, contactos, etc.')) return;
+                alert('Reinicio ERP: Conectando con Supabase para vaciar tablas... (implementaciÃ³n en proceso)');
+                // TODO: Implementar reinicio completo con confirmaciÃ³n por correo
             });
 
             document.getElementById('btnDownloadSql')?.addEventListener('click', async function() {
-                const module = prompt('Módulo a exportar (deja vacío para todos):') || 'todos';
+                const module = prompt('MÃ³dulo a exportar (deja vacÃ­o para todos):') || 'todos';
                 const statusDiv = document.createElement('div');
                 statusDiv.style.cssText = 'padding:16px;border-radius:6px;margin-top:16px;background:#e3f2fd;border:1px solid #2196f3;color:#0d47a1;';
                 statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando SQL...';
                 this.parentElement.appendChild(statusDiv);
 
                 try {
-                    // TODO: Implementar exportación SQL real
-                    alert('Descargar SQL: Exportando datos a archivo .sql (implementación en proceso)');
+                    // TODO: Implementar exportaciÃ³n SQL real
+                    alert('Descargar SQL: Exportando datos a archivo .sql (implementaciÃ³n en proceso)');
                     statusDiv.remove();
                 } catch (error) {
                     statusDiv.style.background = '#f8d7da';

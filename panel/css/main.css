@@ -3297,3 +3297,282 @@ body.ssepi-sin-financieros .financiero-label-wrap {
 body.ssepi-sin-financieros .calculadora-sin-precios-hint {
     display: block !important;
 }
+
+/* ================================================
+   COMPONENTES COMPARTIDOS — consolidados desde módulos
+   (ventas.css, compras.css, facturacion.css, suministros.css, alarmas.js)
+   ================================================ */
+
+/* ===== MODAL (era: ventas.css:818, compras.css:460, facturacion.css:206, etc) ===== */
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9000;
+    align-items: center;
+    justify-content: center;
+}
+.modal-backdrop.active {
+    display: flex;
+}
+.modal {
+    background: var(--bg-panel);
+    border-radius: 10px;
+    max-width: 540px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+}
+.modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary);
+}
+.modal-close {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 22px;
+    line-height: 1;
+    padding: 0;
+}
+.modal-close:hover { color: var(--text-primary); }
+.modal-body { padding: 24px; }
+.modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 14px 24px;
+    border-top: 1px solid var(--border);
+}
+
+/* ===== PANEL (era: ventas.css:270, inventario.css:87) ===== */
+.panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+/* ===== FORM CONTROL (era: suministros.css:258) ===== */
+.form-control,
+.form-input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+.form-control:focus,
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(0, 82, 204, 0.1);
+}
+
+/* ===== BOTONES con modificadores faltantes ===== */
+.btn-ssepi.btn-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+}
+.btn-ssepi.btn-warning:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(245, 158, 11, 0.4);
+}
+.btn-ssepi.btn-info {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+}
+.btn-ssepi.btn-info:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(59, 130, 246, 0.4);
+}
+.btn-ssepi.btn-secondary {
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(100, 116, 139, 0.3);
+}
+.btn-ssepi.btn-secondary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(100, 116, 139, 0.4);
+}
+
+/* ===== BOTONES DE ACCIÓN (tabla de alarmas, usado en módulos) ===== */
+.btn-accion {
+    border: none;
+    padding: 5px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-right: 4px;
+    font-size: 12px;
+    transition: transform 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.btn-accion:hover { transform: scale(1.1); }
+.btn-cancelar { background: #fef3c7; color: #92400e; }
+.btn-disparar { background: #d1fae5; color: #065f46; }
+.btn-eliminar { background: #fee2e2; color: #991b1b; }
+
+/* ===== TOAST ALARMA (era inline en ssepi-toast.js) ===== */
+.toast-alarma {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--bg-panel);
+    border-left: 4px solid var(--c-ventas);
+    padding: 14px 18px;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    min-width: 300px;
+    max-width: 420px;
+    z-index: 9500;
+    color: var(--text-primary);
+    animation: slideInRight 0.3s ease;
+}
+.toast-alarma.prio-baja     { border-left-color: var(--c-finanzas); }
+.toast-alarma.prio-media    { border-left-color: var(--c-ventas); }
+.toast-alarma.prio-alta     { border-left-color: var(--c-contact); }
+.toast-alarma.prio-critica  { border-left-color: var(--c-contabilidad); }
+.toast-alarma-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+}
+.toast-alarma-msg {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0 0 8px 0;
+    line-height: 1.4;
+}
+.toast-alarma-icon {
+    color: var(--c-ventas);
+    font-size: 20px;
+    margin-top: 2px;
+}
+.toast-alarma-close {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 0 4px;
+}
+.toast-alarma-para {
+    color: #94a3b8;
+    font-size: 11px;
+    margin-top: 4px;
+    text-transform: uppercase;
+}
+.btn-marcar-leida {
+    flex: 1;
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+.btn-marcar-leida:hover { background: var(--primary-dark, var(--primary)); }
+.toast-alarma-action {
+    background: none;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+.toast-alarma-action:hover {
+    background: var(--primary);
+    color: #fff;
+}
+
+/* ===== BADGE COUNT reutilizable ===== */
+.badge-count {
+    background: #e2e8f0;
+    color: #475569;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ===== ACENTO POR MÓDULO — Alarmas ===== */
+body.page-alarmas {
+    --module-accent: #f59e0b;
+}
+.nav-item.active[href*="alarmas"]::before {
+    background: var(--module-accent);
+}
+
+/* ===== Alarmas — celdas de tabla ===== */
+.alarma-titulo {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.alarma-detalle {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 360px;
+    white-space: nowrap;
+}
+.alarma-meta {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+.alarma-fecha {
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+.alarma-prio {
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.alarma-estado {
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.alarma-estado.estado-pendiente { background: #fef3c7; color: #92400e; }
+.alarma-estado.estado-disparada { background: #d1fae5; color: #065f46; }
+.alarma-estado.estado-cancelada { background: #e2e8f0; color: #475569; }
+
+/* ===== Animación slideInRight para toasts de alarma ===== */
+@keyframes slideInRight {
+    from { transform: translateX(120%); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+}

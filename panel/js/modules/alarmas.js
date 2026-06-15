@@ -56,12 +56,13 @@ const AlarmasModule = (function () {
         const colorByPrioridad = { baja: '#3b82f6', media: '#f59e0b', alta: '#ef4444', critica: '#dc2626' };
         const estadoBadge = (e) => {
             const map = {
-                pendiente: { bg: '#fef3c7', fg: '#92400e', label: 'Pendiente' },
-                disparada: { bg: '#d1fae5', fg: '#065f46', label: 'Disparada' },
-                cancelada: { bg: '#e2e8f0', fg: '#475569', label: 'Cancelada' }
+                pendiente: 'estado-pendiente',
+                disparada: 'estado-disparada',
+                cancelada: 'estado-cancelada'
             };
-            const m = map[e] || map.pendiente;
-            return '<span style="background:' + m.bg + ';color:' + m.fg + ';padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;text-transform:uppercase;">' + m.label + '</span>';
+            const cls = map[e] || 'estado-pendiente';
+            const label = e ? e.charAt(0).toUpperCase() + e.slice(1) : 'Pendiente';
+            return '<span class="alarma-estado ' + cls + '">' + esc(label) + '</span>';
         };
         tbody.innerHTML = filtradas.map(a => {
             const prio = (a.prioridad || 'media');
@@ -69,16 +70,16 @@ const AlarmasModule = (function () {
             const disparar = a.disparar_at ? new Date(a.disparar_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : '—';
             const acciones = [];
             if (a.estado === 'pendiente') {
-                acciones.push('<button class="btn-accion btn-cancelar" data-id="' + a.id + '" title="Cancelar" style="background:#fef3c7;color:#92400e;border:none;padding:5px 9px;border-radius:5px;cursor:pointer;margin-right:4px;"><i class="fas fa-ban"></i></button>');
-                acciones.push('<button class="btn-accion btn-disparar" data-id="' + a.id + '" title="Marcar como disparada" style="background:#d1fae5;color:#065f46;border:none;padding:5px 9px;border-radius:5px;cursor:pointer;margin-right:4px;"><i class="fas fa-check"></i></button>');
+                acciones.push('<button class="btn-accion btn-cancelar" data-id="' + a.id + '" title="Cancelar"><i class="fas fa-ban"></i></button>');
+                acciones.push('<button class="btn-accion btn-disparar" data-id="' + a.id + '" title="Marcar como disparada"><i class="fas fa-check"></i></button>');
             }
-            acciones.push('<button class="btn-accion btn-eliminar" data-id="' + a.id + '" title="Eliminar" style="background:#fee2e2;color:#991b1b;border:none;padding:5px 9px;border-radius:5px;cursor:pointer;"><i class="fas fa-trash"></i></button>');
+            acciones.push('<button class="btn-accion btn-eliminar" data-id="' + a.id + '" title="Eliminar"><i class="fas fa-trash"></i></button>');
             return '<tr>' +
-                '<td><div style="font-weight:600;color:#0f172a;">' + esc(a.titulo) + '</div><div style="color:#64748b;font-size:12px;margin-top:2px;">' + esc((a.mensaje || '').slice(0, 100)) + '</div></td>' +
-                '<td><span style="color:#475569;font-size:12px;">' + esc(a.tipo) + '</span></td>' +
-                '<td><span style="color:#475569;">' + esc(a.para_modulo || 'Todos') + '</span></td>' +
-                '<td><span style="background:' + color + '22;color:' + color + ';padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;text-transform:uppercase;">' + esc(prio) + '</span></td>' +
-                '<td style="font-size:13px;color:#334155;">' + disparar + '</td>' +
+                '<td><div class="alarma-titulo">' + esc(a.titulo) + '</div><div class="alarma-detalle">' + esc((a.mensaje || '').slice(0, 100)) + '</div></td>' +
+                '<td><span class="alarma-meta">' + esc(a.tipo) + '</span></td>' +
+                '<td><span class="alarma-meta">' + esc(a.para_modulo || 'Todos') + '</span></td>' +
+                '<td><span class="alarma-prio" style="background:' + color + '22;color:' + color + ';">' + esc(prio) + '</span></td>' +
+                '<td class="alarma-fecha">' + disparar + '</td>' +
                 '<td>' + estadoBadge(a.estado) + '</td>' +
                 '<td>' + acciones.join('') + '</td>' +
                 '</tr>';
@@ -144,10 +145,10 @@ const AlarmasModule = (function () {
         const t = new Date(Date.now() + 60 * 60 * 1000);
         const isoLocal = t.toISOString().slice(0, 16);
         document.getElementById('alarmaDispararAt').value = isoLocal;
-        document.getElementById('alarmaModal').style.display = 'flex';
+        document.getElementById('alarmaModal').classList.add('active');
     }
     function closeModal() {
-        document.getElementById('alarmaModal').style.display = 'none';
+        document.getElementById('alarmaModal').classList.remove('active');
     }
     async function onSubmit(e) {
         e.preventDefault();
