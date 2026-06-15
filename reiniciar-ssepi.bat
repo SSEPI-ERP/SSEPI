@@ -5,16 +5,16 @@ chcp 65001 >nul
 cls
 
 echo =========================================
-
-echo   SSEPI ERP - VPS LOCAL V16
+echo   SSEPI ERP - VPS LOCAL V17
 echo   %date% %time%
-echo   Mata procesos + importa maestros + demo Auto + verify Ventas + arranca
+echo   Mata procesos + importa maestros + demo Auto + verify Ventas
+echo   + valida n8n cerebro + arranca VPS + tunel Cloudflare
 echo.
 echo   MANTIENE: Laboratorio (SP-E), contactos, inventario, tabulador
 echo   BORRA:    PO/COT/FAC/proyectos Auto basura (deja 1 demo vinculada)
 echo   IMPORTA:  Pac_Contactos, reportes ERP, seeds maestros
-echo   NUEVO V16: servidor sin cache JS/CSS + verify cotizaciones Ventas
-
+echo   NUEVO V17: verifica n8n (puerto 5679) + seeds suministros/vacaciones/
+echo              contactos-imagenes/ordenes-motores/ordenes-terminadas
 echo =========================================
 
 echo.
@@ -60,8 +60,8 @@ taskkill /F /IM cloudflared.exe 2>nul
 
 timeout /t 3 /nobreak >nul
 
-:: Verificar puertos 3333 y 3443 (puede haber quedado un PID de un proceso que no es node/cloudflared)
-for %%P in (3333 3443) do (
+:: Verificar puertos 3333/3443 (VPS) y 5679 (n8n)
+for %%P in (3333 3443 5679) do (
     for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%%P" ^| findstr "LISTENING"') do (
         echo      Aun hay PID %%a en puerto %%P, matando...
         taskkill /F /PID %%a 2>nul
@@ -72,13 +72,13 @@ timeout /t 2 /nobreak >nul
 
 :: Verificacion final
 set "PUERTOS_LIBRES=OK"
-for %%P in (3333 3443) do (
+for %%P in (3333 3443 5679) do (
     netstat -ano | findstr ":%%P" | findstr "LISTENING" >nul && set "PUERTOS_LIBRES=NO"
 )
 if "%PUERTOS_LIBRES%"=="OK" (
-    echo      OK - Puertos 3333/3443 libres.
+    echo      OK - Puertos 3333/3443/5679 libres.
 ) else (
-    echo      AVISO: 3333/3443 aun ocupados. Cerrar manualmente y reintentar.
+    echo      AVISO: algun puerto aun ocupado. Cerrar manualmente y reintentar.
 )
 
 
@@ -129,6 +129,25 @@ echo [B3] Verificacion idempotente de contactos...
 node seed-limpiar-contactos.mjs
 
 if %errorlevel% neq 0 echo      (Aviso seed-limpiar-contactos)
+
+
+
+:: [B3.5] Contactos unificado + imagenes (nuevos V17)
+echo [B3.5] Contactos unificado + imagenes (V17)...
+
+if exist "seed-contactos-unificado.mjs" (
+    node seed-contactos-unificado.mjs
+    if !errorlevel! neq 0 echo      (Aviso seed-contactos-unificado)
+) else (
+    echo      (skip: seed-contactos-unificado.mjs no existe)
+)
+
+if exist "seed-contactos-imagenes.mjs" (
+    node seed-contactos-imagenes.mjs
+    if !errorlevel! neq 0 echo      (Aviso seed-contactos-imagenes)
+) else (
+    echo      (skip: seed-contactos-imagenes.mjs no existe)
+)
 
 
 
@@ -230,6 +249,19 @@ node seed-tabulador-50.mjs
 if %errorlevel% neq 0 echo      (Error seed-tabulador-50)
 
 
+
+:: [C8] Costos ventas (nuevo V17)
+echo [C8] Costos ventas (V17)...
+
+if exist "seed-costos-ventas.mjs" (
+    node seed-costos-ventas.mjs
+    if !errorlevel! neq 0 echo      (Aviso seed-costos-ventas)
+) else (
+    echo      (skip: seed-costos-ventas.mjs no existe)
+)
+
+
+
 :: ========== FASE D: IMPORTAR ORDENES / REPORTES LAB ==========
 echo [D1] Importando SSEPI_Paquete_ERP (ordenes lab + reportes/)...
 
@@ -297,6 +329,45 @@ if %errorlevel% neq 0 echo      (Aviso soporte planta)
 
 
 
+:: [D8-D11] Nuevos seeds V17
+echo [D8] Ordenes motores ejemplo (V17)...
+
+if exist "seed-ordenes-motores.mjs" (
+    node seed-ordenes-motores.mjs
+    if !errorlevel! neq 0 echo      (Aviso seed-ordenes-motores)
+) else (
+    echo      (skip: seed-ordenes-motores.mjs no existe)
+)
+
+echo [D9] Ordenes terminadas (V17)...
+
+if exist "seed-ordenes-terminadas.mjs" (
+    node seed-ordenes-terminadas.mjs
+    if !errorlevel! neq 0 echo      (Aviso seed-ordenes-terminadas)
+) else (
+    echo      (skip: seed-ordenes-terminadas.mjs no existe)
+)
+
+echo [D10] Suministros demo (V17)...
+
+if exist "seed-suministro-demo.mjs" (
+    node seed-suministro-demo.mjs
+    if !errorlevel! neq 0 echo      (Aviso seed-suministro-demo)
+) else (
+    echo      (skip: seed-suministro-demo.mjs no existe)
+)
+
+echo [D11] Vacaciones local (V17)...
+
+if exist "seed-vacaciones-local.mjs" (
+    node seed-vacaciones-local.mjs
+    if !errorlevel! neq 0 echo      (Aviso seed-vacaciones-local)
+) else (
+    echo      (skip: seed-vacaciones-local.mjs no existe)
+)
+
+
+
 :: ========== FASE E: LIMPIEZA DEMO AUTOMATIZACION (borra basura, deja 1 orden) ==========
 echo [E1] Limpieza: 1 proyecto Auto + PO-A-DEMO-01 + COT-A-DEMO-01 + FAC-A-DEMO-01...
 echo      (Borra compras/cotizaciones/facturas/proyectos Auto que no sean demo ni laboratorio)
@@ -347,6 +418,23 @@ if %errorlevel% neq 0 (
 
 
 
+:: ========== FASE F.5: VALIDAR CEREBRO n8n (V17) ==========
+echo.
+echo [F.5] Validando n8n (cerebro IA) en puerto 5679...
+set "N8N_OK=0"
+curl -s http://localhost:5679/healthz >nul 2>nul
+if %errorlevel%==0 set "N8N_OK=1"
+
+if "%N8N_OK%"=="1" (
+    echo      OK - n8n respondiendo en http://localhost:5679
+) else (
+    echo      AVISO: n8n no responde. Si docker esta caido:
+    echo              cd E:\SSEPI ^&^& docker compose up -d
+    echo      Continuo de todas formas con VPS...
+)
+
+
+
 :: ========== FASE G: ARRANCAR SERVIDOR + TUNEL + CHROME ==========
 echo [G1] Arrancando servidor VPS SSEPI NEXT (offline)...
 
@@ -372,9 +460,7 @@ if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333
 
 if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
 
-if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
-
-if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
+if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel!==0 set "SERVER_OK=1"
 
 if "%SERVER_OK%"=="0" timeout /t 2 /nobreak >nul & curl -s http://localhost:3333/api/health >nul 2>nul & if %errorlevel%==0 set "SERVER_OK=1"
 
@@ -428,11 +514,13 @@ echo.
 
 echo =========================================
 
-echo   SSEPI LOCAL + TUNEL - LISTO
+echo   SSEPI LOCAL + TUNEL + n8n - LISTO
 
 echo.
 
 echo   Local:  http://localhost:3333/panel/login.html
+
+echo   n8n:    http://localhost:5679 (si arriba dice OK)
 
 echo   Tunel:  ventana "Cloudflare Tunnel SSEPI" muestra URL publica
 
@@ -451,6 +539,14 @@ echo   3. Auto: SP-A-DEMO-01 en columna Completado
 echo   4. Compras PDF: compras.js v12 + pdf-generator v8
 
 echo   5. Si Historial vacio: verify fallo arriba — corre seed manual
+
+echo.
+
+echo   === CEREBRO n8n (opcional) ===
+
+echo   Si necesitas exponer n8n: otra terminal corre
+
+echo     ssepinext\iniciar-tunel-n8n.bat
 
 echo.
 
@@ -485,4 +581,3 @@ echo =========================================
 echo.
 
 pause
-
