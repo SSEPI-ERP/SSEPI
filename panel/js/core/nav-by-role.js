@@ -114,6 +114,11 @@
             if (rol === 'admin' || rol === 'superadmin') return true;
             return false;
         }
+        if (moduleName === 'alarmas') {
+            // Solo admin y superadmin ven el módulo Alarmas
+            if (rol === 'admin' || rol === 'superadmin') return true;
+            return false;
+        }
         return true;
     }
 

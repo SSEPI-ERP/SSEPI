@@ -795,8 +795,19 @@ export class PDFGenerator {
             drawFooter(pgNum);
         }
 
-        if(preview){
+        if (preview) {
             const blobUrl = doc.output('bloburl');
+            const embedId = data.embedPreviewId;
+            if (embedId) {
+                const el = document.getElementById(embedId);
+                if (el) {
+                    if (el.tagName === 'IFRAME') el.src = blobUrl;
+                    else {
+                        el.innerHTML = '<iframe src="' + blobUrl + '" title="Vista previa cotización" style="width:100%;height:100%;border:0;"></iframe>';
+                    }
+                    return blobUrl;
+                }
+            }
             const a = document.createElement('a');
             a.href = blobUrl;
             a.target = '_blank';
@@ -804,8 +815,9 @@ export class PDFGenerator {
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+            return blobUrl;
         }
-        else        doc.save('Cotizacion_'+folio+'.pdf');
+        doc.save('Cotizacion_' + folio + '.pdf');
     }
 
     // ═══════════════════════════════════════════════════════════════════

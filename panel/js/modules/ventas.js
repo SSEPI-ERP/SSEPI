@@ -69,6 +69,8 @@ const VentasModule = (function() {
     let lastPrecioAntesIVA = 0;
     let lastIva = 0;
     let lastTotal = 0;
+    /** Porcentajes capturados en paso 2 para reutilizar en paso 3. */
+    let wizardPctSnap = { utilidadPct: null, creditoPct: null, markupPct: 30, descuentoPct: 5 };
 
     // Autosave
     let ventasDraftSessionKey = null;
@@ -108,7 +110,16 @@ const VentasModule = (function() {
     }
 
     function _cerebroRegistroPayload() {
-        return ventasWizardCerebro && typeof ventasWizardCerebro === 'object' ? { ...ventasWizardCerebro } : {};
+        const base = ventasWizardCerebro && typeof ventasWizardCerebro === 'object' ? { ...ventasWizardCerebro } : {};
+        // Issue C: persistir también los porcentajes del snapshot del wizard
+        // para que al editar la cotización se restauren utilidad/credito/markup/descuento.
+        if (wizardPctSnap && typeof wizardPctSnap === 'object') {
+            if (wizardPctSnap.utilidadPct != null) base.utilidad_pct = wizardPctSnap.utilidadPct;
+            if (wizardPctSnap.creditoPct != null) base.credito_pct = wizardPctSnap.creditoPct;
+            if (wizardPctSnap.markupPct != null) base.markup_pct = wizardPctSnap.markupPct;
+            if (wizardPctSnap.descuentoPct != null) base.descuento_pct = wizardPctSnap.descuentoPct;
+        }
+        return base;
     }
 
     function _wizardSetPaso1Error(msg) {
@@ -398,6 +409,8 @@ const VentasModule = (function() {
             lastPrecioAntesIVA: lastPrecioAntesIVA,
             lastIva: lastIva,
             lastTotal: lastTotal,
+            costoDesgloseVentas: costoDesgloseVentas ? { ...costoDesgloseVentas } : null,
+            wizardPctSnap: { ...wizardPctSnap },
             paso1Fields: _collectPaso1Fields(),
             paso2Fields: _collectPaso2Fields(),
             paso3Fields: _collectPaso3Fields(),
@@ -456,6 +469,8 @@ const VentasModule = (function() {
         if (p.lastPrecioAntesIVA !== undefined) lastPrecioAntesIVA = p.lastPrecioAntesIVA;
         if (p.lastIva !== undefined) lastIva = p.lastIva;
         if (p.lastTotal !== undefined) lastTotal = p.lastTotal;
+        if (p.costoDesgloseVentas) costoDesgloseVentas = recalcularDesglose({ ...p.costoDesgloseVentas }, { aplicarIva: true });
+        if (p.wizardPctSnap) wizardPctSnap = { ...wizardPctSnap, ...p.wizardPctSnap };
         if (Array.isArray(p.actividadesDiarias)) actividadesDiarias = p.actividadesDiarias.slice();
         if (p.fechasEtapas && typeof p.fechasEtapas === 'object') fechasEtapas = { ...p.fechasEtapas };
 
@@ -3669,6 +3684,7 @@ const VentasModule = (function() {
                 </div>
             </div>
 
+            ${!(esAutomatizacion && verFin && costoDesgloseVentas) ? `
             <div class="calculadora-section" style="margin-top: 20px;">
                 <div class="calculadora-titulo" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
                     <i class="fas fa-coins"></i> Totales y Margen
@@ -3705,7 +3721,11 @@ const VentasModule = (function() {
                         <span id="resTotal" style="font-size:14px; font-weight:700; color:var(--c-ventas);">$${totalFinal.toFixed(2)}</span>
                     </div>
                 </div>
-            </div>
+            </div>` : `
+            <div style="display:none;" aria-hidden="true">
+                <span id="resGeneralExpenses"></span><span id="resUtility"></span><span id="resCredit"></span>
+                <span id="resIVA"></span><span id="resTotal"></span>
+            </div>`}
 
             ${(esAutomatizacion && verFin && costoDesgloseVentas) ? `
             <div class="calculadora-section" style="margin-top: 20px;">
@@ -3794,6 +3814,7 @@ const VentasModule = (function() {
                 costoDesgloseVentas = recalcularDesglose(costoDesgloseVentas, { aplicarIva: true });
                 host.innerHTML = renderDesgloseTableHTML(costoDesgloseVentas, true);
                 _bindDesgloseVentas();
+                _syncTotalesWizardDesdeDesglose();
             });
         });
     }
@@ -4288,7 +4309,63 @@ const VentasModule = (function() {
         _recalcular();
     }
 
+    function _esDeptDesgloseAuto() {
+        const dept = ventasWizardCerebro?.departamento || '';
+        return dept === 'Automatización' || dept === 'Proyectos' || dept === 'Soporte en planta';
+    }
+
+    function _syncTotalesWizardDesdeDesglose() {
+        const d = costoDesgloseVentas;
+        if (!d) return;
+        const sub = Number(d.total) || 0;
+        const cred = Number(d.credito_2pct) || 0;
+        const venta = Number(d.total_venta) || sub + cred;
+        const desc = Number(d.descuento_5pct) || 0;
+        const final = Number(d.total_final) || venta - desc;
+        const iva = Number(d.iva) || final * 0.16;
+        const totalIva = Number(d.total_con_iva) || final + iva;
+        lastGastosGenerales = sub;
+        lastPrecioConUtilidad = venta;
+        lastPrecioAntesIVA = final;
+        lastIva = iva;
+        lastTotal = totalIva;
+        const fmt = (n) => '$' + n.toFixed(2);
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = fmt(val); };
+        set('resGeneralExpenses', sub);
+        set('resUtility', venta);
+        set('resCredit', final);
+        set('resIVA', iva);
+        set('resTotal', totalIva);
+        set('resSubtotalDesglose', sub);
+        set('resCreditoDesglose', cred);
+        set('resDescuentoDesglose', desc);
+        set('resFinalDesglose', final);
+        const elPreviewTotal = document.getElementById('previewTotal');
+        if (elPreviewTotal) elPreviewTotal.textContent = totalIva.toFixed(2);
+    }
+
+    function _snapshotWizardFromPaso2() {
+        const utilEl = document.getElementById('inpUtilidadPct');
+        const credEl = document.getElementById('inpCreditoPct');
+        if (utilEl && utilEl.value !== '') wizardPctSnap.utilidadPct = parseFloat(utilEl.value);
+        if (credEl && credEl.value !== '') wizardPctSnap.creditoPct = parseFloat(credEl.value);
+        if (costoDesgloseVentas) {
+            wizardPctSnap.markupPct = costoDesgloseVentas.markup_materiales_pct || 30;
+            wizardPctSnap.creditoPct = costoDesgloseVentas.credito_pct ?? wizardPctSnap.creditoPct ?? 2;
+            wizardPctSnap.descuentoPct = costoDesgloseVentas.descuento_pct || 5;
+            _syncTotalesWizardDesdeDesglose();
+        } else if (utilEl || credEl) {
+            try { _recalcular(); } catch (e) { /* ignore */ }
+            if (utilEl && utilEl.value !== '') wizardPctSnap.utilidadPct = parseFloat(utilEl.value);
+            if (credEl && credEl.value !== '') wizardPctSnap.creditoPct = parseFloat(credEl.value);
+        }
+    }
+
     function _recalcular() {
+        if (wizardPaso === 3 && _esDeptDesgloseAuto() && costoDesgloseVentas) {
+            _syncTotalesWizardDesdeDesglose();
+            return;
+        }
         const inpTechHours = document.getElementById('inpTechHours');
         const inpUtilidadPct = document.getElementById('inpUtilidadPct');
         const inpCreditoPct = document.getElementById('inpCreditoPct');
@@ -4938,6 +5015,13 @@ const VentasModule = (function() {
         if (item.costo_desglose && typeof item.costo_desglose === 'object') {
             costoDesgloseVentas = recalcularDesglose({ ...item.costo_desglose }, { aplicarIva: true });
         }
+        // Issue C: restaurar wizardPctSnap desde cerebro_registro para que
+        // al re-editar la cotización se conserven utilidad/credito/markup/descuento.
+        const crEdit = (item.cerebro_registro && typeof item.cerebro_registro === 'object') ? item.cerebro_registro : {};
+        if (crEdit.utilidad_pct != null) wizardPctSnap.utilidadPct = crEdit.utilidad_pct;
+        if (crEdit.credito_pct != null) wizardPctSnap.creditoPct = crEdit.credito_pct;
+        if (crEdit.markup_pct != null) wizardPctSnap.markupPct = crEdit.markup_pct;
+        if (crEdit.descuento_pct != null) wizardPctSnap.descuentoPct = crEdit.descuento_pct;
 
         // Reconstruir componentes desde items
         calculadoraComponentes = (item.items || []).map(i => ({
@@ -5306,10 +5390,12 @@ const VentasModule = (function() {
             _adjuntarEventosCalculadora();
             _bindDesgloseVentas();
             _recalcular();
+            if (_esDeptDesgloseAuto() && costoDesgloseVentas) _syncTotalesWizardDesdeDesglose();
         }
         if (paso === 3) {
             _adjuntarEventosPaso3();
             _recalcular();
+            _embedVistaPreviaWizard();
         }
 
         var footer = document.getElementById('calculadoraModalFooter');
@@ -5336,9 +5422,9 @@ const VentasModule = (function() {
             }
         }
         var descargarPDFWizard = footer.querySelector('#descargarPDFWizardBtn');
-        if (descargarPDFWizard) descargarPDFWizard.style.display = paso === 4 ? 'inline-block' : 'none';
+        if (descargarPDFWizard) descargarPDFWizard.style.display = paso >= 3 ? 'inline-block' : 'none';
         var vistaPreviaPDFWizard = footer.querySelector('#vistaPreviaPDFWizardBtn');
-        if (vistaPreviaPDFWizard) vistaPreviaPDFWizard.style.display = paso === 4 ? 'inline-block' : 'none';
+        if (vistaPreviaPDFWizard) vistaPreviaPDFWizard.style.display = paso >= 3 ? 'inline-block' : 'none';
         var generarBtn = footer.querySelector('#generarCotizacionBtn');
         if (generarBtn) generarBtn.style.display = 'none';
         var enviarBtn = footer.querySelector('#enviarCotizacionBtn');
@@ -5540,17 +5626,64 @@ const VentasModule = (function() {
     }
 
     function _renderWizardPaso3() {
-        const gastos = document.getElementById('resGeneralExpenses')?.innerText || '$0.00';
-        const utilidadVal = document.getElementById('resUtility')?.innerText || '$0.00';
-        const creditoVal = document.getElementById('resCredit')?.innerText || '$0.00';
-        const ivaVal = document.getElementById('resIVA')?.innerText || '$0.00';
-        const totalVal = document.getElementById('resTotal')?.innerText || '$0.00';
-        const utilidadPct = CostosEngine.CONFIG?.utilidad || 40;
-        const creditoPct = CostosEngine.CONFIG?.credito || 3;
+        const esAuto = _esDeptDesgloseAuto() && costoDesgloseVentas;
+        if (esAuto) {
+            const d = costoDesgloseVentas;
+            const mkPct = d.markup_materiales_pct || wizardPctSnap.markupPct || 30;
+            const crPct = d.credito_pct ?? wizardPctSnap.creditoPct ?? 2;
+            const descPct = d.descuento_pct ?? wizardPctSnap.descuentoPct ?? 5;
+            const sub = Number(d.total) || 0;
+            const cred = Number(d.credito_2pct) || 0;
+            const desc = Number(d.descuento_5pct) || 0;
+            const final = Number(d.total_final) || 0;
+            const iva = Number(d.iva) || 0;
+            const totalIva = Number(d.total_con_iva) || final + iva;
+            const fmt = (n) => '$' + n.toFixed(2);
+            return `
+            <div class="calculadora-section">
+                <div class="calculadora-titulo"><i class="fas fa-file-invoice-dollar"></i> Paso 3: Cotización al Cliente</div>
+                <p style="color:var(--text-secondary); margin-bottom:16px;">
+                    Los porcentajes ya se definieron en el paso 2 (Compras/Materiales). Aquí solo confirmas el total y revisas el documento.
+                </p>
+                <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
+                    <span style="background:#ecfdf5;color:#065f46;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;">Markup materiales ${mkPct}%</span>
+                    <span style="background:#eff6ff;color:#1e40af;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;">Crédito ${crPct}%</span>
+                    <span style="background:#fef3c7;color:#92400e;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;">Descuento ${descPct}%</span>
+                </div>
+                <div style="background:#f5f5f5; padding:20px; border-radius:8px; margin-bottom:20px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>SUBTOTAL COSTOS</strong></span><span id="resSubtotalDesglose">${fmt(sub)}</span></div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>CRÉDITO ${crPct}%</strong></span><span id="resCreditoDesglose">${fmt(cred)}</span></div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; color:#b45309;"><span><strong>DESCUENTO ${descPct}%</strong></span><span id="resDescuentoDesglose">−${fmt(desc)}</span></div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>SUBTOTAL</strong></span><span id="resCredit">${fmt(final)}</span></div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>IVA ${CostosEngine.CONFIG?.iva || 16}%</strong></span><span id="resIVA">${fmt(iva)}</span></div>
+                </div>
+                <div class="total-box" style="margin-bottom:24px;">
+                    <div class="label">TOTAL CON IVA</div>
+                    <div class="value" id="resTotal">${fmt(totalIva)}</div>
+                </div>
+                <div style="display:none;" aria-hidden="true"><span id="resGeneralExpenses">${fmt(sub)}</span><span id="resUtility">${fmt(Number(d.total_venta) || sub + cred)}</span></div>
+                <div class="calculadora-section" style="margin-top:0;padding:0;">
+                    <div class="calculadora-titulo" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;">
+                        <i class="fas fa-eye"></i> Vista previa del documento
+                    </div>
+                    <div id="wizardPdfPreviewFrame" style="width:100%;height:480px;background:#f1f5f9;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:12px;">
+                        <p style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">Generando vista previa…</p>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        const utilidadPct = wizardPctSnap.utilidadPct ?? CostosEngine.CONFIG?.utilidad ?? 40;
+        const creditoPct = wizardPctSnap.creditoPct ?? CostosEngine.CONFIG?.credito ?? 3;
+        const gastos = lastGastosGenerales ? '$' + lastGastosGenerales.toFixed(2) : (document.getElementById('resGeneralExpenses')?.innerText || '$0.00');
+        const utilidadVal = lastPrecioConUtilidad ? '$' + lastPrecioConUtilidad.toFixed(2) : (document.getElementById('resUtility')?.innerText || '$0.00');
+        const creditoVal = lastPrecioAntesIVA ? '$' + lastPrecioAntesIVA.toFixed(2) : (document.getElementById('resCredit')?.innerText || '$0.00');
+        const ivaVal = lastIva ? '$' + lastIva.toFixed(2) : (document.getElementById('resIVA')?.innerText || '$0.00');
+        const totalVal = lastTotal ? '$' + lastTotal.toFixed(2) : (document.getElementById('resTotal')?.innerText || '$0.00');
 
         return `
             <div class="calculadora-section">
-                <div class="calculadora-titulo"><i class="fas fa-percent"></i> Paso 3: Margen y Finanzas</div>
+                <div class="calculadora-titulo"><i class="fas fa-percent"></i> Paso 3: Cotización al Cliente</div>
                 <p style="color:var(--text-secondary); margin-bottom:20px;">Ajusta el % de Utilidad y el % de Crédito si el cliente paga a plazos. El sistema calcula subtotal, IVA y total automáticamente.</p>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
                     <div class="editor-item">
@@ -5568,9 +5701,17 @@ const VentasModule = (function() {
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>CRÉDITO <span id="lblCreditoPct">${creditoPct}</span>%</strong></span><span id="resCredit">${creditoVal}</span></div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span><strong>IVA ${CostosEngine.CONFIG?.iva || 16}%</strong></span><span id="resIVA">${ivaVal}</span></div>
                 </div>
-                <div class="total-box" style="margin-top:20px;">
+                <div class="total-box" style="margin-top:20px; margin-bottom:24px;">
                     <div class="label">TOTAL CON IVA</div>
                     <div class="value" id="resTotal">${totalVal}</div>
+                </div>
+                <div class="calculadora-section" style="margin-top:0;padding:0;">
+                    <div class="calculadora-titulo" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;">
+                        <i class="fas fa-eye"></i> Vista previa del documento
+                    </div>
+                    <div id="wizardPdfPreviewFrame" style="width:100%;height:480px;background:#f1f5f9;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:12px;">
+                        <p style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">Generando vista previa…</p>
+                    </div>
                 </div>
             </div>
         `;
@@ -5613,8 +5754,25 @@ const VentasModule = (function() {
     function _adjuntarEventosPaso3() {
         const inpUtilidad = document.getElementById('inpUtilidadPct');
         const inpCredito = document.getElementById('inpCreditoPct');
-        if (inpUtilidad) inpUtilidad.addEventListener('input', () => { _recalcular(); if (document.getElementById('lblUtilidadPct')) document.getElementById('lblUtilidadPct').textContent = inpUtilidad.value; });
-        if (inpCredito) inpCredito.addEventListener('input', () => { _recalcular(); if (document.getElementById('lblCreditoPct')) document.getElementById('lblCreditoPct').textContent = inpCredito.value; });
+        if (inpUtilidad) inpUtilidad.addEventListener('input', () => {
+            wizardPctSnap.utilidadPct = parseFloat(inpUtilidad.value) || 0;
+            _recalcular();
+            if (document.getElementById('lblUtilidadPct')) document.getElementById('lblUtilidadPct').textContent = inpUtilidad.value;
+            _embedVistaPreviaWizard();
+        });
+        if (inpCredito) inpCredito.addEventListener('input', () => {
+            wizardPctSnap.creditoPct = parseFloat(inpCredito.value) || 0;
+            _recalcular();
+            if (document.getElementById('lblCreditoPct')) document.getElementById('lblCreditoPct').textContent = inpCredito.value;
+            _embedVistaPreviaWizard();
+        });
+    }
+
+    function _embedVistaPreviaWizard() {
+        if (wizardPaso !== 3) return;
+        const frame = document.getElementById('wizardPdfPreviewFrame');
+        if (!frame) return;
+        _descargarPDFDesdeWizard(true, 'wizardPdfPreviewFrame');
     }
 
     async function _wizardSiguiente() {
@@ -5782,8 +5940,15 @@ const VentasModule = (function() {
                 };
                 ventasAutosaveCtrl.collectPayload = () => payload;
                 ventasAutosaveCtrl.schedule();
+                ventasAutosaveCtrl.flush();
+                ventasAutosaveCtrl.collectPayload = _collectVentasDraftPayload;
             }
         }
+        if (wizardPaso === 4) return;
+        // Issue B: snapshot ANTES del flush para que el payload
+        // que se persiste en el borrador contenga los valores recién
+        // capturados del DOM (utilidad%, crédito%, markup%, descuento%).
+        if (wizardPaso === 2) _snapshotWizardFromPaso2();
         // Auto-guardar al cambiar de paso (solo pasos 2→3 y 3→4)
         if (ventasAutosaveCtrl && wizardPaso >= 2 && wizardPaso < 4) {
             const payload = {
@@ -5796,7 +5961,9 @@ const VentasModule = (function() {
                 lastPrecioConUtilidad,
                 lastPrecioAntesIVA,
                 lastIva,
-                lastTotal
+                lastTotal,
+                costoDesgloseVentas: costoDesgloseVentas ? { ...costoDesgloseVentas } : null,
+                wizardPctSnap: { ...wizardPctSnap }
             };
             if (wizardPaso + 1 === 2) payload.paso1Fields = _collectPaso1Fields();
             if (wizardPaso + 1 >= 3) {
@@ -5808,8 +5975,9 @@ const VentasModule = (function() {
             ventasAutosaveCtrl.collectPayload = () => payload;
             ventasAutosaveCtrl.schedule();
             ventasAutosaveCtrl.flush();
+            // Restaurar collector default para evitar closure stale (Issue D).
+            ventasAutosaveCtrl.collectPayload = _collectVentasDraftPayload;
         }
-        if (wizardPaso === 4) return;
         (async () => { await _renderWizardPaso(wizardPaso + 1); })();
     }
 
@@ -5843,7 +6011,7 @@ const VentasModule = (function() {
         var descargarWizard = document.getElementById('descargarPDFWizardBtn');
         if (descargarWizard) descargarWizard.onclick = () => _descargarPDFDesdeWizard(false);
         var vistaPreviaWizard = document.getElementById('vistaPreviaPDFWizardBtn');
-        if (vistaPreviaWizard) vistaPreviaWizard.onclick = () => _descargarPDFDesdeWizard(true);
+        if (vistaPreviaWizard) vistaPreviaWizard.onclick = () => _descargarPDFDesdeWizard(true, wizardPaso === 3 ? 'wizardPdfPreviewFrame' : null);
         var enviarWizard = document.getElementById('enviarCotizacionBtn');
         if (enviarWizard) enviarWizard.onclick = _enviarCotizacionDesdeWizard;
 
@@ -5904,10 +6072,9 @@ const VentasModule = (function() {
         return '';
     }
 
-    function _descargarPDFDesdeWizard(preview = false) {
+    function _descargarPDFDesdeWizard(preview = false, embedFrameId = null) {
         const cliente = _nombreClienteWizardResuelto();
-        const totalStr = document.getElementById('resTotal')?.innerText || '$0';
-        let total = parseFloat(totalStr.replace(/[$,]/g, '')) || 0;
+        let total = lastTotal || parseFloat((document.getElementById('resTotal')?.innerText || '$0').replace(/[$,]/g, '')) || 0;
         const rfc = calculadoraClienteActual?.rfc || 'XAXX010101000';
         const folio = editingCotizacionId ? (cotizaciones.find(c => c.id === editingCotizacionId)?.folio || 'COT-####') : 'COT-####';
         const departamento = ventasWizardCerebro?.departamento || 'Ventas';
@@ -5922,15 +6089,25 @@ const VentasModule = (function() {
             iva = pub.iva;
             total = pub.total || total;
         }
-        if (!cliente) { _showToast('Cliente requerido para el PDF.', 'info'); return; }
+        if (!cliente) {
+            if (!preview || !embedFrameId) _showToast('Cliente requerido para el PDF.', 'info');
+            return;
+        }
         (async () => {
             try {
                 const { data: { user } } = await window.supabase.auth.getUser();
-                await pdfGenerator.generateCotizacion({ folio, cliente, rfc, items, subtotal, iva, total, departamento }, user, preview);
+                await pdfGenerator.generateCotizacion({
+                    folio, cliente, rfc, items, subtotal, iva, total, departamento,
+                    embedPreviewId: embedFrameId || null
+                }, user, preview);
                 if (!preview) _addToFeed('🧾', `PDF generado: ${folio}`);
             } catch (error) {
                 console.error(error);
-                _showToast('Error al generar PDF: ' + error.message, 'error');
+                if (embedFrameId) {
+                    const el = document.getElementById(embedFrameId);
+                    if (el) el.innerHTML = '<p style="padding:24px;text-align:center;color:#c62828;">No se pudo generar la vista previa.</p>';
+                }
+                if (!embedFrameId) _showToast('Error al generar PDF: ' + error.message, 'error');
             }
         })();
     }
@@ -6113,6 +6290,9 @@ const VentasModule = (function() {
                 };
                 ventasAutosaveCtrl.collectPayload = () => payload;
                 ventasAutosaveCtrl.schedule();
+                // Forzar write sincrónico antes de cerrar el modal (Issue D).
+                ventasAutosaveCtrl.flush();
+                ventasAutosaveCtrl.collectPayload = _collectVentasDraftPayload;
             }
 
             _showToast('✅ Orden guardada. Puedes cerrar y esperar a que Laboratorio/Compras completen su información.', 'success');
@@ -6150,10 +6330,16 @@ const VentasModule = (function() {
                     lastPrecioAntesIVA,
                     lastIva,
                     lastTotal,
-                    actividadesDiarias: actividadesDiarias.slice()
+                    actividadesDiarias: actividadesDiarias.slice(),
+                    costoDesgloseVentas: costoDesgloseVentas ? { ...costoDesgloseVentas } : null,
+                    wizardPctSnap: { ...wizardPctSnap }
                 };
                 ventasAutosaveCtrl.collectPayload = () => payload;
                 ventasAutosaveCtrl.schedule();
+                ventasAutosaveCtrl.flush();
+                // Restaurar el collector al default para que el próximo input/change
+                // no use un closure con valores "viejos" (Issue D).
+                ventasAutosaveCtrl.collectPayload = _collectVentasDraftPayload;
             }
             _showToast('✅ Borrador guardado. Puedes continuar editando.', 'success');
             _addToFeed('💾', 'Borrador de cotización guardado');
