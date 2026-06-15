@@ -200,7 +200,8 @@
       "Bash(Select-Object -First 50)",
       "Bash(xxd /e/SSEPI/reiniciar-ssepi-fuerte.bat)",
       "Bash(unix2dos reiniciar-ssepi.bat reiniciar-ssepi-fuerte.bat)",
-      "Bash(xxd reiniciar-ssepi-fuerte.bat)"
+      "Bash(xxd reiniciar-ssepi-fuerte.bat)",
+      "Bash(Sort-Object)"
     ]
   }
 }
