@@ -8,8 +8,9 @@
 // CSP se aplica vía <meta>; en producción conviene enviarla también por cabecera HTTP desde el servidor.
 // Cabeceras HSTS, X-Frame-Options, X-Content-Type-Options: deben configurarse en el servidor (ver scripts/serve-with-headers.js o proxy).
 export function applyCSP() {
-  // Bypass completo en desarrollo local
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+  // Bypass completo en desarrollo local o túnel Cloudflare (preview PDF vía blob: en iframe)
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.trycloudflare.com')) {
     console.log('[CSP] Modo local: CSP relajada');
     const meta = document.createElement('meta');
     meta.httpEquiv = 'Content-Security-Policy';
@@ -30,7 +31,7 @@ export function applyCSP() {
     font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:;
     img-src 'self' data: https://images.unsplash.com;
     connect-src 'self' https://*.supabase.co wss://*.supabase.co ${supabaseHost ? `https://${supabaseHost} wss://${supabaseHost}` : ''} https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://api.ipify.org https://vercel.live https://*.vercel.live wss://*.vercel.live;
-    frame-src 'self' https://vercel.live;
+    frame-src 'self' blob: https://vercel.live;
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';

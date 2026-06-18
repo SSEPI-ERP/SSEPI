@@ -4843,17 +4843,51 @@ const VentasModule = (function() {
         }
 
         const item = _findRegistroVentas(id, tipo);
-        let estadoActual = null;
-        if (window.SSEPIStateMachine?.derivarEstatusActualDesdeNativo) {
-            const tablaMap = {
-                cotizacion: 'cotizaciones', venta: 'cotizaciones', suministro: 'cotizaciones',
-                taller: 'ordenes_taller', motor: 'ordenes_motores',
-                proyecto: 'proyectos_automatizacion', automatizacion: 'proyectos_automatizacion'
-            };
-            estadoActual = SSEPIStateMachine.derivarEstatusActualDesdeNativo(tablaMap[tNorm] || 'cotizaciones', item);
+        const tablaMap = {
+            cotizacion: 'cotizaciones', venta: 'cotizaciones', suministro: 'cotizaciones',
+            taller: 'ordenes_taller', motor: 'ordenes_motores',
+            proyecto: 'proyectos_automatizacion', automatizacion: 'proyectos_automatizacion'
+        };
+        const tablaHist = tablaMap[tNorm] || 'cotizaciones';
+
+        /** Si el registro no trae estado sync, inferir del historial (ej. "Estado cambiado a Entregado"). */
+        function _estatusDesdeHistorial(evts) {
+            if (!evts || !evts.length) return null;
+            for (var i = 0; i < evts.length; i++) {
+                const d = String(evts[i].descripcion || '').toLowerCase();
+                if (/entregad|entregado a |entrega a /.test(d)) return 'entrega';
+                if (/completad/.test(d)) return 'entrega';
+                if (/facturad/.test(d)) return 'facturacion';
+                if (/reparad/.test(d)) return 'facturacion';
+                if (/cancelad/.test(d)) return 'cancelado';
+            }
+            return null;
+        }
+
+        let estadoActual = item?.estatus_actual || null;
+        if (!estadoActual && window.SSEPIStateMachine?.derivarEstatusActualDesdeNativo) {
+            estadoActual = SSEPIStateMachine.derivarEstatusActualDesdeNativo(tablaHist, item);
         }
         if (!estadoActual) {
-            estadoActual = item?.estatus_actual || 'recepcion';
+            estadoActual = item?.estado || item?.estatus_pago || null;
+        }
+        const desdeHist = _estatusDesdeHistorial(events);
+        if (desdeHist && window.SSEPIStateMachine?.normalizarEstatusPipeline) {
+            const histNorm = SSEPIStateMachine.normalizarEstatusPipeline(desdeHist, tablaHist, item);
+            const currNorm = SSEPIStateMachine.normalizarEstatusPipeline(estadoActual, tablaHist, item);
+            const pasos = window.SSEPIStateMachine.PIPELINE_PASOS || [];
+            const idxHist = pasos.findIndex(function (p) { return p.id === histNorm; });
+            const idxCurr = pasos.findIndex(function (p) { return p.id === currNorm; });
+            if (idxHist >= 0 && (idxCurr < 0 || idxHist > idxCurr)) {
+                estadoActual = histNorm;
+            }
+        } else if (desdeHist && !estadoActual) {
+            estadoActual = desdeHist;
+        }
+        if (window.SSEPIStateMachine?.normalizarEstatusPipeline) {
+            estadoActual = SSEPIStateMachine.normalizarEstatusPipeline(estadoActual, tablaHist, item);
+        } else if (!estadoActual) {
+            estadoActual = 'recepcion';
         }
         const cerebro = item?.cerebro_registro || {};
         const equipoInfo = cerebro.producto_servicio || cerebro.nombre_producto || item?.descripcion || item?.equipo || null;
@@ -4874,7 +4908,7 @@ const VentasModule = (function() {
 
         body.innerHTML = `
             ${equipoHtml}
-            ${_renderTimeline(estadoActual)}
+            ${_renderTimeline(estadoActual, tablaHist, item)}
             <div style="margin-top:24px;">
                 <h4 style="margin-bottom:16px; color:var(--text-primary);"><i class="fas fa-history"></i> Historial de Eventos</h4>
                 ${events.length === 0 ? `
@@ -4919,7 +4953,7 @@ const VentasModule = (function() {
                 <button class="btn btn-danger" onclick="ventasModule._clienteCanceloOperativo('${id}', '${tNorm}')">
                     <i class="fas fa-times-circle"></i> Cliente Canceló (orden)
                 </button>` : ''}
-                ${(estadoActual === 'entregado' || estadoActual === 'pagado' || estadoActual === 'facturado' || estadoActual === 'reparado') ? `
+                ${(estadoActual === 'entrega' || estadoActual === 'entregado' || estadoActual === 'pagado' || estadoActual === 'facturacion' || estadoActual === 'reparado') ? `
                 <button class="btn btn-primary" onclick="ventasModule._generarPDFDesdeHistorial('${id}', '${tipo}')">
                     <i class="fas fa-file-pdf"></i> Generar PDF
                 </button>
@@ -4938,9 +4972,9 @@ const VentasModule = (function() {
         modal.classList.add('active');
     }
 
-    function _renderTimeline(estadoActual) {
+    function _renderTimeline(estadoActual, tabla, item) {
         if (window.SSEPIStateMachine) {
-            return SSEPIStateMachine.renderTimelineHTML(estadoActual);
+            return SSEPIStateMachine.renderTimelineHTML(estadoActual, { tabla: tabla, item: item });
         }
         // Fallback si el core no cargó
         const pasos = [

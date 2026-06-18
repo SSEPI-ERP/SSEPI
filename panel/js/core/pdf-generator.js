@@ -572,6 +572,12 @@ export class PDFGenerator {
         // ================================================================
         const FY = PH-16;
         let totalPgs = '?';
+        // Texto del "Página X / Y" se pinta con un pequeño rect blanco de fondo
+        // para que cuando repintemos con el total real no quede rastro del "?"
+        const PAGE_NUM_X = PW - MR - 30;
+        const PAGE_NUM_Y = FY + 8;
+        const PAGE_NUM_W = 30;
+        const PAGE_NUM_H = 5;
         const drawFooter = (pn)=>{
             hl(ML,FY,TW,GR_SEP,0.3);
             tx('Num. de cotización '+folio,  ML,    FY+4,'normal',7,[160,160,160]);
@@ -582,6 +588,9 @@ export class PDFGenerator {
             tx('Tel. 477 737 3118', ML,    FY+12,'normal',7,GR_LT);
             tx('ventas@ssepi.org',  ML+45, FY+12,'normal',7,GR_LT);
             tx('www.ssepi.org',    ML+90, FY+12,'normal',7,GR_LT);
+            // Fondo blanco para tapar el "?" previo en repintadas
+            doc.setFillColor(255,255,255);
+            doc.rect(PAGE_NUM_X, PAGE_NUM_Y, PAGE_NUM_W, PAGE_NUM_H, 'F');
             tx('Página '+pn+' / '+totalPgs, PW-MR,FY+12,'normal',8,GR_LT,{align:'right'});
         };
 
@@ -745,54 +754,102 @@ export class PDFGenerator {
         hl(TBX,y+TRH,TBW,GR_SEP,0.4); y+=TRH+12;
 
         if (!omitirPoliticas) {
-            drawFooter(pgNum);
-            doc.addPage(); pgNum++;
-            y = drawHeader();
-            tx('Tiempo de entrega', ML+4, y, 'bold', PDF_SZ_TITLE, BLK);
-            y += 10;
+            // Header de sección (Notas + Términos) — se hace 1 sola vez y se deja fluir
+            // con corte automático cuando no quepa, en vez de forzar 3 addPage().
+            const SECTION_H = 22; // header + padding para "Notas Importantes"
+            const TERM_BODY = 20; // 2 líneas de términos de pago
+            if (y + SECTION_H > BODY_BOTTOM) {
+                drawFooter(pgNum);
+                doc.addPage(); pgNum++;
+                y = drawHeader();
+            }
+            y += 4;
+            tx('Notas Importantes', ML+4, y, 'bold', PDF_SZ_TITLE, BLK); y += 8;
+            // Sub-bloque: Tiempo de entrega (si existe en policies)
             const polEnt = DEPTO_POLICIES[deptoKey];
             if (polEnt) {
-                doc.setFont(PDF_FONT,'normal'); doc.setFontSize(PDF_SZ_BODY);
+                const entMaxW = TW - 8;
+                const entLines = doc.splitTextToSize(polEnt.entrega, entMaxW);
+                doc.setFont(PDF_FONT, 'normal');
+                doc.setFontSize(PDF_SZ_BODY);
                 doc.setTextColor(...GR_TXT);
-                doc.text(polEnt.entrega, ML+4, y);
+                entLines.forEach((l) => {
+                    if (y + 6 > BODY_BOTTOM) {
+                        drawFooter(pgNum);
+                        doc.addPage(); pgNum++;
+                        y = drawHeader();
+                    }
+                    doc.text(l, ML+4, y + 4);
+                    y += 5;
+                });
+                y += 3;
             }
-            drawFooter(pgNum);
-            doc.addPage(); pgNum++;
-            y = drawHeader();
-            tx('Notas Importantes', ML+4, y, 'bold', PDF_SZ_TITLE, BLK);
-            y += 10;
+            // Sub-bloque: bullets de notas con splitTextToSize por línea
             const polNotes = DEPTO_POLICIES[deptoKey];
             const noteLines = polNotes ? polNotes.lines : [];
-            const NL=5.0;
-            const NMAX=TW-12;
+            const NL = 5.0;
+            const NMAX = TW - 18;
             noteLines.forEach((line) => {
-                doc.setFont(PDF_FONT,'normal'); doc.setFontSize(PDF_SZ_BODY);
+                doc.setFont(PDF_FONT, 'normal');
+                doc.setFontSize(PDF_SZ_BODY);
                 const fullText = String.fromCharCode(149) + ' ' + line;
                 const linesArr = doc.splitTextToSize(fullText, NMAX);
-                const nH = linesArr.length*NL+1.5;
-                if (y+nH > BODY_BOTTOM) {
+                const nH = linesArr.length * NL + 1.5;
+                if (y + nH > BODY_BOTTOM) {
                     drawFooter(pgNum);
                     doc.addPage(); pgNum++;
                     y = drawHeader();
                 }
                 linesArr.forEach((l, i) => {
-                    doc.setFont(PDF_FONT, i===0?'bold':'normal');
+                    doc.setFont(PDF_FONT, i === 0 ? 'bold' : 'normal');
                     doc.setTextColor(...GR_TXT);
                     doc.text(l, ML+10, y+4+i*NL);
                 });
                 y += nH;
             });
-            drawFooter(pgNum);
-            doc.addPage(); pgNum++;
-            y = drawHeader();
-            tx('Términos de Pago', ML+4, y, 'bold', PDF_SZ_TITLE, BLK);
-            y += 10;
-            tx('El cliente se obliga a pagar el importe total de esta cotización dentro de los 30 días naturales posteriores a la fecha de emisión.', ML+4, y, 'normal', PDF_SZ_BODY, GR_TXT);
-            y += 8;
-            tx('En caso de incumplimiento, se aplicarán cargos por mora del 1.5% mensual sobre el saldo pendiente.', ML+4, y, 'normal', PDF_SZ_BODY, GR_TXT);
+            y += 6;
+            // Sub-bloque: Términos de Pago (splitTextToSize por si textos largos)
+            if (y + TERM_BODY > BODY_BOTTOM) {
+                drawFooter(pgNum);
+                doc.addPage(); pgNum++;
+                y = drawHeader();
+            }
+            tx('Términos de Pago', ML+4, y, 'bold', PDF_SZ_TITLE, BLK); y += 8;
+            const terminos = [
+                'El cliente se obliga a pagar el importe total de esta cotización dentro de los 30 días naturales posteriores a la fecha de emisión.',
+                'En caso de incumplimiento, se aplicarán cargos por mora del 1.5% mensual sobre el saldo pendiente.'
+            ];
+            terminos.forEach((t) => {
+                const tLines = doc.splitTextToSize(t, TW - 8);
+                tLines.forEach((l) => {
+                    if (y + 5 > BODY_BOTTOM) {
+                        drawFooter(pgNum);
+                        doc.addPage(); pgNum++;
+                        y = drawHeader();
+                    }
+                    doc.setFont(PDF_FONT, 'normal');
+                    doc.setFontSize(PDF_SZ_BODY);
+                    doc.setTextColor(...GR_TXT);
+                    doc.text(l, ML+4, y + 4);
+                    y += 5;
+                });
+                y += 1;
+            });
             drawFooter(pgNum);
         } else {
             drawFooter(pgNum);
+        }
+
+        // Reasignar totalPgs real tras todos los addPage() y repintarlo en TODAS
+        // las páginas (no solo la última), ya que antes los footers mostraban "?".
+        const realTotal = doc.internal.pages ? String(doc.internal.pages.length - 1) : '?';
+        if (realTotal !== totalPgs) {
+            totalPgs = realTotal;
+            const lastPg = Number(pgNum);
+            for (let p = 1; p <= lastPg; p++) {
+                doc.setPage(p);
+                drawFooter(p);
+            }
         }
 
         if (preview) {

@@ -326,7 +326,15 @@ const ComprasModule = (function() {
 
     async function _loadTaller() {
         const raw = await tallerService.select({}, { orderBy: 'fecha_ingreso', ascending: false, page: 0, pageSize: 600 });
-        ordenesTaller = filterOrdenesOperativas(raw || []);
+        ordenesTaller = filterOrdenesOperativas((raw || []).map(function (o) {
+            if (!o) return o;
+            const rec = o.datos_recepcion || {};
+            return Object.assign({}, o, {
+                cliente_nombre: o.cliente_nombre || o.cliente || rec.cliente || o.referencia || '',
+                equipo: o.equipo || rec.equipo || o.nombre_producto || '',
+                estado: o.estado || o.estatus_actual || o.estado_interno || ''
+            });
+        }));
         _renderOperativasComprasList();
     }
 
@@ -506,7 +514,7 @@ const ComprasModule = (function() {
         else if (vistaActual === 'lista') _renderLista(filtered);
         else if (vistaActual === 'grafica') _renderGrafica(filtered);
 
-        _updateKPIs(filtered);
+        _updateKPIs(compras);
     }
 
     function _renderKanban(ordenes) {
@@ -779,19 +787,21 @@ const ComprasModule = (function() {
 
     function _updateKPIs(ordenes) {
         const esAdminC = _verCostosCompras();
+        // KPIs siempre sobre el array completo (no el filtrado por fecha/depto/estado)
+        const todas = Array.isArray(compras) ? compras : (Array.isArray(ordenes) ? ordenes : []);
         const now = new Date();
         const mesActual = now.getMonth();
         const añoActual = now.getFullYear();
         let totalMes = 0;
-        ordenes.forEach(c => {
+        todas.forEach(c => {
             const fecha = c.fecha_creacion ? new Date(c.fecha_creacion) : null;
             if (fecha && fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual) {
                 totalMes += c.total || 0;
             }
         });
         document.getElementById('kpiComprasMes').innerHTML = esAdminC ? `$${totalMes.toFixed(2)}` : '—';
-        document.getElementById('kpiPendientes').innerText = ordenes.filter(c => c.estado < 4).length;
-        document.getElementById('kpiCompletadas').innerText = ordenes.filter(c => c.estado === 5).length;
+        document.getElementById('kpiPendientes').innerText = todas.filter(c => Number(c.estado) < 4).length;
+        document.getElementById('kpiCompletadas').innerText = todas.filter(c => Number(c.estado) === 5).length;
         document.getElementById('kpiProveedores').innerText = proveedores.length;
     }
 
@@ -1093,6 +1103,35 @@ const ComprasModule = (function() {
         }
     }
 
+    /** Extrae folio/estado/cliente/equipo con fallbacks (import ERP, TRACE, demo local). */
+    function _extraerCamposOrdenOperativa(o, vinc) {
+        if (!o) {
+            return {
+                folio: vinc?.folio || vinc?.folio_taller || '—',
+                estado: '—',
+                cliente: vinc?.cliente || vinc?.nombre || '—',
+                equipo: vinc?.nombre || '—'
+            };
+        }
+        const rec = o.datos_recepcion || {};
+        const folio = o.folio || o.numero_orden || vinc?.folio || vinc?.folio_taller || '—';
+        const estado = o.estado || o.estatus_actual || o.estado_interno || o.estatus || '—';
+        const cliente = o.cliente_nombre || o.cliente || rec.cliente || vinc?.cliente || vinc?.nombre || o.referencia || '—';
+        const equipo = o.equipo || o.nombre || o.motor || o.nombre_producto || rec.equipo || '—';
+        return { folio, estado, cliente, equipo };
+    }
+
+    function _mapEstatusOrdenOperativa(tipo, o, vinc) {
+        const modulos = {
+            taller: 'Laboratorio',
+            motor: 'Motores',
+            proyecto: 'Proyectos',
+            automatizacion: 'Automatización'
+        };
+        const campos = _extraerCamposOrdenOperativa(o, vinc);
+        return { modulo: modulos[tipo] || tipo, ...campos };
+    }
+
     function _resolverOrdenVinculada(vinc) {
         if (!vinc) return null;
         const id = vinc.id;
@@ -1100,60 +1139,89 @@ const ComprasModule = (function() {
         if (tipo === 'taller') {
             const o = ordenesTaller.find((t) => String(t.id) === String(id));
             if (!o) return null;
-            return { modulo: 'Laboratorio', folio: o.folio, estado: o.estado || o.estatus_actual, cliente: o.cliente_nombre, equipo: o.equipo };
+            return _mapEstatusOrdenOperativa('taller', o, vinc);
         }
         if (tipo === 'motor') {
             const o = ordenesMotores.find((m) => String(m.id) === String(id));
             if (!o) return null;
-            return { modulo: 'Motores', folio: o.folio, estado: o.estado || o.estatus_actual, cliente: o.cliente_nombre, equipo: o.motor || o.equipo };
+            return _mapEstatusOrdenOperativa('motor', o, vinc);
         }
         if (tipo === 'proyecto' || tipo === 'automatizacion') {
             const p = proyectos.find((pr) => String(pr.id) === String(id));
             if (!p) return null;
-            return {
-                modulo: tipo === 'automatizacion' ? 'Automatización' : 'Proyectos',
-                folio: p.folio || vinc.folio || vinc.folio_taller,
-                estado: p.estado || p.estatus_actual,
-                cliente: p.cliente || p.cliente_nombre,
-                equipo: p.nombre
-            };
+            return _mapEstatusOrdenOperativa(tipo, p, vinc);
         }
         return null;
     }
 
-    async function _fetchEstatusVinculacionRemota(vinc) {
-        const local = _resolverOrdenVinculada(vinc);
-        if (local && local.folio) return local;
-        if (!vinc || !window.supabase) return local;
+    async function _fetchOrdenOperativaRaw(vinc) {
+        if (!vinc || !window.supabase) return null;
+        const id = vinc.id;
         try {
-            const id = vinc.id;
             if (vinc.tipo === 'taller') {
+                const local = ordenesTaller.find((t) => String(t.id) === String(id));
+                if (local) return local;
                 const { data: o } = await window.supabase.from('ordenes_taller').select('*').eq('id', id).maybeSingle();
-                if (o) return { modulo: 'Laboratorio', folio: o.folio, estado: o.estado, cliente: o.cliente_nombre, equipo: o.equipo };
-            } else if (vinc.tipo === 'motor') {
+                return o || null;
+            }
+            if (vinc.tipo === 'motor') {
+                const local = ordenesMotores.find((m) => String(m.id) === String(id));
+                if (local) return local;
                 const { data: o } = await window.supabase.from('ordenes_motores').select('*').eq('id', id).maybeSingle();
-                if (o) return { modulo: 'Motores', folio: o.folio, estado: o.estado, cliente: o.cliente_nombre, equipo: o.motor || o.equipo };
-            } else if (vinc.tipo === 'proyecto' || vinc.tipo === 'automatizacion') {
+                return o || null;
+            }
+            if (vinc.tipo === 'proyecto' || vinc.tipo === 'automatizacion') {
+                const local = proyectos.find((pr) => String(pr.id) === String(id));
+                if (local) return local;
                 const { data: p } = await window.supabase.from('proyectos_automatizacion').select('*').eq('id', id).maybeSingle();
-                if (p) {
-                    return {
-                        modulo: vinc.tipo === 'automatizacion' ? 'Automatización' : 'Proyectos',
-                        folio: p.folio,
-                        estado: p.estado,
-                        cliente: p.cliente,
-                        equipo: p.nombre
-                    };
-                }
+                return p || null;
             }
         } catch (e) {
-            console.warn('[Compras] Error obteniendo estatus de orden vinculada:', e);
+            console.warn('[Compras] Error obteniendo orden operativa:', e);
         }
-        return local;
+        return null;
+    }
+
+    /**
+     * Intenta obtener el estatus de la orden vinculada a la compra.
+     * Fallbacks (en orden):
+     *  1. Fetch remoto (Supabase o lista local cacheada)
+     *  2. Resolución local del vinculo (_resolverOrdenVinculada)
+     *  3. Datos de la compra misma (cliente_nombre, cliente, datos_recepcion.cliente, vinculacion.*)
+     */
+    async function _fetchEstatusVinculacionRemota(vinc, compraCtx) {
+        const raw = await _fetchOrdenOperativaRaw(vinc);
+        if (raw) return _mapEstatusOrdenOperativa(vinc.tipo, raw, vinc);
+        const local = _resolverOrdenVinculada(vinc);
+        if (local && local.folio) return local;
+        // Último fallback: derivar de la compra (cliente + datos_recepcion)
+        if (compraCtx) {
+            const vincCtx = compraCtx.vinculacion || {};
+            const rec = vincCtx.datos_recepcion || {};
+            const cliente = vincCtx.cliente_nombre
+                || vincCtx.cliente
+                || rec.cliente
+                || compraCtx.cliente_nombre
+                || compraCtx.cliente
+                || null;
+            if (cliente) {
+                return {
+                    folio: vincCtx.folio_taller || vincCtx.folio || compraCtx.folio || '—',
+                    estado: vincCtx.estado || compraCtx.estado_interno || compraCtx.estado || '—',
+                    cliente,
+                    equipo: rec.equipo || vincCtx.nombre_producto || compraCtx.nombre_producto || '—',
+                    modulo: vincCtx.tipo === 'taller' ? 'Laboratorio'
+                        : vincCtx.tipo === 'motor' ? 'Motores'
+                        : 'Automatización'
+                };
+            }
+        }
+        return null;
     }
 
     async function _generarDetalleHTML(compra) {
         const esAdminC = _verCostosCompras();
-        let estatusOrden = compra.vinculacion ? await _fetchEstatusVinculacionRemota(compra.vinculacion) : null;
+        let estatusOrden = compra.vinculacion ? await _fetchEstatusVinculacionRemota(compra.vinculacion, compra) : null;
 
         const clienteInfo = (compra.data && compra.data.cliente_info) ? compra.data.cliente_info : null;
         const soloAuto = _esCompraAutomatizacion(compra);
@@ -1203,7 +1271,7 @@ const ComprasModule = (function() {
                 <div class="detalle-grid">
                     <div><strong>Módulo:</strong> ${compra.vinculacion.tipo}</div>
                     <div><strong>Folio Origen:</strong> <span style="color:#0369a1;font-weight:600;">${compra.vinculacion.folio_taller || compra.vinculacion.folio || ''}</span></div>
-                    <div><strong>Cliente/Orden:</strong> ${compra.vinculacion.nombre || ''}</div>
+                    <div><strong>Cliente/Orden:</strong> ${compra.vinculacion.cliente_nombre || compra.vinculacion.cliente || compra.vinculacion.nombre || compra.vinculacion.datos_recepcion?.cliente || estatusOrden?.cliente || '—'}</div>
                 </div>
                 ${clienteInfo ? `
                 <div style="margin-top: 12px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
@@ -1225,7 +1293,7 @@ const ComprasModule = (function() {
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
                         <div><strong>Folio:</strong> ${estatusOrden.folio}</div>
-                        <div><strong>Estado:</strong> <span style="color: ${estatusOrden.estado === 'Entregado' ? '#059669' : '#d97706'}">${estatusOrden.estado}</span></div>
+                        <div><strong>Estado:</strong> <span style="color: ${/entreg|complet|reparado/i.test(String(estatusOrden.estado || '')) ? '#059669' : '#d97706'}">${estatusOrden.estado}</span></div>
                         <div><strong>Cliente:</strong> ${estatusOrden.cliente}</div>
                         <div><strong>Equipo/Proyecto:</strong> ${estatusOrden.equipo}</div>
                     </div>
@@ -1379,7 +1447,7 @@ const ComprasModule = (function() {
         const cliGrid = document.getElementById('clienteInfoGrid');
         let ci = (compra.data && compra.data.cliente_info) ? compra.data.cliente_info : null;
         if (!ci && compra.vinculacion) {
-            const est = _resolverOrdenVinculada(compra.vinculacion) || await _fetchEstatusVinculacionRemota(compra.vinculacion);
+            const est = _resolverOrdenVinculada(compra.vinculacion) || await _fetchEstatusVinculacionRemota(compra.vinculacion, compra);
             if (est?.cliente) ci = { nombre: est.cliente };
         }
         if (ci && ci.nombre) {
@@ -2891,7 +2959,19 @@ const ComprasModule = (function() {
         }
 
         let rows = operativasTabCompras === 'motor' ? ordenesMotores : (operativasTabCompras === 'auto' ? proyectos : ordenesTaller);
-        rows = (rows || []).filter(_operativaVigente).slice(0, 50);
+        rows = (rows || []).filter(_operativaVigente);
+        if (operativasTabCompras === 'auto') {
+            rows = rows.slice().sort(function (a, b) {
+                const rank = function (s) {
+                    const x = String(s || '').toLowerCase();
+                    if (x.includes('complet') || x.includes('entreg')) return 0;
+                    if (x.includes('cancel')) return 2;
+                    return 1;
+                };
+                return rank(a.estado) - rank(b.estado);
+            });
+        }
+        rows = rows.slice(0, 50);
         function esc(s) {
             const d = document.createElement('div');
             d.textContent = s == null ? '' : String(s);
@@ -2906,6 +2986,10 @@ const ComprasModule = (function() {
             const folio = r.folio || (r.id && String(r.id).slice(-8)) || '—';
             const cliente = r.cliente_nombre || r.cliente || r.nombre || '—';
             const st = r.estado || '—';
+            const stLower = String(st).toLowerCase();
+            const stBadge = /complet|entreg/i.test(stLower)
+                ? ' · <span class="op-meta" style="color:#059669;font-weight:600;">Completado</span>'
+                : '';
             const id = r.id;
             const ocVinc = _compraVinculadaLocal(id, tipoVinc);
             const ocMeta = ocVinc
@@ -2913,7 +2997,7 @@ const ComprasModule = (function() {
                 : '';
             const btnLabel = ocVinc ? 'Ver OC vinculada' : 'Nueva compra vinculada';
             return '<div class="op-row">' +
-                '<div><strong>' + esc(folio) + '</strong> · ' + esc(cliente) + '<br><span class="op-meta">' + esc(st) + '</span>' + ocMeta + '</div>' +
+                '<div><strong>' + esc(folio) + '</strong> · ' + esc(cliente) + '<br><span class="op-meta">' + esc(st) + '</span>' + stBadge + ocMeta + '</div>' +
                 '<div class="op-actions">' +
                 '<button type="button" class="btn-ssepi btn-compras op-go" style="font-size:12px;padding:6px 12px;" data-vinc-tipo="' + esc(tipoVinc) + '" data-vinc-id="' + esc(id) + '">' + esc(btnLabel) + '</button>' +
                 '</div></div>';
