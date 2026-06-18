@@ -1494,6 +1494,7 @@ const notificacionesService = createDataService('notificaciones');
         const { avance, proceso } = _getAvanceYProceso(proyecto);
         const linea = _getLineaTiempo(proyecto);
         const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(proyecto);
+        const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(proyecto, 'proyectos_automatizacion') ?? true;
         const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
 
         const esAdminS = _verFinanciero();
@@ -1528,6 +1529,11 @@ const notificacionesService = createDataService('notificaciones');
                     </div>
                     <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
                         ${badgeCuarentena}
+                        <div class="card-actions">
+                            ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); serviciosModule._eliminarProyecto('${proyecto.id}')" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>` : ''}
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">
@@ -1551,21 +1557,25 @@ const notificacionesService = createDataService('notificaciones');
     function _renderLista(proyectos) {
         const container = document.getElementById('listaContainer');
         if (!container) return;
-        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Proyecto</th><th>Cliente</th><th>Vendedor</th><th>Avance</th><th>Etapa</th><th>Línea de tiempo</th><th>Estado</th><th>Balance</th></tr></thead><tbody>';
+        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Proyecto</th><th>Cliente</th><th>Vendedor</th><th>Avance</th><th>Etapa</th><th>Línea de tiempo</th><th>Estado</th><th>Balance</th><th>Acciones</th></tr></thead><tbody>';
         proyectos.forEach(p => {
             const { avance, proceso } = _getAvanceYProceso(p);
             const linea = _getLineaTiempo(p);
             const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(p);
-            html += `<tr onclick="serviciosModule._abrirProyecto('${p.id}')" class="${enCuarentena ? 'row-cuarentena' : ''}">
-                <td>${p.folio || p.id.slice(-6)} ${enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : ''}</td>
-                <td>${p.nombre || ''}</td>
-                <td>${p.cliente || ''}</td>
-                <td>${p.vendedor || ''}</td>
-                <td><span class="avance-pct">${avance}%</span></td>
-                <td>${proceso}</td>
-                <td><small>${linea}</small></td>
-                <td><span class="status-badge" style="background:${(function(){ const s=_normEstadoProyecto(p.estado); if(s==='pendiente') return '#ff9800'; if(s==='esperando_cotizacion'||s==='esperando_confirmacion') return '#9c27b0'; if(s==='progreso'||s==='garantia') return '#2196f3'; if(s==='cancelado') return '#f44336'; return '#4caf50'; })()}; color:white;">${p.estado}</span> · ${proceso}</td>
-                <td>${p.rentabilidad_estado === 'rojo' ? (esAdminS ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(p.adeudo_generado||0).toFixed(0)}</span>` : `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;" title="Rentabilidad baja"></span>`) : (p.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—')}</td>
+            const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(p, 'proyectos_automatizacion') ?? true;
+            html += `<tr class="${enCuarentena ? 'row-cuarentena' : ''}">
+                <td onclick="serviciosModule._abrirProyecto('${p.id}')">${p.folio || p.id.slice(-6)} ${enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : ''}</td>
+                <td onclick="serviciosModule._abrirProyecto('${p.id}')">${p.nombre || ''}</td>
+                <td onclick="serviciosModule._abrirProyecto('${p.id}')">${p.cliente || ''}</td>
+                <td onclick="serviciosModule._abrirProyecto('${p.id}')">${p.vendedor || ''}</td>
+                <td onclick="serviciosModule._abrirProyecto('${p.id}')"><span class="avance-pct">${avance}%</span></td>
+                <td onclick="serviciosModule._abrirProyecto('${p.id}')">${proceso}</td>
+                <td onclick="serviciosModule._abrirProyecto('${p.id}')"><small>${linea}</small></td>
+                <td onclick="serviciosModule._abrirProyecto('${p.id}')"><span class="status-badge" style="background:${(function(){ const s=_normEstadoProyecto(p.estado); if(s==='pendiente') return '#ff9800'; if(s==='esperando_cotizacion'||s==='esperando_confirmacion') return '#9c27b0'; if(s==='progreso'||s==='garantia') return '#2196f3'; if(s==='cancelado') return '#f44336'; return '#4caf50'; })()}; color:white;">${p.estado}</span> · ${proceso}</td>
+                <td onclick="serviciosModule._abrirProyecto('${p.id}')">${p.rentabilidad_estado === 'rojo' ? (esAdminS ? `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;">🔴 $${(p.adeudo_generado||0).toFixed(0)}</span>` : `<span class="badge-rentabilidad-rojo" style="font-size:11px;padding:2px 6px;" title="Rentabilidad baja"></span>`) : (p.rentabilidad_estado === 'verde' ? `<span class="badge-rentabilidad-verde" style="font-size:11px;padding:2px 6px;">🟢 OK</span>` : '—')}</td>
+                <td class="acciones">
+                    ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); serviciosModule._eliminarProyecto('${p.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
+                </td>
             </tr>`;
         });
         html += '</tbody></table>';
@@ -1635,6 +1645,35 @@ const notificacionesService = createDataService('notificaciones');
         if (modal) modal.classList.add('active');
         _irPaso(currentStep);
         _aplicarModoConsultaUI();
+    }
+
+    async function _eliminarProyecto(id) {
+        const sid = String(id);
+        const proyecto = projects.find(p => String(p.id) === sid);
+        if (!proyecto) { _showToast('Proyecto no encontrado', 'error'); return; }
+        if (window.SSEPIStateMachine) {
+            if (window.SSEPIStateMachine.estaEnCuarentena(proyecto)) {
+                _showToast('Proyecto en cuarentena contable. No se puede eliminar.', 'error');
+                return;
+            }
+            if (!window.SSEPIStateMachine.puedeEliminar(proyecto, 'proyectos_automatizacion')) {
+                _showToast('El proyecto ya avanzó en el pipeline. Solo puede cancelarse.', 'error');
+                return;
+            }
+        }
+        const folio = proyecto.folio || sid.slice(-6);
+        const cliente = proyecto.cliente || 'N/A';
+        if (!confirm(`¿Eliminar proyecto ${folio} de ${cliente}?`)) return;
+        try {
+            const { error } = await window.supabase.from('proyectos_automatizacion').delete().eq('id', id);
+            if (error) throw error;
+            _showToast('Proyecto eliminado: ' + folio, 'success');
+            await _loadProjects();
+            _applyFilters();
+        } catch (e) {
+            console.error(e);
+            _showToast('Error al eliminar: ' + e.message, 'error');
+        }
     }
 
     async function _abrirNuevoProyecto() {
@@ -4354,6 +4393,7 @@ const notificacionesService = createDataService('notificaciones');
     return {
         init,
         _abrirProyecto,
+        _eliminarProyecto,
         _actualizarActividad,
         _eliminarActividad,
         _agregarSubactividad,

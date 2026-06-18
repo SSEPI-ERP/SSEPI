@@ -230,10 +230,21 @@ const SoporteModule = (function() {
     }
 
     function _crearCardKanban(visita) {
+        const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(visita);
+        const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(visita, 'soporte_visitas') ?? true;
+        const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
         return `
-            <div class="kanban-card" data-id="${visita.id}">
+            <div class="kanban-card ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${visita.id}">
                 <div class="card-header">
                     <span class="folio">${visita.folio || visita.id.slice(-6)}</span>
+                    <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
+                        ${badgeCuarentena}
+                        <div class="card-actions">
+                            ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); soporteModule._eliminarVisita('${visita.id}')" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>` : ''}
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="cliente">${visita.cliente || 'Cliente'}</div>
@@ -250,7 +261,7 @@ const SoporteModule = (function() {
     function _renderLista(visitas) {
         const container = document.getElementById('listaContainer');
         if (!container) return;
-        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Cliente</th><th>Equipo</th><th>Técnico</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>';
+        let html = '<table class="lista-table"><thead><tr><th>Folio</th><th>Cliente</th><th>Equipo</th><th>Técnico</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
         visitas.forEach(v => {
             const est = v.estado || 'Registrado';
             const estadoMap = {
@@ -268,13 +279,18 @@ const SoporteModule = (function() {
                 'Garantía': { class: 'status-garantia', text: 'Garantía' }
             };
             const em = estadoMap[est] || { class: '', text: est };
-            html += `<tr onclick="soporteModule._editarVisita('${v.id}')">
-                <td>${v.folio || v.id.slice(-6)}</td>
-                <td>${v.cliente || ''}</td>
-                <td>${v.equipo || ''}</td>
-                <td>${v.tecnico || ''}</td>
-                <td>${v.fecha || ''}</td>
-                <td><span class="status-badge ${em.class}">${em.text}</span></td>
+            const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(v);
+            const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(v, 'soporte_visitas') ?? true;
+            html += `<tr class="${enCuarentena ? 'row-cuarentena' : ''}">
+                <td onclick="soporteModule._editarVisita('${v.id}')">${v.folio || v.id.slice(-6)} ${enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : ''}</td>
+                <td onclick="soporteModule._editarVisita('${v.id}')">${v.cliente || ''}</td>
+                <td onclick="soporteModule._editarVisita('${v.id}')">${v.equipo || ''}</td>
+                <td onclick="soporteModule._editarVisita('${v.id}')">${v.tecnico || ''}</td>
+                <td onclick="soporteModule._editarVisita('${v.id}')">${v.fecha || ''}</td>
+                <td onclick="soporteModule._editarVisita('${v.id}')"><span class="status-badge ${em.class}">${em.text}</span></td>
+                <td class="acciones">
+                    ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); soporteModule._eliminarVisita('${v.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
+                </td>
             </tr>`;
         });
         html += '</tbody></table>';
@@ -337,6 +353,36 @@ const SoporteModule = (function() {
         isNewVisit = false;
         _cargarDatosEnModal(visita);
         document.getElementById('wsModal').classList.add('active');
+    }
+
+    async function _eliminarVisita(id) {
+        const visita = visits.find(v => String(v.id) === String(id));
+        if (!visita) { _showToast('Visita no encontrada', 'error'); return; }
+        if (visita._esProyecto) { _showToast('Los proyectos se eliminan desde el módulo Automatización', 'info'); return; }
+        if (window.SSEPIStateMachine) {
+            if (window.SSEPIStateMachine.estaEnCuarentena(visita)) {
+                _showToast('Visita en cuarentena contable. No se puede eliminar.', 'error');
+                return;
+            }
+            if (!window.SSEPIStateMachine.puedeEliminar(visita, 'soporte_visitas')) {
+                _showToast('La visita ya avanzó en el pipeline. Solo puede cancelarse.', 'error');
+                return;
+            }
+        }
+        const folio = visita.folio || id.slice(-6);
+        const cliente = visita.cliente || 'N/A';
+        if (!confirm(`¿Eliminar visita ${folio} de ${cliente}?`)) return;
+        try {
+            const { error } = await window.supabase.from('soporte_visitas').delete().eq('id', id);
+            if (error) throw error;
+            _showToast('Visita eliminada: ' + folio, 'success');
+            _addToFeed('🗑️', 'Visita eliminada: ' + folio);
+            await _loadVisits();
+            _applyFilters();
+        } catch (e) {
+            console.error(e);
+            _showToast('Error al eliminar: ' + e.message, 'error');
+        }
     }
 
     function _cargarDatosEnModal(visita) {
@@ -724,6 +770,7 @@ const SoporteModule = (function() {
     return {
         init,
         _editarVisita,
+        _eliminarVisita,
         _actualizarRefaccionSoporte,
         _eliminarRefaccionSoporte
     };

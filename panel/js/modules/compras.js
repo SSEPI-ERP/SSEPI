@@ -552,12 +552,20 @@ const ComprasModule = (function() {
 
     function _crearCardKanban(compra, esAdminC) {
         const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(compra);
+        const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(compra, 'compras') ?? true;
         const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
         return `
             <div class="kanban-card ${enCuarentena ? 'card-cuarentena' : ''}" data-id="${compra.id}">
                 <div class="card-header">
                     <span class="folio">${compra.folio || compra.id.slice(-6)}</span>
-                    ${badgeCuarentena}
+                    <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
+                        ${badgeCuarentena}
+                        <div class="card-actions">
+                            ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); comprasModule._eliminarCompra('${compra.id}')" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>` : ''}
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="proveedor">${compra.proveedor || 'Proveedor'}</div>
@@ -576,20 +584,24 @@ const ComprasModule = (function() {
         const tbody = document.getElementById('comprasTableBody');
         if (!tbody) return;
         if (ordenes.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">No hay órdenes</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px;">No hay órdenes</td></tr>';
             return;
         }
         tbody.innerHTML = ordenes.map(c => {
             const enCuarentena = window.SSEPIStateMachine?.estaEnCuarentena(c);
+            const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(c, 'compras') ?? true;
             const badgeCuarentena = enCuarentena ? window.SSEPIStateMachine.badgeCuarentenaHTML() : '';
             return `
-            <tr class="${enCuarentena ? 'row-cuarentena' : ''}" onclick="comprasModule._abrirDetalle('${c.id}')">
-                <td><strong>${c.folio || c.id.slice(-6)}</strong> ${badgeCuarentena}</td>
-                <td>${c.proveedor || '—'}</td>
-                <td>${c.departamento || '—'}</td>
-                <td>${c.vinculacion ? `<span style="color:#0369a1;font-weight:600;">${c.vinculacion.folio_taller || c.vinculacion.folio || ''}</span>` : '—'}</td>
-                <td>${esAdminC ? '$' + (c.total || 0).toFixed(2) : '—'}</td>
-                <td><span class="status-badge estado-${c.estado}">${_getEstadoLabel(c.estado)}</span></td>
+            <tr class="${enCuarentena ? 'row-cuarentena' : ''}">
+                <td onclick="comprasModule._abrirDetalle('${c.id}')"><strong>${c.folio || c.id.slice(-6)}</strong> ${badgeCuarentena}</td>
+                <td onclick="comprasModule._abrirDetalle('${c.id}')">${c.proveedor || '—'}</td>
+                <td onclick="comprasModule._abrirDetalle('${c.id}')">${c.departamento || '—'}</td>
+                <td onclick="comprasModule._abrirDetalle('${c.id}')">${c.vinculacion ? `<span style="color:#0369a1;font-weight:600;">${c.vinculacion.folio_taller || c.vinculacion.folio || ''}</span>` : '—'}</td>
+                <td onclick="comprasModule._abrirDetalle('${c.id}')">${esAdminC ? '$' + (c.total || 0).toFixed(2) : '—'}</td>
+                <td onclick="comprasModule._abrirDetalle('${c.id}')"><span class="status-badge estado-${c.estado}">${_getEstadoLabel(c.estado)}</span></td>
+                <td class="acciones">
+                    ${puedeBorrar ? `<button class="btn-icon btn-delete" onclick="event.stopPropagation(); comprasModule._eliminarCompra('${c.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
+                </td>
             </tr>
             `;
         }).join('');
@@ -828,6 +840,34 @@ const ComprasModule = (function() {
         const html = await _generarDetalleHTML(compra);
         contenido.innerHTML = html;
         modal.classList.add('active');
+    }
+
+    async function _eliminarCompra(id) {
+        const compra = compras.find(c => String(c.id) === String(id));
+        if (!compra) { _showToast('Orden de compra no encontrada', 'error'); return; }
+        if (window.SSEPIStateMachine) {
+            if (window.SSEPIStateMachine.estaEnCuarentena(compra)) {
+                _showToast('OC en cuarentena contable. No se puede eliminar.', 'error');
+                return;
+            }
+            if (!window.SSEPIStateMachine.puedeEliminar(compra, 'compras')) {
+                _showToast('La OC ya avanzó en el pipeline. Solo puede cancelarse.', 'error');
+                return;
+            }
+        }
+        const folio = compra.folio || id.slice(-6);
+        const proveedor = compra.proveedor || 'N/A';
+        if (!confirm(`¿Eliminar orden de compra ${folio} de ${proveedor}?`)) return;
+        try {
+            const { error } = await window.supabase.from('compras').delete().eq('id', id);
+            if (error) throw error;
+            _showToast('OC eliminada: ' + folio, 'success');
+            _addToFeed('🗑️', 'OC eliminada: ' + folio);
+            await _loadCompras();
+        } catch (e) {
+            console.error(e);
+            _showToast('Error al eliminar: ' + e.message, 'error');
+        }
     }
 
     async function _cargarItemsCompra(compra, compraId) {
@@ -3033,6 +3073,7 @@ const ComprasModule = (function() {
     return {
         init,
         _abrirDetalle,
+        _eliminarCompra,
         _crearOrdenDesdeSolicitud,
         _editarOrden,
         _cargarItemsDesdeVinculacion,

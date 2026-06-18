@@ -1299,6 +1299,7 @@ const SuministrosModule = (function() {
             const comps = data.componentes || [];
             const creador = data.creado_por_nombre || '—';
             const folioEsc = _esc(folio).replace(/'/g, "\\'");
+            const puedeBorrar = window.SSEPIStateMachine?.puedeEliminar(c, 'cotizaciones') ?? true;
             return `<tr>
                 <td><strong>${_esc(folio)}</strong></td>
                 <td>${_esc(data.cliente_nombre || '—')}</td>
@@ -1314,6 +1315,7 @@ const SuministrosModule = (function() {
                 <td class="historial-acciones">
                     <button type="button" class="btn btn-sm btn-outline" onclick="suministrosModule._verCotizacion('${folioEsc}')" title="Ver detalle"><i class="fas fa-eye"></i></button>
                     <button type="button" class="btn btn-sm btn-outline" onclick="suministrosModule._editarCotizacion('${folioEsc}')" title="Editar"><i class="fas fa-edit"></i></button>
+                    ${puedeBorrar ? `<button type="button" class="btn btn-sm btn-danger" onclick="suministrosModule._eliminarCotizacion('${folioEsc}')" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
                 </td>
             </tr>`;
         }).join('');
@@ -1429,6 +1431,34 @@ const SuministrosModule = (function() {
                 ${isSuministrosAdmin(perfilUsuario) && data.estado !== 'pendiente_admin' && data.estado !== 'en_compra' ? `<button class="btn btn-primary" onclick="suministrosModule._enviarAComprasDesdeHistorial('${folio}')"><i class="fas fa-paper-plane"></i> Enviar a Compras</button>` : ''}
             </div>`;
         modal.classList.add('active');
+    }
+
+    async function _eliminarCotizacion(folio) {
+        const cot = cotizaciones.find(c => (c.folio || (c.data && c.data.folio)) === folio);
+        if (!cot) { _showToast('Cotización no encontrada', 'warning'); return; }
+        const data = cot.data || cot;
+        if (window.SSEPIStateMachine) {
+            if (window.SSEPIStateMachine.estaEnCuarentena(data)) {
+                _showToast('Cotización en cuarentena contable. No se puede eliminar.', 'error');
+                return;
+            }
+            if (!window.SSEPIStateMachine.puedeEliminar(data, 'cotizaciones')) {
+                _showToast('La cotización ya avanzó en el pipeline. Solo puede cancelarse.', 'error');
+                return;
+            }
+        }
+        const cliente = data.cliente_nombre || 'N/A';
+        if (!confirm(`¿Eliminar cotización ${folio} de ${cliente}?`)) return;
+        try {
+            const targetId = cot.id || data.id;
+            const { error } = await window.supabase.from('cotizaciones').delete().eq('id', targetId);
+            if (error) throw error;
+            _showToast('Cotización eliminada: ' + folio, 'success');
+            await _loadCotizaciones();
+        } catch (e) {
+            console.error(e);
+            _showToast('Error al eliminar: ' + e.message, 'error');
+        }
     }
 
     function _editarCotizacion(folio) {
@@ -1785,7 +1815,7 @@ const SuministrosModule = (function() {
     return {
         init, _addToCartDirect, _removeFromCart, _updateCartQty, _vaciarCarrito,
         _goToPage, _showBomDetail, _guardarCotizacion, _enviarACompras,
-        _deducirInventario, _limpiarCot, _verCotizacion, _editarCotizacion,
+        _deducirInventario, _limpiarCot, _verCotizacion, _editarCotizacion, _eliminarCotizacion,
         _generarPDF, _imprimirCotizacion, _enviarAComprasDesdeHistorial, _aprobarBandejaYEnviarCompras,
         getCarrito: () => carrito, getCatalogo: () => catalogoUnificado
     };

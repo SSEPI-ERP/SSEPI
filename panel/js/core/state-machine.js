@@ -262,14 +262,36 @@
     // =====================================================
     // REGLAS DE INTEGRIDAD: helpers para UI
     // =====================================================
-    function puedeEliminar(item) {
+    function puedeEliminar(item, tabla) {
         if (!item) return false;
         // Cuarentena bloquea TODO
         if (item.bloqueo_contable === true) return false;
-        // Solo permitir eliminar en etapas iniciales
-        const estatus = item.estatus_actual || item.estado || '';
-        const eliminables = ['recepcion', 'diagnostico', 'Nuevo', 'Diagnostico', 'pendiente', 'borrador'];
-        return eliminables.includes(estatus);
+        const estatus = String(item.estatus_actual || item.estado || '').trim();
+        const low = estatus.toLowerCase();
+
+        // Reglas genericas de etapas iniciales
+        const eliminablesGenericos = ['recepcion', 'diagnostico', 'nuevo', 'diagnostico', 'pendiente', 'borrador', 'registrado', 'cotizacion'];
+        if (eliminablesGenericos.includes(low)) return true;
+
+        // Reglas por tabla
+        const tbl = String(tabla || '').toLowerCase();
+        if (tbl === 'compras' || tbl === 'orden_compra') {
+            const n = Number(estatus);
+            return n === 0 || n === 1; // Borrador / Solicitud
+        }
+        if (tbl === 'proyectos_automatizacion' || tbl === 'automatizacion') {
+            return ['nuevo', 'registrado', 'pendiente', 'pendiente_admin'].includes(low);
+        }
+        if (tbl === 'soporte_visitas' || tbl === 'soporte') {
+            return ['registrado', 'diagnostico', 'diagnostico'].includes(low);
+        }
+        if (tbl === 'cotizaciones' || tbl === 'cotizacion') {
+            return ['cotizacion', 'borrador', 'pendiente_admin'].includes(low);
+        }
+        if (tbl === 'ventas') {
+            return ['pendiente', 'borrador', 'cotizacion'].includes(low);
+        }
+        return false;
     }
 
     function estaEnCuarentena(item) {
