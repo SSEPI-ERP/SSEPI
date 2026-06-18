@@ -576,6 +576,8 @@ const TallerModule = (function() {
             // Normalizar datos de importación laboratorio-1 para que Kanban/lista muestren bien
             if (o.origen !== 'panel') {
                 o = _applyLaboratorioImport(o);
+            } else {
+                o = _ensureOrdenClienteCampos(o);
             }
             // Garantizar campo origen para separar viejas vs nuevas
             if (!o.origen) o.origen = 'legacy';
@@ -1804,6 +1806,22 @@ const TallerModule = (function() {
             consumibles_usados: orden.consumibles_usados,
             bitacora: orden.bitacora
         };
+    }
+
+    /** Órdenes panel / TRACE / captura: rellena cliente y equipo si solo vienen en campos alternos. */
+    function _ensureOrdenClienteCampos(orden) {
+        if (!orden) return orden;
+        const rec = orden.datos_recepcion || {};
+        if (!_esTextoValido(orden.cliente_nombre, 2)) {
+            const cand = orden.cliente || rec.cliente || orden.referencia || '';
+            if (_esTextoValido(cand, 2)) orden.cliente_nombre = String(cand).trim();
+        }
+        if (!_esTextoValido(orden.equipo, 2)) {
+            const eq = rec.equipo || orden.nombre_producto || orden.descripcion || '';
+            if (_esTextoValido(eq, 2)) orden.equipo = String(eq).trim();
+        }
+        if (!orden.estado && orden.estatus_actual) orden.estado = orden.estatus_actual;
+        return orden;
     }
 
     /** Aplica formato laboratorio-1 (importar_laboratorio.js) sin mezclar vendedor/técnico en equipo/falla */

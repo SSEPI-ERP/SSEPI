@@ -48,7 +48,7 @@
                 'pendiente':1,'progreso':6,'completado':8,'cancelado':0,
                 'Pendiente':1,'Activo':6,'activo':6,'En progreso':6,'en progreso':6,'Completado':8,'Cerrado':8,'cerrado':8
             },
-            'cotizaciones': { 'borrador':1,'pendiente_autorizacion_ventas':3,'Pendiente':3,'aprobada':4,'cancelada':0 },
+            'cotizaciones': { 'borrador':1,'pendiente_autorizacion_ventas':3,'Pendiente':3,'aprobada':4,'cancelada':0,'Entregado':8,'entregado':8,'completado':8,'Pagado':8,'pagado':8,'Facturado':7,'facturado':7 },
             'compras': { '0':3,'1':5,'2':5,'3':5,'4':6,'5':6 },
             'ventas': { 'Pendiente':7,'Pagado':8 }
         };
@@ -98,9 +98,54 @@
         return PIPELINE_PASOS.find(p => p.id === estatusId) || PIPELINE_PASOS[0];
     }
 
+    /** Texto crudo de BD → id canónico del pipeline (recepcion…entrega). */
+    function normalizarEstatusPipeline(estatus, tabla, item) {
+        const PIPELINE_IDS = PIPELINE_PASOS.map(function (p) { return p.id; });
+        const ALIAS = {
+            entregado: 'entrega', entrega: 'entrega', completado: 'entrega', completada: 'entrega',
+            pagado: 'entrega', cerrado: 'entrega', cerrada: 'entrega',
+            reparado: 'facturacion', 'reparado / listo': 'facturacion', facturado: 'facturacion',
+            'en reparación': 'ejecucion', 'en reparacion': 'ejecucion', progreso: 'ejecucion',
+            'en progreso': 'ejecucion', activo: 'ejecucion',
+            'en espera': 'cotizacion', cotizacion: 'cotizacion', cotización: 'cotizacion',
+            diagnostico: 'diagnostico', 'diagnóstico': 'diagnostico',
+            aprobada: 'autorizacion', autorizado: 'autorizacion', confirmado: 'autorizacion',
+            en_compra: 'adquisicion', adquisicion: 'adquisicion',
+            nuevo: 'recepcion', registrado: 'recepcion', borrador: 'recepcion',
+            cancelado: 'cancelado', cancelada: 'cancelado'
+        };
+
+        let raw = estatus;
+        if ((!raw || String(raw).trim() === '') && item) {
+            raw = derivarEstatusActualDesdeNativo(tabla, item);
+        }
+        if (!raw || String(raw).trim() === '') return 'recepcion';
+
+        const s = String(raw).trim();
+        if (PIPELINE_IDS.includes(s)) return s;
+
+        const low = s.toLowerCase();
+        if (ALIAS[low]) return ALIAS[low];
+
+        if (item && tabla) {
+            const derived = derivarEstatusActualDesdeNativo(tabla, Object.assign({}, item, { estado: s }));
+            if (derived && PIPELINE_IDS.includes(derived)) return derived;
+        }
+
+        for (var key in ALIAS) {
+            if (Object.prototype.hasOwnProperty.call(ALIAS, key) && low.indexOf(key) !== -1) {
+                return ALIAS[key];
+            }
+        }
+        return 'recepcion';
+    }
+
     function renderTimelineHTML(estatusActual, opts) {
         opts = opts || {};
-        const activoIdx = PIPELINE_PASOS.findIndex(p => p.id === estatusActual);
+        const tabla = opts.tabla || null;
+        const item = opts.item || null;
+        const idNorm = normalizarEstatusPipeline(estatusActual, tabla, item);
+        const activoIdx = PIPELINE_PASOS.findIndex(function (p) { return p.id === idNorm; });
         const indiceActual = activoIdx >= 0 ? activoIdx : 0;
         const progreso = (indiceActual / (PIPELINE_PASOS.length - 1)) * 100;
 
@@ -270,6 +315,7 @@
         PIPELINE_PASOS,
         obtenerPasoUnificado,
         derivarEstatusActualDesdeNativo,
+        normalizarEstatusPipeline,
         obtenerEtiquetaPaso,
         obtenerInfoPaso,
         renderTimelineHTML,
