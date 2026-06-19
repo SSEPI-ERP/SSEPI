@@ -26,11 +26,33 @@ scripts/*.html
 .vercelignore
 dist/
 
-# Exclude other projects
+# Exclude other projects / large local-only directories
 ssepinext/
 landing/node_modules/
 mi-coi/
 WEB/
+ssepi/
+simulaciones/
+ollama-data/
+backups/
+clintes/
+Compras/
+Boom para inventario/
+Estilos pdf/
+evidenceas/
+logs/
+tmp/
+temp/
+
+# Exclude migration/diagnostic scripts from deploy bundle
+ssepinext/probe-*.mjs
+ssepinext/test-*.mjs
+ssepinext/check-*.mjs
+ssepinext/clear-*.mjs
+ssepinext/fix-*.mjs
+ssepinext/migrar-a-cloud*.mjs
+ssepinext/import-n8n-workflows.mjs
+ssepinext/truncate-cloud-*.mjs
 
 # Exclude large files
 *.zip
