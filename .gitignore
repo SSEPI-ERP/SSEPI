@@ -12,6 +12,13 @@
 .env*
 !.env.example
 
+# Scripts con tokens/secretos de cloud (no commitear)
+ssepinext/*-cloud-*.mjs
+ssepinext/run-cloud-sql.mjs
+ssepinext/set-cloud-passwords.mjs
+ssepinext/test-cloud-rls.mjs
+ssepinext/cloud-diagnostico.mjs
+
 # Logs y temporales
 /logs/
 *.log
@@ -62,3 +69,5 @@ Compras/
 # Simulaciones / datos de entrada grandes (imágenes, OCR, reportes escaneados)
 simulaciones/escaner de imagenes/
 simulaciones/SSEPI_Paquete_ERP/reportes/
+
+.vercel
