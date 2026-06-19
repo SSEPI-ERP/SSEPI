@@ -270,7 +270,15 @@
     </script>
 </head>
 <body class="page-panel nav-loading">
-<script>(function(){ var t=localStorage.getItem('sb-offline-token')||sessionStorage.getItem('sb-offline-token-sess'); if(!t){window.location.href='/panel/login.html';} })();</script>
+<script>(function(){
+  var t=localStorage.getItem('sb-offline-token')||sessionStorage.getItem('sb-offline-token-sess');
+  if(!t){
+    try {
+      for (var i=0;i<localStorage.length;i++) { var k=localStorage.key(i)||''; if(k.indexOf('sb-')===0 && k.indexOf('-auth-token')!==-1){ t=localStorage.getItem(k); if(t) break; } }
+    } catch(e){}
+  }
+  if(!t){window.location.href='/panel/login.html';}
+})();</script>
     <script>(function(){ var r = sessionStorage.getItem('ssepi_rol'); if(r) document.body.dataset.rol = r; })();</script>
 
     <header>

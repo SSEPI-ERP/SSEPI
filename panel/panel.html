@@ -31,7 +31,22 @@
 <body class="page-panel nav-loading">
     <script>
     (function(){
+        // Soporte dual: SSEPI-NEXT offline (sb-offline-token) y Supabase cloud (sb-<ref>-auth-token)
         var token = localStorage.getItem('sb-offline-token') || sessionStorage.getItem('sb-offline-token-sess');
+        if (!token) {
+            // Buscar token de sesión de Supabase Auth (cloud). La clave incluye el project ref.
+            var cloudToken = null;
+            try {
+                for (var i = 0; i < localStorage.length; i++) {
+                    var k = localStorage.key(i) || '';
+                    if (k.indexOf('sb-') === 0 && k.indexOf('-auth-token') !== -1) {
+                        cloudToken = localStorage.getItem(k);
+                        if (cloudToken) break;
+                    }
+                }
+            } catch (e) {}
+            token = cloudToken;
+        }
         if (!token) { window.location.href = '/panel/login.html'; return; }
         var r = sessionStorage.getItem('ssepi_rol');
         if(r) document.body.dataset.rol = r;

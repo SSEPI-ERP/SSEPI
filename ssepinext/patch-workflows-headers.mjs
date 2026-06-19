@@ -1,10 +1,23 @@
+// patch-workflows-headers.mjs
+// Agrega header "Authorization: Bearer" a cada nodo HTTP de los workflows n8n.
+// Razón: PostgREST con solo apikey = rol anon, anon solo puede SELECT.
+// PATCH/POST requieren Authorization Bearer (service_role).
+//
+// USO: SUPABASE_SERVICE_KEY=... SUPABASE_ANON_KEY=... node patch-workflows-headers.mjs
+// Lee de env vars para no commitear credenciales.
+
 import fs from 'node:fs';
 import http from 'node:http';
 
-const SVC = '***SERVICE_ROLE_REMOVED***';
-const ANON = '***ANON_REMOVED***';
+const SVC = process.env.SUPABASE_SERVICE_KEY;
+const ANON = process.env.SUPABASE_ANON_KEY;
 
-const jar = 'C:/Users/norbe/AppData/Local/Temp/n8n-cookies.txt';
+if (!SVC || !ANON) {
+    console.error('ERROR: Define SUPABASE_SERVICE_KEY y SUPABASE_ANON_KEY en env');
+    process.exit(1);
+}
+
+const jar = process.env.N8N_COOKIE_JAR || 'C:/Users/norbe/AppData/Local/Temp/n8n-cookies.txt';
 const cookieData = fs.readFileSync(jar, 'utf8')
     .split('\n').filter(l => l.includes('n8n-auth'))
     .map(l => l.split('\t'))
@@ -46,26 +59,23 @@ const ids = [
     { id: 'QSEfjvAaFJycGYLt', name: '10-alarmas-templates-checker' }
 ];
 
+const SVC_CRED = 'HlITLUOguMja9wG3';
+const ANON_CRED = 'GzxyEoh68l466NOF';
+
 for (const { id, name } of ids) {
     const get = await call('GET', `/rest/workflows/${id}`);
     if (get.status !== 200) { console.log(`  ✗ ${name} GET ${get.status}`); continue; }
     const w = JSON.parse(get.data).data;
 
-    // Para cada nodo HTTP, agregar Authorization header
     let modified = false;
     for (const node of (w.nodes || [])) {
         if (node.type !== 'n8n-nodes-base.httpRequest') continue;
-
-        // Detectar qué credencial usa este nodo
         const cred = node.credentials?.httpHeaderAuth;
         if (!cred) continue;
 
-        const credId = cred.id;
-        // Service Role si id HlITLUOguMja9wG3, sino Anon
-        const isSvc = credId === 'HlITLUOguMja9wG3';
+        const isSvc = cred.id === SVC_CRED;
         const tokenValue = isSvc ? SVC : ANON;
 
-        // Forzar sendHeaders y agregar Authorization
         node.parameters.sendHeaders = true;
         if (!node.parameters.headerParameters) {
             node.parameters.headerParameters = { parameters: [] };
@@ -74,7 +84,6 @@ for (const { id, name } of ids) {
             node.parameters.headerParameters.parameters = [];
         }
         const hdrs = node.parameters.headerParameters.parameters;
-        // Quitar Authorization previo si existe
         const filtered = hdrs.filter(h => h.name !== 'Authorization');
         filtered.push({ name: 'Authorization', value: `Bearer ${tokenValue}` });
         node.parameters.headerParameters.parameters = filtered;

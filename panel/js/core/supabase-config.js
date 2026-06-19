@@ -77,7 +77,21 @@
         };
     }
 
-    var customFetch = createSsepiFetch(CLOUD_URL, LOCAL_PROXY_URL);
+    // En producción cloud, evitamos el fallback local innecesario y usamos timeout razonable.
+    // En SSEPI-NEXT, el interceptor de createSsepiFetch ya gestiona fallback + timeout.
+    var cloudFetch = async function(url, options) {
+        var controller = new AbortController();
+        var timeoutId = setTimeout(function() { controller.abort(); }, 20000);
+        try {
+            var response = await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+            clearTimeout(timeoutId);
+            return response;
+        } catch (err) {
+            clearTimeout(timeoutId);
+            throw err;
+        }
+    };
+    var customFetch = isSSEPINEXT ? createSsepiFetch(CLOUD_URL, LOCAL_PROXY_URL) : cloudFetch;
 
     // Exponer para otros módulos (CSP, auth-config, etc.)
     window.SUPABASE_URL = URL;
