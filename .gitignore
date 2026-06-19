@@ -18,6 +18,21 @@ ssepinext/run-cloud-sql.mjs
 ssepinext/set-cloud-passwords.mjs
 ssepinext/test-cloud-rls.mjs
 ssepinext/cloud-diagnostico.mjs
+ssepinext/*-passwords*.mjs
+
+# Scripts de diagnostico/migracion temporales (no commitear)
+ssepinext/probe-*.mjs
+ssepinext/test-*.mjs
+ssepinext/check-*.mjs
+ssepinext/clear-*.mjs
+ssepinext/fix-*.mjs
+ssepinext/truncate-cloud-*.mjs
+ssepinext/migrar-a-cloud*.mjs
+ssepinext/import-n8n-workflows.mjs
+ssepinext/open-n8n-policies.mjs
+ssepinext/cloud-schema.sql
+ssepinext/cloud-types.*
+ssepinext/data/*-report.json
 
 # Logs y temporales
 /logs/
@@ -47,6 +62,10 @@ ollama-data/
 
 # n8n local env (secrets)
 .env.n8n.local
+.n8n-api-key
+
+# Supabase CLI temp data
+ssepinext/supabase/.temp/
 
 # OS / editor
 .DS_Store
