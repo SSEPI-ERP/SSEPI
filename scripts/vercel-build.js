@@ -13,7 +13,8 @@ mkdirSync(OUTPUT, { recursive: true });
 // 1. Build del landing
 console.log('🔨 Building landing...');
 try {
-  execSync('npm run build --prefix landing', {
+  execSync('npm run build', {
+    cwd: join(ROOT, 'landing'),
     stdio: 'inherit',
     env: { ...process.env, NODE_ENV: 'production' }
   });
