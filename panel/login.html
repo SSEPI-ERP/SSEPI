@@ -168,6 +168,24 @@
             loginBtn.textContent = 'Verificando...';
             errorMsg.classList.remove('show');
 
+            // Fase 2.4: rate-limit fail-closed por email (bloqueo local persistente,
+            // mismo esquema de claves que auth-service.js para compartir contadores)
+            try {
+                const lk = 'ssepi_rl_' + btoa(unescape(encodeURIComponent(email.toLowerCase()))) + '_';
+                const bloqueoHasta = parseInt(localStorage.getItem(lk + 'bloqueo') || '0', 10);
+                if (bloqueoHasta && Date.now() < bloqueoHasta) {
+                    const restante = Math.ceil((bloqueoHasta - Date.now()) / 1000);
+                    throw new Error('Cuenta temporalmente bloqueada tras varios intentos fallidos. Reintenta en ' + restante + 's.');
+                }
+                if (bloqueoHasta) localStorage.removeItem(lk + 'bloqueo');
+            } catch (rlErr) {
+                errorMsg.textContent = rlErr.message;
+                errorMsg.classList.add('show');
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Entrar';
+                return;
+            }
+
             try {
                 const { data, error } = await window.supabase.auth.signInWithPassword({
                     email,
@@ -175,6 +193,13 @@
                 });
 
                 if (error) throw error;
+
+                // Login OK: limpiar contador de fallos
+                try {
+                    const lk = 'ssepi_rl_' + btoa(unescape(encodeURIComponent(email.toLowerCase()))) + '_';
+                    localStorage.removeItem(lk + 'fallos');
+                    localStorage.removeItem(lk + 'bloqueo');
+                } catch (_) {}
 
                 // Guardar perfil
                 let mustChange = false;
@@ -207,6 +232,20 @@
                     window.location.href = '/panel/panel.html';
                 }
             } catch (error) {
+                // Fase 2.4: registrar fallo (fail-closed). 6 fallos en 15 min → bloqueo 15 min.
+                try {
+                    const lk = 'ssepi_rl_' + btoa(unescape(encodeURIComponent(email.toLowerCase()))) + '_';
+                    const VENTANA = 15 * 60 * 1000, MAX = 6, BLOQUEO = 15 * 60 * 1000;
+                    let arr = []; try { arr = JSON.parse(localStorage.getItem(lk + 'fallos') || '[]') || []; } catch (_) {}
+                    const corte = Date.now() - VENTANA;
+                    arr = arr.filter(t => typeof t === 'number' && t > corte);
+                    arr.push(Date.now());
+                    localStorage.setItem(lk + 'fallos', JSON.stringify(arr));
+                    if (arr.length >= MAX) {
+                        localStorage.setItem(lk + 'bloqueo', String(Date.now() + BLOQUEO));
+                    }
+                } catch (_) {}
+
                 let msg = 'Error al iniciar sesión';
                 if (error.message?.includes('Invalid login credentials')) {
                     msg = 'Correo o contraseña incorrectos';

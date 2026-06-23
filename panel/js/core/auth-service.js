@@ -15,13 +15,61 @@ export class AuthService {
     return window.supabase;
   }
 
+  // ==================== RATE LIMIT LOGIN (fail-closed, Fase 2.4) ====================
+  // Contador local persistente por email (defense-in-depth sobre la protección
+  // nativa de Supabase Auth). Si se acumulan MAX_FALLOS en VENTANA_MIN, se bloquea
+  // BLOQUEO_MIN. fail-closed: si el contador dice bloqueado, NO se intenta login.
+  static LOGIN_MAX_FALLOS = 6;
+  static LOGIN_VENTANA_MS = 15 * 60 * 1000;   // 15 min
+  static LOGIN_BLOQUEO_MS = 15 * 60 * 1000;    // 15 min
+
+  _loginKey(email, suffix) {
+    try { return 'ssepi_rl_' + btoa(unescape(encodeURIComponent(String(email || '').toLowerCase()))) + '_' + suffix; }
+    catch (_) { return 'ssepi_rl_anon_' + suffix; }
+  }
+  _loginFallos(email) {
+    try {
+      const raw = localStorage.getItem(this._loginKey(email, 'fallos'));
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      const corte = Date.now() - AuthService.LOGIN_VENTANA_MS;
+      return Array.isArray(arr) ? arr.filter(t => typeof t === 'number' && t > corte) : [];
+    } catch (_) { return []; }
+  }
+  _loginBloqueadoHasta(email) {
+    try { return parseInt(localStorage.getItem(this._loginKey(email, 'bloqueo')) || '0', 10); } catch (_) { return 0; }
+  }
+  _loginCheckBloqueo(email) {
+    const hasta = this._loginBloqueadoHasta(email);
+    if (hasta && Date.now() < hasta) {
+      const restante = Math.ceil((hasta - Date.now()) / 1000);
+      throw new Error('Cuenta temporalmente bloqueada tras varios intentos fallidos. Reintenta en ' + restante + 's.');
+    }
+    // Bloqueo expirado: limpiar
+    if (hasta) { try { localStorage.removeItem(this._loginKey(email, 'bloqueo')); } catch (_) {} }
+  }
+  _loginRegistrarFallo(email) {
+    const fallos = this._loginFallos(email);
+    fallos.push(Date.now());
+    try { localStorage.setItem(this._loginKey(email, 'fallos'), JSON.stringify(fallos)); } catch (_) {}
+    if (fallos.length >= AuthService.LOGIN_MAX_FALLOS) {
+      try { localStorage.setItem(this._loginKey(email, 'bloqueo'), String(Date.now() + AuthService.LOGIN_BLOQUEO_MS)); } catch (_) {}
+    }
+  }
+  _loginLimpiar(email) {
+    try { localStorage.removeItem(this._loginKey(email, 'fallos')); localStorage.removeItem(this._loginKey(email, 'bloqueo')); } catch (_) {}
+  }
+
   // ==================== LOGIN CON MFA ====================
   async login(email, password) {
-    // Rate limiting por IP
+    // Rate limiting por IP (global)
     const ip = await this.getClientIP();
     if (!checkRateLimit(ip)) {
       throw new Error('Demasiados intentos. Intenta más tarde.');
     }
+
+    // Fase 2.4: rate limit fail-closed por email (bloqueo local persistente)
+    this._loginCheckBloqueo(email);
 
     const { data, error } = await this.supabase.auth.signInWithPassword({
       email,
@@ -29,7 +77,8 @@ export class AuthService {
     });
 
     if (error) {
-      // Registrar intento fallido
+      // Registrar intento fallido y aplicar contador fail-closed
+      this._loginRegistrarFallo(email);
       await this.logAuthAttempt(email, false, ip, error.message);
       throw error;
     }
@@ -47,10 +96,12 @@ export class AuthService {
   if (hasMFA) {
       // Si tiene MFA, la sesión aún no es completa; esperamos segundo factor
       // En este punto, la app debe redirigir a la verificación MFA
+      this._loginLimpiar(email);
       return { requiresMFA: true, userId: data.user.id };
     }
 
-    // Registrar intento exitoso
+    // Login exitoso: limpiar contador de fallos
+    this._loginLimpiar(email);
     await this.logAuthAttempt(email, true, ip, 'Login exitoso');
     return { user: data.user, session: data.session };
   }
