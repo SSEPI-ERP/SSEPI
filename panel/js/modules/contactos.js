@@ -1263,6 +1263,9 @@ const ContactosModule = (function() {
     async function _handleFileImport(e) {
         const file = e.target.files[0];
         if (!file) return;
+        // Fase 1.2: validar archivo antes de pasar a XLSX.read
+        const _fv = await (async () => { try { return await window.validarArchivoSeguro(file); } catch (_) { return { ok: true }; } })();
+        if (!_fv.ok) { if (typeof showNotification === 'function') showNotification(_fv.error, 'error'); e.target.value = ''; return; }
         const name = (file.name || '').toLowerCase();
         const isPdf = name.endsWith('.pdf') || file.type === 'application/pdf';
         const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls') || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.type === 'application/vnd.ms-excel';

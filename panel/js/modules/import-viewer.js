@@ -194,11 +194,16 @@ function escapeHtml(s) {
         .replace(/"/g, '&quot;');
 }
 
-function importFiles(e) {
+async function importFiles(e) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
     for (const file of files) {
+        // Fase 1.2: validar archivo antes de pasar a XLSX.read
+        try {
+            const _fv = await window.validarArchivoSeguro(file);
+            if (!_fv.ok) { _log(`Rechazado: ${file.name} — ${_fv.error}`); continue; }
+        } catch (_) { /* mejor esfuerzo */ }
         const reader = new FileReader();
         reader.onload = (evt) => {
             try {

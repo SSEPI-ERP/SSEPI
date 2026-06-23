@@ -1388,9 +1388,19 @@
         if (elClientes) elClientes.textContent = clientesList.length;
     }
 
-    function handleFileSelect(e) {
+    async function handleFileSelect(e) {
         var file = e.target.files[0];
         if (!file) return;
+        // Fase 1.2: validar archivo antes de pasar a XLSX.read
+        try {
+            var _fv = await window.validarArchivoSeguro(file);
+            if (!_fv.ok) {
+                var _ip = document.getElementById('importPreview');
+                if (_ip) _ip.innerHTML = '<p class="form-hint" style="color:var(--c-error);">' + (_fv.error || 'Archivo no válido') + '</p>';
+                e.target.value = '';
+                return;
+            }
+        } catch (_) { /* mejor esfuerzo */ }
         var reader = new FileReader();
         reader.onload = function(ev) {
             try {

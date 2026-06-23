@@ -824,6 +824,11 @@ const InventarioModule = (function() {
             const file = files[i];
             const name = (file.name || '').toLowerCase();
             if (name.endsWith('.pdf') || file.type === 'application/pdf') continue;
+            // Fase 1.2: validar archivo antes de pasarlo a XLSX.read
+            try {
+                const _fv = await window.validarArchivoSeguro(file, { permitidos: ['xlsx', 'xls', 'csv', 'txt'] });
+                if (!_fv.ok) { errores.push(`${file.name}: ${_fv.error}`); continue; }
+            } catch (_) { /* mejor esfuerzo */ }
             const categoria = _categoriaPorNombreArchivo(file.name);
             try {
                 if (progressText) progressText.textContent = `Leyendo ${file.name} (${i + 1}/${files.length})...`;
@@ -870,7 +875,7 @@ const InventarioModule = (function() {
         document.getElementById('importModal').classList.remove('active');
     }
 
-    function _manejarArchivoExcel(e) {
+    async function _manejarArchivoExcel(e) {
         const file = e.target.files[0];
         if (!file) return;
         const name = (file.name || '').toLowerCase();
@@ -879,6 +884,11 @@ const InventarioModule = (function() {
             e.target.value = '';
             return;
         }
+        // Fase 1.2: validar archivo antes de pasarlo a XLSX.read
+        try {
+            const _fv = await window.validarArchivoSeguro(file, { permitidos: ['xlsx', 'xls', 'csv', 'txt'] });
+            if (!_fv.ok) { alert(_fv.error); e.target.value = ''; return; }
+        } catch (_) { /* mejor esfuerzo */ }
         const reader = new FileReader();
         reader.onload = function(ev) {
             try {
@@ -924,7 +934,7 @@ const InventarioModule = (function() {
         reader.readAsArrayBuffer(file);
     }
 
-    function _manejarArchivoDirecto(e) {
+    async function _manejarArchivoDirecto(e) {
         const file = e.target.files[0];
         if (!file) return;
         const name = (file.name || '').toLowerCase();
@@ -933,6 +943,11 @@ const InventarioModule = (function() {
             e.target.value = '';
             return;
         }
+        // Fase 1.2: validar archivo antes de pasarlo a XLSX.read
+        try {
+            const _fv = await window.validarArchivoSeguro(file, { permitidos: ['xlsx', 'xls', 'csv', 'txt'] });
+            if (!_fv.ok) { alert(_fv.error); e.target.value = ''; return; }
+        } catch (_) { /* mejor esfuerzo */ }
         const reader = new FileReader();
         reader.onload = async function(ev) {
             try {
