@@ -1,7 +1,7 @@
 # Usuarios creados – contraseña provisional
 
-**Contraseña provisional para todos:** `Ssepi2025!`  
-Cada usuario debe cambiarla en el primer acceso: **Menú usuario → Configuración → Cambiar contraseña**.
+**Contraseña provisional para todos:** definida en `scripts/create-users-seed.js` (no se documenta el valor aquí; rotar en producción).
+Cada usuario debe cambiarla en el primer acceso: **Menú usuario → Configuración → Cambiar contraseña** (política fuerte + `must_change_password`, Fase 0.4).
 
 | Correo | Nombre | Rol | Notas |
 |--------|--------|-----|--------|

@@ -310,6 +310,12 @@
                 if (user) {
                     const profile = await window.authService.getCurrentProfile();
                     if (profile) {
+                        // Fase 0.4: forzar cambio de contraseña si la cuenta está marcada
+                        // (la marca de sesión ssepi_pwd_changed evita bucle si el UPDATE falló)
+                        if (profile.must_change_password === true && sessionStorage.getItem('ssepi_pwd_changed') !== '1') {
+                            window.location.href = '/panel/pages/cambiar-password.html?forced=1';
+                            return;
+                        }
                         try { sessionStorage.setItem('ssepi_rol', profile.rol); } catch (e) {}
                         document.body.dataset.rol = profile.rol;
                         if (window.applyNavByRole) await window.applyNavByRole(profile);

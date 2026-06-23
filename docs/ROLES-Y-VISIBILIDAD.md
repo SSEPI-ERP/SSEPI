@@ -71,6 +71,6 @@ Luego puedes volver a ejecutar `npm run create-users` para que el perfil de elec
 - **Ivan** (automatizacion) = **Automatización, Proyectos, Inventario**. No ve Compras.
 - **electronica.ssepi@gmail.com** (ventas_sin_compras) = como ventas pero **sin Compras**.
 - **ventas1@ssepi.org** (ventas) = **solo Ventas, Inventario, Contactos.**
-- Contraseña provisional: `Ssepi2025!`; cambiarla en **Configuración → Cambiar contraseña**.
+- Contraseña provisional (definida en los seeds de creación de usuarios); cada usuario debe rotarla en **Configuración → Cambiar contraseña** (política fuerte, Fase 0.4).
 
 **Análisis Laboratorio:** todos los usuarios con permiso `ordenes_taller` pueden ver la página y usar **Vista previa gráfica** y **Vista previa tabla**. Solo **admin** puede usar **Descargar reporte** (PDF).

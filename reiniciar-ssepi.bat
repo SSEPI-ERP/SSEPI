@@ -554,7 +554,7 @@ echo     ssepinext\iniciar-tunel-n8n.bat
 
 echo.
 
-echo   Usuarios offline (pass Ssepi2025!):
+echo   Usuarios offline (contraseña local definida en ssepinext\seed-usuarios.mjs):
 
 echo     norbertomoro4@gmail.com     — Norberto Moro
 

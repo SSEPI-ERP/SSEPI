@@ -63,7 +63,7 @@ echo  IMPORTANTE: La base es local (SQLite).
 echo  Si faltan tablas nuevas, el servidor las
 echo  crea automaticamente al arrancar.
 echo.
-  echo  Login local (contraseña: Ssepi2025!):
+  echo  Login local (contraseña definida en seed-usuarios.mjs):
   echo    norbertomoro4@gmail.com     — Norberto Moro
   echo    ventas1@ssepi.org           — Carlos Calderon
   echo    ventas@ssepi.org            — Daniel Zuniga
