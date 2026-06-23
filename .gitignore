@@ -21,6 +21,9 @@ ssepinext/certs/
 .env*
 !.env.example
 
+# Config runtime generado en build (contiene anon key — no commitear)
+panel/js/core/config.runtime.js
+
 # Scripts con tokens/secretos de cloud (no commitear)
 ssepinext/*-cloud-*.mjs
 ssepinext/run-cloud-sql.mjs

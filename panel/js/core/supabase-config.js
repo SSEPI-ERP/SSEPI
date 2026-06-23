@@ -9,13 +9,20 @@
     var isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
     var isLocal = isLocalDev && !isSSEPINEXT;
 
-    var CLOUD_URL = 'https://knzmdwjmrhcoytmebdwa.supabase.co';
+    // Config runtime inyectada en build (scripts/generate-runtime-config.mjs).
+    // Contiene la URL/anon key de cloud. No debe haber literals de keys en el repo.
+    var RT = window.__SSEPI_RUNTIME__ || {};
+    var CLOUD_URL = RT.url || '';
     var LOCAL_PROXY_URL = isSSEPINEXT ? (window.location.origin + '/proxy') : 'http://localhost:3333/proxy';
     var URL = isSSEPINEXT ? LOCAL_PROXY_URL : (isLocal ? 'http://127.0.0.1:54321' : CLOUD_URL);
 
-    // IMPORTANTE: Ejecuta `supabase status` y reemplaza ANON_KEY_LOCAL con tu clave real
-    var ANON_KEY_LOCAL = window.__SSEPI_LOCAL_ANON_KEY__ || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvY2FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NzQwNTAwMDAsImV4cCI6MTk4OTYyNjAwMH0.REPLACE_WITH_SUPABASE_STATUS_ANON_KEY';
-    var ANON_KEY = isLocal ? ANON_KEY_LOCAL : '***ANON_REMOVED***';
+    // IMPORTANTE: Ejecuta `supabase status` y reemplaza ANON_KEY_LOCAL con tu clave real (solo dev local CLI)
+    var ANON_KEY_LOCAL = window.__SSEPI_LOCAL_ANON_KEY__ || '';
+    // Cloud: la anon key viene de window.__SSEPI_RUNTIME__ (config.runtime.js generado).
+    var ANON_KEY = RT.anonKey || (isSSEPINEXT ? (ANON_KEY_LOCAL || 'ssepi-local-anon') : (isLocal ? ANON_KEY_LOCAL : ''));
+    if (!isSSEPINEXT && !isLocal && !RT.anonKey) {
+        console.error('[supabase-config] Falta window.__SSEPI_RUNTIME__.anonKey. Genera config.runtime.js: node scripts/generate-runtime-config.mjs');
+    }
 
     if (window.__SUPABASE_INITIALIZED__) {
         console.log('[supabase-config] Ya inicializado, saltando');

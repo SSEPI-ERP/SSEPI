@@ -12,9 +12,10 @@
 (function() {
     'use strict';
 
-    // Configuración de Supabase (desde supabase-config.js)
-    const SUPABASE_URL = window.SUPABASE_URL || window.SSEPI_SUPABASE_URL || 'https://knzmdwjmrhcoytmebdwa.supabase.co';
-    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || '';
+    // Configuración de Supabase (desde supabase-config.js / config.runtime.js)
+    const RT = window.__SSEPI_RUNTIME__ || {};
+    const SUPABASE_URL = window.SUPABASE_URL || window.SSEPI_SUPABASE_URL || RT.url || '';
+    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || RT.anonKey || '';
 
     /**
      * Configuración segura del cliente Supabase

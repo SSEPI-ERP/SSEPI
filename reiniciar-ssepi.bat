@@ -438,6 +438,10 @@ if "%N8N_OK%"=="1" (
 :: ========== FASE G: ARRANCAR SERVIDOR + TUNEL + CHROME ==========
 echo [G1] Arrancando servidor VPS SSEPI NEXT (offline)...
 
+:: Generar config.runtime.js (URL/anon key desde .env.local) para que el panel conecte
+echo [G1] Generando config.runtime.js...
+cd /d "%~dp0" && node scripts\generate-runtime-config.mjs
+
 start "SSEPI VPS SERVER" cmd /k "cd /d %~dp0ssepinext && node offline-server.mjs"
 
 

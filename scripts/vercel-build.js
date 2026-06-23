@@ -23,6 +23,20 @@ try {
   process.exit(1);
 }
 
+// 1b. Generar config.runtime.js (URL/anon key desde env de Vercel)
+// Debe ejecutarse ANTES de copiar panel/ para que el archivo se incluya.
+console.log('🔐 Generating runtime config (Supabase URL/anon key from env)...');
+try {
+  execSync('node scripts/generate-runtime-config.mjs', {
+    cwd: ROOT,
+    stdio: 'inherit',
+    env: { ...process.env }
+  });
+} catch (error) {
+  console.error('❌ Error generating runtime config:', error.message);
+  process.exit(1);
+}
+
 // 2. Copiar landing/dist a output (raíz)
 console.log('📦 Copying landing to root...');
 const landingDist = join(ROOT, 'landing', 'dist');
