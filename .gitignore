@@ -7,6 +7,15 @@
 *.key
 *.pem
 *.crt
+*.cer
+*.sdg
+*.pfx
+*.p12
+
+# CSD / certificados SAT del emisor (NUNCA commitear — secretos fiscales)
+mi-coi/csd/
+mi-coi/config_instituto.json
+ssepinext/certs/
 
 # Variables de entorno
 .env*
