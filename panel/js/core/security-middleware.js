@@ -8,10 +8,11 @@
 // CSP se aplica vía <meta>; en producción conviene enviarla también por cabecera HTTP desde el servidor.
 // Cabeceras HSTS, X-Frame-Options, X-Content-Type-Options: deben configurarse en el servidor (ver scripts/serve-with-headers.js o proxy).
 export function applyCSP() {
-  // Bypass completo en desarrollo local o túnel Cloudflare (preview PDF vía blob: en iframe)
+  // CSP relajada SOLO en dev local real (localhost/127.0.0.1/file:).
+  // El túnel *.trycloudflare.com es PÚBLICO: no se relaja (brecha XSS cerrada, Fase 2.2).
   const host = window.location.hostname;
-  if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.trycloudflare.com')) {
-    console.log('[CSP] Modo local: CSP relajada');
+  if (host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:') {
+    console.log('[CSP] Modo dev local: CSP relajada');
     const meta = document.createElement('meta');
     meta.httpEquiv = 'Content-Security-Policy';
     meta.content = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src * ws: wss:; style-src * 'unsafe-inline'; img-src * data: blob:; font-src * data:;";
@@ -24,13 +25,14 @@ export function applyCSP() {
   const supabaseHost = (() => {
     try { return supabaseUrl ? new URL(supabaseUrl).host : ''; } catch (e) { return ''; }
   })();
+  const cfdiBackend = (window.__SSEPI_RUNTIME__ && window.__SSEPI_RUNTIME__.cfdiBackendUrl) || '';
   meta.content = `
     default-src 'self';
     script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://vercel.live 'unsafe-inline' blob:;
     style-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline';
     font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:;
-    img-src 'self' data: https://images.unsplash.com;
-    connect-src 'self' https://*.supabase.co wss://*.supabase.co ${supabaseHost ? `https://${supabaseHost} wss://${supabaseHost}` : ''} https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://api.ipify.org https://vercel.live https://*.vercel.live wss://*.vercel.live;
+    img-src 'self' data: blob: https://images.unsplash.com;
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co ${supabaseHost ? `https://${supabaseHost} wss://${supabaseHost}` : ''} ${cfdiBackend ? cfdiBackend + ' ' : ''}https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://api.ipify.org https://vercel.live https://*.vercel.live wss://*.vercel.live;
     frame-src 'self' blob: https://vercel.live;
     base-uri 'self';
     form-action 'self';
